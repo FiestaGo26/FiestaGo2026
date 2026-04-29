@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --coral:   #E8553E;
+  --gold:    #C8860A;
+  --sage:    #3D7A52;
+  --cream:   #FBF7F0;
+  --ink:     #1C1108;
+  --muted:   #8A7968;
+  --border:  #E4D9C6;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #E4D9C6; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #C8B99A; }
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-fade-up  { animation: fadeUp  0.4s ease forwards; }
+.animate-fade-in  { animation: fadeIn  0.3s ease forwards; }
+.animate-slide-in { animation: slideIn 0.3s ease forwards; }
+
+/* Admin dark theme */
+.admin-dark { background: #080B12; color: #F0F4FF; }
+
+/* Prose styles */
+.prose-fiegago p  { color: var(--muted); line-height: 1.7; }
+.prose-fiegago h2 { font-family: var(--font-fraunces); font-weight: 700; color: var(--ink); }
