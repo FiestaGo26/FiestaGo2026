@@ -1,5 +1,4 @@
-import { createBrowserClient, createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createBrowserClient } from '@supabase/ssr'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -93,7 +92,7 @@ export type Notification = {
   action_url: string | null
 }
 
-// ─── Browser client (use in Client Components) ────────────────────────────────
+// ─── Browser client ───────────────────────────────────────────────────────────
 
 export function createClient() {
   return createBrowserClient(
@@ -102,29 +101,18 @@ export function createClient() {
   )
 }
 
-// ─── Server client (use in Server Components & API routes) ───────────────────
-
-export function createServerSupabaseClient() {
-  const cookieStore = cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll()         { return cookieStore.getAll() },
-        setAll(cs)       { cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
-      },
-    }
-  )
-}
-
-// ─── Admin client (server-only, uses service_role key — never expose to client) ─
+// ─── Admin client (server-only) ───────────────────────────────────────────────
 
 export function createAdminClient() {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
+}
+
+export function createServerSupabaseClient() {
+  return createAdminClient()
 }
