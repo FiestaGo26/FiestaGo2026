@@ -21,11 +21,83 @@ async function claudeCall(system: string, user: string) {
       messages: [{ role: 'user', content: user }],
     }),
   })
+
+  if (!res.ok) {
+    const errorText = await res.text()
+    throw new Error(`Claude error ${res.status}: ${errorText}`)
+  }
+
   const data = await res.json()
   return (data.content || [])
     .filter((b: any) => b.type === 'text')
     .map((b: any) => b.text)
     .join('')
+}
+
+async function searchWithApify(query: string) {
+  if (!process.env.APIFY_API_TOKEN) {
+    throw new Error('Falta APIFY_API_TOKEN en Netlify')
+  }
+
+  const url =
+    `https://api.apify.com/v2/acts/apify~google-search-scraper/run-sync-get-dataset-items` +
+    `?token=${process.env.APIFY_API_TOKEN}`
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      queries: query,
+      maxPagesPerQuery: 1,
+      resultsPerPage: 10,
+      countryCode: 'es',
+      languageCode: 'es',
+    }),
+  })
+
+  const text = await res.text()
+
+  if (!res.ok) {
+    throw new Error(`Apify error ${res.status}: ${text}`)
+  }
+
+  const data = JSON.parse(text)
+
+  console.log('[APIFY RAW]', JSON.stringify(data, null, 2))
+
+  const results: any[] = []
+
+  for (const item of data || []) {
+    const organic =
+      item.organicResults ||
+      item.nonPromotedSearchResults ||
+      item.results ||
+      []
+
+    for (const r of organic) {
+      results.push({
+        title: r.title || r.name || '',
+        url: r.url || r.link || '',
+        description: r.description || r.snippet || '',
+      })
+    }
+  }
+
+  return results.filter(r => r.title && r.url)
+}
+
+function safeJsonArray(text: string) {
+  const match = text.match(/\[[\s\S]*\]/)
+  if (!match) throw new Error('Claude no devolvió un JSON array válido')
+  return JSON.parse(match[0])
+}
+
+function safeJsonObject(text: string) {
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Claude no devolvió un JSON object válido')
+  return JSON.parse(match[0])
 }
 
 export async function POST(req: NextRequest) {
@@ -37,57 +109,88 @@ export async function POST(req: NextRequest) {
   const { category, city, count = 5, tone = 'profesional y cercano' } = await req.json()
 
   const catObj = CATEGORIES.find(c => c.id === category)
-  if (!catObj) return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
+  if (!catObj) {
+    return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
+  }
 
   const { data: session } = await supabase
     .from('agent_sessions')
-    .insert({ category, city, sources: ['ia'], target_count: count, tone, status: 'running' })
+    .insert({
+      category,
+      city,
+      sources: ['apify_google'],
+      target_count: count,
+      tone,
+      status: 'running',
+    })
     .select()
     .single()
 
   const sessionId = session?.id
   const logs: string[] = []
-  const addLog = (msg: string) => { logs.push(msg); console.log('[AGENT]', msg) }
+  const addLog = (msg: string) => {
+    logs.push(msg)
+    console.log('[AGENT]', msg)
+  }
 
   try {
     addLog(`🤖 Agente iniciado — ${catObj.label} en ${city}`)
-    addLog(`🧠 Generando proveedores reales con IA...`)
+    addLog(`🌐 Buscando proveedores reales en internet con Apify...`)
+
+    const query = `${catObj.label} ${city} proveedor eventos bodas cumpleaños catering banquetes site:.es`
+    const apifyResults = await searchWithApify(query)
+
+    addLog(`🔎 Apify devolvió ${apifyResults.length} resultados brutos`)
+
+    if (!apifyResults.length) {
+      throw new Error('No se encontraron proveedores en Apify')
+    }
 
     const searchText = await claudeCall(
-      'Eres un experto en el sector de bodas y eventos en España. Generas datos MUY REALISTAS de negocios españoles. Responde SOLO con JSON válido, sin markdown ni texto adicional.',
-      `Genera ${count} proveedores REALISTAS y DETALLADOS de "${catObj.label}" en ${city}, España.
+      `Eres un analista de datos para FiestaGo. 
+Tu tarea es convertir resultados reales de Google en proveedores estructurados.
+NO inventes proveedores.
+NO inventes webs.
+Si falta email, teléfono o Instagram, usa null.
+Responde SOLO con JSON válido, sin markdown.`,
+      `Categoría: ${catObj.label}
+Ciudad: ${city}
+Cantidad máxima: ${count}
 
-Usa nombres de negocios típicos españoles, emails profesionales reales, precios de mercado actuales en España, y descripciones auténticas basadas en cómo trabajan estos negocios en España.
+Resultados reales encontrados:
+${JSON.stringify(apifyResults, null, 2)}
 
-Devuelve SOLO este JSON array exacto:
+Devuelve SOLO este JSON array:
 [
   {
-    "name": "nombre realista del negocio",
+    "name": "nombre del negocio real según el resultado",
     "type": "tipo específico de servicio",
     "city": "${city}",
-    "address": "dirección realista de ${city}",
-    "phone": "número español realista como +34 6XX XXX XXX",
-    "email": "email profesional realista",
-    "website": "URL realista",
-    "instagram": "@usuario realista",
-    "avgPrice": precio en euros (número),
-    "priceUnit": "por evento o por persona o por hora",
-    "strengths": ["fortaleza 1", "fortaleza 2", "fortaleza 3"],
-    "weaknesses": ["debilidad 1"],
-    "estimatedRating": número entre 4.0 y 5.0,
-    "estimatedReviews": número entre 10 y 300,
-    "yearsActive": número entre 2 y 15,
+    "address": null,
+    "phone": null,
+    "email": null,
+    "website": "URL real encontrada",
+    "instagram": null,
+    "avgPrice": null,
+    "priceUnit": "por evento",
+    "strengths": ["fortaleza inferida desde el resultado"],
+    "weaknesses": ["dato incompleto"],
+    "estimatedRating": null,
+    "estimatedReviews": null,
+    "yearsActive": null,
     "specialties": ["especialidad 1", "especialidad 2"],
-    "description": "descripción profesional realista en 1-2 frases"
+    "description": "descripción breve basada solo en el resultado real"
   }
 ]`
     )
 
-    const jsonMatch = searchText.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) throw new Error('Error generando proveedores')
+    const rawProviders = safeJsonArray(searchText).slice(0, count)
 
-    const rawProviders = JSON.parse(jsonMatch[0])
-    addLog(`✅ ${rawProviders.length} proveedores generados`)
+    if (!rawProviders.length) {
+      throw new Error('No se encontraron proveedores después de procesar resultados')
+    }
+
+    addLog(`✅ ${rawProviders.length} proveedores reales estructurados`)
 
     const qualifiedProviders = []
 
@@ -101,38 +204,32 @@ Devuelve SOLO este JSON array exacto:
 Nombre: ${p.name}
 Categoría: ${catObj.label}
 Ciudad: ${p.city}
-Precio: ${p.avgPrice}€ ${p.priceUnit}
-Años activo: ${p.yearsActive}
-Rating estimado: ${p.estimatedRating}
-Reseñas: ${p.estimatedReviews}
-Fortalezas: ${p.strengths?.join(', ')}
+Web: ${p.website}
+Descripción: ${p.description}
+Especialidades: ${p.specialties?.join(', ')}
 
 Score A = añadir directamente, B = contactar primero, C = revisar, D = descartar
 
 Responde con este JSON exacto:
 {
-  "score": "A",
+  "score": "B",
   "scoreReason": "razón en 1 frase",
-  "fitScore": 8,
-  "recommendation": "AÑADIR",
-  "priority": "ALTA",
+  "fitScore": 7,
+  "recommendation": "CONTACTAR",
+  "priority": "MEDIA",
   "notes": "nota interna para el equipo",
-  "estimatedConversionProb": 70,
+  "estimatedConversionProb": 50,
   "suggestedTag": "Nuevo",
   "missingData": []
 }`
       )
 
-      const qualMatch = qualText.match(/\{[\s\S]*\}/)
-      const qual = qualMatch ? JSON.parse(qualMatch[0]) : {
-        score: 'B', recommendation: 'CONTACTAR', priority: 'MEDIA',
-        fitScore: 6, scoreReason: 'Buen candidato', notes: 'Revisar disponibilidad',
-        estimatedConversionProb: 50, suggestedTag: 'Nuevo', missingData: [],
-      }
+      const qual = safeJsonObject(qualText)
 
       let emailDraft = ''
       if (qual.recommendation !== 'DESCARTAR') {
         addLog(`✉️ Generando email para: ${p.name}`)
+
         emailDraft = await claudeCall(
           `Eres el equipo de partnerships de FiestaGo. Tono: ${tone}. Escribe solo el email, sin explicaciones adicionales.`,
           `Escribe un email de outreach para invitar a este proveedor a unirse a FiestaGo:
@@ -140,84 +237,92 @@ Responde con este JSON exacto:
 Proveedor: ${p.name}
 Tipo: ${p.type}
 Ciudad: ${p.city}
-Precio: ${p.avgPrice}€ ${p.priceUnit}
+Web: ${p.website}
 Especialidades: ${p.specialties?.join(', ')}
 
 FiestaGo propuesta de valor:
 - Registro 100% GRATIS
-- Primera transacción SIN comisión (0%)
+- Primera transacción SIN comisión
 - Solo 8% de comisión desde la segunda venta
 - Leads cualificados de parejas y familias
 - Panel de gestión y pagos seguros integrados
 
 Formato:
-ASUNTO: [asunto personalizado y atractivo]
+ASUNTO: [asunto personalizado]
 
-[cuerpo del email, máximo 150 palabras, muy personalizado con el nombre del negocio]
+[cuerpo del email, máximo 150 palabras]
 
-Firma: El equipo de FiestaGo | partnerships@fiegago.es`
+Firma: El equipo de FiestaGo | partnerships@fiestago.es`
         )
       }
 
-      const { data: savedProvider } = await supabase
+      const { data: savedProvider, error: saveError } = await supabase
         .from('providers')
         .insert({
-          name:            p.name,
+          name: p.name,
           category,
-          city:            p.city || city,
-          email:           p.email || null,
-          phone:           p.phone || null,
-          website:         p.website || null,
-          instagram:       p.instagram || null,
-          description:     p.description,
-          price_base:      p.avgPrice,
-          price_unit:      p.priceUnit || 'por evento',
-          specialties:     p.specialties || [],
-          source:          'web' as any,
-          status:          qual.recommendation === 'AÑADIR' ? 'approved' : 'pending',
-          tag:             qual.suggestedTag || 'Nuevo',
-          agent_score:     qual.score,
-          agent_notes:     qual.notes,
+          city: p.city || city,
+          email: p.email || null,
+          phone: p.phone || null,
+          website: p.website || null,
+          instagram: p.instagram || null,
+          description: p.description || null,
+          price_base: p.avgPrice || null,
+          price_unit: p.priceUnit || 'por evento',
+          specialties: p.specialties || [],
+          source: 'web' as any,
+          status: qual.recommendation === 'AÑADIR' ? 'approved' : 'pending',
+          tag: qual.suggestedTag || 'Nuevo',
+          agent_score: qual.score,
+          agent_notes: qual.notes,
           agent_fit_score: qual.fitScore,
           conversion_prob: qual.estimatedConversionProb,
-          outreach_sent:   false,
-          outreach_email:  emailDraft || null,
+          outreach_sent: false,
+          outreach_email: emailDraft || null,
         })
         .select()
         .single()
 
+      if (saveError) {
+        addLog(`⚠️ Error guardando ${p.name}: ${saveError.message}`)
+      }
+
       qualifiedProviders.push({
-        ...p, ...qual,
-        id:          savedProvider?.id,
+        ...p,
+        ...qual,
+        id: savedProvider?.id,
         emailDraft,
-        savedToDb:   !!savedProvider,
+        savedToDb: !!savedProvider,
       })
 
       addLog(`   → Score ${qual.score} | ${qual.recommendation} | ${qual.estimatedConversionProb}% conv.`)
     }
 
-    const added   = qualifiedProviders.filter(p => p.recommendation === 'AÑADIR').length
+    const added = qualifiedProviders.filter(p => p.recommendation === 'AÑADIR').length
     const emailed = qualifiedProviders.filter(p => p.emailDraft).length
 
-    await supabase.from('agent_sessions').update({
-      status:          'completed',
-      completed_at:    new Date().toISOString(),
-      found_count:     rawProviders.length,
-      qualified_count: qualifiedProviders.length,
-      added_count:     added,
-      emailed_count:   emailed,
-      score_a:         qualifiedProviders.filter(p => p.score === 'A').length,
-      score_b:         qualifiedProviders.filter(p => p.score === 'B').length,
-    }).eq('id', sessionId)
+    await supabase
+      .from('agent_sessions')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        found_count: rawProviders.length,
+        qualified_count: qualifiedProviders.length,
+        added_count: added,
+        emailed_count: emailed,
+        score_a: qualifiedProviders.filter(p => p.score === 'A').length,
+        score_b: qualifiedProviders.filter(p => p.score === 'B').length,
+      })
+      .eq('id', sessionId)
 
     addLog(`🎉 Agente completado — ${added} añadidos, ${emailed} emails generados`)
 
     return NextResponse.json({
-      success:   true,
+      success: true,
       sessionId,
       providers: qualifiedProviders,
       stats: {
-        found:  rawProviders.length,
+        found: rawProviders.length,
         added,
         emailed,
         scoreA: qualifiedProviders.filter(p => p.score === 'A').length,
@@ -225,13 +330,17 @@ Firma: El equipo de FiestaGo | partnerships@fiegago.es`
       },
       logs,
     })
-
   } catch (err: any) {
     addLog(`❌ Error: ${err.message}`)
-    await supabase.from('agent_sessions').update({
-      status:    'error',
-      error_msg: err.message,
-    }).eq('id', sessionId)
+
+    await supabase
+      .from('agent_sessions')
+      .update({
+        status: 'error',
+        error_msg: err.message,
+      })
+      .eq('id', sessionId)
+
     return NextResponse.json({ error: err.message, logs }, { status: 500 })
   }
 }
@@ -240,11 +349,14 @@ export async function GET(req: NextRequest) {
   if (!checkAdminAuth(req)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
+
   const supabase = createAdminClient()
+
   const { data } = await supabase
     .from('agent_sessions')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(20)
+
   return NextResponse.json({ sessions: data || [] })
 }
