@@ -1,9 +1,7 @@
-export const dynamic = 'force-dynamic'
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, CITIES } from '@/lib/constants'
 
 type Provider = {
@@ -11,9 +9,6 @@ type Provider = {
   name: string
   category: string
   city: string
-  email: string | null
-  phone: string | null
-  website: string | null
   description: string | null
   price_base: number | null
   price_unit: string
@@ -31,15 +26,13 @@ const TAG_COLORS: Record<string, string> = {
   'Más reservado': '#1F4E79',
   'Premium':       '#7C3AED',
   'Nuevo':         '#C8860A',
-  'Exclusivo':     '#C0392B',
 }
 
-function ProveedoresContent() {
-  const searchParams = useSearchParams()
+export default function ProveedoresPage() {
   const [providers,  setProviders]  = useState<Provider[]>([])
   const [loading,    setLoading]    = useState(true)
-  const [filterCat,  setFilterCat]  = useState(searchParams.get('categoria') || '')
-  const [filterCity, setFilterCity] = useState(searchParams.get('ciudad') || '')
+  const [filterCat,  setFilterCat]  = useState('')
+  const [filterCity, setFilterCity] = useState('')
   const [search,     setSearch]     = useState('')
   const [sortBy,     setSortBy]     = useState('featured')
 
@@ -70,10 +63,10 @@ function ProveedoresContent() {
              p.city.toLowerCase().includes(q)
     })
     .sort((a, b) => {
-      if (sortBy === 'featured')    return (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
-      if (sortBy === 'rating')      return (b.rating || 0) - (a.rating || 0)
-      if (sortBy === 'price_asc')   return (a.price_base || 0) - (b.price_base || 0)
-      if (sortBy === 'price_desc')  return (b.price_base || 0) - (a.price_base || 0)
+      if (sortBy === 'featured')   return (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
+      if (sortBy === 'rating')     return (b.rating || 0) - (a.rating || 0)
+      if (sortBy === 'price_asc')  return (a.price_base || 0) - (b.price_base || 0)
+      if (sortBy === 'price_desc') return (b.price_base || 0) - (a.price_base || 0)
       return 0
     })
 
@@ -94,6 +87,7 @@ function ProveedoresContent() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
+        {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-8 items-center">
           <div className="flex-1 min-w-[200px] relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink/40">🔍</span>
@@ -121,10 +115,11 @@ function ProveedoresContent() {
           )}
         </div>
 
+        {/* Category pills */}
         <div className="flex gap-2 flex-wrap mb-8">
           <button onClick={() => setFilterCat('')}
             className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-              filterCat === '' ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-stone-200 hover:border-ink'
+              filterCat === '' ? 'bg-ink text-white border-ink' : 'bg-white text-ink/60 border-stone-200'
             }`}>
             Todos
           </button>
@@ -141,6 +136,7 @@ function ProveedoresContent() {
           ))}
         </div>
 
+        {/* Grid */}
         {loading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[1,2,3,4,5,6].map(i => (
@@ -162,7 +158,7 @@ function ProveedoresContent() {
             </p>
             <div className="flex gap-3 justify-center">
               <button onClick={() => { setFilterCat(''); setFilterCity(''); setSearch('') }}
-                className="bg-coral text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">
+                className="bg-coral text-white font-bold px-6 py-2.5 rounded-xl text-sm">
                 Ver todos los proveedores
               </button>
               <Link href="/registro-proveedor"
@@ -183,40 +179,30 @@ function ProveedoresContent() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.id}/600/400` }}/>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
-                    <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+                    <div className="absolute top-3 left-3 flex gap-2">
                       {p.tag && (
                         <span className="text-xs font-bold px-2.5 py-1 rounded-full text-white"
                           style={{ background: TAG_COLORS[p.tag] || '#1C1108' }}>{p.tag}</span>
                       )}
                       {p.verified && (
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/90 text-ink">🛡️ Verificado</span>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/90 text-ink">🛡️</span>
                       )}
                     </div>
-                    <div className="absolute bottom-3 right-3">
-                      {p.rating > 0 && (
-                        <div className="flex items-center gap-1 bg-white/90 rounded-full px-2.5 py-1">
-                          <span className="text-gold text-xs">★</span>
-                          <span className="text-xs font-bold text-ink">{p.rating}</span>
-                          {p.total_reviews > 0 && <span className="text-xs text-ink/50">({p.total_reviews})</span>}
-                        </div>
-                      )}
-                    </div>
+                    {p.rating > 0 && (
+                      <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-white/90 rounded-full px-2.5 py-1">
+                        <span className="text-gold text-xs">★</span>
+                        <span className="text-xs font-bold text-ink">{p.rating}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-4 flex flex-col flex-1">
                     <div className="text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: cat?.color || '#E8553E' }}>
                       {cat?.icon} {cat?.label}
                     </div>
-                    <h3 className="font-serif text-lg font-bold text-ink mb-1 leading-tight">{p.name}</h3>
+                    <h3 className="font-serif text-lg font-bold text-ink mb-1">{p.name}</h3>
                     <div className="text-xs text-ink/50 mb-3">📍 {p.city}</div>
                     {p.description && (
                       <p className="text-xs text-ink/55 leading-relaxed mb-4 line-clamp-2 flex-1">{p.description}</p>
-                    )}
-                    {p.specialties?.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-4">
-                        {p.specialties.slice(0,2).map((s,i) => (
-                          <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-ink/60">{s}</span>
-                        ))}
-                      </div>
                     )}
                     <div className="flex justify-between items-center border-t border-stone-100 pt-3 mt-auto">
                       <div>
@@ -244,9 +230,7 @@ function ProveedoresContent() {
         <div className="mt-16 bg-white border border-stone-200 rounded-3xl p-8 text-center">
           <div className="text-3xl mb-3">🏪</div>
           <h3 className="font-serif text-2xl font-black text-ink mb-2">¿Eres proveedor?</h3>
-          <p className="text-ink/55 mb-6 max-w-md mx-auto leading-relaxed">
-            Regístrate gratis y empieza a recibir reservas. Primera transacción sin comisión.
-          </p>
+          <p className="text-ink/55 mb-6 max-w-md mx-auto">Regístrate gratis. Primera transacción sin comisión.</p>
           <Link href="/registro-proveedor"
             className="inline-block bg-coral text-white font-bold px-8 py-3 rounded-xl hover:bg-coral-dark transition-colors">
             Registrar mi negocio gratis →
@@ -254,17 +238,5 @@ function ProveedoresContent() {
         </div>
       </div>
     </div>
-  )
-}
-
-export default function ProveedoresPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <div className="text-ink/40">Cargando proveedores...</div>
-      </div>
-    }>
-      <ProveedoresContent />
-    </Suspense>
   )
 }
