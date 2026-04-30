@@ -174,6 +174,7 @@ Supabase Free aguanta hasta ~50.000 filas y 2GB de transferencia. Más que sufic
 ---
 
 
+
 ## Soporte
 
 Si tienes dudas durante el setup, cualquier error que veas en Vercel o Supabase es fácil de resolver — los logs son muy claros. Los errores más comunes son variables de entorno mal copiadas (espacios extra o comillas).
