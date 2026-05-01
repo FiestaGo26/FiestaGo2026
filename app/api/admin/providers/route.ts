@@ -40,7 +40,7 @@ async function sendOutreachEmail(provider: any) {
           <hr style="border:none;border-top:1px solid #E4D9C6;margin:24px 0"/>
           <p style="color:#8A7968;font-size:12px">
             FiestaGo · El marketplace de celebraciones #1 en España<br/>
-            partnerships@fiegago.es
+            FiestaGo@outlook.es
           </p>
         </div>`,
       }),
