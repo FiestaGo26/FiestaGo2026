@@ -45,20 +45,17 @@ export async function POST(req: NextRequest) {
 
   try {
     addLog(`🤖 Agente iniciado — ${catObj.label} en ${city}`)
-    addLog(`🧠 Generando y cualificando proveedores con IA...`)
+    addLog(`🧠 Buscando y cualificando proveedores...`)
 
-    // Una sola llamada que hace todo
     const result = await claudeCall(
       'Eres experto en bodas y eventos en España. Generas datos realistas de negocios españoles y los evalúas para FiestaGo. Responde SOLO con JSON válido.',
-      `Genera ${count} proveedores realistas de "${catObj.label}" en ${city}, España, y evalúa cada uno para FiestaGo.
-
-Para cada proveedor incluye tanto los datos del negocio como la evaluación.
+      `Genera ${count} proveedores realistas de "${catObj.label}" en ${city}, España.
 
 Devuelve SOLO este JSON array:
 [
   {
-    "name": "nombre realista",
-    "type": "tipo específico",
+    "name": "nombre realista del negocio",
+    "type": "tipo específico de servicio",
     "city": "${city}",
     "phone": "+34 6XX XXX XXX",
     "email": "email@negocio.es",
@@ -69,13 +66,12 @@ Devuelve SOLO este JSON array:
     "specialties": ["especialidad 1", "especialidad 2"],
     "description": "descripción profesional en 1-2 frases",
     "score": "A",
-    "recommendation": "AÑADIR",
-    "scoreReason": "razón del score",
+    "scoreReason": "razón del score en 1 frase",
     "fitScore": 8,
     "estimatedConversionProb": 70,
     "suggestedTag": "Nuevo",
     "emailSubject": "asunto del email de outreach personalizado",
-    "emailBody": "cuerpo del email de outreach en máximo 100 palabras, tono ${tone}"
+    "emailBody": "cuerpo del email de outreach en máximo 120 palabras, tono ${tone}, muy personalizado con el nombre del negocio y su especialidad. Menciona que el registro es gratis y la primera transacción sin comisión."
   }
 ]`
     )
@@ -84,14 +80,16 @@ Devuelve SOLO este JSON array:
     if (!jsonMatch) throw new Error('Error generando proveedores')
 
     const providers = JSON.parse(jsonMatch[0])
-    addLog(`✅ ${providers.length} proveedores generados y cualificados`)
+    addLog(`✅ ${providers.length} proveedores encontrados y cualificados`)
 
     const saved = []
     for (const p of providers) {
+      // Email de outreach generado por el agente
       const emailDraft = p.emailSubject && p.emailBody
         ? `ASUNTO: ${p.emailSubject}\n\n${p.emailBody}\n\nFiestaGo Partnerships | partnerships@fiegago.es`
         : ''
 
+      // SIEMPRE se guardan como pendientes — nunca aprobados automáticamente
       const { data: savedProvider } = await supabase
         .from('providers')
         .insert({
@@ -107,31 +105,34 @@ Devuelve SOLO este JSON array:
           price_unit:      p.priceUnit || 'por evento',
           specialties:     p.specialties || [],
           source:          'web' as any,
-          status:          p.recommendation === 'AÑADIR' ? 'approved' : 'pending',
+          status:          'pending', // ← SIEMPRE pendiente hasta que tú lo apruebes
           tag:             p.suggestedTag || 'Nuevo',
           agent_score:     (p.score || 'B').charAt(0).toUpperCase(),
           agent_notes:     p.scoreReason,
           agent_fit_score: p.fitScore,
           conversion_prob: p.estimatedConversionProb,
-          outreach_sent:   false,
-          outreach_email:  emailDraft || null,
+          outreach_sent:   false,       // ← email NO enviado todavía
+          outreach_email:  emailDraft,  // ← email guardado listo para enviar cuando apruebes
         })
         .select()
         .single()
 
       saved.push({ ...p, id: savedProvider?.id, emailDraft, savedToDb: !!savedProvider })
-      addLog(`   ✓ ${p.name} — Score ${p.score} | ${p.recommendation}`)
+      addLog(`   ⏳ ${p.name} — Score ${p.score} | Pendiente de tu aprobación`)
     }
 
-    const added   = saved.filter(p => p.recommendation === 'AÑADIR').length
-    const emailed = saved.filter(p => p.emailDraft).length
-
-    addLog(`🎉 Completado — ${added} añadidos, ${emailed} emails generados`)
+    addLog(``)
+    addLog(`📋 ${saved.length} proveedores en espera de tu revisión en el panel de admin`)
+    addLog(`💡 Al aprobar cada uno se enviará el email de outreach automáticamente`)
 
     return NextResponse.json({
-      success: true,
+      success:   true,
       providers: saved,
-      stats: { found: providers.length, added, emailed },
+      stats: {
+        found:   providers.length,
+        pending: saved.length,
+        added:   0, // nadie aprobado automáticamente
+      },
       logs,
     })
 
