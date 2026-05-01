@@ -109,7 +109,7 @@ Devuelve SOLO este JSON array:
           source:          'web' as any,
           status:          p.recommendation === 'AÑADIR' ? 'approved' : 'pending',
           tag:             p.suggestedTag || 'Nuevo',
-          agent_score:     p.score,
+          agent_score:     (p.score || 'B').charAt(0).toUpperCase(),
           agent_notes:     p.scoreReason,
           agent_fit_score: p.fitScore,
           conversion_prob: p.estimatedConversionProb,
