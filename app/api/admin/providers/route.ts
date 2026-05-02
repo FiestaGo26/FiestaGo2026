@@ -25,7 +25,7 @@ async function sendOutreachEmail(provider: any) {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from:  'FiestaGo Partnerships <contacto@fiestago.es>',,
+        from:  'FiestaGo Partnerships <contacto@fiestago.es>',
         to:      [provider.email],
         subject,
         text:    body,
