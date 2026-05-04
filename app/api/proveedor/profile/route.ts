@@ -1,31 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 
-function checkAuth(req: NextRequest) {
-  return !!req.headers.get('x-provider-token')
-}
-
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const supabase = createAdminClient()
-  const id = new URL(req.url).searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+  const { searchParams } = new URL(req.url)
+  const id    = searchParams.get('id')
+  const email = searchParams.get('email')
 
-  const { data: provider, error } = await supabase
-    .from('providers')
-    .select('*')
-    .eq('id', id)
-    .single()
+  let query = supabase.from('providers').select('*')
+  if (id)    query = query.eq('id', id)
+  else if (email) query = query.eq('email', email.toLowerCase().trim())
+  else return NextResponse.json({ error: 'ID o email requerido' }, { status: 400 })
 
+  const { data: provider, error } = await query.single()
   if (error || !provider) return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 })
 
-  // Get services from agent_notes field or return empty
-  const services = []
-  return NextResponse.json({ provider: { ...provider, services } })
+  // Parse services from metadata
+  let services = []
+  try {
+    const meta = provider.agent_notes || ''
+    if (meta.includes('services:')) {
+      services = JSON.parse(meta.split('services:')[1].split('|')[0])
+    }
+  } catch {}
+
+  return NextResponse.json({ provider, services })
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const supabase = createAdminClient()
   const body = await req.json()
   const { id, ...updates } = body
