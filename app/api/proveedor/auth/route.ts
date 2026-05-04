@@ -1,41 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import * as crypto from 'crypto'
 
-function generateToken(providerId: string) {
-  return crypto.createHmac('sha256', process.env.ADMIN_PASSWORD || 'secret')
-    .update(providerId + Date.now())
-    .digest('hex')
+function getServices(notes: string) {
+  try {
+    if (notes?.includes('services:')) {
+      return JSON.parse(notes.split('services:')[1].split('|')[0])
+    }
+  } catch {}
+  return []
+}
+
+function setServices(notes: string, services: any[]) {
+  const base = (notes || '').replace(/services:.*?(\||$)/, '')
+  return `${base}services:${JSON.stringify(services)}|`
 }
 
 export async function POST(req: NextRequest) {
   const supabase = createAdminClient()
-  const { email } = await req.json()
+  const { providerId, name, description, price, duration, maxGuests } = await req.json()
+  if (!providerId || !name || !price) return NextResponse.json({ error: 'Datos requeridos' }, { status: 400 })
 
-  if (!email) return NextResponse.json({ error: 'Email requerido' }, { status: 400 })
+  const { data: provider } = await supabase.from('providers').select('agent_notes').eq('id', providerId).single()
+  const services = getServices(provider?.agent_notes || '')
+  const newService = { id: `svc_${Date.now()}`, name, description: description || '', price, duration, maxGuests: maxGuests || null }
+  services.push(newService)
 
-  const { data: provider } = await supabase
-    .from('providers')
-    .select('id, name, email, status')
-    .eq('email', email.toLowerCase().trim())
-    .single()
+  await supabase.from('providers').update({ agent_notes: setServices(provider?.agent_notes || '', services) }).eq('id', providerId)
+  return NextResponse.json({ service: newService })
+}
 
-  if (!provider) {
-    return NextResponse.json({ error: 'No encontramos ningún proveedor con ese email. ¿Te has registrado en FiestaGo?' }, { status: 404 })
-  }
+export async function PATCH(req: NextRequest) {
+  const supabase = createAdminClient()
+  const { providerId, id, name, description, price, duration, maxGuests } = await req.json()
+  if (!providerId || !id) return NextResponse.json({ error: 'Datos requeridos' }, { status: 400 })
 
-  // Generate simple token and store it
-  const token = generateToken(provider.id)
-  await supabase.from('providers').update({
-    agent_notes: `token:${token}` // reusing field for simplicity
-  }).eq('id', provider.id)
+  const { data: provider } = await supabase.from('providers').select('agent_notes').eq('id', providerId).single()
+  let services = getServices(provider?.agent_notes || '')
+  services = services.map((s: any) => s.id === id ? { ...s, name, description, price, duration, maxGuests } : s)
 
-  // In production: send magic link email
-  // For now: return token directly (demo mode)
-  return NextResponse.json({
-    token,
-    providerId: provider.id,
-    name:       provider.name,
-    message:    'Acceso concedido',
-  })
+  await supabase.from('providers').update({ agent_notes: setServices(provider?.agent_notes || '', services) }).eq('id', providerId)
+  return NextResponse.json({ service: services.find((s: any) => s.id === id) })
+}
+
+export async function DELETE(req: NextRequest) {
+  const supabase = createAdminClient()
+  const { searchParams } = new URL(req.url)
+  const id = searchParams.get('id')
+  const providerId = searchParams.get('providerId')
+  if (!id || !providerId) return NextResponse.json({ error: 'Datos requeridos' }, { status: 400 })
+
+  const { data: provider } = await supabase.from('providers').select('agent_notes').eq('id', providerId).single()
+  let services = getServices(provider?.agent_notes || '')
+  services = services.filter((s: any) => s.id !== id)
+
+  await supabase.from('providers').update({ agent_notes: setServices(provider?.agent_notes || '', services) }).eq('id', providerId)
+  return NextResponse.json({ success: true })
 }
