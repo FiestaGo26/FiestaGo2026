@@ -20,6 +20,10 @@ function Navbar() {
           </Link>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/proveedor/login"
+            className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
+            Acceder
+          </Link>
           <Link href="/registro-proveedor"
             className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
             Soy proveedor
@@ -45,7 +49,7 @@ function Footer() {
           </div>
           {[
             { title:'Celebraciones', links:[['Bodas','/proveedores?categoria=planner'],['Cumpleaños','/#packs'],['Fiestas privadas','/#packs']] },
-            { title:'Proveedores',   links:[['Registrarse','/registro-proveedor'],['Panel de acceso','/proveedor/login']] },
+            { title:'Proveedores',   links:[['Registrarse','/registro-proveedor'],['Acceder a mi panel','/proveedor/login']] },
             { title:'Legal',         links:[['Términos de uso','#'],['Privacidad','#'],['Cookies','#']] },
           ].map(col => (
             <div key={col.title}>
@@ -60,7 +64,7 @@ function Footer() {
         </div>
         <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-2 text-xs">
           <span>© 2025 FiestaGo. Todos los derechos reservados.</span>
-          <span>partnerships@fiegago.es</span>
+          <span>contacto@fiestago.es</span>
         </div>
       </div>
     </footer>
@@ -76,3 +80,4 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
     </div>
   )
 }
+
