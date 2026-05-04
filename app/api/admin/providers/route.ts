@@ -15,7 +15,50 @@ async function sendOutreachEmail(provider: any) {
   const lines   = provider.outreach_email.split('\n')
   const subjL   = lines.find((l: string) => l.startsWith('ASUNTO:'))
   const subject = subjL ? subjL.replace('ASUNTO:', '').trim() : `Únete a FiestaGo — ${provider.name}`
-  const body    = lines.filter((l: string) => !l.startsWith('ASUNTO:')).join('\n').trim()
+  const bodyText = lines.filter((l: string) => !l.startsWith('ASUNTO:')).join('\n').trim()
+
+  const registerUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es'}/registro-proveedor`
+  const contactEmail = 'contacto@fiestago.es'
+
+  const fullText = `${bodyText}
+
+Regístrate gratis aquí: ${registerUrl}
+
+¿Tienes dudas? Escríbenos a ${contactEmail}
+
+FiestaGo Partnerships | ${contactEmail}`
+
+  const htmlBody = `
+<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1C1108">
+  <div style="margin-bottom:24px">
+    <span style="font-size:28px">🎉</span>
+    <strong style="font-size:20px;color:#1C1108"> FiestaGo</strong>
+  </div>
+
+  ${bodyText.split('\n').filter(Boolean).map((line: string) =>
+    `<p style="color:#4A4A4A;line-height:1.7;margin:0 0 14px">${line}</p>`
+  ).join('')}
+
+  <div style="margin:32px 0;text-align:center">
+    <a href="${registerUrl}"
+      style="background:#E8553E;color:#fff;text-decoration:none;font-weight:700;
+             padding:14px 32px;border-radius:12px;font-size:16px;display:inline-block">
+      Registrarme gratis en FiestaGo →
+    </a>
+  </div>
+
+  <p style="color:#8A7968;font-size:13px;line-height:1.6">
+    ¿Tienes dudas? Escríbenos a
+    <a href="mailto:${contactEmail}" style="color:#E8553E">${contactEmail}</a>
+  </p>
+
+  <hr style="border:none;border-top:1px solid #E4D9C6;margin:24px 0"/>
+  <p style="color:#8A7968;font-size:12px">
+    FiestaGo · El marketplace de celebraciones #1 en España<br/>
+    <a href="https://fiestago.es" style="color:#8A7968">fiestago.es</a> ·
+    <a href="mailto:${contactEmail}" style="color:#8A7968">${contactEmail}</a>
+  </p>
+</div>`
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -25,24 +68,11 @@ async function sendOutreachEmail(provider: any) {
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from:  'FiestaGo Partnerships <contacto@fiestago.es>',
+        from:    `FiestaGo Partnerships <contacto@fiestago.es>`,
         to:      [provider.email],
         subject,
-        text:    body,
-        html:    `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <div style="margin-bottom:24px">
-            <span style="font-size:24px">🎉</span>
-            <strong style="font-size:18px;color:#1C1108"> FiestaGo</strong>
-          </div>
-          ${body.split('\n').map((line: string) =>
-            line ? `<p style="color:#4A4A4A;line-height:1.6;margin:0 0 12px">${line}</p>` : '<br/>'
-          ).join('')}
-          <hr style="border:none;border-top:1px solid #E4D9C6;margin:24px 0"/>
-          <p style="color:#8A7968;font-size:12px">
-            FiestaGo · El marketplace de celebraciones #1 en España<br/>
-            FiestaGo@outlook.es
-          </p>
-        </div>`,
+        text:    fullText,
+        html:    htmlBody,
       }),
     })
 
@@ -88,7 +118,8 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/admin/providers
-// Al aprobar → envía email de outreach automáticamente via Resend
+// Al aprobar → envía email de outreach y cambia estado a "contacted"
+// El proveedor aparece en marketplace solo cuando se registra él mismo
 export async function PATCH(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
@@ -98,7 +129,7 @@ export async function PATCH(req: NextRequest) {
 
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
-  // Si se está aprobando → enviar email de outreach
+  // Si se intenta aprobar → enviar email y cambiar a "contacted" en vez de "approved"
   if (updates.status === 'approved') {
     const { data: provider } = await supabase
       .from('providers')
@@ -106,11 +137,15 @@ export async function PATCH(req: NextRequest) {
       .eq('id', id)
       .single()
 
-    if (provider && provider.outreach_email && !provider.outreach_sent) {
+    if (provider && !provider.outreach_sent) {
       const sent = await sendOutreachEmail(provider)
       if (sent) {
+        // Cambiar a "contacted" — NO a "approved"
+        // El proveedor aparecerá en el marketplace solo cuando se registre
+        updates.status        = 'pending'  // sigue pendiente hasta que se registre
         updates.outreach_sent = true
         updates.outreach_at   = new Date().toISOString()
+        updates.tag           = 'Contactado'
       }
     }
   }
@@ -123,7 +158,7 @@ export async function PATCH(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ provider: data })
+  return NextResponse.json({ provider: data, emailSent: updates.outreach_sent || false })
 }
 
 // DELETE /api/admin/providers
