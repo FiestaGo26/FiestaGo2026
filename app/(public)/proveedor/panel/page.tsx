@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { CATEGORIES } from '@/lib/constants'
 
@@ -12,12 +13,6 @@ type Service = {
   price: number
   duration: string
   maxGuests: number | null
-}
-
-type Availability = {
-  date: string
-  available: boolean
-  slots?: string[]
 }
 
 type Booking = {
@@ -48,138 +43,154 @@ type Provider = {
   rating: number
   total_reviews: number
   total_bookings: number
-  services: Service[]
   specialties: string[]
 }
 
 const TABS = [
-  { id:'dashboard',     icon:'📊', label:'Resumen'       },
-  { id:'profile',       icon:'✏️', label:'Mi perfil'     },
-  { id:'services',      icon:'💼', label:'Mis servicios' },
-  { id:'availability',  icon:'📅', label:'Disponibilidad'},
-  { id:'bookings',      icon:'📋', label:'Reservas'      },
+  { id:'dashboard',    icon:'📊', label:'Resumen'        },
+  { id:'profile',      icon:'✏️', label:'Mi perfil'      },
+  { id:'services',     icon:'💼', label:'Mis servicios'  },
+  { id:'availability', icon:'📅', label:'Disponibilidad' },
+  { id:'bookings',     icon:'📋', label:'Reservas'       },
+  { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DAYS   = ['L','M','X','J','V','S','D']
 
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate()
-}
-function getFirstDayOfMonth(year: number, month: number) {
-  const d = new Date(year, month, 1).getDay()
-  return d === 0 ? 6 : d - 1
-}
+function getDaysInMonth(y: number, m: number) { return new Date(y, m+1, 0).getDate() }
+function getFirstDay(y: number, m: number) { const d = new Date(y,m,1).getDay(); return d===0?6:d-1 }
 
 export default function ProveedorPanelPage() {
-  const router  = useRouter()
-  const [tab,   setTab]   = useState('dashboard')
+  const router   = useRouter()
+  const supabase = createClient()
+  const [tab,      setTab]      = useState('dashboard')
   const [provider, setProvider] = useState<Provider | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [services, setServices] = useState<Service[]>([])
   const [loading,  setLoading]  = useState(true)
   const [saving,   setSaving]   = useState(false)
+  const [userId,   setUserId]   = useState<string | null>(null)
 
-  // Availability state
-  const now    = new Date()
+  // Availability
+  const now = new Date()
   const [calYear,  setCalYear]  = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
-  const [availability, setAvailability] = useState<Record<string, boolean>>({})
+  const [availability, setAvailability] = useState<Record<string,boolean>>({})
 
-  // Services state
-  const [services,    setServices]    = useState<Service[]>([])
-  const [editService, setEditService] = useState<Service | null>(null)
-  const [showNewSvc,  setShowNewSvc]  = useState(false)
-  const [newSvc,      setNewSvc]      = useState({ name:'', description:'', price:'', duration:'todo el día', maxGuests:'' })
-
-  // Profile state
+  // Profile form
   const [profile, setProfile] = useState({
     name:'', phone:'', website:'', instagram:'', description:'', specialties:''
   })
 
-  const providerId = typeof window !== 'undefined' ? localStorage.getItem('fg_provider_id') : null
-  const token      = typeof window !== 'undefined' ? localStorage.getItem('fg_provider_token') : null
+  // Services form
+  const [showNewSvc, setShowNewSvc] = useState(false)
+  const [editSvc,    setEditSvc]    = useState<Service|null>(null)
+  const [newSvc,     setNewSvc]     = useState({
+    name:'', description:'', price:'', duration:'Todo el día', maxGuests:''
+  })
 
-  function authHeaders() {
-    return { 'Content-Type':'application/json', 'x-provider-token': token || '' }
-  }
+  // Security form
+  const [newPassword,     setNewPassword]     = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPass,    setChangingPass]    = useState(false)
 
-  const fetchData = useCallback(async () => {
-    if (!providerId || !token) { router.push('/proveedor/login'); return }
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { router.push('/proveedor/login'); return }
+      setUserId(user.id)
+      loadData(user.email!)
+    })
+  }, [])
+
+  async function loadData(email: string) {
     setLoading(true)
     try {
-      const [provRes, bookRes, availRes] = await Promise.all([
-        fetch(`/api/proveedor/profile?id=${providerId}`, { headers: authHeaders() }),
-        fetch(`/api/proveedor/bookings?id=${providerId}`, { headers: authHeaders() }),
-        fetch(`/api/proveedor/availability?id=${providerId}`, { headers: authHeaders() }),
-      ])
-      const provData  = await provRes.json()
-      const bookData  = await bookRes.json()
-      const availData = await availRes.json()
+      // Find provider by email
+      const res  = await fetch(`/api/proveedor/profile?email=${encodeURIComponent(email)}`)
+      const data = await res.json()
+      if (!data.provider) { router.push('/registro-proveedor'); return }
 
-      if (provData.provider) {
-        setProvider(provData.provider)
-        setServices(provData.provider.services || [])
-        setProfile({
-          name:        provData.provider.name || '',
-          phone:       provData.provider.phone || '',
-          website:     provData.provider.website || '',
-          instagram:   provData.provider.instagram || '',
-          description: provData.provider.description || '',
-          specialties: (provData.provider.specialties || []).join(', '),
-        })
-      }
+      setProvider(data.provider)
+      setServices(data.services || [])
+      setProfile({
+        name:        data.provider.name || '',
+        phone:       data.provider.phone || '',
+        website:     data.provider.website || '',
+        instagram:   data.provider.instagram || '',
+        description: data.provider.description || '',
+        specialties: (data.provider.specialties || []).join(', '),
+      })
+
+      // Load bookings
+      const bookRes  = await fetch(`/api/proveedor/bookings?id=${data.provider.id}`)
+      const bookData = await bookRes.json()
       setBookings(bookData.bookings || [])
 
-      // Convert availability array to map
-      const availMap: Record<string, boolean> = {}
-      ;(availData.availability || []).forEach((a: Availability) => {
-        availMap[a.date] = a.available
-      })
-      setAvailability(availMap)
+      // Load availability
+      const availRes  = await fetch(`/api/proveedor/availability?id=${data.provider.id}`)
+      const availData = await availRes.json()
+      const map: Record<string,boolean> = {}
+      ;(availData.availability || []).forEach((a: any) => { map[a.date] = a.available })
+      setAvailability(map)
+
     } catch (err) {
       toast.error('Error cargando datos')
     }
     setLoading(false)
-  }, [providerId, token])
-
-  useEffect(() => { fetchData() }, [fetchData])
+  }
 
   async function saveProfile() {
-    if (!providerId) return
+    if (!provider) return
     setSaving(true)
     try {
       const res = await fetch('/api/proveedor/profile', {
         method: 'PATCH',
-        headers: authHeaders(),
+        headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({
-          id: providerId,
+          id:          provider.id,
           name:        profile.name,
           phone:       profile.phone || null,
           website:     profile.website || null,
           instagram:   profile.instagram || null,
           description: profile.description || null,
-          specialties: profile.specialties.split(',').map(s => s.trim()).filter(Boolean),
+          specialties: profile.specialties.split(',').map(s=>s.trim()).filter(Boolean),
         }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      toast.success('Perfil actualizado')
+      toast.success('Perfil actualizado ✓')
     } catch (err: any) {
       toast.error(err.message)
     }
     setSaving(false)
   }
 
+  async function changePassword() {
+    if (newPassword !== confirmPassword) { toast.error('Las contraseñas no coinciden'); return }
+    if (newPassword.length < 8) { toast.error('Mínimo 8 caracteres'); return }
+    setChangingPass(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      toast.success('Contraseña actualizada correctamente ✓')
+      setNewPassword(''); setConfirmPassword('')
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+    setChangingPass(false)
+  }
+
   async function toggleDay(dateStr: string) {
+    if (!provider) return
     const current = availability[dateStr]
     const newVal  = !current
     setAvailability(prev => ({ ...prev, [dateStr]: newVal }))
-
     try {
       await fetch('/api/proveedor/availability', {
         method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ providerId, date: dateStr, available: newVal }),
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ providerId: provider.id, date: dateStr, available: newVal }),
       })
     } catch {
       setAvailability(prev => ({ ...prev, [dateStr]: current }))
@@ -187,69 +198,85 @@ export default function ProveedorPanelPage() {
     }
   }
 
-  async function saveService(svc: Service) {
+  async function addService() {
+    if (!newSvc.name || !newSvc.price) { toast.error('Nombre y precio obligatorios'); return }
+    if (!provider) return
     try {
       const res = await fetch('/api/proveedor/services', {
-        method: svc.id ? 'PATCH' : 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ ...svc, providerId }),
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          providerId:  provider.id,
+          name:        newSvc.name,
+          description: newSvc.description,
+          price:       parseFloat(newSvc.price),
+          duration:    newSvc.duration,
+          maxGuests:   newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
+        }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      toast.success(svc.id ? 'Servicio actualizado' : 'Servicio añadido')
-      setEditService(null)
+      setServices(s => [...s, data.service])
+      setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'' })
       setShowNewSvc(false)
-      fetchData()
+      toast.success('Servicio añadido ✓')
     } catch (err: any) {
       toast.error(err.message)
     }
   }
 
-  async function addService() {
-    if (!newSvc.name || !newSvc.price) { toast.error('Nombre y precio son obligatorios'); return }
-    await saveService({
-      id:          '',
-      name:        newSvc.name,
-      description: newSvc.description,
-      price:       parseFloat(newSvc.price),
-      duration:    newSvc.duration,
-      maxGuests:   newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
-    })
-    setNewSvc({ name:'', description:'', price:'', duration:'todo el día', maxGuests:'' })
+  async function updateService() {
+    if (!editSvc || !provider) return
+    try {
+      const res = await fetch('/api/proveedor/services', {
+        method: 'PATCH',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ ...editSvc, providerId: provider.id }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setServices(s => s.map(x => x.id === editSvc.id ? data.service : x))
+      setEditSvc(null)
+      toast.success('Servicio actualizado ✓')
+    } catch (err: any) {
+      toast.error(err.message)
+    }
   }
 
   async function deleteService(id: string) {
-    if (!confirm('¿Eliminar este servicio?')) return
-    await fetch(`/api/proveedor/services?id=${id}&providerId=${providerId}`, {
-      method: 'DELETE', headers: authHeaders(),
-    })
-    fetchData()
+    if (!provider || !confirm('¿Eliminar este servicio?')) return
+    await fetch(`/api/proveedor/services?id=${id}&providerId=${provider.id}`, { method:'DELETE' })
+    setServices(s => s.filter(x => x.id !== id))
+    toast.success('Servicio eliminado')
   }
 
-  // Calendar render
+  async function updateBooking(id: string, status: string) {
+    if (!provider) return
+    await fetch('/api/proveedor/bookings', {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ id, status, providerId: provider.id }),
+    })
+    setBookings(b => b.map(x => x.id === id ? { ...x, status } : x))
+    toast.success(status === 'confirmed' ? 'Reserva confirmada ✓' : 'Reserva cancelada')
+  }
+
   function renderCalendar() {
-    const daysInMonth  = getDaysInMonth(calYear, calMonth)
-    const firstDay     = getFirstDayOfMonth(calYear, calMonth)
-    const today        = new Date().toISOString().split('T')[0]
-    const cells        = []
-
-    for (let i = 0; i < firstDay; i++) cells.push(<div key={`empty-${i}`}/>)
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-      const isPast  = dateStr < today
-      const isAvail = availability[dateStr]
-
+    const days     = getDaysInMonth(calYear, calMonth)
+    const first    = getFirstDay(calYear, calMonth)
+    const today    = new Date().toISOString().split('T')[0]
+    const cells    = []
+    for (let i=0; i<first; i++) cells.push(<div key={`e${i}`}/>)
+    for (let d=1; d<=days; d++) {
+      const dt    = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+      const past  = dt < today
+      const avail = availability[dt]
       cells.push(
-        <button key={dateStr}
-          onClick={() => !isPast && toggleDay(dateStr)}
-          disabled={isPast}
-          className={`
-            aspect-square rounded-xl text-sm font-semibold transition-all
-            ${isPast ? 'opacity-30 cursor-not-allowed bg-stone-100 text-ink/40' :
-              isAvail ? 'bg-green-100 text-green-700 border-2 border-green-400 hover:bg-green-200' :
-              'bg-stone-100 text-ink/60 hover:bg-stone-200 border-2 border-transparent'}
-          `}>
+        <button key={dt} onClick={() => !past && toggleDay(dt)} disabled={past}
+          className={`aspect-square rounded-xl text-sm font-semibold transition-all border-2
+            ${past ? 'opacity-30 cursor-not-allowed bg-stone-100 text-ink/40 border-transparent' :
+              avail ? 'bg-green-100 text-green-700 border-green-400 hover:bg-green-200' :
+              'bg-stone-100 text-ink/60 border-transparent hover:bg-stone-200'}`}>
           {d}
         </button>
       )
@@ -259,9 +286,9 @@ export default function ProveedorPanelPage() {
 
   const cat   = CATEGORIES.find(c => c.id === provider?.category)
   const stats = {
-    pending:   bookings.filter(b => b.status === 'pending').length,
-    confirmed: bookings.filter(b => b.status === 'confirmed').length,
-    revenue:   bookings.filter(b => b.status === 'confirmed').reduce((s,b) => s + b.total_amount, 0),
+    pending:   bookings.filter(b => b.status==='pending').length,
+    confirmed: bookings.filter(b => b.status==='confirmed').length,
+    revenue:   bookings.filter(b => b.status==='confirmed').reduce((s,b) => s+b.total_amount, 0),
     available: Object.values(availability).filter(Boolean).length,
   }
 
@@ -272,14 +299,14 @@ export default function ProveedorPanelPage() {
   )
 
   return (
-    <div className="min-h-screen bg-cream flex">
+    <div className="flex min-h-screen bg-cream">
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-stone-200 flex flex-col fixed top:0 left-0 bottom-0 top-0">
+      <aside className="w-56 bg-white border-r border-stone-200 flex flex-col fixed top-0 left-0 bottom-0">
         <div className="p-5 border-b border-stone-200">
-          <div className="font-serif text-lg font-black text-ink">🎉 FiestaGo</div>
+          <a href="/" className="font-serif text-lg font-black text-ink">🎉 FiestaGo</a>
           <div className="text-xs text-ink/50 mt-1">Panel del proveedor</div>
         </div>
-        <nav className="p-3 flex-1">
+        <nav className="p-3 flex-1 overflow-y-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-1 transition-colors text-left
@@ -289,108 +316,99 @@ export default function ProveedorPanelPage() {
           ))}
         </nav>
         <div className="p-4 border-t border-stone-200">
-          <div className="text-xs text-ink/40 mb-1">Conectado como</div>
+          <div className="text-xs text-ink/40 mb-0.5">Conectado como</div>
           <div className="text-xs font-semibold text-ink truncate">{provider?.name}</div>
-          <button onClick={() => { localStorage.clear(); router.push('/proveedor/login') }}
-            className="text-xs text-coral hover:underline mt-2">
+          <div className="text-xs text-ink/40 truncate">{provider?.email}</div>
+          <button onClick={async () => { await supabase.auth.signOut(); router.push('/proveedor/login') }}
+            className="text-xs text-coral hover:underline mt-2 block">
             Cerrar sesión
           </button>
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main content */}
       <main className="ml-56 flex-1 p-8">
 
         {/* DASHBOARD */}
-        {tab === 'dashboard' && (
+        {tab==='dashboard' && (
           <div>
-            <h1 className="font-serif text-2xl font-black text-ink mb-2">
+            <h1 className="font-serif text-2xl font-black text-ink mb-1">
               Hola, {provider?.name} 👋
             </h1>
-            <p className="text-ink/50 text-sm mb-8">{cat?.icon} {cat?.label} · {provider?.city}</p>
-
-            {/* Stats */}
+            <p className="text-ink/50 text-sm mb-8">{cat?.icon} {cat?.label} · 📍 {provider?.city}</p>
             <div className="grid grid-cols-4 gap-4 mb-8">
               {[
-                { label:'Reservas pendientes', value:stats.pending,   color:'#F59E0B', icon:'⏳' },
-                { label:'Confirmadas',          value:stats.confirmed, color:'#10B981', icon:'✅' },
-                { label:'Ingresos totales',     value:`${stats.revenue.toLocaleString()}€`, color:'#3B82F6', icon:'💶' },
-                { label:'Días disponibles',     value:stats.available, color:'#8B5CF6', icon:'📅' },
+                { label:'Pendientes',    value:stats.pending,   color:'#F59E0B', icon:'⏳' },
+                { label:'Confirmadas',   value:stats.confirmed, color:'#10B981', icon:'✅' },
+                { label:'Ingresos',      value:`${stats.revenue.toLocaleString()}€`, color:'#3B82F6', icon:'💶' },
+                { label:'Días libres',   value:stats.available, color:'#8B5CF6', icon:'📅' },
               ].map(s => (
                 <div key={s.label} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
                   <div className="text-2xl mb-3">{s.icon}</div>
-                  <div className="font-serif text-2xl font-bold mb-1" style={{ color:s.color }}>{s.value}</div>
+                  <div className="font-serif text-2xl font-bold mb-1" style={{color:s.color}}>{s.value}</div>
                   <div className="text-xs text-ink/50">{s.label}</div>
                 </div>
               ))}
             </div>
-
-            {/* Quick actions */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-5">
               <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
-                <h3 className="font-semibold text-ink mb-4 text-sm">Reservas recientes</h3>
-                {bookings.length === 0 ? (
-                  <p className="text-xs text-ink/40">Aún no tienes reservas.</p>
-                ) : bookings.slice(0,4).map(b => (
+                <h3 className="font-semibold text-ink mb-4 text-sm">Últimas reservas</h3>
+                {bookings.length===0 ? <p className="text-xs text-ink/40">Sin reservas todavía.</p>
+                : bookings.slice(0,4).map(b => (
                   <div key={b.id} className="flex justify-between items-center py-2.5 border-b border-stone-100 last:border-0">
                     <div>
                       <div className="text-sm font-medium text-ink">{b.client_name}</div>
                       <div className="text-xs text-ink/50">{new Date(b.event_date).toLocaleDateString('es-ES')}</div>
                     </div>
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                      b.status==='confirmed' ? 'bg-green-100 text-green-700' :
-                      b.status==='pending'   ? 'bg-amber-100 text-amber-700' :
-                      'bg-stone-100 text-stone-600'
+                      b.status==='confirmed'?'bg-green-100 text-green-700':
+                      b.status==='pending'?'bg-amber-100 text-amber-700':'bg-stone-100 text-stone-600'
                     }`}>
                       {b.status==='confirmed'?'Confirmada':b.status==='pending'?'Pendiente':'Cancelada'}
                     </span>
                   </div>
                 ))}
               </div>
-
               <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
                 <h3 className="font-semibold text-ink mb-4 text-sm">Mi rendimiento</h3>
-                <div className="flex flex-col gap-3">
-                  {[
-                    ['Valoración media', provider?.rating ? `${provider.rating} ⭐` : 'Sin valoraciones'],
-                    ['Total reseñas',    `${provider?.total_reviews || 0}`],
-                    ['Total reservas',   `${provider?.total_bookings || 0}`],
-                    ['Servicios activos',`${services.length}`],
-                  ].map(([k,v]) => (
-                    <div key={k} className="flex justify-between text-sm">
-                      <span className="text-ink/50">{k}</span>
-                      <span className="font-semibold text-ink">{v}</span>
-                    </div>
-                  ))}
-                </div>
+                {[
+                  ['Valoración',    provider?.rating ? `${provider.rating} ⭐` : 'Sin valoraciones'],
+                  ['Reseñas',       `${provider?.total_reviews||0}`],
+                  ['Reservas',      `${provider?.total_bookings||0}`],
+                  ['Servicios',     `${services.length}`],
+                ].map(([k,v]) => (
+                  <div key={k} className="flex justify-between text-sm py-2 border-b border-stone-100 last:border-0">
+                    <span className="text-ink/50">{k}</span>
+                    <span className="font-semibold text-ink">{v}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
 
         {/* PROFILE */}
-        {tab === 'profile' && (
+        {tab==='profile' && (
           <div className="max-w-lg">
             <h1 className="font-serif text-2xl font-black text-ink mb-6">Mi perfil</h1>
             <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card">
-              {[
-                ['Nombre del negocio','name','text','Tu nombre de negocio'],
+              {[['Nombre del negocio','name','text','Tu nombre'],
                 ['Teléfono','phone','tel','+34 600 000 000'],
                 ['Sitio web','website','url','https://minegocio.com'],
                 ['Instagram','instagram','text','@minegocio'],
-              ].map(([label,field,type,ph]) => (
+              ].map(([lbl,field,type,ph]) => (
                 <div key={field} className="mb-4">
-                  <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">{label}</label>
+                  <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">{lbl}</label>
                   <input type={type} value={(profile as any)[field]} placeholder={ph}
-                    onChange={e => setProfile(p => ({ ...p, [field]: e.target.value }))}
+                    onChange={e => setProfile(p => ({...p,[field]:e.target.value}))}
                     className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                 </div>
               ))}
               <div className="mb-4">
                 <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Descripción</label>
                 <textarea value={profile.description} rows={4}
-                  onChange={e => setProfile(p => ({ ...p, description: e.target.value }))}
-                  placeholder="Describe tu negocio y qué te hace especial..."
+                  onChange={e => setProfile(p => ({...p,description:e.target.value}))}
+                  placeholder="Describe tu negocio..."
                   className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
               </div>
               <div className="mb-5">
@@ -398,8 +416,8 @@ export default function ProveedorPanelPage() {
                   Especialidades (separadas por comas)
                 </label>
                 <input value={profile.specialties}
-                  onChange={e => setProfile(p => ({ ...p, specialties: e.target.value }))}
-                  placeholder="ej. Bodas íntimas, Fotografía documental, Vídeo 4K"
+                  onChange={e => setProfile(p => ({...p,specialties:e.target.value}))}
+                  placeholder="ej. Bodas íntimas, Vídeo 4K"
                   className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
               </div>
               <button onClick={saveProfile} disabled={saving}
@@ -411,7 +429,7 @@ export default function ProveedorPanelPage() {
         )}
 
         {/* SERVICES */}
-        {tab === 'services' && (
+        {tab==='services' && (
           <div className="max-w-2xl">
             <div className="flex justify-between items-center mb-6">
               <h1 className="font-serif text-2xl font-black text-ink">Mis servicios</h1>
@@ -420,47 +438,45 @@ export default function ProveedorPanelPage() {
                 + Añadir servicio
               </button>
             </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800">
-              💡 Cada servicio tiene un <strong>precio fijo</strong>. Los clientes verán exactamente cuánto cuesta antes de reservar.
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
+              💡 Cada servicio tiene un <strong>precio fijo</strong>. Los clientes ven exactamente cuánto cuesta antes de reservar.
             </div>
 
-            {/* New service form */}
             {showNewSvc && (
-              <div className="bg-white border border-coral/30 rounded-2xl p-6 mb-5 shadow-card">
+              <div className="bg-white border-2 border-coral/30 rounded-2xl p-6 mb-5 shadow-card">
                 <h3 className="font-semibold text-ink mb-4">Nuevo servicio</h3>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="col-span-2">
-                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Nombre del servicio *</label>
-                    <input value={newSvc.name} onChange={e => setNewSvc(s => ({ ...s, name: e.target.value }))}
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Nombre *</label>
+                    <input value={newSvc.name} onChange={e => setNewSvc(s=>({...s,name:e.target.value}))}
                       placeholder="ej. Reportaje fotográfico completo"
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Precio fijo (€) *</label>
-                    <input type="number" value={newSvc.price} onChange={e => setNewSvc(s => ({ ...s, price: e.target.value }))}
-                      placeholder="ej. 1200"
+                    <input type="number" value={newSvc.price} onChange={e => setNewSvc(s=>({...s,price:e.target.value}))}
+                      placeholder="1200"
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Duración</label>
-                    <select value={newSvc.duration} onChange={e => setNewSvc(s => ({ ...s, duration: e.target.value }))}
+                    <select value={newSvc.duration} onChange={e => setNewSvc(s=>({...s,duration:e.target.value}))}
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors">
-                      {['1 hora','2 horas','3 horas','4 horas','6 horas','Todo el día','Fin de semana'].map(d => (
+                      {['1 hora','2 horas','3 horas','4 horas','6 horas','Todo el día','Fin de semana'].map(d=>(
                         <option key={d} value={d}>{d}</option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Máx. invitados</label>
-                    <input type="number" value={newSvc.maxGuests} onChange={e => setNewSvc(s => ({ ...s, maxGuests: e.target.value }))}
+                    <input type="number" value={newSvc.maxGuests} onChange={e => setNewSvc(s=>({...s,maxGuests:e.target.value}))}
                       placeholder="Sin límite"
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Descripción</label>
                     <textarea value={newSvc.description} rows={2}
-                      onChange={e => setNewSvc(s => ({ ...s, description: e.target.value }))}
+                      onChange={e => setNewSvc(s=>({...s,description:e.target.value}))}
                       placeholder="Qué incluye este servicio..."
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
                   </div>
@@ -471,62 +487,63 @@ export default function ProveedorPanelPage() {
                     Añadir servicio
                   </button>
                   <button onClick={() => setShowNewSvc(false)}
-                    className="px-5 border border-stone-200 rounded-xl text-sm text-ink/60 hover:border-coral transition-colors">
+                    className="px-5 border border-stone-200 rounded-xl text-sm text-ink/60">
                     Cancelar
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Services list */}
-            {services.length === 0 ? (
+            {services.length===0 && !showNewSvc ? (
               <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center shadow-card">
                 <div className="text-4xl mb-3">💼</div>
-                <p className="text-ink/50 text-sm">Aún no tienes servicios. Añade tu primer servicio para que los clientes puedan reservarte.</p>
+                <p className="text-ink/50 text-sm">Añade tus servicios con precios fijos para que los clientes puedan reservarte.</p>
               </div>
             ) : services.map(svc => (
               <div key={svc.id} className="bg-white border border-stone-200 rounded-2xl p-5 mb-4 shadow-card">
-                {editService?.id === svc.id ? (
+                {editSvc?.id===svc.id ? (
                   <div>
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div className="col-span-2">
-                        <input value={editService.name} onChange={e => setEditService(s => s ? {...s, name: e.target.value} : null)}
+                        <input value={editSvc.name} onChange={e => setEditSvc(s=>s?{...s,name:e.target.value}:null)}
                           className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
                       </div>
-                      <input type="number" value={editService.price} onChange={e => setEditService(s => s ? {...s, price: parseFloat(e.target.value)} : null)}
+                      <input type="number" value={editSvc.price}
+                        onChange={e => setEditSvc(s=>s?{...s,price:parseFloat(e.target.value)}:null)}
                         className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
-                      <select value={editService.duration} onChange={e => setEditService(s => s ? {...s, duration: e.target.value} : null)}
+                      <select value={editSvc.duration}
+                        onChange={e => setEditSvc(s=>s?{...s,duration:e.target.value}:null)}
                         className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral">
-                        {['1 hora','2 horas','3 horas','4 horas','6 horas','Todo el día','Fin de semana'].map(d => (
+                        {['1 hora','2 horas','3 horas','4 horas','6 horas','Todo el día','Fin de semana'].map(d=>(
                           <option key={d} value={d}>{d}</option>
                         ))}
                       </select>
                       <div className="col-span-2">
-                        <textarea value={editService.description} rows={2}
-                          onChange={e => setEditService(s => s ? {...s, description: e.target.value} : null)}
+                        <textarea value={editSvc.description} rows={2}
+                          onChange={e => setEditSvc(s=>s?{...s,description:e.target.value}:null)}
                           className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral resize-none"/>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => saveService(editService)}
+                      <button onClick={updateService}
                         className="flex-1 bg-coral text-white font-bold py-2 rounded-xl text-sm">Guardar</button>
-                      <button onClick={() => setEditService(null)}
+                      <button onClick={() => setEditSvc(null)}
                         className="px-4 border border-stone-200 rounded-xl text-sm text-ink/60">Cancelar</button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3 mb-1.5">
                         <h3 className="font-semibold text-ink">{svc.name}</h3>
                         <span className="text-xs text-ink/50 bg-stone-100 px-2 py-0.5 rounded-full">{svc.duration}</span>
-                        {svc.maxGuests && <span className="text-xs text-ink/50">max. {svc.maxGuests} pax</span>}
+                        {svc.maxGuests&&<span className="text-xs text-ink/50">max. {svc.maxGuests} pax</span>}
                       </div>
-                      {svc.description && <p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
+                      {svc.description&&<p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
                       <div className="font-serif text-xl font-bold text-coral">{svc.price.toLocaleString()}€</div>
                     </div>
                     <div className="flex gap-2 ml-4">
-                      <button onClick={() => setEditService(svc)}
+                      <button onClick={() => setEditSvc(svc)}
                         className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/60 hover:border-coral hover:text-coral transition-colors">
                         ✏️ Editar
                       </button>
@@ -543,15 +560,13 @@ export default function ProveedorPanelPage() {
         )}
 
         {/* AVAILABILITY */}
-        {tab === 'availability' && (
-          <div className="max-w-lg">
+        {tab==='availability' && (
+          <div className="max-w-md">
             <h1 className="font-serif text-2xl font-black text-ink mb-2">Disponibilidad</h1>
             <p className="text-ink/55 text-sm mb-6">
-              Haz clic en cada día para marcarlo como disponible o no disponible. Los clientes verán esto en tiempo real.
+              Marca los días que estás disponible. Los clientes lo ven en tiempo real.
             </p>
-
-            {/* Legend */}
-            <div className="flex gap-4 mb-6 text-xs">
+            <div className="flex gap-4 mb-5 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-5 h-5 rounded-lg bg-green-100 border-2 border-green-400"/>
                 <span className="text-ink/60">Disponible</span>
@@ -560,135 +575,128 @@ export default function ProveedorPanelPage() {
                 <div className="w-5 h-5 rounded-lg bg-stone-100 border-2 border-transparent"/>
                 <span className="text-ink/60">No disponible</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-lg bg-stone-100 opacity-30"/>
-                <span className="text-ink/60">Fecha pasada</span>
-              </div>
             </div>
-
             <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card">
-              {/* Calendar nav */}
               <div className="flex justify-between items-center mb-5">
-                <button onClick={() => {
-                  if (calMonth === 0) { setCalMonth(11); setCalYear(y => y-1) }
-                  else setCalMonth(m => m-1)
-                }} className="w-9 h-9 rounded-xl border border-stone-200 flex items-center justify-center text-ink/60 hover:border-coral hover:text-coral transition-colors">
-                  ←
-                </button>
+                <button onClick={() => { if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1)}else setCalMonth(m=>m-1) }}
+                  className="w-9 h-9 rounded-xl border border-stone-200 flex items-center justify-center text-ink/60 hover:border-coral hover:text-coral transition-colors">←</button>
                 <div className="font-semibold text-ink">{MONTHS[calMonth]} {calYear}</div>
-                <button onClick={() => {
-                  if (calMonth === 11) { setCalMonth(0); setCalYear(y => y+1) }
-                  else setCalMonth(m => m+1)
-                }} className="w-9 h-9 rounded-xl border border-stone-200 flex items-center justify-center text-ink/60 hover:border-coral hover:text-coral transition-colors">
-                  →
-                </button>
+                <button onClick={() => { if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1)}else setCalMonth(m=>m+1) }}
+                  className="w-9 h-9 rounded-xl border border-stone-200 flex items-center justify-center text-ink/60 hover:border-coral hover:text-coral transition-colors">→</button>
               </div>
-
-              {/* Day headers */}
               <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-                {DAYS.map(d => (
-                  <div key={d} className="text-center text-xs font-bold text-ink/40 py-1">{d}</div>
-                ))}
+                {DAYS.map(d => <div key={d} className="text-center text-xs font-bold text-ink/40 py-1">{d}</div>)}
               </div>
-
-              {/* Days grid */}
-              <div className="grid grid-cols-7 gap-1.5">
-                {renderCalendar()}
-              </div>
-
-              {/* Summary */}
+              <div className="grid grid-cols-7 gap-1.5">{renderCalendar()}</div>
               <div className="mt-5 pt-4 border-t border-stone-100 flex justify-between text-sm">
-                <span className="text-ink/50">Días disponibles este mes:</span>
+                <span className="text-ink/50">Disponibles este mes:</span>
                 <span className="font-bold text-green-600">
-                  {Object.entries(availability).filter(([date, avail]) => {
+                  {Object.entries(availability).filter(([date,avail]) => {
                     const d = new Date(date)
-                    return avail && d.getMonth() === calMonth && d.getFullYear() === calYear
+                    return avail && d.getMonth()===calMonth && d.getFullYear()===calYear
                   }).length} días
                 </span>
               </div>
             </div>
-
-            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-700">
-              💡 Los cambios se guardan automáticamente. Los clientes ven tu disponibilidad en tiempo real cuando visitan tu perfil.
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
+              💡 Los cambios se guardan automáticamente y los clientes los ven al instante.
             </div>
           </div>
         )}
 
         {/* BOOKINGS */}
-        {tab === 'bookings' && (
+        {tab==='bookings' && (
           <div>
             <h1 className="font-serif text-2xl font-black text-ink mb-6">Mis reservas</h1>
-            {bookings.length === 0 ? (
+            {bookings.length===0 ? (
               <div className="bg-white border border-stone-200 rounded-2xl p-16 text-center shadow-card">
                 <div className="text-5xl mb-4">📋</div>
                 <h3 className="font-serif text-xl font-bold text-ink mb-2">Sin reservas todavía</h3>
                 <p className="text-ink/50 text-sm">Cuando los clientes te reserven aparecerán aquí.</p>
               </div>
-            ) : (
-              <div className="flex flex-col gap-4">
-                {bookings.map(b => (
-                  <div key={b.id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <div className="font-semibold text-ink text-base">{b.client_name}</div>
-                        <div className="text-xs text-ink/50 mt-0.5">{b.client_email} {b.client_phone && `· ${b.client_phone}`}</div>
-                      </div>
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                        b.status==='confirmed' ? 'bg-green-100 text-green-700' :
-                        b.status==='pending'   ? 'bg-amber-100 text-amber-700' :
-                        b.status==='cancelled' ? 'bg-red-100 text-red-500' :
-                        'bg-stone-100 text-stone-600'
-                      }`}>
-                        {b.status==='confirmed'?'Confirmada':b.status==='pending'?'Pendiente':b.status==='cancelled'?'Cancelada':'Completada'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3 text-sm mb-3">
-                      <div>
-                        <div className="text-xs text-ink/40 mb-0.5">Fecha del evento</div>
-                        <div className="font-medium">{new Date(b.event_date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-ink/40 mb-0.5">Invitados</div>
-                        <div className="font-medium">{b.guests || '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-ink/40 mb-0.5">Importe</div>
-                        <div className="font-semibold text-coral">{b.total_amount.toLocaleString()}€</div>
-                      </div>
-                    </div>
-                    {b.message && (
-                      <div className="bg-stone-50 rounded-xl p-3 text-xs text-ink/60 mb-3">
-                        "{b.message}"
-                      </div>
-                    )}
-                    {b.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button onClick={async () => {
-                          await fetch('/api/proveedor/bookings', {
-                            method:'PATCH', headers: authHeaders(),
-                            body: JSON.stringify({ id:b.id, status:'confirmed', providerId })
-                          })
-                          fetchData()
-                          toast.success('Reserva confirmada')
-                        }} className="flex-1 bg-green-500 text-white font-bold py-2 rounded-xl text-sm hover:bg-green-600 transition-colors">
-                          ✓ Confirmar reserva
-                        </button>
-                        <button onClick={async () => {
-                          await fetch('/api/proveedor/bookings', {
-                            method:'PATCH', headers: authHeaders(),
-                            body: JSON.stringify({ id:b.id, status:'cancelled', providerId })
-                          })
-                          fetchData()
-                          toast.success('Reserva cancelada')
-                        }} className="px-4 border border-red-200 text-red-400 rounded-xl text-sm hover:bg-red-50 transition-colors">
-                          ✕ Cancelar
-                        </button>
-                      </div>
-                    )}
+            ) : bookings.map(b => (
+              <div key={b.id} className="bg-white border border-stone-200 rounded-2xl p-5 mb-4 shadow-card">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <div className="font-semibold text-ink text-base">{b.client_name}</div>
+                    <div className="text-xs text-ink/50 mt-0.5">{b.client_email}{b.client_phone&&` · ${b.client_phone}`}</div>
                   </div>
-                ))}
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                    b.status==='confirmed'?'bg-green-100 text-green-700':
+                    b.status==='pending'?'bg-amber-100 text-amber-700':
+                    b.status==='cancelled'?'bg-red-100 text-red-500':'bg-stone-100 text-stone-600'
+                  }`}>
+                    {b.status==='confirmed'?'Confirmada':b.status==='pending'?'Pendiente':b.status==='cancelled'?'Cancelada':'Completada'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+                  <div>
+                    <div className="text-xs text-ink/40 mb-0.5">Fecha</div>
+                    <div className="font-medium">{new Date(b.event_date).toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-ink/40 mb-0.5">Invitados</div>
+                    <div className="font-medium">{b.guests||'—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-ink/40 mb-0.5">Importe</div>
+                    <div className="font-semibold text-coral">{b.total_amount.toLocaleString()}€</div>
+                  </div>
+                </div>
+                {b.message&&(
+                  <div className="bg-stone-50 rounded-xl p-3 text-xs text-ink/60 mb-3 italic">"{b.message}"</div>
+                )}
+                {b.status==='pending'&&(
+                  <div className="flex gap-2">
+                    <button onClick={() => updateBooking(b.id,'confirmed')}
+                      className="flex-1 bg-green-500 text-white font-bold py-2 rounded-xl text-sm hover:bg-green-600 transition-colors">
+                      ✓ Confirmar reserva
+                    </button>
+                    <button onClick={() => updateBooking(b.id,'cancelled')}
+                      className="px-4 border border-red-200 text-red-400 rounded-xl text-sm hover:bg-red-50 transition-colors">
+                      ✕ Cancelar
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
+          </div>
+        )}
+
+        {/* SECURITY */}
+        {tab==='security' && (
+          <div className="max-w-md">
+            <h1 className="font-serif text-2xl font-black text-ink mb-6">Seguridad</h1>
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card">
+              <h3 className="font-semibold text-ink mb-1">Cambiar contraseña</h3>
+              <p className="text-xs text-ink/50 mb-5">
+                Si no tienes contraseña todavía, puedes establecer una aquí para entrar sin necesitar el enlace mágico.
+              </p>
+              <div className="mb-4">
+                <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Nueva contraseña</label>
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+              </div>
+              <div className="mb-5">
+                <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Confirmar contraseña</label>
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Repite la contraseña"
+                  className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+              </div>
+              <button onClick={changePassword} disabled={changingPass||!newPassword||!confirmPassword}
+                className="w-full bg-coral text-white font-bold py-3 rounded-xl text-sm hover:bg-coral-dark transition-colors disabled:opacity-50">
+                {changingPass ? 'Actualizando...' : 'Actualizar contraseña'}
+              </button>
+            </div>
+
+            <div className="mt-5 bg-white border border-stone-200 rounded-2xl p-6 shadow-card">
+              <h3 className="font-semibold text-ink mb-1">Tu email</h3>
+              <p className="text-xs text-ink/50 mb-3">Este es el email con el que accedes a FiestaGo.</p>
+              <div className="bg-stone-50 rounded-xl px-4 py-3 text-sm font-mono text-ink/70">
+                {provider?.email}
+              </div>
+            </div>
           </div>
         )}
       </main>
