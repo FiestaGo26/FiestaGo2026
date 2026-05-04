@@ -38,24 +38,24 @@ export async function POST(req: NextRequest) {
   const { category, city, count = 3, tone = 'profesional y cercano' } = await req.json()
 
   const catObj = CATEGORIES.find(c => c.id === category)
-  if (!catObj) return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
+  if (!catObj) return NextResponse.json({ error: 'Categoria invalida' }, { status: 400 })
 
   const logs: string[] = []
   const addLog = (msg: string) => { logs.push(msg) }
 
   try {
-    addLog(`🤖 Agente iniciado — ${catObj.label} en ${city}`)
-    addLog(`🧠 Buscando y cualificando proveedores...`)
+    addLog(`Agente iniciado - ${catObj.label} en ${city}`)
+    addLog(`Buscando y cualificando proveedores...`)
 
     const result = await claudeCall(
-      'Eres experto en bodas y eventos en España. Generas datos realistas de negocios españoles y los evalúas para FiestaGo. Responde SOLO con JSON válido.',
+      'Eres experto en bodas y eventos en España. Generas datos realistas de negocios españoles. Responde SOLO con JSON valido sin markdown.',
       `Genera ${count} proveedores realistas de "${catObj.label}" en ${city}, España.
 
 Devuelve SOLO este JSON array:
 [
   {
     "name": "nombre realista del negocio",
-    "type": "tipo específico de servicio",
+    "type": "tipo especifico de servicio",
     "city": "${city}",
     "phone": "+34 6XX XXX XXX",
     "email": "email@negocio.es",
@@ -64,14 +64,12 @@ Devuelve SOLO este JSON array:
     "avgPrice": 1200,
     "priceUnit": "por evento",
     "specialties": ["especialidad 1", "especialidad 2"],
-    "description": "descripción profesional en 1-2 frases",
+    "description": "descripcion profesional en 1-2 frases",
     "score": "A",
-    "scoreReason": "razón del score en 1 frase",
+    "scoreReason": "razon del score en 1 frase",
     "fitScore": 8,
     "estimatedConversionProb": 70,
-    "suggestedTag": "Nuevo",
-    "emailSubject": "asunto del email de outreach personalizado",
-    "emailBody": "cuerpo del email de outreach en máximo 120 palabras, tono ${tone}, muy personalizado con el nombre del negocio y su especialidad. Menciona que el registro es gratis y la primera transacción sin comisión."
+    "suggestedTag": "Nuevo"
   }
 ]`
     )
@@ -80,16 +78,37 @@ Devuelve SOLO este JSON array:
     if (!jsonMatch) throw new Error('Error generando proveedores')
 
     const providers = JSON.parse(jsonMatch[0])
-    addLog(`✅ ${providers.length} proveedores encontrados y cualificados`)
+    addLog(`${providers.length} proveedores encontrados y cualificados`)
 
     const saved = []
     for (const p of providers) {
-      // Email de outreach generado por el agente
-      const emailDraft = p.emailSubject && p.emailBody
-        ? `ASUNTO: ${p.emailSubject}\n\n${p.emailBody}\n\nFiestaGo Partnerships | partnerships@fiegago.es`
-        : ''
+      const emailDraft = `ASUNTO: ${p.name}, tus primeros clientes te esperan en FiestaGo
 
-      // SIEMPRE se guardan como pendientes — nunca aprobados automáticamente
+Hola ${p.name},
+
+Somos FiestaGo, el nuevo marketplace de celebraciones en España donde parejas y familias encuentran los mejores profesionales para sus eventos.
+
+Hemos encontrado tu negocio y creemos que encajas perfectamente con lo que buscan nuestros clientes. Por eso queremos invitarte a ser uno de los primeros proveedores de nuestra plataforma.
+
+Por que unirte ahora:
+
+- Registro 100% gratuito, sin permanencia
+- Tu primera transaccion sin ninguna comision (0%)
+- Solo el 8% desde la segunda venta real
+- Acceso a clientes cualificados que ya estan buscando tu servicio
+- Sin inversion en publicidad, nosotros llevamos el trafico
+
+Estamos en fase de lanzamiento y estamos seleccionando a los mejores profesionales de ${city} en ${catObj.label}. Las primeras plazas son limitadas.
+
+Registrate gratis en menos de 5 minutos:
+https://fiestago.es/registro-proveedor
+
+Tienes dudas? Estamos aqui para ayudarte:
+contacto@fiestago.es
+
+Un saludo,
+El equipo de FiestaGo`
+
       const { data: savedProvider } = await supabase
         .from('providers')
         .insert({
@@ -105,39 +124,35 @@ Devuelve SOLO este JSON array:
           price_unit:      p.priceUnit || 'por evento',
           specialties:     p.specialties || [],
           source:          'web' as any,
-          status:          'pending', // ← SIEMPRE pendiente hasta que tú lo apruebes
+          status:          'pending',
           tag:             p.suggestedTag || 'Nuevo',
           agent_score:     (p.score || 'B').charAt(0).toUpperCase(),
           agent_notes:     p.scoreReason,
           agent_fit_score: p.fitScore,
           conversion_prob: p.estimatedConversionProb,
-          outreach_sent:   false,       // ← email NO enviado todavía
-          outreach_email:  emailDraft,  // ← email guardado listo para enviar cuando apruebes
+          outreach_sent:   false,
+          outreach_email:  emailDraft,
         })
         .select()
         .single()
 
       saved.push({ ...p, id: savedProvider?.id, emailDraft, savedToDb: !!savedProvider })
-      addLog(`   ⏳ ${p.name} — Score ${p.score} | Pendiente de tu aprobación`)
+      addLog(`Pendiente: ${p.name} - Score ${p.score}`)
     }
 
     addLog(``)
-    addLog(`📋 ${saved.length} proveedores en espera de tu revisión en el panel de admin`)
-    addLog(`💡 Al aprobar cada uno se enviará el email de outreach automáticamente`)
+    addLog(`${saved.length} proveedores en espera de tu revision en el panel`)
+    addLog(`Al aprobar cada uno se enviara el email automaticamente`)
 
     return NextResponse.json({
       success:   true,
       providers: saved,
-      stats: {
-        found:   providers.length,
-        pending: saved.length,
-        added:   0, // nadie aprobado automáticamente
-      },
+      stats: { found: providers.length, pending: saved.length, added: 0 },
       logs,
     })
 
   } catch (err: any) {
-    addLog(`❌ Error: ${err.message}`)
+    addLog(`Error: ${err.message}`)
     return NextResponse.json({ error: err.message, logs }, { status: 500 })
   }
 }
