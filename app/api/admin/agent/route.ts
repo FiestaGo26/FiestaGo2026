@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
     // ── Instagram ──
     if (sources.includes('instagram') && APIFY_TOKEN) {
       addLog(`📸 Buscando en Instagram...`)
-      const posts = await searchInstagram(catObj.hashtags as string[], city, count)
+      const posts = await searchInstagram([...catObj.hashtags], city, count)
       addLog(`   ${posts.length} posts encontrados`)
       if (posts.length > 0) {
         const igProviders = await extractFromSocial(posts, 'instagram', catObj, city, count)
@@ -259,7 +259,7 @@ export async function POST(req: NextRequest) {
     // ── TikTok ──
     if (sources.includes('tiktok') && APIFY_TOKEN) {
       addLog(`🎵 Buscando en TikTok...`)
-      const videos = await searchTikTok(catObj.tiktokTags as string[], city, count)
+      const videos = await searchTikTok([...catObj.tiktokTags], city, count)
       addLog(`   ${videos.length} vídeos encontrados`)
       if (videos.length > 0) {
         const ttProviders = await extractFromSocial(videos, 'tiktok', catObj, city, count)
