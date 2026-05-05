@@ -11,13 +11,59 @@ export default function ResetPasswordPage() {
   const [password,  setPassword]  = useState('')
   const [confirm,   setConfirm]   = useState('')
   const [loading,   setLoading]   = useState(false)
-  const [ready,     setReady]     = useState(false)
+  const [verifying, setVerifying] = useState(true)
+  const [error,     setError]     = useState('')
 
   useEffect(() => {
-    // Supabase sets the session automatically from the URL hash
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setReady(true)
-    })
+    async function verifyToken() {
+      try {
+        // Get token from URL params
+        const params = new URLSearchParams(window.location.search)
+        const tokenHash = params.get('token_hash')
+        const type      = params.get('type')
+
+        // Also check hash fragment (some Supabase versions use this)
+        const hash       = window.location.hash.substring(1)
+        const hashParams = new URLSearchParams(hash)
+        const accessToken  = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+
+        if (accessToken && refreshToken) {
+          // Set session from hash tokens
+          const { error } = await supabase.auth.setSession({
+            access_token:  accessToken,
+            refresh_token: refreshToken,
+          })
+          if (error) throw error
+          setVerifying(false)
+          return
+        }
+
+        if (tokenHash && type === 'recovery') {
+          // Verify OTP token
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
+          })
+          if (error) throw error
+          setVerifying(false)
+          return
+        }
+
+        // Check if already has session
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          setVerifying(false)
+          return
+        }
+
+        setError('Enlace inválido o caducado. Solicita uno nuevo.')
+      } catch (err: any) {
+        setError('Enlace inválido o caducado. Solicita uno nuevo.')
+      }
+    }
+
+    verifyToken()
   }, [])
 
   async function handleReset(e: React.FormEvent) {
@@ -29,7 +75,7 @@ export default function ResetPasswordPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
-      toast.success('Contraseña actualizada correctamente')
+      toast.success('Contraseña actualizada correctamente ✓')
       setTimeout(() => router.push('/proveedor/login'), 1500)
     } catch (err: any) {
       toast.error(err.message || 'Error al actualizar la contraseña')
@@ -37,13 +83,36 @@ export default function ResetPasswordPage() {
     setLoading(false)
   }
 
+  if (verifying && !error) return (
+    <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-4xl mb-4 animate-pulse">🔒</div>
+        <div className="text-ink/50 text-sm">Verificando enlace...</div>
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="min-h-screen bg-cream flex items-center justify-center px-4">
+      <div className="w-full max-w-sm text-center">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h2 className="font-serif text-xl font-bold text-ink mb-3">Enlace inválido</h2>
+        <p className="text-ink/55 text-sm mb-6">{error}</p>
+        <a href="/proveedor/login"
+          className="inline-block bg-coral text-white font-bold px-8 py-3 rounded-xl text-sm hover:bg-coral-dark transition-colors">
+          Volver al login
+        </a>
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🔒</div>
           <h1 className="font-serif text-2xl font-black text-ink mb-2">Nueva contraseña</h1>
-          <p className="text-ink/55 text-sm">Introduce tu nueva contraseña para acceder al panel</p>
+          <p className="text-ink/55 text-sm">Introduce tu nueva contraseña</p>
         </div>
 
         <form onSubmit={handleReset} className="bg-white border border-stone-200 rounded-2xl p-7 shadow-card">
