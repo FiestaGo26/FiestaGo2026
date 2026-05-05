@@ -7,20 +7,27 @@ export async function GET(req: NextRequest) {
   const id    = searchParams.get('id')
   const email = searchParams.get('email')
 
+  if (!id && !email) {
+    return NextResponse.json({ error: 'ID o email requerido' }, { status: 400 })
+  }
+
   let query = supabase.from('providers').select('*')
-  if (id)    query = query.eq('id', id)
-  else if (email) query = query.eq('email', email.toLowerCase().trim())
-  else return NextResponse.json({ error: 'ID o email requerido' }, { status: 400 })
+
+  if (id)         query = query.eq('id', id)
+  else if (email) query = query.ilike('email', email.toLowerCase().trim())
 
   const { data: provider, error } = await query.single()
-  if (error || !provider) return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 })
 
-  // Parse services from metadata
+  if (error || !provider) {
+    return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 })
+  }
+
+  // Parse services stored in agent_notes
   let services = []
   try {
-    const meta = provider.agent_notes || ''
-    if (meta.includes('services:')) {
-      services = JSON.parse(meta.split('services:')[1].split('|')[0])
+    const notes = provider.agent_notes || ''
+    if (notes.includes('services:')) {
+      services = JSON.parse(notes.split('services:')[1].split('|')[0])
     }
   } catch {}
 
@@ -31,6 +38,7 @@ export async function PATCH(req: NextRequest) {
   const supabase = createAdminClient()
   const body = await req.json()
   const { id, ...updates } = body
+
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
   const { data, error } = await supabase
