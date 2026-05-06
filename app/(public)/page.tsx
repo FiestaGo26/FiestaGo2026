@@ -5,7 +5,7 @@ import { CATEGORIES } from '@/lib/constants'
 
 const HERO_VIDEO_PRIMARY  = 'https://videos.pexels.com/video-files/3196238/3196238-hd_1920_1080_25fps.mp4'
 const HERO_VIDEO_FALLBACK = 'https://videos.pexels.com/video-files/4754029/4754029-hd_1920_1080_25fps.mp4'
-const HERO_POSTER         = 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1920&q=80&auto=format&fit=crop'
+const HERO_POSTER         = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1920&q=85&auto=format&fit=crop'
 
 const PHOTO = {
   toast:    'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1400&q=80&auto=format&fit=crop',
@@ -63,14 +63,18 @@ export default async function HomePage() {
 
   return (
     <main className="-mt-px">
-      {/* ── HERO VIDEO ── */}
+      {/* ── HERO ── */}
       <section className="relative h-screen min-h-[640px] overflow-hidden">
+        <img
+          src={HERO_POSTER}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover kenburns"
+        />
         <video
           autoPlay
           muted
           loop
           playsInline
-          poster={HERO_POSTER}
           className="absolute inset-0 w-full h-full object-cover"
         >
           <source src={HERO_VIDEO_PRIMARY}  type="video/mp4" />
