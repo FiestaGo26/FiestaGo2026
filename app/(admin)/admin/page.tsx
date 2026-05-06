@@ -83,6 +83,8 @@ export default function AdminPage() {
   const [agentRunning, setAgentRunning] = useState(false)
   const [agentLogs,    setAgentLogs]    = useState<string[]>([])
   const [agentResults, setAgentResults] = useState<any[]>([])
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [sendStatus,  setSendStatus]   = useState<{ok:boolean,msg:string}|null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -194,6 +196,36 @@ export default function AdminPage() {
       setAgentLogs(l => [...l, `❌ Error de red: ${e.message}`])
     }
     setAgentRunning(false)
+  }
+
+  // ── ENVIAR OUTREACH EMAIL ────────────────────────────────────────────────
+  async function sendOutreachEmail() {
+    if (!editProv) return
+    setSendingEmail(true)
+    setSendStatus(null)
+    try {
+      // Si el usuario edito el draft en el textarea, guardamos antes para que
+      // el servidor lea el ultimo cuerpo desde Supabase.
+      await fetch('/api/admin/providers', {
+        method:'PATCH', headers: adminHeaders(),
+        body: JSON.stringify({ id: editProv.id, outreach_email: editProv.outreach_email, email: editProv.email }),
+      })
+      const res  = await fetch('/api/admin/send-outreach', {
+        method:'POST', headers: adminHeaders(),
+        body: JSON.stringify({ id: editProv.id }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        setSendStatus({ ok:false, msg: data.error || `Error HTTP ${res.status}` })
+      } else {
+        setSendStatus({ ok:true, msg: `Enviado a ${data.to}` })
+        setProviders(prev => prev.map(p => p.id === editProv.id ? { ...p, outreach_sent: true } : p))
+        setEditProv(p => p ? { ...p, outreach_sent: true } : null)
+      }
+    } catch (e: any) {
+      setSendStatus({ ok:false, msg: e.message || 'Error de red' })
+    }
+    setSendingEmail(false)
   }
 
   // ── STATS ────────────────────────────────────────────────────────────────
@@ -625,7 +657,7 @@ export default function AdminPage() {
       {editProv && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)' }}
-            onClick={()=>setEditProv(null)}/>
+            onClick={()=>{ setEditProv(null); setSendStatus(null); }}/>
           <div style={{ position:'relative', background:'#111827', borderRadius:20, width:'100%', maxWidth:680,
             maxHeight:'92vh', overflowY:'auto', margin:'0 20px', border:'1px solid #1F2937',
             boxShadow:'0 40px 100px rgba(0,0,0,0.8)', padding:24 }}>
@@ -692,21 +724,13 @@ export default function AdminPage() {
                       📋 Copiar
                     </button>
                     <button
-                      disabled={!editProv.email}
-                      onClick={()=>{
-                        const body = editProv.outreach_email || ''
-                        const subjMatch = body.match(/^ASUNTO:\s*(.+)/m)
-                        const subj  = subjMatch ? subjMatch[1].trim() : `FiestaGo · ${editProv.name}`
-                        const clean = body.replace(/^ASUNTO:.+\n+/m, '')
-                        const url = `mailto:${editProv.email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(clean)}`
-                        window.open(url)
-                        updateProvider(editProv.id, { outreach_sent: true })
-                      }}
+                      disabled={!editProv.email || sendingEmail}
+                      onClick={sendOutreachEmail}
                       style={{ padding:'4px 12px', borderRadius:7, border:'none',
-                        background: editProv.email ? '#06B6D4' : '#1F2937',
-                        color: editProv.email ? '#000' : '#4B5563',
-                        fontSize:11, fontWeight:700, cursor: editProv.email ? 'pointer' : 'not-allowed' }}>
-                      ✉️ Enviar email
+                        background: editProv.email && !sendingEmail ? '#06B6D4' : '#1F2937',
+                        color: editProv.email && !sendingEmail ? '#000' : '#4B5563',
+                        fontSize:11, fontWeight:700, cursor: editProv.email && !sendingEmail ? 'pointer' : 'not-allowed' }}>
+                      {sendingEmail ? '⏳ Enviando...' : editProv.outreach_sent ? '✓ Reenviar email' : '✉️ Enviar email'}
                     </button>
                   </div>
                 </div>
@@ -717,6 +741,11 @@ export default function AdminPage() {
                   style={{ width:'100%', background:'#080B12', border:'1px solid #1F2937', borderRadius:8,
                     padding:'9px 11px', fontSize:11.5, lineHeight:1.55, color:'#F0F4FF', outline:'none',
                     boxSizing:'border-box', fontFamily:'IBM Plex Mono, monospace', resize:'vertical' }}/>
+                {sendStatus && (
+                  <div style={{ fontSize:11, color: sendStatus.ok ? '#10B981' : '#EF4444', marginTop:6, fontWeight:600 }}>
+                    {sendStatus.ok ? '✓ ' : '✗ '}{sendStatus.msg}
+                  </div>
+                )}
                 {!editProv.email && (
                   <div style={{ fontSize:11, color:'#F59E0B', marginTop:6 }}>
                     ⚠ Sin dirección de email — añade una arriba para poder enviarlo.
@@ -793,7 +822,7 @@ export default function AdminPage() {
 
             {/* Botones inferiores */}
             <div style={{ marginTop:20, display:'flex', gap:8, justifyContent:'flex-end' }}>
-              <button onClick={()=>setEditProv(null)}
+              <button onClick={()=>{ setEditProv(null); setSendStatus(null); }}
                 style={{ padding:'9px 18px', borderRadius:10, border:'1px solid #1F2937',
                   background:'transparent', color:'#9CA3AF', fontSize:13, cursor:'pointer' }}>
                 Cancelar
