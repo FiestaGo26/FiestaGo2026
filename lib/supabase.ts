@@ -1,4 +1,5 @@
-import { createBrowserClient } from '@supabase/ssr'
+import { createBrowserClient, createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ export type Provider = {
   phone: string | null
   website: string | null
   instagram: string | null
+  tiktok: string | null
   description: string | null
   short_desc: string | null
   price_base: number | null
@@ -29,13 +31,17 @@ export type Provider = {
   source: string
   agent_score: string | null
   outreach_sent: boolean
+  outreach_email: string | null
+  outreach_dm: string | null
   social_handle: string | null
   social_platform: string | null
+  social_url: string | null
   followers: number
   specialties: string[]
   agent_fit_score: number | null
   conversion_prob: number | null
   agent_notes: string | null
+  contactable: boolean
 }
 
 export type Pack = {
@@ -92,7 +98,7 @@ export type Notification = {
   action_url: string | null
 }
 
-// ─── Browser client (Client Components) ──────────────────────────────────────
+// ─── Browser client (use in Client Components) ────────────────────────────────
 
 export function createClient() {
   return createBrowserClient(
@@ -101,22 +107,29 @@ export function createClient() {
   )
 }
 
-// Instancia compartida para `import { supabase } from '@/lib/supabase'`
-export const supabase = createClient()
+// ─── Server client (use in Server Components & API routes) ───────────────────
 
-// ─── Admin client (solo en servidor) ─────────────────────────────────────────
+export function createServerSupabaseClient() {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll()         { return cookieStore.getAll() },
+        setAll(cs)       { cs.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+      },
+    }
+  )
+}
+
+// ─── Admin client (server-only, uses service_role key — never expose to client) ─
 
 export function createAdminClient() {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { createClient: createSupabaseClient } = require('@supabase/supabase-js')
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
-}
-
-// Alias retrocompatible
-export function createServerSupabaseClient() {
-  return createAdminClient()
 }

@@ -408,11 +408,21 @@ export default function AdminPage() {
                       <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                         <img src={getPhoto(p.category, p.photo_idx)} alt=""
                           style={{ width:34, height:34, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
-                        <div>
-                          <div style={{ fontSize:12, fontWeight:600, color:'#F0F4FF' }}>
-                            {p.name} {p.featured&&'⭐'}
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontSize:12, fontWeight:600, color:'#F0F4FF', display:'flex', alignItems:'center', gap:5 }}>
+                            <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
+                            {p.featured&&<span>⭐</span>}
+                            {p.outreach_sent&&<span title="Outreach enviado" style={{ fontSize:9 }}>✉️</span>}
+                            {p.contactable===false&&<span title="Sin canales de contacto" style={{ color:'#EF4444', fontSize:10 }}>⚠</span>}
                           </div>
-                          <div style={{ fontSize:10, color:'#374151' }}>{p.email||'—'}</div>
+                          <div style={{ fontSize:10, color:'#374151', display:'flex', alignItems:'center', gap:6 }}>
+                            {p.email      &&<span title={p.email}     style={{ color:'#06B6D4' }}>✉️</span>}
+                            {p.phone      &&<span title={p.phone}     style={{ color:'#10B981' }}>📞</span>}
+                            {p.website    &&<span title={p.website}   style={{ color:'#9CA3AF' }}>🌐</span>}
+                            {p.instagram  &&<span title={p.instagram} style={{ color:'#E1306C' }}>📸</span>}
+                            {p.tiktok     &&<span title={p.tiktok}    style={{ color:'#F0F4FF' }}>🎵</span>}
+                            {!p.email && !p.phone && !p.website && !p.instagram && !p.tiktok && '—'}
+                          </div>
                         </div>
                       </div>
                       <div style={{ fontSize:11, color:'#9CA3AF' }}>📍 {p.city}</div>
@@ -616,13 +626,27 @@ export default function AdminPage() {
         <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)' }}
             onClick={()=>setEditProv(null)}/>
-          <div style={{ position:'relative', background:'#111827', borderRadius:20, width:'100%', maxWidth:540,
-            maxHeight:'88vh', overflowY:'auto', margin:'0 20px', border:'1px solid #1F2937',
+          <div style={{ position:'relative', background:'#111827', borderRadius:20, width:'100%', maxWidth:680,
+            maxHeight:'92vh', overflowY:'auto', margin:'0 20px', border:'1px solid #1F2937',
             boxShadow:'0 40px 100px rgba(0,0,0,0.8)', padding:24 }}>
-            <div style={{ fontSize:15, fontWeight:700, color:'#F0F4FF', marginBottom:18 }}>✏️ Editar: {editProv.name}</div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+              <div style={{ fontSize:15, fontWeight:700, color:'#F0F4FF' }}>✏️ Editar: {editProv.name}</div>
+              {editProv.contactable === false && (
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:10,
+                  background:'#EF444422', color:'#EF4444' }}>⚠ sin canales</span>
+              )}
+              {editProv.contactable && (
+                <span style={{ fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:10,
+                  background:'#10B98122', color:'#10B981' }}>✓ contactable</span>
+              )}
+            </div>
+
+            {/* Datos básicos */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              {[['Nombre','name','text'],['Email','email','email'],['Teléfono','phone','tel'],
-                ['Precio base','price_base','number'],['Ciudad','city','text'],
+              {[['Nombre','name','text'],['Ciudad','city','text'],
+                ['Email','email','email'],['Teléfono','phone','tel'],
+                ['Web','website','text'],['Precio base','price_base','number'],
+                ['Instagram (@handle)','instagram','text'],['TikTok (@handle)','tiktok','text'],
               ].map(([lbl,field,type])=>(
                 <div key={field}>
                   <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
@@ -635,7 +659,8 @@ export default function AdminPage() {
               ))}
             </div>
 
-            <div style={{ marginTop:12 }}>
+            {/* Estado */}
+            <div style={{ marginTop:14 }}>
               <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
                 marginBottom:4, textTransform:'uppercase', letterSpacing:'0.07em' }}>Estado</label>
               <div style={{ display:'flex', gap:6 }}>
@@ -651,7 +676,104 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div style={{ marginTop:12, display:'flex', gap:7, alignItems:'center' }}>
+            {/* Email draft + acción */}
+            {(editProv.outreach_email || editProv.email) && (
+              <div style={{ marginTop:18, padding:14, background:'#0D1117', border:'1px solid #1F2937', borderRadius:10 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#06B6D4', textTransform:'uppercase', letterSpacing:'0.07em' }}>✉️ Email preparado</div>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <button
+                      onClick={()=>{
+                        navigator.clipboard.writeText(editProv.outreach_email||'')
+                        alert('Email copiado al portapapeles')
+                      }}
+                      style={{ padding:'4px 10px', borderRadius:7, border:'1px solid #1F2937',
+                        background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+                      📋 Copiar
+                    </button>
+                    <button
+                      disabled={!editProv.email}
+                      onClick={()=>{
+                        const body = editProv.outreach_email || ''
+                        const subjMatch = body.match(/^ASUNTO:\s*(.+)/m)
+                        const subj  = subjMatch ? subjMatch[1].trim() : `FiestaGo · ${editProv.name}`
+                        const clean = body.replace(/^ASUNTO:.+\n+/m, '')
+                        const url = `mailto:${editProv.email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(clean)}`
+                        window.open(url)
+                        updateProvider(editProv.id, { outreach_sent: true })
+                      }}
+                      style={{ padding:'4px 12px', borderRadius:7, border:'none',
+                        background: editProv.email ? '#06B6D4' : '#1F2937',
+                        color: editProv.email ? '#000' : '#4B5563',
+                        fontSize:11, fontWeight:700, cursor: editProv.email ? 'pointer' : 'not-allowed' }}>
+                      ✉️ Enviar email
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  value={editProv.outreach_email||''}
+                  onChange={e=>setEditProv(p=>p?{...p,outreach_email:e.target.value}:null)}
+                  rows={8}
+                  style={{ width:'100%', background:'#080B12', border:'1px solid #1F2937', borderRadius:8,
+                    padding:'9px 11px', fontSize:11.5, lineHeight:1.55, color:'#F0F4FF', outline:'none',
+                    boxSizing:'border-box', fontFamily:'IBM Plex Mono, monospace', resize:'vertical' }}/>
+                {!editProv.email && (
+                  <div style={{ fontSize:11, color:'#F59E0B', marginTop:6 }}>
+                    ⚠ Sin dirección de email — añade una arriba para poder enviarlo.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DM draft + acción */}
+            {(editProv.outreach_dm || editProv.instagram || editProv.tiktok) && (
+              <div style={{ marginTop:14, padding:14, background:'#0D1117', border:'1px solid #1F2937', borderRadius:10 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#E1306C', textTransform:'uppercase', letterSpacing:'0.07em' }}>📸 DM Instagram</div>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <button
+                      onClick={()=>{
+                        navigator.clipboard.writeText(editProv.outreach_dm||'')
+                        alert('Mensaje copiado al portapapeles — pégalo en el DM')
+                      }}
+                      style={{ padding:'4px 10px', borderRadius:7, border:'1px solid #1F2937',
+                        background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+                      📋 Copiar
+                    </button>
+                    <button
+                      disabled={!editProv.instagram}
+                      onClick={()=>{
+                        const handle = (editProv.instagram||'').replace(/^@/,'')
+                        if (!handle) return
+                        navigator.clipboard.writeText(editProv.outreach_dm||'').catch(()=>{})
+                        window.open(`https://instagram.com/${handle}/`, '_blank')
+                        updateProvider(editProv.id, { outreach_sent: true })
+                      }}
+                      style={{ padding:'4px 12px', borderRadius:7, border:'none',
+                        background: editProv.instagram ? '#E1306C' : '#1F2937',
+                        color: editProv.instagram ? '#fff' : '#4B5563',
+                        fontSize:11, fontWeight:700, cursor: editProv.instagram ? 'pointer' : 'not-allowed' }}>
+                      📸 Abrir IG + copiar
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  value={editProv.outreach_dm||''}
+                  onChange={e=>setEditProv(p=>p?{...p,outreach_dm:e.target.value}:null)}
+                  rows={6}
+                  style={{ width:'100%', background:'#080B12', border:'1px solid #1F2937', borderRadius:8,
+                    padding:'9px 11px', fontSize:11.5, lineHeight:1.55, color:'#F0F4FF', outline:'none',
+                    boxSizing:'border-box', fontFamily:'IBM Plex Mono, monospace', resize:'vertical' }}/>
+                {editProv.instagram && (
+                  <div style={{ fontSize:11, color:'#9CA3AF', marginTop:6 }}>
+                    Al pulsar “Abrir IG + copiar” copia el mensaje y abre instagram.com/{(editProv.instagram||'').replace(/^@/,'')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Flags */}
+            <div style={{ marginTop:14, display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
               <label style={{ fontSize:12, color:'#9CA3AF', display:'flex', alignItems:'center', gap:7, cursor:'pointer' }}>
                 <input type="checkbox" checked={editProv.featured||false}
                   onChange={e=>setEditProv(p=>p?{...p,featured:e.target.checked}:null)}/>
@@ -662,8 +784,14 @@ export default function AdminPage() {
                   onChange={e=>setEditProv(p=>p?{...p,verified:e.target.checked}:null)}/>
                 🛡️ Verificado
               </label>
+              <label style={{ fontSize:12, color:'#9CA3AF', display:'flex', alignItems:'center', gap:7, cursor:'pointer' }}>
+                <input type="checkbox" checked={editProv.outreach_sent||false}
+                  onChange={e=>setEditProv(p=>p?{...p,outreach_sent:e.target.checked}:null)}/>
+                ✉️ Outreach enviado
+              </label>
             </div>
 
+            {/* Botones inferiores */}
             <div style={{ marginTop:20, display:'flex', gap:8, justifyContent:'flex-end' }}>
               <button onClick={()=>setEditProv(null)}
                 style={{ padding:'9px 18px', borderRadius:10, border:'1px solid #1F2937',
