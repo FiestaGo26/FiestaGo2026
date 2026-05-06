@@ -3,65 +3,61 @@
 @tailwind utilities;
 
 :root {
-  --coral:   #E8553E;
-  --gold:    #C8860A;
-  --sage:    #3D7A52;
-  --cream:   #FBF7F0;
-  --ink:     #1C1108;
-  --muted:   #8A7968;
-  --border:  #E4D9C6;
+  --ivory:   #FBF9F4;
+  --bone:    #EFE8DA;
+  --bone-dk: #E0D6C2;
+  --gold:    #B8956A;
+  --gold-lt: #D4B895;
+  --coral:   #D9614A;
+  --ink:     #1A1612;
+  --ink-soft:#5C534A;
+  --ink-mut: #8B8175;
 }
 
 * { box-sizing: border-box; }
-
 html { scroll-behavior: smooth; }
+body { background: var(--ivory); color: var(--ink); -webkit-font-smoothing: antialiased; }
 
-body {
-  background: var(--cream);
-  color: var(--ink);
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #E4D9C6; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #C8B99A; }
+::-webkit-scrollbar-thumb { background: var(--bone-dk); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-lt); }
 
-/* Focus styles */
-:focus-visible {
-  outline: 2px solid var(--coral);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
+
+/* Editorial helpers */
+.eyebrow { font-family: var(--font-dm-sans); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); font-weight: 500; }
+.eyebrow-light { font-family: var(--font-dm-sans); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255,255,255,0.85); font-weight: 500; }
+.serif-italic { font-family: var(--font-fraunces); font-style: italic; font-weight: 400; color: var(--gold); }
+.section-rule { height: 1px; background: var(--bone-dk); }
 
 /* Animations */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes fadeUp   { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kenburns { from { transform: scale(1); } to { transform: scale(1.08); } }
 
-.animate-fade-up  { animation: fadeUp  0.4s ease forwards; }
-.animate-fade-in  { animation: fadeIn  0.3s ease forwards; }
-.animate-slide-in { animation: slideIn 0.3s ease forwards; }
+.fade-up    { opacity: 0; animation: fadeUp 0.9s cubic-bezier(.2,.7,.2,1) forwards; }
+.fade-up-2  { opacity: 0; animation: fadeUp 0.9s cubic-bezier(.2,.7,.2,1) 0.15s forwards; }
+.fade-up-3  { opacity: 0; animation: fadeUp 0.9s cubic-bezier(.2,.7,.2,1) 0.3s forwards; }
+.fade-up-4  { opacity: 0; animation: fadeUp 0.9s cubic-bezier(.2,.7,.2,1) 0.45s forwards; }
+.fade-in    { opacity: 0; animation: fadeIn 1s ease forwards; }
+.kenburns   { animation: kenburns 24s ease-in-out infinite alternate; }
 
-/* Admin dark theme */
+/* Hover lifts */
+.lift { transition: transform .5s cubic-bezier(.2,.7,.2,1), box-shadow .5s; }
+.lift:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(26,22,18,0.12); }
+
+/* Hover image zoom (apply to inner img) */
+.zoom-parent { overflow: hidden; }
+.zoom-parent img { transition: transform 1.2s cubic-bezier(.2,.7,.2,1); }
+.zoom-parent:hover img { transform: scale(1.06); }
+
+/* Hero video overlay */
+.hero-overlay { background: linear-gradient(180deg, rgba(10,10,10,0.55) 0%, rgba(10,10,10,0.15) 35%, rgba(10,10,10,0.25) 60%, rgba(10,10,10,0.85) 100%); }
+
+/* Admin keeps dark theme */
 .admin-dark { background: #080B12; color: #F0F4FF; }
 
-/* Prose styles */
-.prose-fiegago p  { color: var(--muted); line-height: 1.7; }
-.prose-fiegago h2 { font-family: var(--font-fraunces); font-weight: 700; color: var(--ink); }
+/* Prose */
+.prose-fiegago p  { color: var(--ink-soft); line-height: 1.75; }
+.prose-fiegago h2 { font-family: var(--font-fraunces); font-weight: 400; color: var(--ink); }
