@@ -1,270 +1,320 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase'
-import { getPhoto, CATEGORIES } from '@/lib/constants'
+import { CATEGORIES } from '@/lib/constants'
+
+const HERO_VIDEO_PRIMARY  = 'https://videos.pexels.com/video-files/3196238/3196238-hd_1920_1080_25fps.mp4'
+const HERO_VIDEO_FALLBACK = 'https://videos.pexels.com/video-files/4754029/4754029-hd_1920_1080_25fps.mp4'
+const HERO_POSTER         = 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=1920&q=85&auto=format&fit=crop'
+
+const PHOTO = {
+  toast:    'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1400&q=80&auto=format&fit=crop',
+  cake:     'https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1400&q=80&auto=format&fit=crop',
+  table:    'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1400&q=80&auto=format&fit=crop',
+  couple:   'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1400&q=80&auto=format&fit=crop',
+  flowers:  'https://images.unsplash.com/photo-1465495976277-4387d4b0b4af?w=1400&q=80&auto=format&fit=crop',
+  birthday: 'https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=1400&q=80&auto=format&fit=crop',
+  party:    'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=1400&q=80&auto=format&fit=crop',
+  weddings: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=1400&q=80&auto=format&fit=crop',
+  cta:      'https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=1920&q=80&auto=format&fit=crop',
+}
+
+const CATEGORY_PHOTOS: Record<string, string> = {
+  foto:       'https://images.unsplash.com/photo-1519741497674-611481863552?w=1000&q=80&auto=format&fit=crop',
+  catering:   'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1000&q=80&auto=format&fit=crop',
+  espacios:   'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1000&q=80&auto=format&fit=crop',
+  musica:     'https://images.unsplash.com/photo-1493676304819-0d7a8d026dcf?w=1000&q=80&auto=format&fit=crop',
+  flores:     'https://images.unsplash.com/photo-1465495976277-4387d4b0b4af?w=1000&q=80&auto=format&fit=crop',
+  pastel:     'https://images.unsplash.com/photo-1530023367847-a683933f4172?w=1000&q=80&auto=format&fit=crop',
+  belleza:    'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=1000&q=80&auto=format&fit=crop',
+  animacion:  'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=1000&q=80&auto=format&fit=crop',
+  transporte: 'https://images.unsplash.com/photo-1485291571150-772bcfc10da5?w=1000&q=80&auto=format&fit=crop',
+  papeleria:  'https://images.unsplash.com/photo-1521017432531-fbd92d768814?w=1000&q=80&auto=format&fit=crop',
+  planner:    'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=1000&q=80&auto=format&fit=crop',
+  joyeria:    'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=1000&q=80&auto=format&fit=crop',
+}
 
 async function getPacks() {
   const supabase = createAdminClient()
-  const { data } = await supabase.from('packs').select('*').eq('status','active').order('sort_order')
+  const { data } = await supabase.from('packs').select('*').eq('status', 'active').order('sort_order')
   return data || []
 }
 
 async function getFeaturedProviders() {
   const supabase = createAdminClient()
-  const { data } = await supabase.from('providers').select('*')
-    .eq('status','approved').eq('featured',true).order('rating',{ascending:false}).limit(4)
+  const { data } = await supabase.from('providers').select('*').eq('status', 'approved').order('rating', { ascending: false }).limit(6)
   return data || []
 }
 
 const REVIEWS = [
-  {name:'Laura & Carlos', city:'Madrid', stars:5, text:'Reservé el Pack Cumple Premium para mi hija y fue perfecto. Todo coordinado, sin estrés. ¡Repetimos!', event:'Cumpleaños 6 años'},
-  {name:'Carlos & Ana',   city:'Barcelona', stars:5, text:'FiestaGo organizó nuestra boda íntima en tiempo récord. Increíble equipo.', event:'Boda íntima'},
-  {name:'Marcos R.',      city:'Sevilla', stars:5, text:'El Pack Fiesta en Casa superó todas mis expectativas. Llegaron, montaron y yo disfruté.', event:'Cumpleaños adulto'},
-  {name:'Sara T.',        city:'Valencia', stars:5, text:'Por fin una plataforma donde reservas todo a la vez. Sin llamar a 10 sitios. 10/10.', event:'Fiesta privada'},
+  { name: 'Laura & Carlos', city: 'Madrid',   text: 'Reservamos el pack íntimo y todo coordinado al detalle. El equipo de FiestaGo nos quitó toda la presión.', event: 'Boda íntima · 40 invitados', photo: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80&auto=format&fit=crop' },
+  { name: 'Marcos R.',      city: 'Sevilla',  text: 'Mi cumpleaños 40, el pack premium en una finca preciosa. Solo aparecí. Llegó todo, montaron, sirvieron, recogieron.', event: 'Cumpleaños 40', photo: 'https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=600&q=80&auto=format&fit=crop' },
+  { name: 'Sara T.',        city: 'Valencia', text: 'La despedida de mi hermana en una villa con catering, DJ y fotografía. Un pinchazo y FiestaGo lo solucionó esa misma tarde.', event: 'Despedida de soltera', photo: 'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&q=80&auto=format&fit=crop' },
+]
+
+const STEPS = [
+  { n: '01', title: 'Elige tu fecha', text: 'Cuéntanos qué celebras, dónde y para cuántos. En 2 minutos.' },
+  { n: '02', title: 'Personaliza',    text: 'Selecciona un pack curado o combina los proveedores que prefieras.' },
+  { n: '03', title: 'Disfruta',       text: 'Lo coordinamos todo. Tú solo apareces y celebras.' },
 ]
 
 export default async function HomePage() {
   const [packs, featured] = await Promise.all([getPacks(), getFeaturedProviders()])
 
   return (
-    <main>
+    <main className="-mt-px">
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 py-20 px-6">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-coral/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-400/8 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+      <section className="relative h-screen min-h-[640px] overflow-hidden">
+        <img
+          src={HERO_POSTER}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover kenburns"
+        />
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src={HERO_VIDEO_PRIMARY}  type="video/mp4" />
+          <source src={HERO_VIDEO_FALLBACK} type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 hero-overlay" />
 
-        <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          {/* copy */}
-          <div>
-            <div className="inline-flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-coral bg-coral/10 border border-coral/20 px-4 py-1.5 rounded-full mb-6">
-              ✨ El marketplace de celebraciones #1 en España
-            </div>
-            <h1 className="font-serif text-5xl font-black text-ink leading-tight tracking-tight mb-5">
-              Organiza una fiesta increíble{' '}
-              <span className="text-coral italic">sin complicarte.</span>
-            </h1>
-            <p className="text-lg text-ink/60 leading-relaxed mb-10 max-w-md">
-              Elige un pack listo para reservar o personaliza tu celebración con los mejores profesionales de tu ciudad.
-            </p>
+        <div className="relative h-full flex flex-col items-center justify-center px-6 text-center z-10">
+          <p className="eyebrow-light fade-up" style={{ letterSpacing: '0.32em' }}>Tu fiesta empieza aquí</p>
+          <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl text-white leading-[1.02] mt-6 mb-6 tracking-tight font-normal fade-up-2">
+            Hazla{' '}
+            <span className="italic" style={{ color: '#FFD166' }}>inolvidable</span>.
+          </h1>
+          <p className="text-base md:text-lg text-white/85 max-w-md mx-auto leading-relaxed mb-10 fade-up-3">
+            Bodas, cumples, despedidas, aniversarios. Los mejores proveedores de tu ciudad, en una sola reserva.
+          </p>
 
-            {/* search bar */}
-            <form action="/proveedores" method="GET"
-              className="flex bg-white border-2 border-stone-200 rounded-2xl overflow-hidden shadow-lg mb-5">
-              <span className="px-4 flex items-center text-xl text-stone-400">📍</span>
-              <select name="ciudad" defaultValue=""
-                className="flex-1 border-0 outline-none text-base py-4 bg-transparent text-ink font-sans">
-                <option value="">¿En qué ciudad celebras?</option>
-                {['Madrid','Barcelona','Valencia','Sevilla','Bilbao','Málaga','Zaragoza','Murcia'].map(c=>(
+          <form action="/proveedores" method="GET" className="w-full max-w-lg fade-up-4">
+            <div className="bg-white/95 backdrop-blur-sm rounded-full p-1.5 pl-6 flex gap-3 items-center shadow-2xl">
+              <span className="text-[10px] tracking-[0.18em] uppercase text-ink-muted font-medium hidden sm:block">Ciudad</span>
+              <select
+                name="ciudad"
+                defaultValue=""
+                className="flex-1 border-0 outline-none bg-transparent font-serif italic text-base text-ink py-3"
+              >
+                <option value="">¿Dónde celebras?</option>
+                {['Valencia','Madrid','Barcelona','Sevilla','Bilbao','Málaga','Zaragoza','Murcia','Alicante','Granada'].map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
-              <button type="submit"
-                className="bg-coral text-white px-7 py-4 font-bold text-base hover:bg-coral-dark transition-colors">
-                Ver packs 🎉
+              <button
+                type="submit"
+                className="bg-ink text-white text-[11px] tracking-[0.18em] uppercase font-medium px-6 py-3 rounded-full hover:bg-ink-soft transition-colors"
+              >
+                Empezar →
               </button>
-            </form>
+            </div>
+          </form>
+        </div>
 
-            <div className="flex gap-5 text-sm text-ink/50">
-              {['✔ Proveedores verificados','✔ Reserva segura','✔ Precios transparentes'].map(t=>(
-                <span key={t} className="font-medium">{t}</span>
+        <div className="absolute bottom-8 left-6 md:left-10 right-6 md:right-10 flex items-end justify-between text-white/85 z-10">
+          <div className="flex gap-6 md:gap-10">
+            {[['1.200+','Eventos'],['4,9/5','Reseñas'],['10','Ciudades']].map(([n,l])=>(
+              <div key={l}>
+                <div className="font-serif text-2xl md:text-3xl text-white">
+                  {n.includes('+') || n.includes('/') ? <>{n.split(/[+/]/)[0]}<span className="text-gold-light">{n.match(/[+/].*/)?.[0]}</span></> : n}
+                </div>
+                <div className="text-[10px] tracking-[0.18em] uppercase mt-1">{l}</div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:flex flex-col items-center gap-2 text-white/65">
+            <div className="text-[10px] tracking-[0.18em] uppercase">Descubre packs</div>
+            <div className="w-px h-8 bg-gradient-to-b from-white/60 to-transparent" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── CÓMO FUNCIONA ── */}
+      <section className="py-24 md:py-32 px-6 md:px-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <p className="eyebrow mb-4">Cómo funciona</p>
+            <h2 className="font-serif text-4xl md:text-5xl leading-tight">
+              Tres pasos. <span className="serif-italic">Sin estrés.</span>
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-12 md:gap-20">
+            {STEPS.map(s => (
+              <div key={s.n} className="relative">
+                <div className="font-serif text-7xl text-gold/20 absolute -top-4 -left-2 select-none">{s.n}</div>
+                <div className="relative pt-8">
+                  <h3 className="font-serif text-2xl mb-3 font-normal">{s.title}</h3>
+                  <p className="text-ink-soft leading-relaxed text-[15px]">{s.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="section-rule max-w-7xl mx-auto" />
+
+      {/* ── PACKS ── */}
+      <section id="packs" className="py-24 md:py-32 px-6 md:px-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
+            <div>
+              <p className="eyebrow mb-4">Selección curada</p>
+              <h2 className="font-serif text-4xl md:text-5xl leading-tight">
+                Packs <span className="serif-italic">listos</span> para reservar.
+              </h2>
+            </div>
+            <Link
+              href="/proveedores"
+              className="text-[11px] tracking-[0.18em] uppercase font-medium pb-1 border-b border-ink hover:border-gold hover:text-gold transition-colors self-start md:self-end"
+            >
+              Ver catálogo completo →
+            </Link>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {(packs.length ? packs : Array.from({length:3}).map((_,i)=>({id:i,name:'',slug:'',emoji:'',description:'',highlight:'',price_base:0,duration:'',color:''}))).slice(0,6).map((p:any, i:number) => {
+              const photo = [PHOTO.couple, PHOTO.birthday, PHOTO.cake, PHOTO.flowers, PHOTO.toast, PHOTO.weddings][i % 6]
+              return (
+                <Link key={p.id || i} href={`/packs/${p.slug || ''}`} className="group lift bg-white border border-bone-dark rounded-none overflow-hidden block">
+                  <div className="zoom-parent aspect-[4/3] bg-bone">
+                    <img src={photo} alt={p.name || 'Pack'} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-6 md:p-7">
+                    <div className="eyebrow mb-2" style={{fontSize:'10px'}}>{p.highlight || 'Pack'}</div>
+                    <h3 className="font-serif italic text-xl mb-3 font-normal">{p.name || 'Celebración íntima'}</h3>
+                    <p className="text-[13px] text-ink-soft leading-relaxed mb-5 line-clamp-2 min-h-[40px]">{p.description || 'Catering · Música · Floral · Fotografía. Todo coordinado.'}</p>
+                    <div className="flex justify-between items-center pt-4 border-t border-bone-dark">
+                      <div className="font-serif text-2xl">{(p.price_base || 1200).toLocaleString('es-ES')}<span className="text-gold">€</span></div>
+                      <span className="text-[10px] tracking-[0.15em] uppercase font-medium group-hover:text-gold transition-colors">Reservar →</span>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CATEGORÍAS MOSAICO ── */}
+      <section id="categorias" className="py-24 md:py-32 px-6 md:px-10 bg-bone">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <p className="eyebrow mb-4">Categorías</p>
+            <h2 className="font-serif text-4xl md:text-5xl leading-tight">
+              Todos los profesionales <span className="serif-italic">en un solo sitio.</span>
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            {CATEGORIES.slice(0,12).map(cat => (
+              <Link
+                key={cat.id}
+                href={`/proveedores?categoria=${cat.id}`}
+                className="group relative aspect-[4/5] zoom-parent block overflow-hidden"
+              >
+                <img src={CATEGORY_PHOTOS[cat.id] || PHOTO.weddings} alt={cat.label} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/20 to-transparent" />
+                <div className="absolute inset-0 p-4 md:p-6 flex flex-col justify-end text-white">
+                  <div className="eyebrow-light mb-1" style={{fontSize:'10px',color:'rgba(255,255,255,0.75)'}}>Categoría</div>
+                  <div className="font-serif italic text-lg md:text-xl leading-tight">{cat.label}</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIOS ── */}
+      <section className="py-24 md:py-32 px-6 md:px-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <p className="eyebrow mb-4">Quienes ya celebraron</p>
+            <h2 className="font-serif text-4xl md:text-5xl leading-tight">
+              Sus historias, <span className="serif-italic">su mejor reseña.</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 md:gap-10">
+            {REVIEWS.map(r => (
+              <article key={r.name} className="bg-ivory">
+                <div className="aspect-[4/3] mb-6 overflow-hidden">
+                  <img src={r.photo} alt={r.name} className="w-full h-full object-cover" />
+                </div>
+                <div className="px-1">
+                  <div className="font-serif text-5xl text-gold/40 leading-none mb-2 select-none">"</div>
+                  <p className="font-serif text-lg italic leading-snug mb-5">{r.text}</p>
+                  <div className="border-t border-bone-dark pt-4">
+                    <div className="text-sm font-medium">{r.name}</div>
+                    <div className="text-[11px] tracking-[0.15em] uppercase text-ink-muted mt-1">{r.event} · {r.city}</div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PROVEEDORES DESTACADOS ── */}
+      {featured.length > 0 && (
+        <section className="py-24 md:py-32 px-6 md:px-10 bg-bone">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
+              <div>
+                <p className="eyebrow mb-4">Profesionales destacados</p>
+                <h2 className="font-serif text-4xl md:text-5xl leading-tight">
+                  Los que <span className="serif-italic">nuestras parejas</span> recomiendan.
+                </h2>
+              </div>
+              <Link href="/proveedores" className="text-[11px] tracking-[0.18em] uppercase font-medium pb-1 border-b border-ink hover:border-gold hover:text-gold transition-colors self-start md:self-end">
+                Ver todos →
+              </Link>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              {featured.slice(0, 6).map((p: any) => (
+                <Link key={p.id} href={`/proveedores/${p.slug || p.id}`} className="group lift bg-white border border-bone-dark block">
+                  <div className="zoom-parent aspect-[4/3] bg-bone-dark">
+                    <img src={CATEGORY_PHOTOS[p.category] || PHOTO.weddings} alt={p.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="p-6">
+                    <div className="eyebrow mb-2" style={{fontSize:'10px'}}>{(CATEGORIES.find(c=>c.id===p.category)?.label || '').toString()}</div>
+                    <h3 className="font-serif italic text-xl mb-2 font-normal">{p.name}</h3>
+                    <div className="text-[13px] text-ink-soft mb-4">{p.city}</div>
+                    <div className="flex justify-between items-center pt-4 border-t border-bone-dark">
+                      <div className="text-sm">desde <span className="font-serif text-lg">{(p.price_base || 0).toLocaleString('es-ES')}<span className="text-gold">€</span></span></div>
+                      <span className="text-[10px] tracking-[0.15em] uppercase font-medium group-hover:text-gold transition-colors">Ver perfil →</span>
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
+        </section>
+      )}
 
-          {/* photo collage */}
-          <div className="relative h-[420px] hidden lg:block">
-            <div className="absolute top-0 left-0 w-[62%] h-[68%] rounded-2xl overflow-hidden shadow-2xl">
-              <Image src={getPhoto('party',0,600,400)} alt="Fiesta" fill className="object-cover"/>
-            </div>
-            <div className="absolute bottom-0 left-[10%] w-[55%] h-[54%] rounded-2xl overflow-hidden shadow-xl border-[3px] border-white">
-              <Image src={getPhoto('kids',1,500,350)} alt="Cumpleaños" fill className="object-cover"/>
-            </div>
-            <div className="absolute top-[15%] right-0 w-[40%] h-[55%] rounded-2xl overflow-hidden shadow-xl border-[3px] border-white">
-              <Image src={getPhoto('espacios',0,400,300)} alt="Espacio" fill className="object-cover"/>
-            </div>
-            {/* floating badges */}
-            <div className="absolute top-3 right-6 bg-white rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2 z-10">
-              <span className="text-2xl">⭐</span>
-              <div><div className="text-sm font-bold text-ink">4.9/5.0</div><div className="text-xs text-ink/50">+1.200 fiestas</div></div>
-            </div>
-            <div className="absolute bottom-4 right-3 bg-coral rounded-2xl px-3 py-2 shadow-lg z-10">
-              <div className="text-xs font-bold text-white">🎁 1ª transacción</div>
-              <div className="text-xs text-white/80">sin comisión</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── PACKS ── */}
-      <section id="packs" className="max-w-6xl mx-auto px-6 py-20">
-        <div className="flex justify-between items-end mb-12">
-          <div>
-            <div className="text-xs font-bold tracking-widest uppercase text-coral mb-3">Packs listos para reservar</div>
-            <h2 className="font-serif text-4xl font-black text-ink tracking-tight">
-              Tu fiesta completa,<br/>en un solo clic.
-            </h2>
-          </div>
-          <p className="text-sm text-ink/50 max-w-56 text-right leading-relaxed hidden md:block">
-            Todo coordinado por nosotros. Tú solo apareces y disfrutas.
+      {/* ── CTA FINAL ── */}
+      <section className="relative h-[480px] md:h-[560px] overflow-hidden">
+        <img src={PHOTO.cta} alt="Fiesta" className="absolute inset-0 w-full h-full object-cover kenburns" />
+        <div className="absolute inset-0 bg-ink/55" />
+        <div className="relative h-full flex flex-col items-center justify-center text-center px-6 z-10">
+          <p className="eyebrow-light mb-4" style={{ letterSpacing: '0.3em' }}>Reserva sin comisión</p>
+          <h2 className="font-serif text-4xl md:text-6xl text-white leading-tight mb-6 max-w-3xl">
+            Tu fiesta no se va a <span className="italic" style={{color:'#FFD166'}}>organizar sola</span>.
+          </h2>
+          <p className="text-white/85 text-base md:text-lg max-w-lg mx-auto mb-10">
+            Cuéntanos qué celebras y te montamos un pack a medida en menos de 24 horas.
           </p>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {packs.map((pk: any) => (
-            <Link key={pk.id} href={`/packs/${pk.slug || pk.id}`}
-              className="group bg-white border border-stone-200 rounded-3xl overflow-hidden hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 flex flex-col"
-              style={{ '--hover-border': pk.color } as any}>
-              <div className="h-48 relative overflow-hidden">
-                <Image src={getPhoto(pk.photo_seed || 'party', 0, 600, 400)} alt={pk.name}
-                  fill className="object-cover group-hover:scale-105 transition-transform duration-300"/>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"/>
-                <div className="absolute top-3 left-3">
-                  <span className="text-xs font-bold tracking-wide uppercase px-2.5 py-1 rounded-full"
-                    style={{ background: pk.color + '22', color: pk.color, border: `1px solid ${pk.color}44` }}>
-                    {pk.highlight}
-                  </span>
-                </div>
-                <span className="absolute bottom-3 left-4 text-3xl">{pk.emoji}</span>
-              </div>
-              <div className="p-5 flex flex-col flex-1">
-                <h3 className="font-serif text-lg font-bold text-ink mb-1.5">{pk.name}</h3>
-                <div className="text-xs text-ink/50 mb-3">{pk.duration} · hasta {pk.max_guests} personas</div>
-                <div className="flex flex-col gap-1.5 mb-5 flex-1">
-                  {(pk.includes || []).slice(0,3).map((inc: string, i: number) => (
-                    <div key={i} className="flex gap-2 items-center text-xs text-ink/60">
-                      <span style={{ color: pk.color }}>✓</span>{inc}
-                    </div>
-                  ))}
-                  {(pk.includes || []).length > 3 && (
-                    <div className="text-xs text-ink/40">+{pk.includes.length - 3} más incluido</div>
-                  )}
-                </div>
-                <div className="flex justify-between items-center border-t border-stone-100 pt-4">
-                  <div>
-                    <span className="text-xs text-ink/50">desde </span>
-                    <span className="font-serif text-xl font-bold" style={{ color: pk.color }}>{pk.price_base}€</span>
-                  </div>
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white"
-                    style={{ background: pk.color }}>
-                    Reservar →
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ── */}
-      <section className="bg-cream-dark border-y border-stone-200 py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="text-xs font-bold tracking-widest uppercase text-coral mb-3">Simple y rápido</div>
-            <h2 className="font-serif text-4xl font-black text-ink tracking-tight">¿Cómo funciona?</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {n:'01', icon:'📦', title:'Elige tu pack', desc:'Selecciona el pack que mejor encaje con tu celebración. Todo incluido desde 199€.'},
-              {n:'02', icon:'✏️', title:'Personalízalo', desc:'Ajusta la fecha, invitados y ciudad. Añade extras a tu gusto en segundos.'},
-              {n:'03', icon:'🥂', title:'Reserva y celebra', desc:'Pago seguro y nosotros coordinamos todo. Tú solo disfruta el día.'},
-            ].map(s => (
-              <div key={s.n} className="relative bg-white rounded-3xl p-8 border border-stone-200 text-center overflow-hidden">
-                <div className="absolute top-0 right-0 font-serif text-8xl font-black text-coral/5 leading-none translate-x-2 -translate-y-2 select-none">{s.n}</div>
-                <div className="w-14 h-14 bg-coral/10 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5">{s.icon}</div>
-                <h3 className="font-serif text-xl font-bold text-ink mb-3">{s.title}</h3>
-                <p className="text-sm text-ink/55 leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── POPULAR CATEGORIES ── */}
-      <section className="max-w-6xl mx-auto px-6 py-20">
-        <div className="flex justify-between items-end mb-10">
-          <div>
-            <div className="text-xs font-bold tracking-widest uppercase text-coral mb-3">Lo que más se reserva</div>
-            <h2 className="font-serif text-3xl font-black text-ink tracking-tight">Categorías populares</h2>
-          </div>
-          <Link href="/proveedores" className="text-sm font-semibold text-ink/60 hover:text-coral transition-colors">
-            Ver todos →
+          <Link
+            href="/#packs"
+            className="bg-white text-ink text-[11px] tracking-[0.18em] uppercase font-medium px-8 py-4 rounded-full hover:bg-bone transition-colors"
+          >
+            Empezar mi celebración →
           </Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {CATEGORIES.slice(0,8).map(cat => (
-            <Link key={cat.id} href={`/proveedores?categoria=${cat.id}`}
-              className="relative rounded-2xl overflow-hidden h-44 group cursor-pointer">
-              <Image src={getPhoto(cat.id, 0, 400, 300)} alt={cat.label}
-                fill className="object-cover group-hover:scale-105 transition-transform duration-300"/>
-              <div className="absolute inset-0 transition-opacity"
-                style={{ background: `linear-gradient(to top, ${cat.color}CC, transparent 55%)` }}/>
-              <div className="absolute bottom-3 left-3">
-                <div className="text-xl mb-1">{cat.icon}</div>
-                <div className="text-sm font-bold text-white leading-tight">{cat.label}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ── REVIEWS ── */}
-      <section className="bg-ink py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <div className="text-xs font-bold tracking-widest uppercase text-coral mb-3">Lo que dicen nuestros clientes</div>
-            <h2 className="font-serif text-4xl font-black text-white tracking-tight">Fiestas que no se olvidan</h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-5">
-            {REVIEWS.map((r, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                <div className="flex gap-0.5 mb-4">
-                  {[1,2,3,4,5].map(s => <span key={s} className="text-gold text-base">★</span>)}
-                </div>
-                <p className="text-white/80 text-sm leading-relaxed mb-5">"{r.text}"</p>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-coral/20 flex items-center justify-center text-lg">👤</div>
-                    <div>
-                      <div className="text-sm font-bold text-white">{r.name}</div>
-                      <div className="text-xs text-white/40">{r.city}</div>
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold text-coral bg-coral/15 px-3 py-1 rounded-xl">{r.event}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TRUST ── */}
-      <section className="border-y border-stone-200 py-10 px-6">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-5">
-          {[
-            {icon:'🛡️', title:'Proveedores verificados', desc:'Todos los profesionales pasan por un proceso de verificación real.'},
-            {icon:'🔒', title:'Reserva 100% segura', desc:'Pago protegido. Tu dinero no llega al proveedor hasta que el servicio se confirma.'},
-            {icon:'💸', title:'Precios transparentes', desc:'Sin costes ocultos. Ves exactamente qué pagas y qué recibe cada proveedor.'},
-          ].map(({icon,title,desc}) => (
-            <div key={title} className="flex gap-4 items-start bg-white border border-stone-100 rounded-2xl p-5 shadow-card">
-              <div className="w-11 h-11 bg-cream-dark rounded-xl flex items-center justify-center text-xl flex-shrink-0">{icon}</div>
-              <div>
-                <div className="font-semibold text-ink text-sm mb-1.5">{title}</div>
-                <div className="text-xs text-ink/55 leading-relaxed">{desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── FOOTER CTA ── */}
-      <section className="bg-gradient-to-r from-coral to-coral-dark py-16 px-6">
-        <div className="max-w-xl mx-auto text-center">
-          <h2 className="font-serif text-4xl font-black text-white tracking-tight mb-4">¿Lista tu próxima fiesta?</h2>
-          <p className="text-white/80 text-base mb-8 leading-relaxed">Reserva en minutos. Sin llamadas, sin emails, sin estrés.</p>
-          <a href="#packs"
-            className="inline-block bg-white text-coral font-bold text-base px-10 py-4 rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-0.5 transition-all">
-            Ver todos los packs 🎉
-          </a>
         </div>
       </section>
     </main>
