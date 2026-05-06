@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/constants'
 
+export const runtime = 'nodejs'
+export const maxDuration = 30
+export const dynamic = 'force-dynamic'
+
 function checkAdminAuth(req: NextRequest) {
   return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
 }
