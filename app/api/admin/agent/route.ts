@@ -17,7 +17,7 @@ async function claudeCall(system: string, user: string, useWebSearch = false) {
   }
   if (useWebSearch) {
     body.tools = [{ type: 'web_search_20250305', name: 'web_search' }]
-    body.model = 'claude-sonnet-4-5-20250514' 
+    body.model = 'claude-sonnet-4-5' 
   }
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
