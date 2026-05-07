@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { emailProviderWelcome, emailProviderRejection } from '@/lib/resend'
+
+export const runtime = 'nodejs'
+export const maxDuration = 30
+export const dynamic = 'force-dynamic'
 
 function checkAdminAuth(req: NextRequest) {
   return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
 }
 
+// Email de captación (cuando agente encuentra proveedor y admin aprueba "contactar")
 async function sendOutreachEmail(provider: any) {
   if (!provider.outreach_email || !provider.email) return false
   if (!process.env.RESEND_API_KEY) {
@@ -12,53 +18,10 @@ async function sendOutreachEmail(provider: any) {
     return false
   }
 
-  const lines   = provider.outreach_email.split('\n')
-  const subjL   = lines.find((l: string) => l.startsWith('ASUNTO:'))
-  const subject = subjL ? subjL.replace('ASUNTO:', '').trim() : `Únete a FiestaGo — ${provider.name}`
+  const lines    = provider.outreach_email.split('\n')
+  const subjL    = lines.find((l: string) => l.startsWith('ASUNTO:'))
+  const subject  = subjL ? subjL.replace('ASUNTO:', '').trim() : `Únete a FiestaGo — ${provider.name}`
   const bodyText = lines.filter((l: string) => !l.startsWith('ASUNTO:')).join('\n').trim()
-
-  const registerUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es'}/registro-proveedor`
-  const contactEmail = 'contacto@fiestago.es'
-
-  const fullText = `${bodyText}
-
-Regístrate gratis aquí: ${registerUrl}
-
-¿Tienes dudas? Escríbenos a ${contactEmail}
-
-FiestaGo Partnerships | ${contactEmail}`
-
-  const htmlBody = `
-<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1C1108">
-  <div style="margin-bottom:24px">
-    <span style="font-size:28px">🎉</span>
-    <strong style="font-size:20px;color:#1C1108"> FiestaGo</strong>
-  </div>
-
-  ${bodyText.split('\n').filter(Boolean).map((line: string) =>
-    `<p style="color:#4A4A4A;line-height:1.7;margin:0 0 14px">${line}</p>`
-  ).join('')}
-
-  <div style="margin:32px 0;text-align:center">
-    <a href="${registerUrl}"
-      style="background:#E8553E;color:#fff;text-decoration:none;font-weight:700;
-             padding:14px 32px;border-radius:12px;font-size:16px;display:inline-block">
-      Registrarme gratis en FiestaGo →
-    </a>
-  </div>
-
-  <p style="color:#8A7968;font-size:13px;line-height:1.6">
-    ¿Tienes dudas? Escríbenos a
-    <a href="mailto:${contactEmail}" style="color:#E8553E">${contactEmail}</a>
-  </p>
-
-  <hr style="border:none;border-top:1px solid #E4D9C6;margin:24px 0"/>
-  <p style="color:#8A7968;font-size:12px">
-    FiestaGo · El marketplace de celebraciones #1 en España<br/>
-    <a href="https://fiestago.es" style="color:#8A7968">fiestago.es</a> ·
-    <a href="mailto:${contactEmail}" style="color:#8A7968">${contactEmail}</a>
-  </p>
-</div>`
 
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -68,31 +31,78 @@ FiestaGo Partnerships | ${contactEmail}`
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from:    `FiestaGo Partnerships <contacto@fiestago.es>`,
+        from:    `FiestaGo <${process.env.OUTREACH_FROM || 'contacto@fiestago.es'}>`,
         to:      [provider.email],
         subject,
-        text:    fullText,
-        html:    htmlBody,
+        text:    bodyText,
+        reply_to: process.env.OUTREACH_REPLY_TO,
       }),
     })
-
     const data = await res.json()
-    if (!res.ok) {
-      console.error('[OUTREACH] Error Resend:', data)
-      return false
-    }
-    console.log(`[OUTREACH] Email enviado a ${provider.email} — ID: ${data.id}`)
+    if (!res.ok) { console.error('[OUTREACH] Error:', data); return false }
     return true
+  } catch (err) { console.error('[OUTREACH]', err); return false }
+}
+
+// Generación de imagen hero al aprobar (Flux 1.1 Pro)
+async function generateProviderImage(provider: any): Promise<string | null> {
+  const FAL_KEY = process.env.FAL_KEY
+  if (!FAL_KEY) { console.log('[IMG] FAL_KEY no configurada'); return null }
+
+  const categoryHooks: Record<string, string> = {
+    foto:       'professional wedding photographer at golden hour, intimate moment',
+    catering:   'elegant Spanish wedding banquet on candlelit table',
+    espacios:   'luxurious wedding venue at twilight with festoon lights',
+    musica:     'wedding DJ booth with ambient golden lighting',
+    flores:     'lush wedding floral arrangements with pampas and roses',
+    pastel:     'multi-tier elegant wedding cake on marble',
+    belleza:    'bride preparation with vintage vanity and flowers',
+    animacion:  'joyful wedding guests celebrating with sparklers',
+    transporte: 'classic vintage wedding car with floral arrangement',
+    papeleria:  'wedding invitation suite on textured paper with wax seal',
+    planner:    'wedding planner reviewing details in sunlit Mediterranean venue',
+    joyeria:    'gold wedding bands on textile with delicate flowers',
+  }
+
+  const baseScene = categoryHooks[provider.category] || categoryHooks.foto
+  const prompt = `${baseScene}, ${provider.city || 'Spain'} ambience, golden hour, premium editorial wedding magazine quality, cinematic, 4k, no text or logos`
+
+  try {
+    const res = await fetch('https://fal.run/fal-ai/flux-pro/v1.1', {
+      method: 'POST',
+      headers: { 'Authorization': `Key ${FAL_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt, image_size: 'landscape_16_9', num_images: 1, output_format: 'jpeg',
+        enable_safety_checker: true, safety_tolerance: '5',
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) { console.error('[IMG] Flux error:', data); return null }
+    const url = data.images?.[0]?.url
+    if (!url) return null
+
+    // Re-host en Supabase Storage para no depender del CDN de fal.ai
+    const supabase = createAdminClient()
+    const imgRes = await fetch(url)
+    if (!imgRes.ok) return url // fallback al CDN externo
+    const buf = Buffer.from(await imgRes.arrayBuffer())
+    const path = `providers/${provider.id}/hero.jpg`
+    const { error: upErr } = await supabase.storage
+      .from('social-posts')
+      .upload(path, buf, { contentType: 'image/jpeg', upsert: true })
+    if (upErr) { console.error('[IMG] Storage:', upErr); return url }
+
+    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/social-posts/${path}`
+    return publicUrl
   } catch (err) {
-    console.error('[OUTREACH] Error:', err)
-    return false
+    console.error('[IMG]', err)
+    return null
   }
 }
 
 // GET /api/admin/providers
 export async function GET(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-
   const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
   const status   = searchParams.get('status')
@@ -102,11 +112,7 @@ export async function GET(req: NextRequest) {
   const limit    = parseInt(searchParams.get('limit') || '100')
 
   let query = supabase
-    .from('providers')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit)
-
+    .from('providers').select('*').order('created_at', { ascending: false }).limit(limit)
   if (status)   query = query.eq('status', status)
   if (category) query = query.eq('category', category)
   if (city)     query = query.eq('city', city)
@@ -118,59 +124,88 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/admin/providers
-// Al aprobar → envía email de outreach y cambia estado a "contacted"
-// El proveedor aparece en marketplace solo cuando se registra él mismo
+//
+// Distingue dos flujos al cambiar status a "approved":
+//
+// 1. RECRUITMENT (prospect del agente, primera vez):
+//    Si tiene outreach_email draft Y outreach_sent=false → manda outreach,
+//    deja pending y marca outreach_sent=true. NO se aprueba todavía.
+//
+// 2. APPROVAL REAL (proveedor que se autoregistró o ya contactaste):
+//    No tiene outreach pendiente → aprueba de verdad, envía email bienvenida,
+//    genera imagen hero con fal.ai, lo hace visible en marketplace.
+//
+// Al cambiar status a "rejected" → email de rechazo.
 export async function PATCH(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-
   const supabase = createAdminClient()
   const body = await req.json()
   const { id, ...updates } = body
-
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
 
-  // Si se intenta aprobar → enviar email y cambiar a "contacted" en vez de "approved"
-  if (updates.status === 'approved') {
-    const { data: provider } = await supabase
-      .from('providers')
-      .select('*')
-      .eq('id', id)
-      .single()
+  const result: any = { ok: true }
 
-    if (provider && !provider.outreach_sent) {
-      const sent = await sendOutreachEmail(provider)
+  // Cargar provider actual para decidir flujo
+  const { data: current } = await supabase.from('providers').select('*').eq('id', id).single()
+  if (!current) return NextResponse.json({ error: 'Proveedor no encontrado' }, { status: 404 })
+
+  // ── APROBAR ──
+  if (updates.status === 'approved') {
+    const isRecruitment = !!(current.outreach_email && !current.outreach_sent)
+
+    if (isRecruitment) {
+      // Flow 1: enviar outreach, mantener pending
+      const sent = await sendOutreachEmail(current)
       if (sent) {
-        // Cambiar a "contacted" — NO a "approved"
-        // El proveedor aparecerá en el marketplace solo cuando se registre
-        updates.status        = 'pending'  // sigue pendiente hasta que se registre
+        updates.status        = 'pending'
         updates.outreach_sent = true
         updates.outreach_at   = new Date().toISOString()
         updates.tag           = 'Contactado'
+        result.flow = 'outreach_sent'
+      } else {
+        result.flow = 'outreach_failed'
+      }
+    } else {
+      // Flow 2: aprobación real
+      result.flow = 'approval'
+      // Welcome email (no bloquea si falla)
+      const welcome = await emailProviderWelcome(current)
+      result.welcomeEmail = welcome.ok
+
+      // Generar imagen hero (no bloquea si falla)
+      try {
+        const imgUrl = await generateProviderImage(current)
+        if (imgUrl) {
+          updates.photo_url = imgUrl
+          result.imageGenerated = true
+        }
+      } catch (err: any) {
+        console.error('[APPROVE]', err.message)
       }
     }
   }
 
-  const { data, error } = await supabase
-    .from('providers')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
+  // ── RECHAZAR ──
+  if (updates.status === 'rejected') {
+    const reason = updates.rejected_reason || ''
+    const sent = await emailProviderRejection(current, reason)
+    result.rejectionEmail = sent.ok
+  }
 
+  // Update final
+  const { data, error } = await supabase
+    .from('providers').update(updates).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ provider: data, emailSent: updates.outreach_sent || false })
+
+  return NextResponse.json({ provider: data, ...result })
 }
 
-// DELETE /api/admin/providers
 export async function DELETE(req: NextRequest) {
   if (!checkAdminAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-
   const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
-
   if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
-
   const { error } = await supabase.from('providers').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })

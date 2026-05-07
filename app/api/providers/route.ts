@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { emailAdminNewProvider } from '@/lib/resend'
 
 // GET /api/providers — list approved providers
 export async function GET(req: NextRequest) {
@@ -59,6 +60,10 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Notificar al admin (no bloquear si falla el email)
+  emailAdminNewProvider(data).catch(err =>
+    console.error('emailAdminNewProvider:', err.message))
 
   return NextResponse.json({ provider: data }, { status: 201 })
 }
