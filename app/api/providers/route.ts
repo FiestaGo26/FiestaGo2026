@@ -42,6 +42,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
   }
 
+  // Calcular contactable: cualquier canal accionable
+  const ownWebsite = website && !/instagram\.com|tiktok\.com/i.test(website)
+  const contactable = !!(email || phone || ownWebsite || instagram)
+
   const { data, error } = await supabase
     .from('providers')
     .insert({
@@ -53,8 +57,9 @@ export async function POST(req: NextRequest) {
       price_base:   price_base || null,
       price_unit:   price_unit || 'por evento',
       specialties:  specialties || [],
-      source:       'web',
+      source:       'self_registration',
       status:       'pending',
+      contactable,
     })
     .select()
     .single()
