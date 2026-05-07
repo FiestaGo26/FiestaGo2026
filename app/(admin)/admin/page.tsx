@@ -753,6 +753,28 @@ export default function AdminPage() {
                             textTransform:'uppercase', letterSpacing:'0.1em' }}>
                             {p.template_label || p.template_id}
                           </div>
+                          {p.hook_overlay && (
+                            <div style={{ background:'#F43F5E15', border:'1px solid #F43F5E55',
+                              borderRadius:8, padding:'8px 10px', display:'flex', alignItems:'center', gap:8 }}>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ fontSize:9, color:'#F43F5E', fontWeight:700,
+                                  textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:2 }}>
+                                  Texto overlay (TikTok/IG)
+                                </div>
+                                <div style={{ fontSize:13, fontWeight:700, color:'#F0F4FF', lineHeight:1.3 }}>
+                                  {p.hook_overlay}
+                                </div>
+                              </div>
+                              <button onClick={()=>{
+                                navigator.clipboard.writeText(p.hook_overlay)
+                                alert('Texto overlay copiado: ' + p.hook_overlay)
+                              }}
+                                style={{ flexShrink:0, padding:'7px 9px', borderRadius:6, border:'1px solid #F43F5E66',
+                                  background:'transparent', color:'#F43F5E', fontSize:10, fontWeight:700, cursor:'pointer' }}>
+                                📋 Copiar
+                              </button>
+                            </div>
+                          )}
                           <div style={{ fontSize:12, lineHeight:1.5, color:'#E5E7EB',
                             display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
                             {p.caption_instagram || ''}
@@ -838,6 +860,15 @@ export default function AdminPage() {
                     maxHeight:'88vh', overflowY:'auto', margin:'0 20px', border:'1px solid #1F2937', padding:24 }}>
                     <div style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>✏️ Editar post</div>
 
+                    <label style={{ fontSize:10, fontWeight:700, color:'#F43F5E', display:'block',
+                      marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Texto overlay (max 40 chars)</label>
+                    <input value={editingPost.hook_overlay || ''}
+                      onChange={e=>setEditingPost({ ...editingPost, hook_overlay: e.target.value.slice(0, 50) })}
+                      maxLength={50}
+                      style={{ width:'100%', background:'#0D1117', border:'1px solid #F43F5E55', borderRadius:8,
+                        padding:'9px 11px', fontSize:14, fontWeight:700, color:'#F0F4FF', outline:'none',
+                        boxSizing:'border-box', marginBottom:14 }}/>
+
                     <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
                       marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Caption Instagram</label>
                     <textarea rows={5} value={editingPost.caption_instagram || ''}
@@ -870,6 +901,7 @@ export default function AdminPage() {
                       </button>
                       <button onClick={async()=>{
                         await updateSocialPost(editingPost.id, {
+                          hook_overlay:      editingPost.hook_overlay,
                           caption_instagram: editingPost.caption_instagram,
                           caption_tiktok:    editingPost.caption_tiktok,
                           hashtags:          editingPost.hashtags,
