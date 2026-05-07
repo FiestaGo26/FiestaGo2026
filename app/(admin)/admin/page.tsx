@@ -407,7 +407,7 @@ export default function AdminPage() {
                     return (
                       <div key={p.id} style={{ display:'flex', alignItems:'center', gap:11, background:'#111827',
                         borderRadius:9, padding:'9px 12px', marginBottom:6 }}>
-                        <img src={getPhoto(p.category, p.photo_idx)} alt=""
+                        <img src={p.photo_url || getPhoto(p.category, p.photo_idx)} alt=""
                           style={{ width:38, height:38, borderRadius:8, objectFit:'cover', flexShrink:0 }}/>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontSize:13, fontWeight:700, color:'#F0F4FF' }}>{p.name}</div>
@@ -496,7 +496,7 @@ export default function AdminPage() {
                       onMouseEnter={e=>(e.currentTarget.style.background='#0D1117')}
                       onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
                       <div style={{ display:'flex', alignItems:'center', gap:9 }}>
-                        <img src={getPhoto(p.category, p.photo_idx)} alt=""
+                        <img src={p.photo_url || getPhoto(p.category, p.photo_idx)} alt=""
                           style={{ width:34, height:34, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
                         <div style={{ minWidth:0 }}>
                           <div style={{ fontSize:12, fontWeight:600, color:'#F0F4FF', display:'flex', alignItems:'center', gap:5 }}>

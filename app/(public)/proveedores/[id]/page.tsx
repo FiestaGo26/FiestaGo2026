@@ -122,7 +122,7 @@ export default function ProviderDetailPage() {
             {/* Hero photo */}
             <div className="relative h-72 rounded-2xl overflow-hidden mb-5 bg-stone-200">
               <img
-                src={getPhoto(provider.category, provider.photo_idx || 0, 900, 600)}
+                src={provider.photo_url || getPhoto(provider.category, provider.photo_idx || 0, 900, 600)}
                 alt={provider.name}
                 className="w-full h-full object-cover"
                 onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${provider.id}/900/600` }}

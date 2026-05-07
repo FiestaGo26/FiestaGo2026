@@ -12,12 +12,15 @@ function fromHeader() {
 function paragraphsToHtml(text: string): string {
   return text
     .split(/\r?\n\r?\n/)
-    .map(p => `<p style="margin:0 0 14px 0;line-height:1.6;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1A1612;">${
-      p.replace(/\r?\n/g, '<br>')
+    .map(p => {
+      // Orden correcto: escapar HTML primero, luego convertir saltos a <br>
+      const safe = p
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-    }</p>`)
+        .replace(/\r?\n/g, '<br>')
+      return `<p style="margin:0 0 14px 0;line-height:1.6;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1A1612;">${safe}</p>`
+    })
     .join('')
 }
 
@@ -88,44 +91,152 @@ FiestaGo (sistema automático)`
 
 export async function emailProviderWelcome(provider: any) {
   if (!provider.email) return { ok: false, error: 'Proveedor sin email' }
-  const subject = `🎉 Bienvenido a FiestaGo, ${provider.name}`
-  const text = `¡Enhorabuena ${provider.name}!
 
-Tu perfil ha sido aprobado y ya está visible en FiestaGo. A partir de ahora podrás recibir solicitudes de reserva de clientes que celebran sus eventos en ${provider.city}.
+  const profileUrl = `https://fiestago.es/proveedores/${provider.slug || provider.id}`
+  const panelUrl   = `https://fiestago.es/proveedor/login`
 
-✓ Tu perfil ya aparece en el marketplace
-✓ Primera transacción sin comisión (0%)
-✓ Después solo el 8% por venta cerrada
-✓ Sin permanencia ni cuotas mensuales
+  const subject = `Bienvenido a FiestaGo, ${provider.name}`
 
-Puedes ver tu perfil aquí:
-https://fiestago.es/proveedores/${provider.slug || provider.id}
+  // Versión texto plano para clientes que no soporten HTML
+  const text = [
+    `Enhorabuena ${provider.name},`,
+    ``,
+    `Tu perfil ha sido aprobado y ya está visible en FiestaGo. A partir de ahora podrás recibir solicitudes de reserva de clientes que celebran sus eventos en ${provider.city}.`,
+    ``,
+    `· Tu perfil ya aparece en el marketplace`,
+    `· Primera transacción sin comisión (0%)`,
+    `· Después solo el 8% por venta cerrada`,
+    `· Sin permanencia ni cuotas mensuales`,
+    ``,
+    `Ver tu perfil:`,
+    profileUrl,
+    ``,
+    `Acceder al panel del proveedor:`,
+    panelUrl,
+    ``,
+    `Si necesitas algo, escríbenos a contacto@fiestago.es.`,
+    ``,
+    `Un abrazo,`,
+    `El equipo de FiestaGo`,
+  ].join('\n')
 
-Y acceder a tu panel para gestionar disponibilidad y reservas:
-https://fiestago.es/proveedor/login
+  // HTML elegante (editorial, paleta cream/gold)
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FBF9F4;font-family:Helvetica,Arial,sans-serif;color:#1A1612;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FBF9F4;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#FFFFFF;border:1px solid #EFE8DA;">
 
-Si necesitas algo, escríbenos a contacto@fiestago.es.
+        <tr><td style="padding:28px 32px 24px;border-bottom:1px solid #EFE8DA;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:500;letter-spacing:0.02em;color:#1A1612;">
+            FiestaGo<span style="color:#B8956A;">.</span>
+          </div>
+          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#B8956A;margin-top:6px;font-weight:500;">
+            Bienvenida a la familia
+          </div>
+        </td></tr>
 
-Un abrazo,
-El equipo de FiestaGo`
-  return sendEmail({ to: provider.email, subject, text })
+        <tr><td style="padding:32px 32px 12px;">
+          <h1 style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:32px;line-height:1.15;font-weight:400;color:#1A1612;">
+            Enhorabuena, <em style="font-style:italic;color:#B8956A;">${(provider.name || '').replace(/</g, '&lt;')}</em>
+          </h1>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#5C534A;">
+            Tu perfil ha sido aprobado y ya está visible en FiestaGo. A partir de ahora recibirás solicitudes de reserva de clientes que celebran sus eventos en <strong style="color:#1A1612;">${(provider.city || 'tu ciudad').replace(/</g, '&lt;')}</strong>.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:8px 32px 24px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:1px solid #EFE8DA;border-bottom:1px solid #EFE8DA;">
+            ${[
+              ['Tu perfil ya aparece en el marketplace'],
+              ['Primera transacción sin comisión (0%)'],
+              ['Después, solo el 8% por venta cerrada'],
+              ['Sin permanencia ni cuotas mensuales'],
+            ].map(([t]) => `<tr><td style="padding:14px 0;border-bottom:1px solid #F2EDE2;font-size:14px;color:#1A1612;">
+              <span style="color:#B8956A;font-weight:700;margin-right:10px;">·</span> ${t}
+            </td></tr>`).join('')}
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:8px 32px 28px;text-align:center;">
+          <a href="${profileUrl}" style="display:inline-block;background:#1A1612;color:#FBF9F4;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:500;padding:14px 30px;border-radius:999px;margin:8px 4px;">Ver mi perfil →</a>
+          <a href="${panelUrl}" style="display:inline-block;background:#FFFFFF;color:#1A1612;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:500;padding:14px 30px;border-radius:999px;border:1px solid #1A1612;margin:8px 4px;">Acceder al panel</a>
+        </td></tr>
+
+        <tr><td style="padding:24px 32px;border-top:1px solid #EFE8DA;background:#FBF9F4;">
+          <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#5C534A;">
+            Si tienes cualquier duda, escríbenos a <a href="mailto:contacto@fiestago.es" style="color:#B8956A;text-decoration:none;border-bottom:1px solid #D4B895;">contacto@fiestago.es</a>.
+          </p>
+          <p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:14px;color:#1A1612;">
+            Un abrazo, el equipo de FiestaGo.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:18px 32px;background:#1A1612;text-align:center;">
+          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);">
+            FiestaGo · Marketplace de celebraciones · España
+          </div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: provider.email, subject, text, html })
 }
 
 export async function emailProviderRejection(provider: any, reason?: string) {
   if (!provider.email) return { ok: false, error: 'Proveedor sin email' }
   const subject = `Tu solicitud en FiestaGo`
-  const text = `Hola ${provider.name},
 
-Gracias por tu interés en FiestaGo. Tras revisar tu perfil, lamentablemente no podemos aprobarlo en este momento.
+  const text = [
+    `Hola ${provider.name},`,
+    ``,
+    `Gracias por tu interés en FiestaGo. Tras revisar tu perfil, lamentablemente no podemos aprobarlo en este momento.`,
+    ...(reason ? [``, `Motivo: ${reason}`] : []),
+    ``,
+    `Te invitamos a actualizar tu información (descripción más detallada, fotos de calidad, datos de contacto verificables) y volver a registrarte. Estaremos encantados de revisar tu solicitud nuevamente.`,
+    ``,
+    `Vuelve a registrarte aquí:`,
+    `https://fiestago.es/registro-proveedor`,
+    ``,
+    `Si tienes dudas, escríbenos a contacto@fiestago.es.`,
+    ``,
+    `Saludos,`,
+    `El equipo de FiestaGo`,
+  ].join('\n')
 
-${reason ? `Motivo: ${reason}\n\n` : ''}Te invitamos a actualizar tu información (descripción más detallada, fotos de calidad, datos de contacto verificables) y volver a registrarte. Estaremos encantados de revisar tu solicitud nuevamente.
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#FBF9F4;font-family:Helvetica,Arial,sans-serif;color:#1A1612;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#FFFFFF;border:1px solid #EFE8DA;">
+        <tr><td style="padding:28px 32px 24px;border-bottom:1px solid #EFE8DA;">
+          <div style="font-family:Georgia,serif;font-size:22px;font-weight:500;color:#1A1612;">FiestaGo<span style="color:#B8956A;">.</span></div>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <h1 style="margin:0 0 18px;font-family:Georgia,serif;font-size:26px;line-height:1.2;font-weight:400;color:#1A1612;">
+            Hola ${(provider.name || '').replace(/</g, '&lt;')},
+          </h1>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#5C534A;">
+            Gracias por tu interés en FiestaGo. Tras revisar tu perfil, lamentablemente <strong style="color:#1A1612;">no podemos aprobarlo en este momento</strong>.
+          </p>
+          ${reason ? `<div style="background:#FBF9F4;border-left:3px solid #B8956A;padding:14px 18px;margin:18px 0;font-size:14px;line-height:1.5;color:#5C534A;font-style:italic;">${reason.replace(/</g, '&lt;')}</div>` : ''}
+          <p style="margin:18px 0 24px;font-size:15px;line-height:1.65;color:#5C534A;">
+            Te invitamos a actualizar tu información (descripción más detallada, fotos de calidad, datos de contacto verificables) y volver a registrarte. Estaremos encantados de revisar tu solicitud nuevamente.
+          </p>
+          <div style="text-align:center;margin:28px 0 8px;">
+            <a href="https://fiestago.es/registro-proveedor" style="display:inline-block;background:#1A1612;color:#FBF9F4;text-decoration:none;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:500;padding:14px 30px;border-radius:999px;">Volver a registrarme →</a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:18px 32px;background:#1A1612;text-align:center;">
+          <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);">contacto@fiestago.es</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
 
-Para volver a registrarte:
-https://fiestago.es/registro-proveedor
-
-Si tienes dudas, escríbenos a contacto@fiestago.es.
-
-Saludos,
-El equipo de FiestaGo`
-  return sendEmail({ to: provider.email, subject, text })
+  return sendEmail({ to: provider.email, subject, text, html })
 }

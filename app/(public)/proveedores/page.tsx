@@ -175,7 +175,7 @@ export default function ProveedoresPage() {
                 <Link key={p.id} href={`/proveedores/${p.id}`}
                   className="group bg-white border border-stone-200 rounded-2xl overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-200 flex flex-col">
                   <div className="relative h-48 overflow-hidden bg-stone-100">
-                    <img src={getPhoto(p.category, p.photo_idx || 0, 600, 400)} alt={p.name}
+                    <img src={p.photo_url || getPhoto(p.category, p.photo_idx || 0, 600, 400)} alt={p.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.id}/600/400` }}/>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
