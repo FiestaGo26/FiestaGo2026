@@ -85,6 +85,12 @@ export default function AdminPage() {
   const [agentResults, setAgentResults] = useState<any[]>([])
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendStatus,  setSendStatus]   = useState<{ok:boolean,msg:string}|null>(null)
+  // Marketing / social_posts
+  const [socialPosts,    setSocialPosts]    = useState<any[]>([])
+  const [socialFilter,   setSocialFilter]   = useState<'pending'|'approved'|'published'|'all'>('pending')
+  const [socialStats,    setSocialStats]    = useState<Record<string, number>>({})
+  const [socialLoading,  setSocialLoading]  = useState(false)
+  const [editingPost,    setEditingPost]    = useState<any | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -198,6 +204,46 @@ export default function AdminPage() {
     setAgentRunning(false)
   }
 
+  // ── SOCIAL POSTS ──────────────────────────────────────────────────────────
+  const fetchSocialPosts = useCallback(async () => {
+    setSocialLoading(true)
+    const params = new URLSearchParams()
+    if (socialFilter !== 'all') params.set('status', socialFilter)
+    const res = await fetch(`/api/admin/social-posts?${params}`, { headers: adminHeaders() })
+    const data = await res.json()
+    setSocialPosts(data.posts || [])
+    setSocialStats(data.stats || {})
+    setSocialLoading(false)
+  }, [socialFilter])
+
+  useEffect(() => {
+    if (!authed) return
+    if (section !== 'marketing') return
+    fetchSocialPosts()
+  }, [authed, section, fetchSocialPosts])
+
+  async function updateSocialPost(id: string, updates: any) {
+    const res = await fetch('/api/admin/social-posts', {
+      method:'PATCH', headers: adminHeaders(),
+      body: JSON.stringify({ id, ...updates }),
+    })
+    if (res.ok) {
+      setSocialPosts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
+    }
+  }
+
+  async function deleteSocialPost(id: string) {
+    if (!confirm('¿Eliminar este post? También se borra el archivo del Storage.')) return
+    await fetch(`/api/admin/social-posts?id=${id}`, { method:'DELETE', headers: adminHeaders() })
+    setSocialPosts(prev => prev.filter(p => p.id !== id))
+  }
+
+  function copyToClipboardAndOpen(text: string, url: string, postId: string) {
+    navigator.clipboard.writeText(text).catch(() => {})
+    window.open(url, '_blank')
+    updateSocialPost(postId, { status:'published', published_at: new Date().toISOString() })
+  }
+
   // ── ENVIAR OUTREACH EMAIL ────────────────────────────────────────────────
   async function sendOutreachEmail() {
     if (!editProv) return
@@ -244,6 +290,7 @@ export default function AdminPage() {
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
+    { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
     { id:'settings',     icon:'⚙️', label:'Ajustes' },
   ]
 
@@ -633,6 +680,213 @@ export default function AdminPage() {
           )}
 
           {/* ══ SETTINGS ══ */}
+          {/* ══ MARKETING ══ */}
+          {section === 'marketing' && (
+            <div>
+              {/* Filtro chips */}
+              <div style={{ display:'flex', gap:8, marginBottom:18, alignItems:'center' }}>
+                {(['pending','approved','published','all'] as const).map(f => (
+                  <button key={f} onClick={()=>setSocialFilter(f)}
+                    style={{ padding:'6px 14px', borderRadius:20, border:'1px solid #1F2937',
+                      background: socialFilter===f ? '#F43F5E' : 'transparent',
+                      color: socialFilter===f ? '#fff' : '#9CA3AF',
+                      fontSize:11, fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>
+                    {f === 'all' ? 'Todos' : f === 'pending' ? 'Pendientes' : f === 'approved' ? 'Aprobados' : 'Publicados'}
+                    {socialStats[f] != null && f !== 'all' && (
+                      <span style={{ marginLeft:6, opacity:0.7 }}>({socialStats[f]})</span>
+                    )}
+                  </button>
+                ))}
+                <button onClick={fetchSocialPosts}
+                  style={{ marginLeft:'auto', padding:'6px 12px', borderRadius:8, border:'1px solid #1F2937',
+                    background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+                  🔄 Actualizar
+                </button>
+              </div>
+
+              {/* Empty state */}
+              {socialLoading ? (
+                <div style={{ padding:'60px', textAlign:'center', color:'#374151' }}>Cargando...</div>
+              ) : socialPosts.length === 0 ? (
+                <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14,
+                  padding:'48px 20px', textAlign:'center', color:'#374151' }}>
+                  <div style={{ fontSize:36, marginBottom:10 }}>📣</div>
+                  <p style={{ marginBottom:14 }}>No hay posts en este estado.</p>
+                  <p style={{ fontSize:11 }}>Genera posts ejecutando <code style={{background:'#0D1117', padding:'2px 6px', borderRadius:4}}>node fiegago-marketing-agent.mjs --confirm --n 3</code></p>
+                </div>
+              ) : (
+                /* Grid de posts */
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))', gap:14 }}>
+                  {socialPosts.map(p => {
+                    const statusColor = p.status === 'pending' ? '#F59E0B'
+                                      : p.status === 'approved' ? '#10B981'
+                                      : p.status === 'published' ? '#06B6D4'
+                                      : '#EF4444'
+                    return (
+                      <div key={p.id} style={{ background:'#111827', border:'1px solid #1F2937',
+                        borderRadius:14, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+
+                        {/* Media preview */}
+                        <div style={{ position:'relative', background:'#000', aspectRatio:'1/1', overflow:'hidden' }}>
+                          {p.media_type === 'video' ? (
+                            <video src={p.media_url} autoPlay muted loop playsInline
+                              style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                          ) : (
+                            <img src={p.media_url} alt=""
+                              style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                          )}
+                          <div style={{ position:'absolute', top:8, left:8, padding:'3px 9px',
+                            background:'rgba(0,0,0,0.7)', borderRadius:20, fontSize:10,
+                            fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase',
+                            color: statusColor }}>
+                            {p.status}
+                          </div>
+                          <div style={{ position:'absolute', top:8, right:8, padding:'3px 9px',
+                            background:'rgba(0,0,0,0.7)', borderRadius:6, fontSize:10, color:'#9CA3AF' }}>
+                            {p.media_type === 'video' ? '🎬 Vídeo' : '📷 Imagen'}
+                          </div>
+                        </div>
+
+                        {/* Body */}
+                        <div style={{ padding:14, display:'flex', flexDirection:'column', gap:10, flex:1 }}>
+                          <div style={{ fontSize:10, fontWeight:700, color:'#06B6D4',
+                            textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                            {p.template_label || p.template_id}
+                          </div>
+                          <div style={{ fontSize:12, lineHeight:1.5, color:'#E5E7EB',
+                            display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
+                            {p.caption_instagram || ''}
+                          </div>
+                          {(p.hashtags && p.hashtags.length > 0) && (
+                            <div style={{ fontSize:10, color:'#06B6D4', opacity:0.7, lineHeight:1.5 }}>
+                              {p.hashtags.slice(0, 6).map((h:string) => '#' + h).join(' ')}
+                              {p.hashtags.length > 6 && ` +${p.hashtags.length - 6}`}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Acciones */}
+                        <div style={{ borderTop:'1px solid #1F2937', padding:10, display:'flex', gap:6, flexWrap:'wrap' }}>
+                          {p.status === 'pending' && (
+                            <>
+                              <button onClick={()=>updateSocialPost(p.id, { status:'approved' })}
+                                style={{ flex:1, padding:'7px', borderRadius:7, border:'none',
+                                  background:'#10B98122', color:'#10B981', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                                ✓ Aprobar
+                              </button>
+                              <button onClick={()=>updateSocialPost(p.id, { status:'rejected' })}
+                                style={{ padding:'7px 12px', borderRadius:7, border:'none',
+                                  background:'#EF444422', color:'#EF4444', fontSize:11, cursor:'pointer' }}>
+                                ✕
+                              </button>
+                            </>
+                          )}
+                          {p.status === 'approved' && (
+                            <>
+                              <button onClick={()=>copyToClipboardAndOpen(
+                                  `${p.caption_instagram}\n\n${(p.hashtags||[]).map((h:string)=>'#'+h).join(' ')}`,
+                                  'https://www.instagram.com/', p.id)}
+                                style={{ flex:1, padding:'8px', borderRadius:7, border:'none',
+                                  background:'#E1306C', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                                📸 IG (caption copiado)
+                              </button>
+                              <button onClick={()=>copyToClipboardAndOpen(
+                                  `${p.caption_tiktok || p.caption_instagram}\n\n${(p.hashtags||[]).map((h:string)=>'#'+h).join(' ')}`,
+                                  'https://www.tiktok.com/upload', p.id)}
+                                style={{ flex:1, padding:'8px', borderRadius:7, border:'none',
+                                  background:'#000', color:'#fff', fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                                🎵 TikTok
+                              </button>
+                            </>
+                          )}
+                          {p.status === 'published' && (
+                            <span style={{ flex:1, padding:'8px', textAlign:'center', fontSize:11, color:'#06B6D4' }}>
+                              ✓ Publicado {p.published_at ? ago(p.published_at) : ''}
+                            </span>
+                          )}
+                          <button onClick={()=>setEditingPost(p)}
+                            style={{ padding:'7px 10px', borderRadius:7, border:'1px solid #1F2937',
+                              background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+                            ✏️
+                          </button>
+                          <button onClick={()=>deleteSocialPost(p.id)}
+                            style={{ padding:'7px 10px', borderRadius:7, border:'1px solid #EF444433',
+                              background:'transparent', color:'#EF4444', fontSize:11, cursor:'pointer' }}>
+                            🗑️
+                          </button>
+                        </div>
+
+                        {/* Media URL para descargar */}
+                        <a href={p.media_url} target="_blank" rel="noreferrer"
+                          style={{ fontSize:10, padding:'6px 10px', textAlign:'center',
+                            background:'#0D1117', color:'#06B6D4', textDecoration:'none',
+                            borderTop:'1px solid #1F2937' }}>
+                          ⬇ Descargar {p.media_type === 'video' ? 'vídeo' : 'imagen'}
+                        </a>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Editor de caption */}
+              {editingPost && (
+                <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)' }}
+                    onClick={()=>setEditingPost(null)}/>
+                  <div style={{ position:'relative', background:'#111827', borderRadius:20, width:'100%', maxWidth:560,
+                    maxHeight:'88vh', overflowY:'auto', margin:'0 20px', border:'1px solid #1F2937', padding:24 }}>
+                    <div style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>✏️ Editar post</div>
+
+                    <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
+                      marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Caption Instagram</label>
+                    <textarea rows={5} value={editingPost.caption_instagram || ''}
+                      onChange={e=>setEditingPost({ ...editingPost, caption_instagram: e.target.value })}
+                      style={{ width:'100%', background:'#0D1117', border:'1px solid #1F2937', borderRadius:8,
+                        padding:'9px 11px', fontSize:13, color:'#F0F4FF', outline:'none',
+                        boxSizing:'border-box', resize:'vertical', marginBottom:12 }}/>
+
+                    <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
+                      marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Caption TikTok</label>
+                    <textarea rows={3} value={editingPost.caption_tiktok || ''}
+                      onChange={e=>setEditingPost({ ...editingPost, caption_tiktok: e.target.value })}
+                      style={{ width:'100%', background:'#0D1117', border:'1px solid #1F2937', borderRadius:8,
+                        padding:'9px 11px', fontSize:13, color:'#F0F4FF', outline:'none',
+                        boxSizing:'border-box', resize:'vertical', marginBottom:12 }}/>
+
+                    <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
+                      marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Hashtags (separados por coma)</label>
+                    <input value={(editingPost.hashtags || []).join(', ')}
+                      onChange={e=>setEditingPost({ ...editingPost, hashtags: e.target.value.split(',').map((h:string)=>h.trim().replace(/^#/,'')).filter(Boolean) })}
+                      style={{ width:'100%', background:'#0D1117', border:'1px solid #1F2937', borderRadius:8,
+                        padding:'9px 11px', fontSize:13, color:'#F0F4FF', outline:'none',
+                        boxSizing:'border-box', marginBottom:18 }}/>
+
+                    <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+                      <button onClick={()=>setEditingPost(null)}
+                        style={{ padding:'9px 18px', borderRadius:10, border:'1px solid #1F2937',
+                          background:'transparent', color:'#9CA3AF', fontSize:13, cursor:'pointer' }}>
+                        Cancelar
+                      </button>
+                      <button onClick={async()=>{
+                        await updateSocialPost(editingPost.id, {
+                          caption_instagram: editingPost.caption_instagram,
+                          caption_tiktok:    editingPost.caption_tiktok,
+                          hashtags:          editingPost.hashtags,
+                        })
+                        setEditingPost(null)
+                      }}
+                        style={{ padding:'9px 22px', borderRadius:10, border:'none',
+                          background:'#F43F5E', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                        Guardar cambios
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {section === 'settings' && (
             <div style={{ maxWidth:560 }}>
               {[
