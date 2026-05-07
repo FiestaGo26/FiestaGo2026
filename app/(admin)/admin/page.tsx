@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase'
 import type { Provider, Notification } from '@/lib/supabase'
 import { CATEGORIES, getPhoto } from '@/lib/constants'
@@ -163,11 +164,21 @@ export default function AdminPage() {
 
   // ── ACTIONS ──────────────────────────────────────────────────────────────
   async function updateProvider(id: string, updates: Partial<Provider>) {
-    await fetch('/api/admin/providers', {
+    const res = await fetch('/api/admin/providers', {
       method:'PATCH', headers: adminHeaders(),
       body: JSON.stringify({ id, ...updates }),
     })
-    setProviders(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p))
+    const data = await res.json().catch(() => ({}))
+    // Usar la fila completa del servidor para que campos como contactable y photo_url se sincronicen
+    const fresh = (data && data.provider) ? data.provider as Provider : { ...{}, ...updates }
+    setProviders(prev => prev.map(p => p.id === id ? { ...p, ...fresh } : p))
+    // Si abierto en modal, actualizarlo también
+    setEditProv(prev => prev && prev.id === id ? { ...prev, ...fresh } : prev)
+    // Toast de feedback (si hay flujos especiales)
+    if (data && data.flow === 'outreach_sent')   toast.success('Email de captación enviado · proveedor sigue pendiente')
+    else if (data && data.flow === 'approval')   toast.success(`Aprobado${data.welcomeEmail ? ' · email bienvenida enviado' : ''}${data.imageGenerated ? ' · imagen generada' : ''}`)
+    else if (updates.status === 'rejected')      toast.success(`Rechazado${data?.rejectionEmail ? ' · email enviado' : ''}`)
+    return data
   }
 
   async function deleteProvider(id: string) {
