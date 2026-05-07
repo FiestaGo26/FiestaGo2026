@@ -9,10 +9,16 @@ import { CATEGORIES } from '@/lib/constants'
 type Service = {
   id: string
   name: string
-  description: string
-  price: number
-  duration: string
-  maxGuests: number | null
+  description: string | null
+  price: number | null
+  price_unit: string
+  duration: string | null
+  max_guests: number | null
+  media_type: 'image' | 'video' | 'none'
+  media_url: string | null
+  thumbnail_url: string | null
+  status: string
+  sort_order: number
 }
 
 type Booking = {
@@ -71,6 +77,7 @@ export default function ProveedorPanelPage() {
   const [loading,  setLoading]  = useState(true)
   const [saving,   setSaving]   = useState(false)
   const [userId,   setUserId]   = useState<string | null>(null)
+  const [noProviderForEmail, setNoProviderForEmail] = useState<string | null>(null)
 
   // Availability
   const now = new Date()
@@ -86,8 +93,12 @@ export default function ProveedorPanelPage() {
   // Services form
   const [showNewSvc, setShowNewSvc] = useState(false)
   const [editSvc,    setEditSvc]    = useState<Service|null>(null)
-  const [newSvc,     setNewSvc]     = useState({
-    name:'', description:'', price:'', duration:'Todo el día', maxGuests:''
+  const [newSvc, setNewSvc] = useState<{
+    name: string; description: string; price: string; duration: string; maxGuests: string
+    mediaFile: File | null; mediaPreview: string | null
+  }>({
+    name: '', description: '', price: '', duration: 'Todo el día', maxGuests: '',
+    mediaFile: null, mediaPreview: null,
   })
 
   // Security form
@@ -109,10 +120,19 @@ export default function ProveedorPanelPage() {
       // Find provider by email
       const res  = await fetch(`/api/proveedor/profile?email=${encodeURIComponent(email)}`)
       const data = await res.json()
-      if (!data.provider) { router.push('/registro-proveedor'); return }
+      if (!data.provider) {
+        setNoProviderForEmail(email)
+        setLoading(false)
+        return
+      }
 
       setProvider(data.provider)
-      setServices(data.services || [])
+      // Cargar servicios desde la nueva tabla provider_services
+      try {
+        const svcRes = await fetch(`/api/proveedor/services?provider_id=${data.provider.id}`)
+        const svcData = await svcRes.json()
+        setServices(svcData.services || [])
+      } catch { setServices([]) }
       setProfile({
         name:        data.provider.name || '',
         phone:       data.provider.phone || '',
@@ -198,54 +218,85 @@ export default function ProveedorPanelPage() {
     }
   }
 
+  async function uploadMedia(file: File): Promise<{ url: string; media_type: 'image' | 'video' } | null> {
+    if (!provider) return null
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('provider_id', provider.id)
+    const res = await fetch('/api/proveedor/services/upload', { method: 'POST', body: fd })
+    const data = await res.json()
+    if (!res.ok) { toast.error(data.error || 'Error subiendo archivo'); return null }
+    return { url: data.url, media_type: data.media_type }
+  }
+
   async function addService() {
     if (!newSvc.name || !newSvc.price) { toast.error('Nombre y precio obligatorios'); return }
     if (!provider) return
+    setSaving(true)
     try {
+      let media_type: 'image' | 'video' | 'none' = 'none'
+      let media_url: string | null = null
+      if (newSvc.mediaFile) {
+        const upl = await uploadMedia(newSvc.mediaFile)
+        if (upl) { media_url = upl.url; media_type = upl.media_type }
+      }
+
       const res = await fetch('/api/proveedor/services', {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({
-          providerId:  provider.id,
+          provider_id: provider.id,
           name:        newSvc.name,
-          description: newSvc.description,
+          description: newSvc.description || null,
           price:       parseFloat(newSvc.price),
           duration:    newSvc.duration,
-          maxGuests:   newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
+          max_guests:  newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
+          media_type,
+          media_url,
         }),
       })
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      if (!res.ok) throw new Error(data.error)
       setServices(s => [...s, data.service])
-      setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'' })
+      setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'',
+                  mediaFile: null, mediaPreview: null })
       setShowNewSvc(false)
       toast.success('Servicio añadido ✓')
     } catch (err: any) {
       toast.error(err.message)
     }
+    setSaving(false)
   }
 
   async function updateService() {
     if (!editSvc || !provider) return
+    setSaving(true)
     try {
       const res = await fetch('/api/proveedor/services', {
         method: 'PATCH',
         headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ ...editSvc, providerId: provider.id }),
+        body: JSON.stringify({
+          id:           editSvc.id,
+          name:         editSvc.name,
+          description:  editSvc.description,
+          price:        editSvc.price,
+          duration:     editSvc.duration,
+          max_guests:   editSvc.max_guests,
+          status:       editSvc.status,
+        }),
       })
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      if (!res.ok) throw new Error(data.error)
       setServices(s => s.map(x => x.id === editSvc.id ? data.service : x))
       setEditSvc(null)
       toast.success('Servicio actualizado ✓')
-    } catch (err: any) {
-      toast.error(err.message)
-    }
+    } catch (err: any) { toast.error(err.message) }
+    setSaving(false)
   }
 
   async function deleteService(id: string) {
     if (!provider || !confirm('¿Eliminar este servicio?')) return
-    await fetch(`/api/proveedor/services?id=${id}&providerId=${provider.id}`, { method:'DELETE' })
+    await fetch(`/api/proveedor/services?id=${id}`, { method:'DELETE' })
     setServices(s => s.filter(x => x.id !== id))
     toast.success('Servicio eliminado')
   }
@@ -292,7 +343,31 @@ export default function ProveedorPanelPage() {
     available: Object.values(availability).filter(Boolean).length,
   }
 
-  if (loading) return (
+  if (noProviderForEmail) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <div className="text-5xl mb-4">🤔</div>
+          <h1 className="font-serif text-2xl font-bold text-ink mb-3">No tienes perfil de proveedor</h1>
+          <p className="text-ink/60 text-sm mb-6 leading-relaxed">
+            La cuenta <strong>{noProviderForEmail}</strong> no tiene un perfil de proveedor asociado en FiestaGo.
+          </p>
+          <div className="flex flex-col gap-3">
+            <a href="/registro-proveedor"
+              className="block w-full py-3 rounded-xl bg-coral text-white font-semibold text-sm">
+              Registrarme como proveedor
+            </a>
+            <button onClick={async () => { await supabase.auth.signOut(); router.push('/proveedor/login') }}
+              className="block w-full py-3 rounded-xl border border-stone-200 text-ink/70 font-semibold text-sm">
+              Cerrar sesión y entrar con otro email
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+    if (loading) return (
     <div className="min-h-screen bg-cream flex items-center justify-center">
       <div className="text-ink/40 text-sm">Cargando tu panel...</div>
     </div>
@@ -482,6 +557,35 @@ export default function ProveedorPanelPage() {
                   </div>
                 </div>
                 <div className="flex gap-3">
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#7C7268', marginBottom:6 }}>
+                      Foto o vídeo (opcional, max 50MB vídeo / 10MB imagen)
+                    </label>
+                    <input type="file"
+                      accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                      onChange={e => {
+                        const f = e.target.files?.[0]; if (!f) return
+                        const url = URL.createObjectURL(f)
+                        setNewSvc(s => ({ ...s, mediaFile: f, mediaPreview: url }))
+                      }}
+                      style={{ width:'100%', padding:'8px 0', fontSize:13 }} />
+                    {newSvc.mediaPreview && (
+                      <div style={{ marginTop:10, position:'relative', display:'inline-block' }}>
+                        {newSvc.mediaFile?.type?.startsWith('video') ? (
+                          <video src={newSvc.mediaPreview} controls
+                            style={{ maxWidth:200, maxHeight:200, borderRadius:8, border:'1px solid #E4D9C6' }} />
+                        ) : (
+                          <img src={newSvc.mediaPreview} alt="preview"
+                            style={{ maxWidth:200, maxHeight:200, borderRadius:8, border:'1px solid #E4D9C6' }} />
+                        )}
+                        <button onClick={() => setNewSvc(s => ({...s, mediaFile: null, mediaPreview: null }))}
+                          style={{ position:'absolute', top:4, right:4, padding:'4px 8px', background:'rgba(0,0,0,0.7)', color:'#fff', border:'none', borderRadius:6, fontSize:11, cursor:'pointer' }}>
+                          ✕ Quitar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <button onClick={addService}
                     className="flex-1 bg-coral text-white font-bold py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">
                     Añadir servicio
