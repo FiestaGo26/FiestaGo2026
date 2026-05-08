@@ -617,10 +617,10 @@ export default function ProveedorPanelPage() {
                         <input value={editSvc.name} onChange={e => setEditSvc(s=>s?{...s,name:e.target.value}:null)}
                           className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
                       </div>
-                      <input type="number" value={editSvc.price}
-                        onChange={e => setEditSvc(s=>s?{...s,price:parseFloat(e.target.value)}:null)}
+                      <input type="number" value={editSvc.price ?? ''}
+                        onChange={e => setEditSvc(s=>s?{...s,price:parseFloat(e.target.value) || null}:null)}
                         className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
-                      <select value={editSvc.duration}
+                      <select value={editSvc.duration ?? ''}
                         onChange={e => setEditSvc(s=>s?{...s,duration:e.target.value}:null)}
                         className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral">
                         {['1 hora','2 horas','3 horas','4 horas','6 horas','Todo el día','Fin de semana'].map(d=>(
@@ -628,7 +628,7 @@ export default function ProveedorPanelPage() {
                         ))}
                       </select>
                       <div className="col-span-2">
-                        <textarea value={editSvc.description} rows={2}
+                        <textarea value={editSvc.description ?? ''} rows={2}
                           onChange={e => setEditSvc(s=>s?{...s,description:e.target.value}:null)}
                           className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral resize-none"/>
                       </div>
@@ -646,7 +646,7 @@ export default function ProveedorPanelPage() {
                       <div className="flex items-center gap-3 mb-1.5">
                         <h3 className="font-semibold text-ink">{svc.name}</h3>
                         <span className="text-xs text-ink/50 bg-stone-100 px-2 py-0.5 rounded-full">{svc.duration}</span>
-                        {svc.maxGuests&&<span className="text-xs text-ink/50">max. {svc.maxGuests} pax</span>}
+                        {svc.max_guests!=null&&<span className="text-xs text-ink/50">max. {svc.max_guests} pax</span>}
                       </div>
                       {svc.description&&<p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
                       <div className="font-serif text-xl font-bold text-coral">{svc.price.toLocaleString()}€</div>
