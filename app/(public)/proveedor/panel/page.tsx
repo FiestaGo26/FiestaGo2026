@@ -649,7 +649,7 @@ export default function ProveedorPanelPage() {
                         {svc.max_guests!=null&&<span className="text-xs text-ink/50">max. {svc.max_guests} pax</span>}
                       </div>
                       {svc.description&&<p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
-                      <div className="font-serif text-xl font-bold text-coral">{svc.price.toLocaleString()}€</div>
+                      <div className="font-serif text-xl font-bold text-coral">{svc.price!=null ? `${svc.price.toLocaleString()}€` : '—'}</div>
                     </div>
                     <div className="flex gap-2 ml-4">
                       <button onClick={() => setEditSvc(svc)}
