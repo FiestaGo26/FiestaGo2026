@@ -556,39 +556,44 @@ export default function ProveedorPanelPage() {
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#7C7268', marginBottom:6 }}>
-                      Foto o vídeo (opcional, max 50MB vídeo / 10MB imagen)
-                    </label>
-                    <input type="file"
-                      accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
-                      onChange={e => {
-                        const f = e.target.files?.[0]; if (!f) return
-                        const url = URL.createObjectURL(f)
-                        setNewSvc(s => ({ ...s, mediaFile: f, mediaPreview: url }))
-                      }}
-                      style={{ width:'100%', padding:'8px 0', fontSize:13 }} />
-                    {newSvc.mediaPreview && (
-                      <div style={{ marginTop:10, position:'relative', display:'inline-block' }}>
-                        {newSvc.mediaFile?.type?.startsWith('video') ? (
-                          <video src={newSvc.mediaPreview} controls
-                            style={{ maxWidth:200, maxHeight:200, borderRadius:8, border:'1px solid #E4D9C6' }} />
-                        ) : (
-                          <img src={newSvc.mediaPreview} alt="preview"
-                            style={{ maxWidth:200, maxHeight:200, borderRadius:8, border:'1px solid #E4D9C6' }} />
-                        )}
-                        <button onClick={() => setNewSvc(s => ({...s, mediaFile: null, mediaPreview: null }))}
-                          style={{ position:'absolute', top:4, right:4, padding:'4px 8px', background:'rgba(0,0,0,0.7)', color:'#fff', border:'none', borderRadius:6, fontSize:11, cursor:'pointer' }}>
-                          ✕ Quitar
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                {/* Upload de foto o vídeo (a ancho completo, ANTES de los botones) */}
+                <div className="mb-4 mt-2 p-4 border-2 border-dashed border-coral/30 rounded-xl bg-coral/5">
+                  <label className="block text-xs font-bold text-ink/60 uppercase tracking-widest mb-2">
+                    📸 Foto o vídeo del servicio (opcional)
+                  </label>
+                  <p className="text-xs text-ink/50 mb-3">
+                    Formatos: JPG, PNG, WEBP (máx. 10MB) · MP4, MOV, WEBM (máx. 50MB)
+                  </p>
+                  <input type="file"
+                    accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"
+                    onChange={e => {
+                      const f = e.target.files?.[0]; if (!f) return
+                      const url = URL.createObjectURL(f)
+                      setNewSvc(s => ({ ...s, mediaFile: f, mediaPreview: url }))
+                    }}
+                    className="block w-full text-sm text-ink/70 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-coral file:text-white hover:file:bg-coral-dark file:cursor-pointer"
+                  />
+                  {newSvc.mediaPreview && (
+                    <div className="mt-3 relative inline-block">
+                      {newSvc.mediaFile?.type?.startsWith('video') ? (
+                        <video src={newSvc.mediaPreview} controls
+                          className="max-w-[280px] max-h-[200px] rounded-lg border border-stone-200" />
+                      ) : (
+                        <img src={newSvc.mediaPreview} alt="preview"
+                          className="max-w-[280px] max-h-[200px] rounded-lg border border-stone-200" />
+                      )}
+                      <button onClick={() => setNewSvc(s => ({...s, mediaFile: null, mediaPreview: null }))}
+                        className="absolute top-1 right-1 px-2 py-1 bg-black/70 text-white text-xs rounded">
+                        ✕ Quitar
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-                  <button onClick={addService}
-                    className="flex-1 bg-coral text-white font-bold py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">
-                    Añadir servicio
+                <div className="flex gap-3">
+                  <button onClick={addService} disabled={saving}
+                    className="flex-1 bg-coral text-white font-bold py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors disabled:opacity-50">
+                    {saving ? 'Subiendo...' : 'Añadir servicio'}
                   </button>
                   <button onClick={() => setShowNewSvc(false)}
                     className="px-5 border border-stone-200 rounded-xl text-sm text-ink/60">
