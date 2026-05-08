@@ -42,12 +42,13 @@ export default function ProviderDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    fetch(`/api/providers?limit=1`)
+    // Lookup directo: primero por id, fallback por slug si no es UUID
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    const url = isUUID ? `/api/providers?id=${id}` : `/api/providers?slug=${encodeURIComponent(id)}`
+    fetch(url)
       .then(r => r.json())
       .then(data => {
-        // Find by id from all providers
-        const found = data.providers?.find((p: Provider) => p.id === id)
-        setProvider(found || null)
+        setProvider(data.provider || null)
         setLoading(false)
       })
       .catch(() => setLoading(false))

@@ -7,11 +7,24 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
 
+  const id       = searchParams.get('id')
+  const slug     = searchParams.get('slug')
   const category = searchParams.get('category')
   const city     = searchParams.get('city')
   const featured = searchParams.get('featured')
   const limit    = parseInt(searchParams.get('limit') || '50')
   const offset   = parseInt(searchParams.get('offset') || '0')
+
+  // Lookup directo por id o slug (para ficha individual)
+  if (id || slug) {
+    let q = supabase.from('providers').select('*').eq('status', 'approved')
+    if (id)   q = q.eq('id', id)
+    if (slug) q = q.eq('slug', slug)
+    const { data, error } = await q.maybeSingle()
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data) return NextResponse.json({ provider: null }, { status: 404 })
+    return NextResponse.json({ provider: data })
+  }
 
   let query = supabase
     .from('providers')
