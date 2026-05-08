@@ -1,0 +1,105 @@
+{
+  "templates": [
+    {
+      "id": "inspiration_video",
+      "label": "Inspiración (vídeo hook)",
+      "weight": 25,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Cinematic 5-second video of {scene}, vibrant warm colors, golden hour, slight motion blur, joyful atmosphere, premium wedding/event editorial cinematic style, no text overlays",
+      "scenes": [
+        "a couple toasting champagne with confetti falling around them",
+        "festoon string lights flickering above a crowded dancefloor at twilight",
+        "hands cutting an elegant tiered cake at a celebration",
+        "a bouquet of pampas grass and roses being thrown into the air",
+        "guests dancing with sparklers in their hands at night",
+        "champagne being poured with bubbles overflowing",
+        "rose petals falling slowly on a wedding aisle",
+        "fireworks reflecting on faces of laughing friends"
+      ],
+      "caption_brief": "Caption corto (max 120 chars), tono vibrante y joven en castellano, con un hook punzante (pregunta o frase que genere FOMO). Acaba con CTA suave: 'Tu fiesta empieza en fiestago.es'. SIN emojis al inicio, máximo 2 emojis estratégicos al final.",
+      "hashtags_base": ["fiestago", "celebracion", "eventos", "fiestasespaña", "weddingspain", "celebracionesúnicas"]
+    },
+    {
+      "id": "tip_educational",
+      "label": "Tip educativo (carrusel imagen)",
+      "weight": 20,
+      "media": "image",
+      "prompt_template": "Aesthetic flat-lay photograph of wedding planning materials on a marble surface, soft natural light, ivory and gold tones, premium editorial style, no text or letters visible, elegant minimal composition",
+      "topics": [
+        "5 cosas que toda boda olvida planificar (y cómo evitarlo)",
+        "El timing perfecto: cuándo reservar cada proveedor",
+        "Cómo dividir tu presupuesto de boda sin pasarte",
+        "Errores típicos al organizar un cumple en casa",
+        "Por qué reservar tarde te cuesta el doble",
+        "La diferencia entre una fiesta organizada y una caos",
+        "Comuniones sin estrés: el orden ideal de reservas",
+        "Despedidas: planificar 6 meses antes vs improvisar"
+      ],
+      "caption_brief": "Caption tipo carrusel educativo (200-300 chars), tono cercano pero profesional, abre con un hook problema, da 2-3 bullet con tips, cierra con CTA 'Explora packs en fiestago.es'. Tono vibrante pero útil.",
+      "hashtags_base": ["organizareventos", "tipsboda", "fiestaorganizada", "bodaespaña", "cumpleperfecto", "eventosespana"]
+    },
+    {
+      "id": "pack_promo",
+      "label": "Promo de pack",
+      "weight": 20,
+      "media": "image",
+      "prompt_template": "Premium editorial photograph of {pack_visual}, golden hour, soft warm tones, aspirational lifestyle aesthetic, no text overlays, magazine-quality composition",
+      "packs": [
+        { "visual": "an intimate Spanish wedding ceremony at sunset with candle-lit tables", "name": "Pack Boda Íntima", "price": "3.200€" },
+        { "visual": "a luxurious birthday celebration with balloon arches and elegant dinner setup", "name": "Pack Cumple Premium", "price": "680€" },
+        { "visual": "a bachelorette party in a beach villa with cocktails and flower decorations", "name": "Pack Despedida en Villa", "price": "1.450€" },
+        { "visual": "an elegant communion lunch with white flowers and pastel decorations", "name": "Pack Comunión Clásica", "price": "780€" }
+      ],
+      "caption_brief": "Caption promocional, tono entusiasta. Estructura: hook con beneficio principal → qué incluye (3 puntos) → precio → CTA 'Reserva en fiestago.es'. Genera urgencia sin ser cargante.",
+      "hashtags_base": ["fiestago", "packboda", "celebracionperfecta", "fiestaorganizada", "eventos2026", "bodasespaña"]
+    },
+    {
+      "id": "social_proof",
+      "label": "Testimonio cliente",
+      "weight": 15,
+      "media": "image",
+      "prompt_template": "Joyful candid photograph of {client_scene}, warm authentic emotion, soft natural light, real-moment editorial style, no text overlays",
+      "scenes": [
+        "two friends laughing during a toast at a casual home party",
+        "a couple looking at each other lovingly at their wedding ceremony",
+        "a mother hugging her child at a communion celebration",
+        "a group of friends raising glasses at a bachelorette dinner"
+      ],
+      "caption_brief": "Caption tipo testimonio: cita entre comillas (40-80 chars), nombre + ciudad + tipo de evento, cierra con CTA suave 'Tu historia es la próxima · fiestago.es'. Tono auténtico y emocional.",
+      "hashtags_base": ["fiestagofamilia", "clientesfelices", "celebracionreal", "fiestaorganizada", "fiestago"]
+    },
+    {
+      "id": "behind_scenes",
+      "label": "Behind the scenes",
+      "weight": 10,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Behind-the-scenes 5-second video showing {bts_scene}, candid documentary style, warm authentic colors, slight handheld camera motion, no text overlays",
+      "scenes": [
+        "florists arranging cascading wedding bouquets in a sun-lit workshop",
+        "a chef plating elegant tapas in a professional kitchen",
+        "a DJ setting up speakers and lights at golden hour at a venue",
+        "wedding planners reviewing seating charts on a long table covered in materials"
+      ],
+      "caption_brief": "Caption tipo BTS: revela algo del proceso (qué hacemos detrás de un evento), genera transparencia y confianza. Termina con 'Por eso encajamos · fiestago.es'.",
+      "hashtags_base": ["bts", "fiestago", "comonacenfiestaperfectas", "behindthescenes", "fiestaorganizada"]
+    },
+    {
+      "id": "fomo_seasonal",
+      "label": "FOMO temporada",
+      "weight": 10,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Cinematic 5-second video of {seasonal_scene}, urgent yet aspirational mood, vibrant colors, golden hour, professional editorial quality, no text overlays",
+      "scenes": [
+        "a calendar with marked wedding dates rapidly filling up",
+        "an elegant venue with the last few empty chairs being filled",
+        "champagne bottles lined up on ice with hands grabbing them",
+        "string lights turning on across a venue at dusk"
+      ],
+      "caption_brief": "Caption con urgencia: 'Quedan X fechas/plazas/packs en {ciudad}'. Tono vibrante, FOMO sin agobiar. CTA 'Reserva ya en fiestago.es'.",
+      "hashtags_base": ["plazaslimitadas", "fiestaurgente", "fiestago", "celebra2026", "eventoespaña"]
+    }
+  ]
+}
