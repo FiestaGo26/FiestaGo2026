@@ -18,6 +18,7 @@ type Provider = {
   featured: boolean
   verified: boolean
   photo_idx: number
+  photo_url: string | null
   specialties: string[]
 }
 
