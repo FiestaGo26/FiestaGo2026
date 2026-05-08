@@ -37,7 +37,10 @@ export default function RegistroProveedorPage() {
 
     setLoading(true)
     try {
-      // 1. Crear cuenta en Supabase Auth
+      // 1. Intentar crear cuenta en Supabase Auth.
+      //    Si el auth user ya existe (caso "orphan": auth creado en intento anterior
+      //    pero el provider no se llegó a insertar), intentamos sign-in con la
+      //    misma contraseña para continuar y crear solo el provider.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email:    form.email,
         password: form.password,
@@ -47,9 +50,22 @@ export default function RegistroProveedorPage() {
         },
       })
 
-      if (authError) throw authError
+      // Caso "user already registered" (orphan): probamos sign-in
+      const isAlreadyRegistered = authError && (
+        /already registered|already exists|user already|user_already/i.test(authError.message || '')
+      )
+      if (authError && !isAlreadyRegistered) throw authError
+      if (isAlreadyRegistered) {
+        const { error: signInErr } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
+        })
+        if (signInErr) {
+          throw new Error('Ya existe una cuenta con este email. Si la contraseña es correcta, espera unos segundos y reintenta. Si no la recuerdas, usa "He olvidado mi contraseña" desde la página de acceso.')
+        }
+      }
 
-      // 2. Guardar datos del proveedor en la tabla providers
+      // 2. Crear el provider row. El POST detecta si ya existe por email.
       const res = await fetch('/api/providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,10 +86,16 @@ export default function RegistroProveedorPage() {
       })
 
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      if (!res.ok || data.error) {
+        // Si el provider ya existe (constraint violation), lo damos por OK
+        const msg = (data.error || '').toLowerCase()
+        if (!msg.includes('duplicate') && !msg.includes('already')) {
+          throw new Error(data.error || `Error ${res.status}`)
+        }
+      }
 
       setStep(2)
-      toast.success('¡Registro completado!')
+      toast.success(isAlreadyRegistered ? 'Cuenta vinculada y perfil creado' : '¡Registro completado!')
 
     } catch (err: any) {
       toast.error(err.message || 'Error al registrarse. Inténtalo de nuevo.')

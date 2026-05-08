@@ -42,6 +42,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
   }
 
+  // Idempotencia: si ya existe un proveedor con este email, devolverlo en lugar de duplicar
+  if (email) {
+    const { data: existing } = await supabase
+      .from('providers').select('*')
+      .ilike('email', email.toLowerCase().trim())
+      .maybeSingle()
+    if (existing) {
+      return NextResponse.json({ provider: existing, alreadyExists: true }, { status: 200 })
+    }
+  }
+
   // Calcular contactable: cualquier canal accionable
   const ownWebsite = website && !/instagram\.com|tiktok\.com/i.test(website)
   const contactable = !!(email || phone || ownWebsite || instagram)
