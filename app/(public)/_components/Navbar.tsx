@@ -62,46 +62,37 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          {auth.loading ? (
-            // Skeleton para evitar parpadeo entre estados
-            <div className="w-32 h-9 bg-stone-100 rounded-xl animate-pulse hidden sm:block" />
-          ) : auth.email ? (
-            // LOGUEADO — Mi cuenta + Salir
+          {/* Mi panel + Salir SOLO si está logueado (extra, antes de los botones de auth) */}
+          {auth.email && !auth.loading && (
             <>
               <Link href={panelHref}
-                className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:inline-flex items-center gap-2">
+                className="text-sm font-semibold bg-ink text-white px-4 py-2 rounded-xl hover:bg-ink/85 transition-colors hidden md:inline-flex items-center gap-2">
                 {auth.isProvider ? '🛠 Mi panel' : '📅 Mi cuenta'}
               </Link>
               <button onClick={handleLogout}
-                className="text-xs text-ink/50 hover:text-coral px-3 py-2 transition-colors hidden md:block">
+                className="text-xs text-ink/50 hover:text-coral px-2 transition-colors hidden lg:block">
                 Salir
               </button>
-              <Link href="/servicios"
-                className="text-sm font-bold bg-coral text-white px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors shadow-coral">
-                Reservar
-              </Link>
-            </>
-          ) : (
-            // SIN LOGIN — Soy proveedor + Acceder + Hazte socio + Reservar
-            <>
-              <Link href="/registro-proveedor"
-                className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors">
-                🛠 Soy proveedor
-              </Link>
-              <Link href="/login"
-                className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
-                Acceder
-              </Link>
-              <Link href="/registro"
-                className="text-sm font-semibold border border-coral/40 text-coral px-4 py-2 rounded-xl hover:bg-coral hover:text-white transition-colors hidden sm:block">
-                Hazte socio
-              </Link>
-              <Link href="/servicios"
-                className="text-sm font-bold bg-coral text-white px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors shadow-coral">
-                Reservar
-              </Link>
             </>
           )}
+
+          {/* Botones de auth SIEMPRE visibles (logueado o no) */}
+          <Link href="/registro-proveedor"
+            className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors">
+            🛠 Soy proveedor
+          </Link>
+          <Link href="/login"
+            className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
+            Acceder
+          </Link>
+          <Link href="/registro"
+            className="text-sm font-semibold border border-coral/40 text-coral px-4 py-2 rounded-xl hover:bg-coral hover:text-white transition-colors hidden sm:block">
+            Hazte socio
+          </Link>
+          <Link href="/servicios"
+            className="text-sm font-bold bg-coral text-white px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors shadow-coral">
+            Reservar
+          </Link>
         </div>
       </nav>
     </header>

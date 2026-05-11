@@ -5,17 +5,16 @@ import { useRouter } from 'next/navigation'
 
 const CITIES = ['Madrid','Barcelona','Valencia','Sevilla','Bilbao','Málaga','Zaragoza','Murcia']
 
-type Tab = 'packs' | 'proveedores' | 'servicios'
+type Tab = 'packs' | 'servicios'
 
 const TABS: { id: Tab; label: string; icon: string; placeholder: string; cta: string }[] = [
-  { id: 'packs',       label: 'Packs',       icon: '🎉', placeholder: 'Cumpleaños, boda, comunión...',  cta: 'Buscar packs' },
-  { id: 'proveedores', label: 'Proveedores', icon: '👥', placeholder: 'Fotógrafo, catering, animación...', cta: 'Buscar proveedores' },
-  { id: 'servicios',   label: 'Servicios',   icon: '✨', placeholder: 'Sesión foto, mago, food truck...', cta: 'Buscar servicios' },
+  { id: 'packs',     label: 'Packs',     icon: '🎉', placeholder: 'Cumpleaños, boda, comunión...',      cta: 'Buscar packs' },
+  { id: 'servicios', label: 'Servicios', icon: '✨', placeholder: 'Sesión foto, mago, food truck...',   cta: 'Buscar servicios' },
 ]
 
 export default function SearchBar() {
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('packs')
+  const [tab, setTab] = useState<Tab>('servicios')
   const [q, setQ] = useState('')
   const [ciudad, setCiudad] = useState('')
 
