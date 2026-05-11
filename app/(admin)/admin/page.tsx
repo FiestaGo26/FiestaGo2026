@@ -96,6 +96,11 @@ export default function AdminPage() {
   const [customPrompt,   setCustomPrompt]   = useState('')
   const [customLoading,  setCustomLoading]  = useState(false)
   const [customMsg,      setCustomMsg]      = useState<{ok:boolean,msg:string}|null>(null)
+  // Reservas
+  const [bookings,       setBookings]       = useState<any[]>([])
+  const [bookingFilter,  setBookingFilter]  = useState<'pending'|'confirmed'|'cancelled'|'all'>('pending')
+  const [bookingStats,   setBookingStats]   = useState<Record<string, number>>({})
+  const [bookingLoading, setBookingLoading] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -237,6 +242,34 @@ export default function AdminPage() {
     fetchSocialPosts()
   }, [authed, section, fetchSocialPosts])
 
+  // ── BOOKINGS ─────────────────────────────────────────────────────────────
+  const fetchBookings = useCallback(async () => {
+    setBookingLoading(true)
+    const params = new URLSearchParams()
+    if (bookingFilter !== 'all') params.set('status', bookingFilter)
+    const res = await fetch(`/api/admin/bookings?${params}`, { headers: adminHeaders() })
+    const data = await res.json()
+    setBookings(data.bookings || [])
+    setBookingStats(data.stats || {})
+    setBookingLoading(false)
+  }, [bookingFilter])
+
+  useEffect(() => {
+    if (!authed) return
+    if (section !== 'bookings' && section !== 'dashboard') return
+    fetchBookings()
+  }, [authed, section, fetchBookings])
+
+  async function updateBookingStatus(id: string, status: string) {
+    await fetch('/api/admin/bookings', {
+      method: 'PATCH',
+      headers: adminHeaders(),
+      body: JSON.stringify({ id, status }),
+    })
+    setBookings(b => b.map(x => x.id === id ? { ...x, status } : x))
+    toast.success(status === 'confirmed' ? 'Reserva confirmada' : 'Reserva cancelada')
+  }
+
   async function generateCustomPost() {
     const prompt = customPrompt.trim()
     if (!prompt) { setCustomMsg({ ok:false, msg:'Escribe primero qué quieres que genere' }); return }
@@ -326,6 +359,7 @@ export default function AdminPage() {
   const NAV = [
     { id:'dashboard',    icon:'📊', label:'Dashboard' },
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
+    { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
@@ -719,6 +753,97 @@ export default function AdminPage() {
 
           {/* ══ SETTINGS ══ */}
           {/* ══ MARKETING ══ */}
+          {section === 'bookings' && (
+            <div>
+              <h1 style={{ fontSize:24, fontWeight:700, marginBottom:18, color:'#F9FAFB' }}>📋 Reservas</h1>
+
+              {/* Filter chips */}
+              <div style={{ display:'flex', gap:8, marginBottom:18, alignItems:'center', flexWrap:'wrap' }}>
+                {(['pending','confirmed','cancelled','all'] as const).map(f => (
+                  <button key={f} onClick={() => setBookingFilter(f)}
+                    style={{ padding:'6px 14px', borderRadius:20, border:'1px solid #1F2937',
+                      background: bookingFilter === f ? '#F43F5E' : 'transparent',
+                      color: bookingFilter === f ? '#fff' : '#9CA3AF',
+                      fontSize:11, fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>
+                    {f === 'all' ? 'Todas' : f === 'pending' ? 'Pendientes' : f === 'confirmed' ? 'Confirmadas' : 'Canceladas'}
+                    {bookingStats[f] != null && f !== 'all' && (
+                      <span style={{ marginLeft:6, opacity:0.7 }}>({bookingStats[f]})</span>
+                    )}
+                  </button>
+                ))}
+                <button onClick={fetchBookings}
+                  style={{ marginLeft:'auto', padding:'6px 12px', borderRadius:8, border:'1px solid #1F2937',
+                    background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+                  🔄 Actualizar
+                </button>
+              </div>
+
+              {bookingLoading ? (
+                <div style={{ padding:60, textAlign:'center', color:'#374151' }}>Cargando...</div>
+              ) : bookings.length === 0 ? (
+                <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14,
+                  padding:'48px 20px', textAlign:'center', color:'#374151' }}>
+                  <div style={{ fontSize:36, marginBottom:10 }}>📋</div>
+                  <p>No hay reservas en este estado.</p>
+                </div>
+              ) : (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(380px, 1fr))', gap:14 }}>
+                  {bookings.map(b => {
+                    const statusColor = b.status === 'pending'   ? '#F59E0B'
+                                      : b.status === 'confirmed' ? '#10B981'
+                                      : b.status === 'cancelled' ? '#EF4444' : '#6B7280'
+                    const dateF = new Date(b.event_date).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' })
+                    return (
+                      <div key={b.id} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:18 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10, gap:8 }}>
+                          <div style={{ minWidth:0, flex:1 }}>
+                            <div style={{ fontSize:11, color:'#6B7280', marginBottom:3, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                              {b.providers?.name || b.packs?.name || 'Sin proveedor'}
+                            </div>
+                            <div style={{ fontSize:15, fontWeight:700, color:'#F9FAFB' }}>
+                              {b.client_name}
+                            </div>
+                            <div style={{ fontSize:11, color:'#9CA3AF', marginTop:2 }}>
+                              {b.client_email}{b.client_phone ? ` · ${b.client_phone}` : ''}
+                            </div>
+                          </div>
+                          <span style={{ padding:'3px 10px', borderRadius:20, fontSize:9, fontWeight:700,
+                            background:`${statusColor}22`, color:statusColor, textTransform:'uppercase', letterSpacing:'0.1em', whiteSpace:'nowrap' }}>
+                            {b.status}
+                          </span>
+                        </div>
+                        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr', gap:'4px 12px', fontSize:12, color:'#D1D5DB', margin:'10px 0' }}>
+                          <span style={{ color:'#6B7280' }}>📅 Fecha</span><span style={{ fontWeight:600, color:'#F43F5E' }}>{dateF}</span>
+                          <span style={{ color:'#6B7280' }}>🎉 Evento</span><span>{b.event_type || 'otro'}</span>
+                          {b.city &&    (<><span style={{ color:'#6B7280' }}>📍 Ciudad</span><span>{b.city}</span></>)}
+                          {b.guests &&  (<><span style={{ color:'#6B7280' }}>👥 Invitados</span><span>{b.guests}</span></>)}
+                          <span style={{ color:'#6B7280' }}>💸 Importe</span><span style={{ fontWeight:600 }}>{(b.total_amount || 0).toLocaleString()}€</span>
+                        </div>
+                        {b.message && (
+                          <div style={{ background:'#0D1117', borderLeft:'2px solid #F43F5E', padding:'8px 12px', margin:'10px 0', fontSize:12, color:'#9CA3AF', fontStyle:'italic', borderRadius:'0 6px 6px 0' }}>
+                            "{b.message}"
+                          </div>
+                        )}
+                        {b.status === 'pending' && (
+                          <div style={{ display:'flex', gap:8, marginTop:12 }}>
+                            <button onClick={() => updateBookingStatus(b.id, 'confirmed')}
+                              style={{ flex:1, background:'#10B981', color:'#fff', border:'none', padding:'8px 12px', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                              ✓ Confirmar
+                            </button>
+                            <button onClick={() => updateBookingStatus(b.id, 'cancelled')}
+                              style={{ flex:1, background:'transparent', color:'#EF4444', border:'1px solid #EF4444', padding:'8px 12px', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {section === 'marketing' && (
             <div>
               {/* ─── Generación a medida ─── */}

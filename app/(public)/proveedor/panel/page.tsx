@@ -142,8 +142,10 @@ export default function ProveedorPanelPage() {
         specialties: (data.provider.specialties || []).join(', '),
       })
 
-      // Load bookings
-      const bookRes  = await fetch(`/api/proveedor/bookings?id=${data.provider.id}`)
+      // Load bookings (envía header de auth)
+      const bookRes  = await fetch(`/api/proveedor/bookings?id=${data.provider.id}`, {
+        headers: { 'x-provider-token': data.provider.id }
+      })
       const bookData = await bookRes.json()
       setBookings(bookData.bookings || [])
 
@@ -305,7 +307,7 @@ export default function ProveedorPanelPage() {
     if (!provider) return
     await fetch('/api/proveedor/bookings', {
       method: 'PATCH',
-      headers: { 'Content-Type':'application/json' },
+      headers: { 'Content-Type':'application/json', 'x-provider-token': provider.id },
       body: JSON.stringify({ id, status, providerId: provider.id }),
     })
     setBookings(b => b.map(x => x.id === id ? { ...x, status } : x))
