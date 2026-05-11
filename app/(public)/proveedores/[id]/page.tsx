@@ -223,6 +223,8 @@ export default function ProviderDetailPage() {
   )
 
   const cat = CATEGORIES.find(c => c.id === provider.category)
+  const effectivePrice = selectedSvc?.price ?? provider.price_base ?? 0
+  const commission     = calcCommission(effectivePrice, provider.total_bookings || 0)
 
   return (
     <div className="min-h-screen bg-cream">
@@ -446,33 +448,27 @@ export default function ProviderDetailPage() {
               </div>
 
               {/* Commission info */}
-              {(() => {
-                const effectivePrice = selectedSvc?.price ?? provider.price_base ?? 0
-                const effectiveCommission = calcCommission(effectivePrice, provider.total_bookings || 0)
-                return (
-                  <div className={`rounded-xl p-3.5 mb-5 text-xs ${effectiveCommission.isFree
-                    ? 'bg-sage/10 border border-sage/20'
-                    : 'bg-cream-dark border border-stone-200'}`}>
-                    <div className={`font-bold mb-2 ${effectiveCommission.isFree ? 'text-sage' : 'text-ink/60'}`}>
-                      {effectiveCommission.isFree ? '🎁 ¡1ª transacción GRATIS!' : '💳 Desglose'}
-                    </div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-ink/50">Precio del servicio</span>
-                      <span className="font-semibold">{effectivePrice.toLocaleString()}€</span>
-                    </div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-ink/50">Comisión FiestaGo</span>
-                      <span className={effectiveCommission.isFree ? 'text-sage font-bold' : 'text-ink/60'}>
-                        {effectiveCommission.isFree ? '¡GRATIS!' : `-${effectiveCommission.amount.toLocaleString()}€`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
-                      <span className="text-ink/50">Tú pagas</span>
-                      <span className="font-bold text-ink">{effectivePrice.toLocaleString()}€</span>
-                    </div>
-                  </div>
-                )
-              })()}
+              <div className={`rounded-xl p-3.5 mb-5 text-xs ${commission.isFree
+                ? 'bg-sage/10 border border-sage/20'
+                : 'bg-cream-dark border border-stone-200'}`}>
+                <div className={`font-bold mb-2 ${commission.isFree ? 'text-sage' : 'text-ink/60'}`}>
+                  {commission.isFree ? '🎁 ¡1ª transacción GRATIS!' : '💳 Desglose'}
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-ink/50">Precio del servicio</span>
+                  <span className="font-semibold">{effectivePrice.toLocaleString()}€</span>
+                </div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-ink/50">Comisión FiestaGo</span>
+                  <span className={commission.isFree ? 'text-sage font-bold' : 'text-ink/60'}>
+                    {commission.isFree ? '¡GRATIS!' : `-${commission.amount.toLocaleString()}€`}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
+                  <span className="text-ink/50">Tú pagas</span>
+                  <span className="font-bold text-ink">{effectivePrice.toLocaleString()}€</span>
+                </div>
+              </div>
 
               {booked ? (
                 <div className="py-2">
