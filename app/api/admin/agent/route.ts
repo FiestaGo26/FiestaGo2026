@@ -113,29 +113,37 @@ Solo negocios profesionales reales, no particulares. Si no encuentras ${count}, 
       const instagram = p.instagram || null
       const contactable = !!(email || phone || website || instagram)
 
-      const emailDraft = email ? `ASUNTO: ${p.name}, tus primeros clientes te esperan en FiestaGo
+      const emailDraft = email ? `ASUNTO: Tu negocio en FiestaGo · ${city}
 
 Hola ${p.name},
 
-Somos FiestaGo, el nuevo marketplace de celebraciones en España donde parejas y familias encuentran los mejores profesionales para sus eventos.
+Somos FiestaGo, un nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados y familiares). Lanzamos oficialmente el 10 de junio de 2026 y estamos seleccionando los primeros profesionales en ${city} para tener un catálogo de calidad desde el día uno.
 
-Hemos encontrado tu negocio y creemos que encajas perfectamente con lo que buscan nuestros clientes.
+Hemos visto tu trabajo y encajas con lo que buscan nuestros clientes.
 
-Por qué unirte ahora:
-- Registro 100% gratuito, sin permanencia
-- Tu primera transacción sin comisión (0%)
+Ventajas de entrar antes del lanzamiento:
+- Mejor posición en los resultados (catálogo en construcción)
+- Tu primera reserva sin comisión
 - Solo 8% desde la segunda venta
-- Acceso a clientes cualificados
+- Sin permanencia ni cuotas mensuales
+- Promoción gratuita en nuestras redes (@fiestagospain)
 
-Regístrate en: https://fiestago.es/registro-proveedor
+Si quieres formar parte:
+https://fiestago.es/registro-proveedor
 
+Si tienes dudas, simplemente responde a este email.
+
+Un saludo,
 El equipo de FiestaGo` : ''
 
       const dmDraft = instagram ? `¡Hola ${p.name.split(' ')[0]}! 👋
 
-Soy del equipo de FiestaGo, marketplace de celebraciones en España. Tu trabajo encaja con lo que buscan nuestros clientes en ${city}.
+Te escribo del equipo de FiestaGo, marketplace de celebraciones en España. Lanzamos el 10 de junio y estamos seleccionando los primeros profesionales en ${city} para arrancar con catálogo de calidad.
 
-Plaza gratuita: 0% comisión en tu primera venta. Sin permanencia.
+Tu trabajo encaja. Ventajas de entrar ahora:
+✓ Mejor posición en resultados
+✓ 0% comisión en tu primera reserva
+✓ Sin permanencia
 
 ¿Te lo cuento?
 👉 https://fiestago.es/registro-proveedor` : ''

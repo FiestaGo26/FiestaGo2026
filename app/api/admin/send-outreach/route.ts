@@ -121,6 +121,21 @@ export async function POST(req: NextRequest) {
           </div>
         </td></tr>
 
+        <!-- Banner lanzamiento (importante para que no se asuste el proveedor) -->
+        <tr><td style="padding:16px 36px 0;">
+          <div style="background:#1A1612;color:#FBF7F0;border-radius:12px;padding:14px 18px;text-align:center;">
+            <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;font-weight:700;margin-bottom:4px;">
+              🚀 Lanzamiento oficial
+            </div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:500;line-height:1.2;">
+              10 de junio de 2026
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:4px;line-height:1.4;">
+              Estamos construyendo el catálogo. Los primeros profesionales tienen <strong style="color:#FBF7F0;">mejor posición</strong> en los resultados.
+            </div>
+          </div>
+        </td></tr>
+
         <!-- Cuerpo (procedente del draft, editable desde el admin) -->
         <tr><td style="padding:28px 36px 8px;">
           ${safeBody}

@@ -435,44 +435,43 @@ Email: ${p.email?'SÍ':'NO'} | Web: ${p.website?'SÍ':'NO'} | Seguidores: ${p.fo
     }
 
     const emailDraft = qual.recommendation !== 'DESCARTAR'
-      ? `ASUNTO: ${p.name}, tus primeros clientes te esperan en FiestaGo
+      ? `ASUNTO: Tu negocio en FiestaGo · ${city}
 
 Hola ${p.name},
 
-Somos FiestaGo, el nuevo marketplace de celebraciones en España donde parejas y familias encuentran los mejores profesionales para sus eventos.
+Somos FiestaGo, un nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados y familiares). Lanzamos oficialmente el 10 de junio de 2026 y estamos seleccionando los primeros profesionales en ${city} para tener un catálogo de calidad desde el día uno.
 
-Hemos encontrado tu negocio${p.source==='instagram'?' en Instagram':p.source==='tiktok'?' en TikTok':''} y creemos que encajas perfectamente con lo que buscan nuestros clientes.
+Vimos tu trabajo${p.source==='instagram'?' en Instagram':p.source==='tiktok'?' en TikTok':''} y encajas con lo que buscan nuestros clientes.
 
-Por qué unirte ahora:
+Ventajas de entrar antes del lanzamiento:
 
-- Registro 100% gratuito, sin permanencia
-- Tu primera transacción sin ninguna comisión (0%)
-- Solo el 8% desde la segunda venta real
-- Acceso a clientes cualificados buscando exactamente tu servicio
-- Sin inversión en publicidad, nosotros llevamos el tráfico
+- Mejor posición en los resultados (catálogo en construcción)
+- Tu primera reserva sin comisión
+- Solo 8% desde la segunda venta
+- Sin permanencia ni cuotas mensuales
+- Promoción gratuita en nuestras redes (@fiestagospain)
 
-Las primeras plazas en ${city} son limitadas.
-
-Regístrate gratis en menos de 5 minutos:
+Si quieres formar parte, regístrate en menos de 5 minutos:
 https://fiestago.es/registro-proveedor
 
-¿Tienes dudas?
-contacto@fiestago.es
+Si tienes dudas, simplemente responde a este email o escribe a contacto@fiestago.es.
 
+Un saludo,
 El equipo de FiestaGo` : ''
 
     const firstName = (p.name || '').split(/[\s|·\-_]/)[0] || ''
     const dmDraft = qual.recommendation !== 'DESCARTAR'
       ? `¡Hola ${firstName}! 👋
 
-Soy del equipo de FiestaGo, nuevo marketplace de celebraciones en España. Tu trabajo nos encaja muy bien con lo que buscan nuestros clientes en ${city}.
+Te escribo del equipo de FiestaGo, marketplace de celebraciones en España. Lanzamos el 10 de junio y estamos seleccionando los primeros profesionales en ${city} para arrancar con catálogo de calidad.
 
-Te ofrecemos plaza gratuita: 0% comisión en tu primera venta y solo 8% después. Sin permanencia.
+Tu trabajo encaja. Ventajas de entrar ahora:
+✓ Mejor posición en resultados
+✓ 0% comisión en tu primera reserva
+✓ Sin permanencia
 
-¿Te lo cuento en 1 minuto?
-👉 https://fiestago.es/registro-proveedor
-
-Cualquier duda, por aquí.` : ''
+¿Te lo cuento?
+👉 https://fiestago.es/registro-proveedor` : ''
 
     const fullProvider = { ...p, ...qual, emailDraft, dmDraft }
     try {
