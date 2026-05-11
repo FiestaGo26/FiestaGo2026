@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       price_base:   price_base || null,
       price_unit:   price_unit || 'por evento',
       specialties:  specialties || [],
-      source:       'self_registration',
+      source:       'web',
       status:       'pending',
       contactable,
     })
