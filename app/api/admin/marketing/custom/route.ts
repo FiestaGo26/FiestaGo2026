@@ -143,19 +143,22 @@ export async function POST(req: NextRequest) {
     const { data: row, error } = await supabase
       .from('social_posts')
       .insert({
-        post_type:            plan.post_type || 'custom',
-        city:                 plan.city,
-        category:             plan.category,
-        media_type:           format,
-        media_url:            mediaUrl,
-        hook_overlay:         plan.hook_overlay,
-        caption_es:           plan.caption_es,
-        caption_short_tiktok: plan.caption_short_tiktok,
-        hashtags:             plan.hashtags || [],
-        visual_prompt:        plan.visual_prompt,
-        user_prompt:          userPrompt,
-        source:               'custom_request',
-        status:               'pending',
+        template_id:       `custom_${plan.post_type || 'request'}`,
+        template_label:    'Generado a medida',
+        city:              plan.city,
+        category:          plan.category,
+        media_type:        format,
+        media_url:         mediaUrl,
+        platform:          'both',
+        hook_overlay:      plan.hook_overlay,
+        caption_instagram: plan.caption_es,
+        caption_tiktok:    plan.caption_short_tiktok,
+        hashtags:          plan.hashtags || [],
+        visual_prompt:     plan.visual_prompt,
+        user_prompt:       userPrompt,
+        prompt_used:       plan.visual_prompt,
+        topic:             userPrompt.slice(0, 200),
+        status:            'pending',
       })
       .select()
       .single()
