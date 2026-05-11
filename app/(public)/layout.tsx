@@ -9,28 +9,28 @@ function Navbar() {
           <span className="text-2xl">🎉</span> FiestaGo
         </Link>
         <div className="hidden md:flex items-center gap-1">
-          <Link href="/proveedores" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            Proveedores
+          <Link href="/servicios" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+            Servicios
           </Link>
           <Link href="/#packs" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             Packs
           </Link>
-          <Link href="/mis-reservas" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            📅 Mis reservas
+          <Link href="/mi-cuenta" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+            📅 Mi cuenta
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/proveedor/login"
+          <Link href="/login"
             className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
             Acceder
           </Link>
-          <Link href="/registro-proveedor"
-            className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
-            Soy proveedor
+          <Link href="/registro"
+            className="text-sm font-semibold border border-coral/40 text-coral px-4 py-2 rounded-xl hover:bg-coral hover:text-white transition-colors hidden sm:block">
+            Hazte socio
           </Link>
-          <Link href="/#packs"
+          <Link href="/servicios"
             className="text-sm font-bold bg-coral text-white px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors shadow-coral">
-            Reservar fiesta
+            Reservar
           </Link>
         </div>
       </nav>

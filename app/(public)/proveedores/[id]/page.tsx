@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission } from '@/lib/constants'
+import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 type Provider = {
@@ -44,18 +45,42 @@ type Service = {
 }
 
 export default function ProviderDetailPage() {
-  const params   = useParams()
-  const id       = params?.id as string
+  const params       = useParams()
+  const searchParams = useSearchParams()
+  const id           = params?.id as string
+  const preSvcId     = searchParams?.get('svc') || null
+
+  const supabase = createClient()
   const [provider, setProvider] = useState<Provider | null>(null)
   const [services, setServices] = useState<Service[]>([])
   const [loading,  setLoading]  = useState(true)
   const [sending,  setSending]  = useState(false)
   const [booked,   setBooked]   = useState(false)
   const [selectedSvc, setSelectedSvc] = useState<Service | null>(null)
+  const [isLogged, setIsLogged] = useState(false)
+  const [showSocioCTA, setShowSocioCTA] = useState(false)
+  const [signupPwd, setSignupPwd] = useState('')
+  const [creatingAccount, setCreatingAccount] = useState(false)
   const [form, setForm] = useState({
     client_name: '', client_email: '', client_phone: '',
     event_date: '', event_type: 'otro', guests: '', message: '',
   })
+
+  // Pre-rellenar form si el usuario está logueado
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setIsLogged(true)
+        const meta = (user.user_metadata || {}) as any
+        setForm(f => ({
+          ...f,
+          client_name:  meta.full_name || f.client_name,
+          client_email: user.email || f.client_email,
+          client_phone: meta.phone || f.client_phone,
+        }))
+      }
+    })
+  }, [supabase])
 
   useEffect(() => {
     if (!id) return
@@ -72,12 +97,62 @@ export default function ProviderDetailPage() {
         if (p?.id) {
           fetch(`/api/proveedor/services?provider_id=${p.id}`)
             .then(r => r.json())
-            .then(d => setServices((d.services || []).filter((s: Service) => s.status === 'active')))
+            .then(d => {
+              const active = (d.services || []).filter((s: Service) => s.status === 'active')
+              setServices(active)
+              // Pre-seleccionar si vino con ?svc=ID en la URL
+              if (preSvcId) {
+                const found = active.find((s: Service) => s.id === preSvcId)
+                if (found) {
+                  setSelectedSvc(found)
+                  setForm(f => ({
+                    ...f,
+                    message: `Hola, me gustaría reservar el servicio "${found.name}"${found.price != null ? ` (${found.price.toLocaleString()}€)` : ''}.${f.message ? `\n\n${f.message}` : ''}`,
+                  }))
+                }
+              }
+            })
             .catch(() => {})
         }
       })
       .catch(() => setLoading(false))
-  }, [id])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, preSvcId])
+
+  async function handleQuickSignup() {
+    if (!signupPwd || signupPwd.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    setCreatingAccount(true)
+    try {
+      const { error } = await supabase.auth.signUp({
+        email: form.client_email,
+        password: signupPwd,
+        options: {
+          data: {
+            full_name: form.client_name,
+            phone: form.client_phone,
+            accepts_marketing: true,
+            account_type: 'customer',
+          },
+        },
+      })
+      if (error) {
+        if (/already registered/i.test(error.message)) {
+          toast.error('Ya existe una cuenta con este email. Prueba a iniciar sesión.')
+        } else {
+          throw error
+        }
+      } else {
+        toast.success('¡Cuenta de socio creada! Ya puedes ver tu calendario.')
+        setShowSocioCTA(false)
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+    setCreatingAccount(false)
+  }
 
   function selectService(svc: Service) {
     setSelectedSvc(svc)
@@ -120,6 +195,8 @@ export default function ProviderDetailPage() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setBooked(true)
+      // Si no está logueado, ofrecer crear cuenta socio para ver el calendario
+      if (!isLogged) setShowSocioCTA(true)
       toast.success('¡Reserva enviada! El proveedor te contactará pronto.')
     } catch (err: any) {
       toast.error(err.message || 'Error al enviar la reserva')
@@ -398,12 +475,46 @@ export default function ProviderDetailPage() {
               })()}
 
               {booked ? (
-                <div className="text-center py-6">
-                  <div className="text-4xl mb-3">🎉</div>
-                  <div className="font-bold text-ink mb-2">¡Solicitud enviada!</div>
-                  <div className="text-sm text-ink/55">
-                    {provider.name} recibirá tu solicitud y te contactará pronto.
+                <div className="py-2">
+                  <div className="text-center mb-5">
+                    <div className="text-4xl mb-3">🎉</div>
+                    <div className="font-bold text-ink mb-2">¡Solicitud enviada!</div>
+                    <div className="text-sm text-ink/55">
+                      {provider.name} recibirá tu solicitud y te contactará pronto.
+                    </div>
                   </div>
+
+                  {/* CTA socio si no está logueado */}
+                  {showSocioCTA && (
+                    <div className="bg-gradient-to-br from-coral/10 via-amber-50 to-rose-50 border border-coral/20 rounded-xl p-4 mb-3">
+                      <div className="text-xs font-bold tracking-widest uppercase text-coral mb-2">✨ Hazte socio gratis</div>
+                      <h4 className="font-serif text-lg font-bold text-ink mb-1">Ve tu reserva en tu calendario</h4>
+                      <p className="text-xs text-ink/60 mb-3">
+                        Crea una contraseña y tendrás tu calendario, descuentos y novedades en <Link href="/mi-cuenta" className="text-coral underline">tu cuenta</Link>.
+                      </p>
+                      <div className="flex gap-2">
+                        <input type="password" placeholder="Contraseña (mín. 6)" value={signupPwd}
+                          onChange={e => setSignupPwd(e.target.value)}
+                          minLength={6}
+                          className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral"/>
+                        <button type="button" onClick={handleQuickSignup} disabled={creatingAccount}
+                          className="bg-coral text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-coral-dark disabled:opacity-50">
+                          {creatingAccount ? '...' : 'Crear cuenta'}
+                        </button>
+                      </div>
+                      <button type="button" onClick={() => setShowSocioCTA(false)}
+                        className="text-[10px] text-ink/40 hover:text-ink mt-2">
+                        Continuar como invitado
+                      </button>
+                    </div>
+                  )}
+
+                  {isLogged && (
+                    <Link href="/mi-cuenta"
+                      className="block w-full bg-coral text-white font-bold py-2.5 rounded-xl text-sm text-center hover:bg-coral-dark transition-colors">
+                      Ver mi calendario →
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <form onSubmit={handleBook} className="flex flex-col gap-3">
