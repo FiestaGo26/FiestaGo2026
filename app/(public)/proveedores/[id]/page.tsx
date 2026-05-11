@@ -205,18 +205,18 @@ export default function ProviderDetailPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-cream flex items-center justify-center">
+    <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-ink/40">Cargando...</div>
     </div>
   )
 
   if (!provider) return (
-    <div className="min-h-screen bg-cream flex items-center justify-center">
+    <div className="min-h-screen bg-white flex items-center justify-center">
       <div className="text-center">
         <div className="text-5xl mb-4">😔</div>
         <h2 className="font-serif text-2xl font-bold text-ink mb-3">Proveedor no encontrado</h2>
-        <Link href="/proveedores" className="text-coral font-semibold hover:underline">
-          ← Ver todos los proveedores
+        <Link href="/servicios" className="text-coral font-semibold hover:underline">
+          ← Ver todos los servicios
         </Link>
       </div>
     </div>
@@ -227,185 +227,161 @@ export default function ProviderDetailPage() {
   const commission     = calcCommission(effectivePrice, provider.total_bookings || 0)
 
   return (
-    <div className="min-h-screen bg-cream">
-      <div className="max-w-6xl mx-auto px-6 py-10">
+    <main className="bg-white">
+      <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* Back */}
-        <Link href="/proveedores" className="inline-flex items-center gap-2 text-sm text-ink/50 hover:text-coral mb-6 transition-colors">
-          ← Volver a proveedores
+        <Link href="/servicios" className="inline-flex items-center gap-2 text-sm text-ink/55 hover:text-ink mb-4 transition-colors">
+          ← Volver al catálogo
         </Link>
 
-        <div className="grid lg:grid-cols-[1fr_380px] gap-8 items-start">
+        {/* TITLE BLOCK (Airbnb-style — texto, sin card) */}
+        <div className="mb-6">
+          <h1 className="font-serif text-3xl md:text-4xl text-ink leading-tight tracking-tight">{provider.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm text-ink/65">
+            {provider.rating > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="text-coral">★</span>
+                <span className="font-medium text-ink">{Number(provider.rating).toFixed(1)}</span>
+                {provider.total_reviews > 0 && <span className="text-ink/55">({provider.total_reviews} reseñas)</span>}
+              </span>
+            )}
+            {provider.rating > 0 && <span className="text-ink/30">·</span>}
+            <span className="underline underline-offset-2">{provider.city}</span>
+            {provider.verified && <><span className="text-ink/30">·</span><span>🛡️ Verificado</span></>}
+            {cat && <><span className="text-ink/30">·</span><span>{cat.icon} {cat.label}</span></>}
+          </div>
+        </div>
+
+        {/* GALLERY (Airbnb-style: 1 grande + 4 thumbnails en grid 2x2) */}
+        <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-2 rounded-3xl overflow-hidden mb-10 md:aspect-[2/1]">
+          <div className="relative md:col-span-2 md:row-span-2 aspect-[4/3] md:aspect-auto bg-stone-100">
+            <img src={provider.photo_url || getPhoto(provider.category, provider.photo_idx || 0, 900, 600)}
+              alt={provider.name}
+              className="w-full h-full object-cover hover:opacity-95 transition-opacity"
+              onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${provider.id}/900/600` }}/>
+            <div className="absolute top-4 left-4 flex gap-2">
+              {provider.tag && (
+                <span className="text-[10px] font-semibold tracking-widest uppercase px-3 py-1.5 rounded-full bg-white/95 text-ink">
+                  {provider.tag}
+                </span>
+              )}
+            </div>
+          </div>
+          {[1, 2, 3, 4].map(offset => (
+            <div key={offset} className="hidden md:block bg-stone-100 overflow-hidden">
+              <img src={getPhoto(provider.category, (provider.photo_idx || 0) + offset, 500, 400)} alt=""
+                className="w-full h-full object-cover hover:opacity-95 transition-opacity"/>
+            </div>
+          ))}
+        </div>
+
+        {/* MAIN GRID */}
+        <div className="grid lg:grid-cols-[1fr_400px] gap-12 items-start">
 
           {/* ── LEFT ── */}
           <div>
-            {/* Hero photo */}
-            <div className="relative h-72 rounded-2xl overflow-hidden mb-5 bg-stone-200">
-              <img
-                src={provider.photo_url || getPhoto(provider.category, provider.photo_idx || 0, 900, 600)}
-                alt={provider.name}
-                className="w-full h-full object-cover"
-                onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${provider.id}/900/600` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"/>
-              <div className="absolute bottom-5 left-5">
-                {provider.tag && (
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/90 text-ink mb-2 inline-block">
-                    {provider.tag}
-                  </span>
-                )}
-                {provider.verified && (
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/90 text-ink mb-2 ml-2 inline-block">
-                    🛡️ Verificado
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Gallery */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              {[1, 2, 3].map(offset => (
-                <div key={offset} className="h-24 rounded-xl overflow-hidden bg-stone-200">
-                  <img
-                    src={getPhoto(provider.category, (provider.photo_idx || 0) + offset, 400, 300)}
-                    alt=""
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Info */}
-            <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
-              <div className="text-xs font-bold uppercase tracking-wide mb-2"
-                style={{ color: cat?.color || '#E8553E' }}>
-                {cat?.icon} {cat?.label}
-              </div>
-              <h1 className="font-serif text-3xl font-black text-ink mb-2">{provider.name}</h1>
-              <div className="flex items-center gap-4 mb-4 text-sm text-ink/50">
-                <span>📍 {provider.city}</span>
-                {provider.rating > 0 && (
-                  <span className="flex items-center gap-1">
-                    <span className="text-gold">★</span>
-                    <span className="font-semibold text-ink">{provider.rating}</span>
-                    {provider.total_reviews > 0 && <span>({provider.total_reviews} reseñas)</span>}
-                  </span>
-                )}
-                {provider.total_bookings > 0 && (
-                  <span>✅ {provider.total_bookings} reservas</span>
-                )}
-              </div>
-              {provider.description && (
-                <p className="text-ink/60 leading-relaxed">{provider.description}</p>
-              )}
-            </div>
+            {/* About */}
+            {provider.description && (
+              <section className="pb-8 border-b border-stone-200/70 mb-8">
+                <h2 className="font-serif text-2xl text-ink mb-3">Sobre {provider.name.split(' ')[0]}</h2>
+                <p className="text-ink/70 leading-relaxed text-[15px]">{provider.description}</p>
+              </section>
+            )}
 
             {/* Specialties */}
             {provider.specialties?.length > 0 && (
-              <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
-                <h3 className="font-semibold text-ink mb-4">Especialidades</h3>
+              <section className="pb-8 border-b border-stone-200/70 mb-8">
+                <h2 className="font-serif text-2xl text-ink mb-4">Especialidades</h2>
                 <div className="flex flex-wrap gap-2">
                   {provider.specialties.map((s, i) => (
-                    <span key={i} className="text-sm px-3 py-1.5 rounded-xl bg-cream-dark text-ink/70 border border-stone-200">
+                    <span key={i} className="text-sm px-4 py-2 rounded-full border border-stone-200 text-ink/70">
                       {s}
                     </span>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
 
             {/* Servicios disponibles */}
             {services.length > 0 && (
-              <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
-                <div className="flex items-baseline justify-between mb-4">
-                  <h3 className="font-semibold text-ink">Servicios disponibles</h3>
-                  <span className="text-xs text-ink/40">{services.length} {services.length === 1 ? 'opción' : 'opciones'}</span>
+              <section className="pb-8 border-b border-stone-200/70 mb-8">
+                <div className="flex items-baseline justify-between mb-5">
+                  <h2 className="font-serif text-2xl text-ink">Servicios disponibles</h2>
+                  <span className="text-xs text-ink/45">{services.length} {services.length === 1 ? 'opción' : 'opciones'}</span>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-2 gap-5">
                   {services.map(svc => {
                     const isSelected = selectedSvc?.id === svc.id
                     return (
-                      <div key={svc.id}
-                        className={`border rounded-2xl overflow-hidden flex flex-col transition-all ${
-                          isSelected ? 'border-coral ring-2 ring-coral/30 shadow-lg' : 'border-stone-200 hover:border-coral/50 hover:shadow-md'
+                      <button key={svc.id} onClick={() => selectService(svc)}
+                        className={`text-left group block rounded-2xl transition-all overflow-hidden ${
+                          isSelected ? 'ring-2 ring-ink' : ''
                         }`}>
-                        {svc.media_url && svc.media_type === 'image' && (
-                          <div className="aspect-video bg-stone-100 overflow-hidden">
-                            <img src={svc.media_url} alt={svc.name} className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                        {svc.media_url && svc.media_type === 'video' && (
-                          <div className="aspect-video bg-black overflow-hidden">
-                            <video src={svc.media_url} controls className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                        <div className="p-4 flex flex-col flex-1">
-                          <div className="flex items-start justify-between gap-2 mb-1.5">
-                            <h4 className="font-semibold text-ink leading-tight">{svc.name}</h4>
-                            {isSelected && <span className="text-[10px] font-bold text-coral whitespace-nowrap">✓ ELEGIDO</span>}
-                          </div>
-                          <div className="flex flex-wrap gap-1.5 mb-2">
-                            {svc.duration && (
-                              <span className="text-[11px] text-ink/55 bg-stone-100 px-2 py-0.5 rounded-full">⏱ {svc.duration}</span>
-                            )}
-                            {svc.max_guests != null && (
-                              <span className="text-[11px] text-ink/55 bg-stone-100 px-2 py-0.5 rounded-full">👥 hasta {svc.max_guests}</span>
-                            )}
+                        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-stone-100 mb-3">
+                          {svc.media_url && svc.media_type === 'video' ? (
+                            <video src={svc.media_url} muted loop autoPlay playsInline
+                              className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={svc.media_url || getPhoto(provider.category, 0, 600, 450)} alt={svc.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          )}
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 bg-ink text-white text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full">
+                              ✓ Elegido
+                            </div>
+                          )}
+                        </div>
+                        <div className="px-1">
+                          <h3 className="font-medium text-ink text-[15px] mb-1 line-clamp-1">{svc.name}</h3>
+                          <div className="flex gap-2 mb-1 text-[11px] text-ink/55">
+                            {svc.duration && <span>⏱ {svc.duration}</span>}
+                            {svc.max_guests != null && <span>· 👥 hasta {svc.max_guests}</span>}
                           </div>
                           {svc.description && (
-                            <p className="text-xs text-ink/55 leading-relaxed mb-3 line-clamp-3">{svc.description}</p>
+                            <p className="text-xs text-ink/55 line-clamp-2 mb-2 leading-relaxed">{svc.description}</p>
                           )}
-                          <div className="flex items-end justify-between mt-auto pt-2 border-t border-stone-100">
-                            <div>
-                              {svc.price != null ? (
-                                <>
-                                  <span className="font-serif text-xl font-bold text-coral">{svc.price.toLocaleString()}€</span>
-                                  <span className="text-[10px] text-ink/40 block">{svc.price_unit}</span>
-                                </>
-                              ) : (
-                                <span className="text-sm text-ink/40">A consultar</span>
-                              )}
-                            </div>
-                            <button onClick={() => selectService(svc)}
-                              className={`text-xs font-bold px-3 py-2 rounded-xl transition-all ${
-                                isSelected
-                                  ? 'bg-coral text-white'
-                                  : 'border border-stone-200 text-ink/60 hover:border-coral hover:text-coral'
-                              }`}>
-                              {isSelected ? '✓ Reservar' : 'Reservar →'}
-                            </button>
+                          <div className="text-sm text-ink">
+                            {svc.price != null ? (
+                              <>
+                                <span className="font-semibold">{svc.price.toLocaleString()}€</span>
+                                <span className="text-ink/50"> {svc.price_unit}</span>
+                              </>
+                            ) : (
+                              <span className="text-ink/45">A consultar</span>
+                            )}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
-              </div>
+              </section>
             )}
 
             {/* Contact */}
-            <div className="bg-white border border-stone-200 rounded-2xl p-6">
-              <h3 className="font-semibold text-ink mb-4">Contacto</h3>
-              <div className="grid grid-cols-2 gap-3">
+            <section className="pb-2">
+              <h2 className="font-serif text-2xl text-ink mb-4">Contacto</h2>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 {[
-                  ['📧', provider.email, provider.email ? `mailto:${provider.email}` : null],
-                  ['📞', provider.phone, provider.phone ? `tel:${provider.phone}` : null],
-                  ['🌐', provider.website, provider.website],
-                  ['📸', provider.instagram, provider.instagram ? `https://instagram.com/${provider.instagram.replace('@','')}` : null],
+                  ['📧 Email',     provider.email,     provider.email ? `mailto:${provider.email}` : null],
+                  ['📞 Teléfono',  provider.phone,     provider.phone ? `tel:${provider.phone}` : null],
+                  ['🌐 Web',       provider.website,   provider.website],
+                  ['📸 Instagram', provider.instagram, provider.instagram ? `https://instagram.com/${provider.instagram.replace('@','')}` : null],
                 ].map(([icon, val, href]) => val ? (
                   <a key={icon as string} href={href as string} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-2 text-sm text-ink/60 hover:text-coral transition-colors">
-                    <span>{icon}</span>
+                    className="flex flex-col gap-0.5 text-ink/65 hover:text-ink transition-colors py-2 border-b border-stone-100">
+                    <span className="text-[10px] uppercase tracking-widest text-ink/45 font-medium">{icon}</span>
                     <span className="truncate">{val}</span>
                   </a>
                 ) : null)}
               </div>
-            </div>
+            </section>
           </div>
 
           {/* ── RIGHT — BOOKING FORM ── */}
-          <div className="sticky top-24" id="booking-form">
-            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card">
+          <div className="lg:sticky lg:top-24" id="booking-form">
+            <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-[0_8px_24px_rgba(0,0,0,0.08)]">
 
               {/* Servicio seleccionado banner */}
               {selectedSvc && (
@@ -426,21 +402,21 @@ export default function ProviderDetailPage() {
                 {selectedSvc ? (
                   selectedSvc.price != null ? (
                     <>
-                      <span className="font-serif text-3xl font-black" style={{ color: cat?.color }}>
+                      <span className="font-serif text-3xl text-ink">
                         {selectedSvc.price.toLocaleString()}€
                       </span>
-                      <span className="text-sm text-ink/40"> {selectedSvc.price_unit}</span>
+                      <span className="text-sm text-ink/50"> {selectedSvc.price_unit}</span>
                     </>
                   ) : (
                     <span className="text-lg text-ink/50">A consultar</span>
                   )
                 ) : provider.price_base ? (
                   <>
-                    <span className="text-xs text-ink/40">desde </span>
-                    <span className="font-serif text-3xl font-black" style={{ color: cat?.color }}>
+                    <span className="text-sm text-ink/45">desde </span>
+                    <span className="font-serif text-3xl text-ink">
                       {provider.price_base.toLocaleString()}€
                     </span>
-                    <span className="text-sm text-ink/40"> {provider.price_unit}</span>
+                    <span className="text-sm text-ink/50"> {provider.price_unit}</span>
                   </>
                 ) : (
                   <span className="text-lg text-ink/50">Precio a consultar</span>
@@ -560,8 +536,7 @@ export default function ProviderDetailPage() {
                       className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
                   </div>
                   <button type="submit" disabled={sending}
-                    className="w-full py-3 rounded-xl font-bold text-sm text-white transition-colors disabled:opacity-50"
-                    style={{ background: cat?.color || '#E8553E' }}>
+                    className="w-full py-3.5 rounded-xl font-semibold text-sm text-white bg-coral hover:bg-coral-dark transition-colors disabled:opacity-50">
                     {sending ? 'Enviando...' : commission.isFree ? '🎁 Solicitar sin comisión' : 'Enviar solicitud de reserva'}
                   </button>
                   <p className="text-center text-xs text-ink/40">
@@ -573,6 +548,6 @@ export default function ProviderDetailPage() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
