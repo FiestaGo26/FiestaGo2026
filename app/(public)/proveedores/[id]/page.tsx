@@ -192,8 +192,12 @@ export default function ProviderDetailPage() {
           city:         provider.city,
         }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const text = await res.text()
+      let data: any = {}
+      try { data = text ? JSON.parse(text) : {} } catch { /* no es JSON */ }
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `Error ${res.status} del servidor`)
+      }
       setBooked(true)
       // Si no está logueado, ofrecer crear cuenta socio para ver el calendario
       if (!isLogged) setShowSocioCTA(true)
