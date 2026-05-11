@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}))
 
     const {
-      booking_type, provider_id, pack_id,
+      booking_type, provider_id, pack_id, service_id,
       client_name, client_email, client_phone,
       event_date, event_type, city, guests, message,
       total_amount,
@@ -21,6 +21,19 @@ export async function POST(req: NextRequest) {
 
     if (!client_name || !client_email || !event_date) {
       return NextResponse.json({ error: 'Faltan campos obligatorios (nombre, email, fecha)' }, { status: 400 })
+    }
+
+    // Si nos pasan service_id, comprobamos que la fecha no esté bloqueada
+    if (service_id) {
+      const { data: blocked } = await supabase
+        .from('service_availability')
+        .select('id')
+        .eq('service_id', service_id)
+        .eq('blocked_date', event_date)
+        .maybeSingle()
+      if (blocked) {
+        return NextResponse.json({ error: 'La fecha seleccionada ya no está disponible para este servicio. Elige otra.' }, { status: 409 })
+      }
     }
 
     // total_amount puede ser 0 cuando es "precio a consultar" — lo permitimos

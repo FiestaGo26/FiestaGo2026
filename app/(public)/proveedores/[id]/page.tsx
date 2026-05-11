@@ -61,6 +61,9 @@ export default function ProviderDetailPage() {
   const [showSocioCTA, setShowSocioCTA] = useState(false)
   const [signupPwd, setSignupPwd] = useState('')
   const [creatingAccount, setCreatingAccount] = useState(false)
+  const [blockedDates, setBlockedDates] = useState<string[]>([])  // YYYY-MM-DD para el servicio seleccionado
+  const [calMonth, setCalMonth] = useState<number>(new Date().getMonth())
+  const [calYear,  setCalYear]  = useState<number>(new Date().getFullYear())
   const [form, setForm] = useState({
     client_name: '', client_email: '', client_phone: '',
     event_date: '', event_type: 'otro', guests: '', message: '',
@@ -158,8 +161,14 @@ export default function ProviderDetailPage() {
     setSelectedSvc(svc)
     setForm(f => ({
       ...f,
+      // Si la fecha actualmente seleccionada está bloqueada para el nuevo svc la reseteamos al cargar
       message: `Hola, me gustaría reservar el servicio "${svc.name}"${svc.price != null ? ` (${svc.price.toLocaleString()}€)` : ''}.${f.message ? `\n\n${f.message}` : ''}`,
     }))
+    // Cargar fechas bloqueadas del servicio
+    fetch(`/api/services/availability?service_id=${svc.id}&months=6`)
+      .then(r => r.json())
+      .then(d => setBlockedDates(d.blocked_dates || []))
+      .catch(() => setBlockedDates([]))
     // Scroll al formulario en mobile
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setTimeout(() => document.getElementById('booking-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
@@ -181,6 +190,7 @@ export default function ProviderDetailPage() {
         body: JSON.stringify({
           booking_type: 'provider',
           provider_id:  provider.id,
+          service_id:   selectedSvc?.id || null,
           client_name:  form.client_name,
           client_email: form.client_email,
           client_phone: form.client_phone || null,
@@ -508,19 +518,78 @@ export default function ProviderDetailPage() {
                       placeholder="tu@email.com"
                       className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Fecha *</label>
-                      <input required type="date" value={form.event_date}
-                        onChange={e => setForm(f => ({ ...f, event_date: e.target.value }))}
-                        className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                  {/* Calendario visual (días bloqueados grises) */}
+                  <div>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-2">Fecha *</label>
+                    <div className="border border-stone-200 rounded-xl p-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <button type="button" onClick={() => {
+                          const m = calMonth === 0 ? 11 : calMonth - 1
+                          const y = calMonth === 0 ? calYear - 1 : calYear
+                          setCalMonth(m); setCalYear(y)
+                        }} className="text-sm text-ink/55 hover:text-coral px-2 py-1">←</button>
+                        <span className="text-xs font-bold text-ink">
+                          {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][calMonth]} {calYear}
+                        </span>
+                        <button type="button" onClick={() => {
+                          const m = calMonth === 11 ? 0 : calMonth + 1
+                          const y = calMonth === 11 ? calYear + 1 : calYear
+                          setCalMonth(m); setCalYear(y)
+                        }} className="text-sm text-ink/55 hover:text-coral px-2 py-1">→</button>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {['L','M','X','J','V','S','D'].map(d => (
+                          <div key={d} className="text-center text-[9px] font-bold tracking-wider uppercase text-ink/35 py-1">{d}</div>
+                        ))}
+                        {(() => {
+                          const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+                          const firstDay = (() => { const d = new Date(calYear, calMonth, 1).getDay(); return d === 0 ? 6 : d - 1 })()
+                          const today = new Date()
+                          today.setHours(0,0,0,0)
+                          const cells: any[] = Array(firstDay).fill(null)
+                          for (let i = 1; i <= daysInMonth; i++) cells.push(i)
+                          return cells.map((day, idx) => {
+                            if (day === null) return <div key={`e-${idx}`} />
+                            const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                            const isPast    = new Date(dateStr) < today
+                            const isBlocked = blockedDates.includes(dateStr)
+                            const isSelected= form.event_date === dateStr
+                            const disabled  = isPast || isBlocked
+                            return (
+                              <button key={dateStr} type="button" disabled={disabled}
+                                onClick={() => setForm(f => ({ ...f, event_date: dateStr }))}
+                                className={`aspect-square rounded-lg text-xs transition-all ${
+                                  isSelected
+                                    ? 'bg-coral text-white font-bold shadow-sm'
+                                    : disabled
+                                    ? 'text-ink/20 cursor-not-allowed line-through'
+                                    : 'text-ink hover:bg-coral/10 hover:text-coral border border-transparent hover:border-coral/30'
+                                }`}>
+                                {day}
+                              </button>
+                            )
+                          })
+                        })()}
+                      </div>
+                      <div className="flex gap-3 text-[9px] text-ink/40 mt-2 flex-wrap">
+                        {selectedSvc && (
+                          <span className="flex items-center gap-1"><span className="text-ink/30 line-through">15</span> No disponible</span>
+                        )}
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 bg-coral rounded-full inline-block"/> Elegida</span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Invitados</label>
-                      <input type="number" value={form.guests} placeholder="ej. 80"
-                        onChange={e => setForm(f => ({ ...f, guests: e.target.value }))}
-                        className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
-                    </div>
+                    {/* Hidden input para validación HTML */}
+                    <input type="hidden" required value={form.event_date} readOnly/>
+                    {!form.event_date && (
+                      <div className="text-[10px] text-ink/45 mt-1.5">Selecciona un día en el calendario</div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Invitados</label>
+                    <input type="number" value={form.guests} placeholder="ej. 80"
+                      onChange={e => setForm(f => ({ ...f, guests: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Tipo de evento</label>

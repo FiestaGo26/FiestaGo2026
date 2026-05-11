@@ -93,6 +93,10 @@ export default function ProveedorPanelPage() {
   // Services form
   const [showNewSvc, setShowNewSvc] = useState(false)
   const [editSvc,    setEditSvc]    = useState<Service|null>(null)
+  const [availSvc,   setAvailSvc]   = useState<Service|null>(null)
+  const [availBlocked, setAvailBlocked] = useState<string[]>([])  // ISO dates YYYY-MM-DD
+  const [availMonth, setAvailMonth] = useState<number>(new Date().getMonth())
+  const [availYear,  setAvailYear]  = useState<number>(new Date().getFullYear())
   const [newSvc, setNewSvc] = useState<{
     name: string; description: string; price: string; duration: string; maxGuests: string
     mediaFile: File | null; mediaPreview: string | null
@@ -301,6 +305,44 @@ export default function ProveedorPanelPage() {
     await fetch(`/api/proveedor/services?id=${id}`, { method:'DELETE' })
     setServices(s => s.filter(x => x.id !== id))
     toast.success('Servicio eliminado')
+  }
+
+  // ── DISPONIBILIDAD POR SERVICIO ────────────────────────────────────────
+  async function loadAvailability(serviceId: string) {
+    if (!provider) return
+    const res = await fetch(`/api/proveedor/service-availability?service_id=${serviceId}`, {
+      headers: { 'x-provider-token': provider.id }
+    })
+    const data = await res.json()
+    setAvailBlocked((data.blocked || []).map((b: any) => b.blocked_date))
+  }
+
+  useEffect(() => {
+    if (availSvc) {
+      loadAvailability(availSvc.id)
+      setAvailMonth(new Date().getMonth())
+      setAvailYear(new Date().getFullYear())
+    } else {
+      setAvailBlocked([])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availSvc?.id])
+
+  async function toggleBlockedDay(dateStr: string) {
+    if (!availSvc || !provider) return
+    // Optimistic update
+    const wasBlocked = availBlocked.includes(dateStr)
+    setAvailBlocked(prev => wasBlocked ? prev.filter(d => d !== dateStr) : [...prev, dateStr])
+    const res = await fetch('/api/proveedor/service-availability', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-provider-token': provider.id },
+      body: JSON.stringify({ service_id: availSvc.id, blocked_date: dateStr }),
+    })
+    if (!res.ok) {
+      // revertir si falla
+      setAvailBlocked(prev => wasBlocked ? [...prev, dateStr] : prev.filter(d => d !== dateStr))
+      toast.error('Error al actualizar disponibilidad')
+    }
   }
 
   async function updateBooking(id: string, status: string) {
@@ -654,6 +696,10 @@ export default function ProveedorPanelPage() {
                       <div className="font-serif text-xl font-bold text-coral">{svc.price!=null ? `${svc.price.toLocaleString()}€` : '—'}</div>
                     </div>
                     <div className="flex gap-2 ml-4">
+                      <button onClick={() => setAvailSvc(svc)}
+                        className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/60 hover:border-coral hover:text-coral transition-colors">
+                        📅 Disponibilidad
+                      </button>
                       <button onClick={() => setEditSvc(svc)}
                         className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/60 hover:border-coral hover:text-coral transition-colors">
                         ✏️ Editar
@@ -811,6 +857,86 @@ export default function ProveedorPanelPage() {
           </div>
         )}
       </main>
+
+      {/* MODAL DISPONIBILIDAD POR SERVICIO */}
+      {availSvc && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setAvailSvc(null)}>
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-baseline justify-between gap-4 mb-2">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-ink/45 font-bold mb-1">Disponibilidad de</div>
+                <h2 className="font-serif text-2xl font-bold text-ink">{availSvc.name}</h2>
+              </div>
+              <button onClick={() => setAvailSvc(null)} className="text-ink/45 hover:text-ink text-xl">✕</button>
+            </div>
+            <p className="text-xs text-ink/55 mb-4 leading-relaxed">
+              Los clientes pueden reservar cualquier día por defecto. Haz click para marcar los días BLOQUEADOS (vacaciones, ya ocupados, etc).
+            </p>
+
+            <div className="flex justify-between items-center mb-3">
+              <button onClick={() => {
+                const m = availMonth === 0 ? 11 : availMonth - 1
+                const y = availMonth === 0 ? availYear - 1 : availYear
+                setAvailMonth(m); setAvailYear(y)
+              }} className="px-3 py-1.5 border border-stone-200 rounded-lg text-sm hover:border-coral">←</button>
+              <h3 className="font-serif text-lg font-bold">
+                {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][availMonth]} {availYear}
+              </h3>
+              <button onClick={() => {
+                const m = availMonth === 11 ? 0 : availMonth + 1
+                const y = availMonth === 11 ? availYear + 1 : availYear
+                setAvailMonth(m); setAvailYear(y)
+              }} className="px-3 py-1.5 border border-stone-200 rounded-lg text-sm hover:border-coral">→</button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5 mb-2">
+              {['L','M','X','J','V','S','D'].map(d => (
+                <div key={d} className="text-center text-[10px] font-bold tracking-widest uppercase text-ink/40 py-1">{d}</div>
+              ))}
+              {(() => {
+                const daysInMonth = new Date(availYear, availMonth + 1, 0).getDate()
+                const firstDay = (() => { const d = new Date(availYear, availMonth, 1).getDay(); return d === 0 ? 6 : d - 1 })()
+                const today = new Date()
+                today.setHours(0,0,0,0)
+                const cells: any[] = Array(firstDay).fill(null)
+                for (let i = 1; i <= daysInMonth; i++) cells.push(i)
+                return cells.map((day, idx) => {
+                  if (day === null) return <div key={`e-${idx}`} />
+                  const dateStr = `${availYear}-${String(availMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  const isPast    = new Date(dateStr) < today
+                  const isBlocked = availBlocked.includes(dateStr)
+                  return (
+                    <button key={dateStr} disabled={isPast}
+                      onClick={() => toggleBlockedDay(dateStr)}
+                      className={`aspect-square rounded-lg text-sm transition-all ${
+                        isPast
+                          ? 'text-ink/20 cursor-not-allowed bg-stone-50'
+                          : isBlocked
+                          ? 'bg-red-500 text-white font-bold hover:bg-red-600'
+                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                      }`}>
+                      {day}
+                    </button>
+                  )
+                })
+              })()}
+            </div>
+
+            <div className="flex gap-3 text-[10px] text-ink/55 mt-3">
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-emerald-100 border border-emerald-200 inline-block"/> Libre</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500 inline-block"/> Bloqueado</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-stone-100 inline-block"/> Pasado</span>
+            </div>
+
+            <button onClick={() => setAvailSvc(null)}
+              className="w-full mt-5 bg-ink text-white font-bold py-2.5 rounded-xl text-sm hover:bg-ink/85">
+              Hecho
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
