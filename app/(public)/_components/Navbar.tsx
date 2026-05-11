@@ -82,13 +82,12 @@ export default function Navbar() {
               </Link>
             </>
           ) : (
-            // SIN LOGIN — alta proveedor + Acceder + Hazte socio + Reservar
+            // SIN LOGIN — Soy proveedor + Acceder + Hazte socio + Reservar
             <>
               <Link href="/registro-proveedor"
-                className="hidden lg:inline-flex items-center gap-1 text-xs text-ink/55 hover:text-coral px-3 py-2 rounded-xl border border-dashed border-stone-200 hover:border-coral transition-colors">
+                className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors">
                 🛠 Soy proveedor
               </Link>
-              <div className="hidden lg:block w-px h-6 bg-stone-200 mx-1" />
               <Link href="/login"
                 className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
                 Acceder
