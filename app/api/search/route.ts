@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     let query = supabase.from('packs').select('*').eq('status', 'active').limit(limit)
     if (ilike) query = query.or(`name.ilike.${ilike},description.ilike.${ilike},category.ilike.${ilike}`)
     const { data } = await query
-    packs = (data || []).map(p => ({ ...p, _kind: 'pack' as const }))
+    packs = (data || []).map((p: any) => ({ ...p, _kind: 'pack' as const }))
   }
 
   // PROVIDERS
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     if (ciudad) query = query.eq('city', ciudad)
     if (ilike)  query = query.or(`name.ilike.${ilike},description.ilike.${ilike},short_desc.ilike.${ilike},category.ilike.${ilike}`)
     const { data } = await query
-    providers = (data || []).map(p => ({ ...p, _kind: 'provider' as const }))
+    providers = (data || []).map((p: any) => ({ ...p, _kind: 'provider' as const }))
   }
 
   // SERVICES (con datos del proveedor para enlace + ciudad)
