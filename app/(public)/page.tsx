@@ -51,22 +51,25 @@ export default async function HomePage() {
       {/* ─────────── HERO ─────────── */}
       <section className="relative h-[78vh] min-h-[560px] flex items-end overflow-hidden">
         <Image
-          src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=85&auto=format&fit=crop"
-          alt="Celebración elegante FiestaGo"
+          src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1920&q=85&auto=format&fit=crop"
+          alt="Amigos celebrando con FiestaGo"
           fill priority className="object-cover"/>
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/55" />
 
         <div className="relative max-w-6xl mx-auto px-6 pb-24 md:pb-32 w-full text-white">
           <div className="max-w-2xl">
-            <p className="text-xs md:text-sm font-medium tracking-[0.25em] uppercase mb-4 opacity-90">
-              El marketplace de celebraciones
+            <p className="text-xs md:text-sm font-bold tracking-[0.25em] uppercase mb-5 text-coral">
+              🎉 El marketplace #1 de fiestas en España
             </p>
-            <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight mb-5">
-              Tu fiesta perfecta,{' '}
-              <span className="italic font-light">sin complicarte.</span>
+            <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.02] tracking-tight mb-6">
+              Vive la fiesta.{' '}
+              <span className="italic font-light text-coral">Olvida el estrés.</span>
             </h1>
-            <p className="text-base md:text-lg text-white/85 max-w-lg leading-relaxed">
-              Reserva proveedores y servicios verificados con precio cerrado en toda España.
+            <p className="text-base md:text-xl text-white/90 max-w-xl leading-relaxed mb-2">
+              Reserva en <strong className="text-white">2 minutos</strong> a los mejores fotógrafos, espacios, catering, DJs y más.
+            </p>
+            <p className="text-sm md:text-base text-white/70 max-w-xl leading-relaxed">
+              ✓ Precio cerrado · ✓ Sin sorpresas · ✓ Profesionales verificados
             </p>
           </div>
         </div>

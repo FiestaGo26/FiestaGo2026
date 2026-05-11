@@ -152,7 +152,7 @@ export async function emailProviderWelcome(provider: any) {
 
         <!-- HERO con foto -->
         <tr><td style="padding:0;position:relative;background:#1A1612;">
-          <img src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=80&auto=format&fit=crop"
+          <img src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=900&q=80&auto=format&fit=crop"
             alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;opacity:0.85;"/>
         </td></tr>
 
