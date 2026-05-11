@@ -92,6 +92,10 @@ export default function AdminPage() {
   const [socialStats,    setSocialStats]    = useState<Record<string, number>>({})
   const [socialLoading,  setSocialLoading]  = useState(false)
   const [editingPost,    setEditingPost]    = useState<any | null>(null)
+  // Generación a medida
+  const [customPrompt,   setCustomPrompt]   = useState('')
+  const [customLoading,  setCustomLoading]  = useState(false)
+  const [customMsg,      setCustomMsg]      = useState<{ok:boolean,msg:string}|null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -232,6 +236,29 @@ export default function AdminPage() {
     if (section !== 'marketing') return
     fetchSocialPosts()
   }, [authed, section, fetchSocialPosts])
+
+  async function generateCustomPost() {
+    const prompt = customPrompt.trim()
+    if (!prompt) { setCustomMsg({ ok:false, msg:'Escribe primero qué quieres que genere' }); return }
+    setCustomLoading(true)
+    setCustomMsg({ ok:true, msg:'Generando… (Claude planifica + fal.ai imagina la imagen, ~15-25s)' })
+    try {
+      const res = await fetch('/api/admin/marketing/custom', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ prompt }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error inesperado')
+      setCustomMsg({ ok:true, msg:`✓ Post generado y añadido a la cola de aprobación.` })
+      setCustomPrompt('')
+      // Refresh la lista para que aparezca el nuevo
+      fetchSocialPosts()
+    } catch (err: any) {
+      setCustomMsg({ ok:false, msg:'❌ ' + (err.message || 'Error') })
+    }
+    setCustomLoading(false)
+  }
 
   async function updateSocialPost(id: string, updates: any) {
     const res = await fetch('/api/admin/social-posts', {
@@ -694,6 +721,43 @@ export default function AdminPage() {
           {/* ══ MARKETING ══ */}
           {section === 'marketing' && (
             <div>
+              {/* ─── Generación a medida ─── */}
+              <div style={{ background:'linear-gradient(135deg, #1F2937 0%, #111827 100%)',
+                border:'1px solid #1F2937', borderRadius:14, padding:20, marginBottom:22 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                  <span style={{ fontSize:20 }}>💬</span>
+                  <h2 style={{ fontSize:15, fontWeight:700, color:'#F9FAFB', margin:0 }}>Pídeselo al agente</h2>
+                </div>
+                <p style={{ fontSize:11, color:'#9CA3AF', marginBottom:12, lineHeight:1.5 }}>
+                  Describe en lenguaje natural qué quieres publicar. El agente decide el formato, genera la imagen y la caption + hashtags, y lo deja en la cola de aprobación.
+                </p>
+                <textarea value={customPrompt}
+                  onChange={e => setCustomPrompt(e.target.value)}
+                  placeholder="Ej: Quiero un post inspiracional sobre una boda al atardecer en Sevilla con detalles en flores blancas. Tono romántico, dirigido a parejas que se casan en verano."
+                  rows={3}
+                  disabled={customLoading}
+                  style={{ width:'100%', background:'#0D1117', border:'1px solid #1F2937',
+                    borderRadius:10, padding:'10px 12px', color:'#F9FAFB', fontSize:13,
+                    fontFamily:'inherit', resize:'vertical', outline:'none', marginBottom:10 }}/>
+                <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+                  <button onClick={generateCustomPost} disabled={customLoading || !customPrompt.trim()}
+                    style={{ background: customLoading ? '#374151' : '#F43F5E',
+                      color:'#fff', border:'none', padding:'9px 18px', borderRadius:10,
+                      fontSize:12, fontWeight:700, cursor: customLoading ? 'wait' : 'pointer',
+                      opacity: !customPrompt.trim() ? 0.5 : 1 }}>
+                    {customLoading ? '⏳ Generando…' : '✨ Generar post'}
+                  </button>
+                  {customMsg && (
+                    <span style={{ fontSize:11, color: customMsg.ok ? '#10B981' : '#EF4444' }}>
+                      {customMsg.msg}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize:10, color:'#4B5563', marginTop:10 }}>
+                  💡 Por ahora genera imágenes. Para vídeos sigue usando el script <code style={{background:'#0D1117', padding:'1px 5px', borderRadius:3}}>fiegago-marketing-agent.mjs</code>.
+                </div>
+              </div>
+
               {/* Filtro chips */}
               <div style={{ display:'flex', gap:8, marginBottom:18, alignItems:'center' }}>
                 {(['pending','approved','published','all'] as const).map(f => (
