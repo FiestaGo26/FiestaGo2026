@@ -50,7 +50,9 @@ export default async function HomePage() {
 
       {/* ─────────── HERO ─────────── */}
       <section className="relative h-[78vh] min-h-[560px] flex items-end overflow-hidden">
-        <Image src={getPhoto('party', 0, 1920, 1200)} alt="Celebración FiestaGo"
+        <Image
+          src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=85&auto=format&fit=crop"
+          alt="Celebración elegante FiestaGo"
           fill priority className="object-cover"/>
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/55" />
 

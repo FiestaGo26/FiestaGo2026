@@ -94,91 +94,181 @@ export async function emailProviderWelcome(provider: any) {
 
   const profileUrl = `https://fiestago.es/proveedores/${provider.slug || provider.id}`
   const panelUrl   = `https://fiestago.es/proveedor/login`
+  const safeName   = (provider.name || '').replace(/</g, '&lt;')
+  const safeCity   = (provider.city || 'tu ciudad').replace(/</g, '&lt;')
 
-  const subject = `Bienvenido a FiestaGo, ${provider.name}`
+  const subject = `🎉 Bienvenido a FiestaGo, ${provider.name}`
 
-  // Versión texto plano para clientes que no soporten HTML
+  // Texto plano para clientes que no soporten HTML
   const text = [
-    `Enhorabuena ${provider.name},`,
+    `Enhorabuena ${provider.name}!`,
     ``,
-    `Tu perfil ha sido aprobado y ya está visible en FiestaGo. A partir de ahora podrás recibir solicitudes de reserva de clientes que celebran sus eventos en ${provider.city}.`,
+    `Tu perfil ha sido aprobado y ya está visible en FiestaGo.`,
+    `A partir de ahora recibirás solicitudes de clientes que celebran sus eventos en ${provider.city}.`,
     ``,
-    `· Tu perfil ya aparece en el marketplace`,
-    `· Primera transacción sin comisión (0%)`,
-    `· Después solo el 8% por venta cerrada`,
-    `· Sin permanencia ni cuotas mensuales`,
+    `LO QUE GANAS POR SER PARTE DE FIESTAGO:`,
     ``,
-    `Ver tu perfil:`,
-    profileUrl,
+    `🎁 Primera venta sin comisión`,
+    `   Tu primera transacción la cobras al 100%. Sin costes.`,
     ``,
-    `Acceder al panel del proveedor:`,
-    panelUrl,
+    `💸 Solo 8% después`,
+    `   La comisión más baja del sector. Sin cuotas mensuales ni permanencia.`,
     ``,
-    `Si necesitas algo, escríbenos a contacto@fiestago.es.`,
+    `📅 Calendario inteligente`,
+    `   Marca tus días libres. Bloqueamos automáticamente las fechas reservadas.`,
+    ``,
+    `🚀 Clientes cualificados`,
+    `   Solo recibes solicitudes serias, con fecha y datos completos.`,
+    ``,
+    `🛡 Pago seguro`,
+    `   El cliente paga primero. Tú cobras tras el servicio.`,
+    ``,
+    `📣 Marketing gratis`,
+    `   Te promocionamos en Instagram y TikTok @fiestagospain.`,
+    ``,
+    `---`,
+    ``,
+    `Próximos pasos:`,
+    `1. Accede a tu panel y completa tu perfil`,
+    `2. Sube tus servicios con fotos y precio cerrado`,
+    `3. Marca tu disponibilidad en el calendario`,
+    `4. ¡Espera a tu primera reserva!`,
+    ``,
+    `Ver mi perfil:        ${profileUrl}`,
+    `Acceder a mi panel:   ${panelUrl}`,
+    ``,
+    `Si tienes dudas, responde a este email o escríbenos a contacto@fiestago.es.`,
     ``,
     `Un abrazo,`,
     `El equipo de FiestaGo`,
   ].join('\n')
 
-  // HTML elegante (editorial, paleta cream/gold)
+  // HTML editorial Airbnb-style con beneficios en grid + CTAs prominentes
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#FBF9F4;font-family:Helvetica,Arial,sans-serif;color:#1A1612;">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FBF9F4;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#FBF7F0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1A1612;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FBF7F0;padding:32px 16px;">
     <tr><td align="center">
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#FFFFFF;border:1px solid #EFE8DA;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #ECE3D2;">
 
-        <tr><td style="padding:28px 32px 24px;border-bottom:1px solid #EFE8DA;">
-          <div style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:500;letter-spacing:0.02em;color:#1A1612;">
-            FiestaGo<span style="color:#B8956A;">.</span>
+        <!-- HERO con foto -->
+        <tr><td style="padding:0;position:relative;background:#1A1612;">
+          <img src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=80&auto=format&fit=crop"
+            alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;opacity:0.85;"/>
+        </td></tr>
+
+        <!-- Logo + Tagline -->
+        <tr><td style="padding:28px 36px 0;text-align:center;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:500;letter-spacing:-0.01em;color:#1A1612;">
+            FiestaGo<span style="color:#E8553E;">.</span>
           </div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#B8956A;margin-top:6px;font-weight:500;">
-            Bienvenida a la familia
+          <div style="font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:#E8553E;margin-top:8px;font-weight:600;">
+            ✨ Bienvenido a la familia
           </div>
         </td></tr>
 
-        <tr><td style="padding:32px 32px 12px;">
-          <h1 style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:32px;line-height:1.15;font-weight:400;color:#1A1612;">
-            Enhorabuena, <em style="font-style:italic;color:#B8956A;">${(provider.name || '').replace(/</g, '&lt;')}</em>
+        <!-- Welcome message -->
+        <tr><td style="padding:24px 36px 18px;text-align:center;">
+          <h1 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:32px;line-height:1.15;font-weight:400;color:#1A1612;">
+            Enhorabuena, <em style="font-style:italic;color:#E8553E;font-weight:300;">${safeName}</em>
           </h1>
-          <p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#5C534A;">
-            Tu perfil ha sido aprobado y ya está visible en FiestaGo. A partir de ahora recibirás solicitudes de reserva de clientes que celebran sus eventos en <strong style="color:#1A1612;">${(provider.city || 'tu ciudad').replace(/</g, '&lt;')}</strong>.
+          <p style="margin:0;font-size:16px;line-height:1.6;color:#5C534A;max-width:480px;display:inline-block;">
+            Tu perfil ya está visible en el marketplace y empezarás a recibir solicitudes de clientes en <strong style="color:#1A1612;">${safeCity}</strong>. Estás dentro 🎉
           </p>
         </td></tr>
 
-        <tr><td style="padding:8px 32px 24px;">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-top:1px solid #EFE8DA;border-bottom:1px solid #EFE8DA;">
+        <!-- Beneficios (sección dorada destacada) -->
+        <tr><td style="padding:8px 36px 0;">
+          <div style="background:linear-gradient(135deg,#FFF7ED 0%,#FFEDE1 100%);border:1px solid #FFE1CC;border-radius:12px;padding:24px;">
+            <div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;margin-bottom:18px;">
+              Lo que ganas siendo parte de FiestaGo
+            </div>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              ${[
+                ['🎁', 'Primera venta sin comisión',     'Tu primera transacción la cobras al 100%. Sin costes.'],
+                ['💸', 'Solo 8% después',                'La comisión más baja del sector. Sin cuotas ni permanencia.'],
+                ['📅', 'Calendario inteligente',         'Marca tus días libres. Bloqueamos automáticamente las fechas ya reservadas.'],
+                ['🚀', 'Clientes cualificados',          'Solo recibes solicitudes serias, con fecha y datos completos.'],
+                ['🛡', 'Pago seguro',                    'El cliente paga primero. Tú cobras tras el servicio.'],
+                ['📣', 'Marketing gratis para ti',       'Te promocionamos en Instagram y TikTok @fiestagospain sin coste.'],
+              ].map(([icon, title, desc]) => `
+                <tr><td style="padding:10px 0;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td valign="top" width="40" style="font-size:22px;line-height:1;padding-right:14px;">${icon}</td>
+                      <td valign="top">
+                        <div style="font-size:15px;font-weight:700;color:#1A1612;margin-bottom:3px;line-height:1.3;">${title}</div>
+                        <div style="font-size:13px;color:#5C534A;line-height:1.5;">${desc}</div>
+                      </td>
+                    </tr>
+                  </table>
+                </td></tr>
+              `).join('')}
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- Próximos pasos -->
+        <tr><td style="padding:28px 36px 18px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#5C534A;margin-bottom:14px;">
+            ✓ Próximos pasos
+          </div>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
             ${[
-              ['Tu perfil ya aparece en el marketplace'],
-              ['Primera transacción sin comisión (0%)'],
-              ['Después, solo el 8% por venta cerrada'],
-              ['Sin permanencia ni cuotas mensuales'],
-            ].map(([t]) => `<tr><td style="padding:14px 0;border-bottom:1px solid #F2EDE2;font-size:14px;color:#1A1612;">
-              <span style="color:#B8956A;font-weight:700;margin-right:10px;">·</span> ${t}
-            </td></tr>`).join('')}
+              ['1', 'Accede a tu panel y completa tu perfil'],
+              ['2', 'Sube tus servicios con fotos y precio cerrado'],
+              ['3', 'Marca tu disponibilidad en el calendario'],
+              ['4', '¡Espera a tu primera reserva! 🎊'],
+            ].map(([n, t]) => `
+              <tr><td style="padding:8px 0;border-bottom:1px solid #F2EDE2;font-size:14px;color:#1A1612;line-height:1.5;">
+                <span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;background:#1A1612;color:#fff;border-radius:50%;font-size:11px;font-weight:700;margin-right:12px;">${n}</span>
+                ${t}
+              </td></tr>
+            `).join('')}
           </table>
         </td></tr>
 
-        <tr><td style="padding:8px 32px 28px;text-align:center;">
-          <a href="${profileUrl}" style="display:inline-block;background:#1A1612;color:#FBF9F4;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:500;padding:14px 30px;border-radius:999px;margin:8px 4px;">Ver mi perfil →</a>
-          <a href="${panelUrl}" style="display:inline-block;background:#FFFFFF;color:#1A1612;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;font-weight:500;padding:14px 30px;border-radius:999px;border:1px solid #1A1612;margin:8px 4px;">Acceder al panel</a>
+        <!-- CTA buttons -->
+        <tr><td style="padding:20px 36px 36px;text-align:center;">
+          <a href="${panelUrl}" style="display:inline-block;background:#E8553E;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:0.08em;font-weight:700;padding:15px 32px;border-radius:12px;margin:6px 4px;box-shadow:0 4px 12px rgba(232,85,62,0.25);">
+            Acceder a mi panel →
+          </a>
+          <br/>
+          <a href="${profileUrl}" style="display:inline-block;color:#1A1612;text-decoration:none;font-size:12px;letter-spacing:0.05em;font-weight:600;padding:10px 16px;margin-top:8px;border-bottom:1px solid #1A1612;">
+            Ver mi perfil público
+          </a>
         </td></tr>
 
-        <tr><td style="padding:24px 32px;border-top:1px solid #EFE8DA;background:#FBF9F4;">
-          <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#5C534A;">
-            Si tienes cualquier duda, escríbenos a <a href="mailto:contacto@fiestago.es" style="color:#B8956A;text-decoration:none;border-bottom:1px solid #D4B895;">contacto@fiestago.es</a>.
-          </p>
-          <p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:14px;color:#1A1612;">
-            Un abrazo, el equipo de FiestaGo.
+        <!-- Soporte -->
+        <tr><td style="padding:24px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:15px;color:#1A1612;margin-bottom:10px;">
+            "Estamos aquí para que vendas más"
+          </div>
+          <p style="margin:0;font-size:13px;line-height:1.55;color:#5C534A;">
+            Si tienes cualquier duda, escríbenos a
+            <a href="mailto:contacto@fiestago.es" style="color:#E8553E;text-decoration:none;font-weight:600;">contacto@fiestago.es</a>
+            o responde directamente a este email.
           </p>
         </td></tr>
 
-        <tr><td style="padding:18px 32px;background:#1A1612;text-align:center;">
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);">
-            FiestaGo · Marketplace de celebraciones · España
+        <!-- Footer dark -->
+        <tr><td style="padding:18px 36px;background:#1A1612;text-align:center;">
+          <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);">
+            FiestaGo · El marketplace de celebraciones · España
           </div>
         </td></tr>
 
       </table>
+
+      <!-- Footer below card -->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;margin-top:18px;">
+        <tr><td style="text-align:center;font-size:11px;color:#8A7968;line-height:1.6;">
+          <a href="https://instagram.com/fiestagospain" style="color:#8A7968;text-decoration:none;">@fiestagospain</a>
+          ·
+          <a href="https://fiestago.es" style="color:#8A7968;text-decoration:none;">fiestago.es</a>
+        </td></tr>
+      </table>
+
     </td></tr>
   </table>
 </body></html>`
