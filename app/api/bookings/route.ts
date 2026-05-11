@@ -82,6 +82,20 @@ export async function POST(req: NextRequest) {
       catch { /* no-op */ }
     }
 
+    // BLOQUEAR esa fecha automáticamente para el servicio (si lo hay)
+    // Así otros clientes no podrán reservar el mismo servicio ese día.
+    if (service_id && event_date) {
+      try {
+        await supabase
+          .from('service_availability')
+          .insert({
+            service_id,
+            blocked_date: event_date,
+            reason:       `Reservado por ${client_name}`,
+          })
+      } catch { /* si ya estaba bloqueado, no pasa nada */ }
+    }
+
     // Notificar via email (admin + proveedor). No bloquea la respuesta si falla.
     if (provider_id) {
       try {

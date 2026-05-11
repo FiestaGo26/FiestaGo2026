@@ -31,6 +31,9 @@ export async function PATCH(req: NextRequest) {
   if (status === 'confirmed') updates.confirmed_at = new Date().toISOString()
   if (status === 'cancelled') updates.cancelled_at = new Date().toISOString()
 
+  // Lookup previa para conocer la fecha (necesaria si vamos a desbloquear)
+  const { data: prev } = await supabase.from('bookings').select('event_date').eq('id', id).single()
+
   const { data, error } = await supabase
     .from('bookings')
     .update(updates)
@@ -40,5 +43,16 @@ export async function PATCH(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Si cancela, liberar el bloqueo automático en service_availability
+  if (status === 'cancelled' && prev?.event_date) {
+    try {
+      await supabase.from('service_availability')
+        .delete()
+        .eq('blocked_date', prev.event_date)
+        .like('reason', 'Reservado por%')
+    } catch { /* no-op */ }
+  }
+
   return NextResponse.json({ booking: data })
 }
