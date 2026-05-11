@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
 
     // Update provider booking count (non-bloqueante)
     if (provider_id) {
-      await supabase.rpc('increment_provider_bookings', { p_id: provider_id })
-        .catch(() => {})
+      try { await supabase.rpc('increment_provider_bookings', { p_id: provider_id }) }
+      catch { /* no-op: si la función RPC no existe o falla, no bloquea la reserva */ }
     }
 
     return NextResponse.json({ booking: data, commission }, { status: 201 })
