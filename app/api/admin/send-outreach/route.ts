@@ -68,13 +68,124 @@ export async function POST(req: NextRequest) {
   const { subject: parsedSubject, body: parsedBody } = splitSubjectAndBody(draftRaw, fallbackSubject)
   const subject = ovr.subject || parsedSubject
 
-  // Convertir saltos de linea a HTML simple para mejorar la presentacion.
-  const html = parsedBody
+  // Convertir saltos de línea del body a HTML escapado.
+  // El cuerpo lo solemos generar con un patrón de "intro + lista guiones + CTA + firma":
+  // - Líneas que empiezan con "- " se renderizan como bullet
+  // - Líneas con "http..." se autolinkan
+  const safeBody = parsedBody
     .split(/\r?\n\r?\n/)
-    .map(p => `<p style="margin:0 0 12px 0;line-height:1.55;font-family:Arial,Helvetica,sans-serif;">${
-      p.replace(/\r?\n/g, '<br>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    }</p>`)
-    .join('')
+    .map(para => {
+      const lines = para.split(/\r?\n/)
+      const allBullets = lines.length > 1 && lines.every(l => /^\s*[-•]\s+/.test(l))
+      if (allBullets) {
+        return `<ul style="margin:0 0 16px;padding:0;list-style:none;">` +
+          lines.map(l => `<li style="padding:6px 0;font-size:14px;line-height:1.5;color:#1A1612;">
+            <span style="color:#E8553E;font-weight:700;margin-right:8px;">✓</span>${
+              l.replace(/^\s*[-•]\s+/, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            }</li>`).join('') +
+          `</ul>`
+      }
+      // párrafo normal con autolinks
+      const escaped = para
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\r?\n/g, '<br>')
+        .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#E8553E;text-decoration:none;font-weight:600;">$1</a>')
+      return `<p style="margin:0 0 16px;line-height:1.65;font-size:15px;color:#5C534A;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${escaped}</p>`
+    }).join('')
+
+  // Wrap del body en un template HTML elegante con cabecera, beneficios visuales y CTA.
+  const safeName = (prov.name || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FBF7F0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1A1612;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#FFFFFF;border-radius:16px;overflow:hidden;border:1px solid #ECE3D2;">
+
+        <!-- HERO foto -->
+        <tr><td style="padding:0;background:#1A1612;">
+          <img src="https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=80&auto=format&fit=crop"
+            alt="" width="600" style="display:block;width:100%;max-width:600px;height:auto;opacity:0.88;"/>
+        </td></tr>
+
+        <!-- Logo -->
+        <tr><td style="padding:24px 36px 0;text-align:center;">
+          <div style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:500;letter-spacing:-0.01em;color:#1A1612;">
+            FiestaGo<span style="color:#E8553E;">.</span>
+          </div>
+          <div style="font-size:10px;letter-spacing:0.25em;text-transform:uppercase;color:#E8553E;margin-top:8px;font-weight:700;">
+            ✨ Te queremos en nuestro marketplace
+          </div>
+        </td></tr>
+
+        <!-- Cuerpo (procedente del draft, editable desde el admin) -->
+        <tr><td style="padding:28px 36px 8px;">
+          ${safeBody}
+        </td></tr>
+
+        <!-- Beneficios destacados (siempre se incluyen, no dependen del draft) -->
+        <tr><td style="padding:8px 36px 0;">
+          <div style="background:linear-gradient(135deg,#FFF7ED 0%,#FFEDE1 100%);border:1px solid #FFE1CC;border-radius:12px;padding:22px;">
+            <div style="text-align:center;font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;margin-bottom:16px;">
+              Por qué te conviene FiestaGo
+            </div>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              ${[
+                ['🎁','Primera venta sin comisión','Cobras al 100% tu primera transacción.'],
+                ['💸','Solo 8% después','La comisión más baja del sector. Sin cuotas mensuales.'],
+                ['📅','Calendario inteligente','Marcas tus días libres y bloqueamos las fechas ya reservadas.'],
+                ['🚀','Clientes cualificados','Solicitudes serias con fecha y datos completos.'],
+                ['📣','Marketing gratis','Te promocionamos en Instagram y TikTok @fiestagospain.'],
+                ['🛡','Sin permanencia','Pruébalo. Si no funciona, te das de baja en un click.'],
+              ].map(([icon, title, desc]) => `
+                <tr><td style="padding:8px 0;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td valign="top" width="34" style="font-size:20px;line-height:1;padding-right:12px;">${icon}</td>
+                      <td valign="top">
+                        <div style="font-size:14px;font-weight:700;color:#1A1612;margin-bottom:2px;line-height:1.3;">${title}</div>
+                        <div style="font-size:12.5px;color:#5C534A;line-height:1.5;">${desc}</div>
+                      </td>
+                    </tr>
+                  </table>
+                </td></tr>
+              `).join('')}
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- CTA prominente -->
+        <tr><td style="padding:28px 36px 12px;text-align:center;">
+          <a href="https://fiestago.es/registro-proveedor" style="display:inline-block;background:#E8553E;color:#FFFFFF;text-decoration:none;font-size:14px;letter-spacing:0.08em;font-weight:700;padding:16px 36px;border-radius:12px;box-shadow:0 4px 12px rgba(232,85,62,0.25);">
+            Quiero darme de alta →
+          </a>
+          <div style="font-size:11px;color:#8A7968;margin-top:12px;">
+            Gratis · Sin permanencia · 2 minutos
+          </div>
+        </td></tr>
+
+        <!-- Soporte -->
+        <tr><td style="padding:18px 36px 30px;text-align:center;">
+          <p style="margin:0;font-size:12.5px;line-height:1.6;color:#5C534A;">
+            ¿Dudas? Escríbenos a <a href="mailto:contacto@fiestago.es" style="color:#E8553E;text-decoration:none;font-weight:600;">contacto@fiestago.es</a> o responde a este correo.
+          </p>
+        </td></tr>
+
+        <!-- Footer dark -->
+        <tr><td style="padding:18px 36px;background:#1A1612;text-align:center;">
+          <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);">
+            FiestaGo · El marketplace de celebraciones · España
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:8px;">
+            <a href="https://instagram.com/fiestagospain" style="color:rgba(255,255,255,0.55);text-decoration:none;">@fiestagospain</a>
+            ·
+            <a href="https://fiestago.es" style="color:rgba(255,255,255,0.55);text-decoration:none;">fiestago.es</a>
+          </div>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
 
   // Enviar via Resend REST API
   const resendRes = await fetch('https://api.resend.com/emails', {
