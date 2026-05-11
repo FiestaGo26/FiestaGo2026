@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase'
 import { getPhoto, CATEGORIES } from '@/lib/constants'
+import SearchBar from './_components/SearchBar'
 
 async function getPacks() {
   const supabase = createAdminClient()
@@ -47,22 +48,8 @@ export default async function HomePage() {
               Elige un pack listo para reservar o personaliza tu celebración con los mejores profesionales de tu ciudad.
             </p>
 
-            {/* search bar */}
-            <form action="/proveedores" method="GET"
-              className="flex bg-white border-2 border-stone-200 rounded-2xl overflow-hidden shadow-lg mb-5">
-              <span className="px-4 flex items-center text-xl text-stone-400">📍</span>
-              <select name="ciudad" defaultValue=""
-                className="flex-1 border-0 outline-none text-base py-4 bg-transparent text-ink font-sans">
-                <option value="">¿En qué ciudad celebras?</option>
-                {['Madrid','Barcelona','Valencia','Sevilla','Bilbao','Málaga','Zaragoza','Murcia'].map(c=>(
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <button type="submit"
-                className="bg-coral text-white px-7 py-4 font-bold text-base hover:bg-coral-dark transition-colors">
-                Ver packs 🎉
-              </button>
-            </form>
+            {/* search bar (unificado: Packs / Proveedores / Servicios) */}
+            <SearchBar />
 
             <div className="flex gap-5 text-sm text-ink/50">
               {['✔ Proveedores verificados','✔ Reserva segura','✔ Precios transparentes'].map(t=>(

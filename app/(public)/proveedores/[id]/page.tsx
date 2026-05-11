@@ -29,13 +29,29 @@ type Provider = {
   specialties: string[]
 }
 
+type Service = {
+  id: string
+  name: string
+  description: string | null
+  price: number | null
+  price_unit: string
+  duration: string | null
+  max_guests: number | null
+  media_type: 'image' | 'video' | 'none'
+  media_url: string | null
+  thumbnail_url: string | null
+  status: string
+}
+
 export default function ProviderDetailPage() {
   const params   = useParams()
   const id       = params?.id as string
   const [provider, setProvider] = useState<Provider | null>(null)
+  const [services, setServices] = useState<Service[]>([])
   const [loading,  setLoading]  = useState(true)
   const [sending,  setSending]  = useState(false)
   const [booked,   setBooked]   = useState(false)
+  const [selectedSvc, setSelectedSvc] = useState<Service | null>(null)
   const [form, setForm] = useState({
     client_name: '', client_email: '', client_phone: '',
     event_date: '', event_type: 'otro', guests: '', message: '',
@@ -49,17 +65,41 @@ export default function ProviderDetailPage() {
     fetch(url)
       .then(r => r.json())
       .then(data => {
-        setProvider(data.provider || null)
+        const p = data.provider || null
+        setProvider(p)
         setLoading(false)
+        // Cargar servicios sólo si el proveedor existe
+        if (p?.id) {
+          fetch(`/api/proveedor/services?provider_id=${p.id}`)
+            .then(r => r.json())
+            .then(d => setServices((d.services || []).filter((s: Service) => s.status === 'active')))
+            .catch(() => {})
+        }
       })
       .catch(() => setLoading(false))
   }, [id])
+
+  function selectService(svc: Service) {
+    setSelectedSvc(svc)
+    setForm(f => ({
+      ...f,
+      message: `Hola, me gustaría reservar el servicio "${svc.name}"${svc.price != null ? ` (${svc.price.toLocaleString()}€)` : ''}.${f.message ? `\n\n${f.message}` : ''}`,
+    }))
+    // Scroll al formulario en mobile
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setTimeout(() => document.getElementById('booking-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    }
+    toast.success(`Servicio seleccionado: ${svc.name}`)
+  }
 
   async function handleBook(e: React.FormEvent) {
     e.preventDefault()
     if (!provider) return
     setSending(true)
     try {
+      const totalAmount = selectedSvc?.price ?? provider.price_base ?? 0
+      // El servicio elegido se identifica en el mensaje (lo añade selectService) +
+      // total_amount ya refleja el precio del servicio.
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,7 +113,7 @@ export default function ProviderDetailPage() {
           event_type:   form.event_type,
           guests:       parseInt(form.guests) || null,
           message:      form.message || null,
-          total_amount: provider.price_base || 0,
+          total_amount: totalAmount,
           city:         provider.city,
         }),
       })
@@ -105,8 +145,7 @@ export default function ProviderDetailPage() {
     </div>
   )
 
-  const cat        = CATEGORIES.find(c => c.id === provider.category)
-  const commission = calcCommission(provider.price_base || 0, provider.total_bookings || 0)
+  const cat = CATEGORIES.find(c => c.id === provider.category)
 
   return (
     <div className="min-h-screen bg-cream">
@@ -196,6 +235,75 @@ export default function ProviderDetailPage() {
               </div>
             )}
 
+            {/* Servicios disponibles */}
+            {services.length > 0 && (
+              <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
+                <div className="flex items-baseline justify-between mb-4">
+                  <h3 className="font-semibold text-ink">Servicios disponibles</h3>
+                  <span className="text-xs text-ink/40">{services.length} {services.length === 1 ? 'opción' : 'opciones'}</span>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {services.map(svc => {
+                    const isSelected = selectedSvc?.id === svc.id
+                    return (
+                      <div key={svc.id}
+                        className={`border rounded-2xl overflow-hidden flex flex-col transition-all ${
+                          isSelected ? 'border-coral ring-2 ring-coral/30 shadow-lg' : 'border-stone-200 hover:border-coral/50 hover:shadow-md'
+                        }`}>
+                        {svc.media_url && svc.media_type === 'image' && (
+                          <div className="aspect-video bg-stone-100 overflow-hidden">
+                            <img src={svc.media_url} alt={svc.name} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        {svc.media_url && svc.media_type === 'video' && (
+                          <div className="aspect-video bg-black overflow-hidden">
+                            <video src={svc.media_url} controls className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="p-4 flex flex-col flex-1">
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <h4 className="font-semibold text-ink leading-tight">{svc.name}</h4>
+                            {isSelected && <span className="text-[10px] font-bold text-coral whitespace-nowrap">✓ ELEGIDO</span>}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {svc.duration && (
+                              <span className="text-[11px] text-ink/55 bg-stone-100 px-2 py-0.5 rounded-full">⏱ {svc.duration}</span>
+                            )}
+                            {svc.max_guests != null && (
+                              <span className="text-[11px] text-ink/55 bg-stone-100 px-2 py-0.5 rounded-full">👥 hasta {svc.max_guests}</span>
+                            )}
+                          </div>
+                          {svc.description && (
+                            <p className="text-xs text-ink/55 leading-relaxed mb-3 line-clamp-3">{svc.description}</p>
+                          )}
+                          <div className="flex items-end justify-between mt-auto pt-2 border-t border-stone-100">
+                            <div>
+                              {svc.price != null ? (
+                                <>
+                                  <span className="font-serif text-xl font-bold text-coral">{svc.price.toLocaleString()}€</span>
+                                  <span className="text-[10px] text-ink/40 block">{svc.price_unit}</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-ink/40">A consultar</span>
+                              )}
+                            </div>
+                            <button onClick={() => selectService(svc)}
+                              className={`text-xs font-bold px-3 py-2 rounded-xl transition-all ${
+                                isSelected
+                                  ? 'bg-coral text-white'
+                                  : 'border border-stone-200 text-ink/60 hover:border-coral hover:text-coral'
+                              }`}>
+                              {isSelected ? '✓ Reservar' : 'Reservar →'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Contact */}
             <div className="bg-white border border-stone-200 rounded-2xl p-6">
               <h3 className="font-semibold text-ink mb-4">Contacto</h3>
@@ -217,12 +325,37 @@ export default function ProviderDetailPage() {
           </div>
 
           {/* ── RIGHT — BOOKING FORM ── */}
-          <div className="sticky top-24">
+          <div className="sticky top-24" id="booking-form">
             <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card">
+
+              {/* Servicio seleccionado banner */}
+              {selectedSvc && (
+                <div className="mb-4 -mx-6 -mt-6 px-6 py-3 bg-coral/10 border-b border-coral/20 flex items-center justify-between gap-2">
+                  <div className="text-xs">
+                    <div className="text-ink/50 uppercase tracking-widest font-bold mb-0.5">Reservando</div>
+                    <div className="font-semibold text-ink truncate">{selectedSvc.name}</div>
+                  </div>
+                  <button onClick={() => setSelectedSvc(null)}
+                    className="text-[10px] text-ink/50 hover:text-coral underline whitespace-nowrap">
+                    Cambiar
+                  </button>
+                </div>
+              )}
 
               {/* Price */}
               <div className="mb-5">
-                {provider.price_base ? (
+                {selectedSvc ? (
+                  selectedSvc.price != null ? (
+                    <>
+                      <span className="font-serif text-3xl font-black" style={{ color: cat?.color }}>
+                        {selectedSvc.price.toLocaleString()}€
+                      </span>
+                      <span className="text-sm text-ink/40"> {selectedSvc.price_unit}</span>
+                    </>
+                  ) : (
+                    <span className="text-lg text-ink/50">A consultar</span>
+                  )
+                ) : provider.price_base ? (
                   <>
                     <span className="text-xs text-ink/40">desde </span>
                     <span className="font-serif text-3xl font-black" style={{ color: cat?.color }}>
@@ -236,27 +369,33 @@ export default function ProviderDetailPage() {
               </div>
 
               {/* Commission info */}
-              <div className={`rounded-xl p-3.5 mb-5 text-xs ${commission.isFree
-                ? 'bg-sage/10 border border-sage/20'
-                : 'bg-cream-dark border border-stone-200'}`}>
-                <div className={`font-bold mb-2 ${commission.isFree ? 'text-sage' : 'text-ink/60'}`}>
-                  {commission.isFree ? '🎁 ¡1ª transacción GRATIS!' : '💳 Desglose'}
-                </div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-ink/50">Precio del servicio</span>
-                  <span className="font-semibold">{(provider.price_base || 0).toLocaleString()}€</span>
-                </div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-ink/50">Comisión FiestaGo</span>
-                  <span className={commission.isFree ? 'text-sage font-bold' : 'text-ink/60'}>
-                    {commission.isFree ? '¡GRATIS!' : `-${commission.amount.toLocaleString()}€`}
-                  </span>
-                </div>
-                <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
-                  <span className="text-ink/50">Tú pagas</span>
-                  <span className="font-bold text-ink">{(provider.price_base || 0).toLocaleString()}€</span>
-                </div>
-              </div>
+              {(() => {
+                const effectivePrice = selectedSvc?.price ?? provider.price_base ?? 0
+                const effectiveCommission = calcCommission(effectivePrice, provider.total_bookings || 0)
+                return (
+                  <div className={`rounded-xl p-3.5 mb-5 text-xs ${effectiveCommission.isFree
+                    ? 'bg-sage/10 border border-sage/20'
+                    : 'bg-cream-dark border border-stone-200'}`}>
+                    <div className={`font-bold mb-2 ${effectiveCommission.isFree ? 'text-sage' : 'text-ink/60'}`}>
+                      {effectiveCommission.isFree ? '🎁 ¡1ª transacción GRATIS!' : '💳 Desglose'}
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-ink/50">Precio del servicio</span>
+                      <span className="font-semibold">{effectivePrice.toLocaleString()}€</span>
+                    </div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-ink/50">Comisión FiestaGo</span>
+                      <span className={effectiveCommission.isFree ? 'text-sage font-bold' : 'text-ink/60'}>
+                        {effectiveCommission.isFree ? '¡GRATIS!' : `-${effectiveCommission.amount.toLocaleString()}€`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
+                      <span className="text-ink/50">Tú pagas</span>
+                      <span className="font-bold text-ink">{effectivePrice.toLocaleString()}€</span>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {booked ? (
                 <div className="text-center py-6">
