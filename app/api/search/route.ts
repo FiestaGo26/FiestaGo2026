@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const q       = (searchParams.get('q') || '').trim()
   const ciudad  = (searchParams.get('ciudad') || '').trim()
+  const fecha   = (searchParams.get('fecha') || '').trim()  // YYYY-MM-DD, opcional
   const tipo    = (searchParams.get('tipo') || 'todo').toLowerCase()
   const limit   = Math.min(parseInt(searchParams.get('limit') || '24'), 60)
 
@@ -56,11 +57,23 @@ export async function GET(req: NextRequest) {
       _kind: 'service' as const,
       provider: s.providers,
     }))
+
+    // Filtrar por fecha si nos la pasan (excluir servicios bloqueados ese día)
+    if (fecha && services.length) {
+      const { data: blocked } = await supabase
+        .from('service_availability')
+        .select('service_id')
+        .eq('blocked_date', fecha)
+        .in('service_id', services.map((s: any) => s.id))
+      const blockedIds = new Set((blocked || []).map((b: any) => b.service_id))
+      services = services.filter((s: any) => !blockedIds.has(s.id))
+    }
   }
 
   return NextResponse.json({
     q,
     ciudad,
+    fecha,
     tipo,
     counts: {
       packs:      packs.length,

@@ -37,8 +37,11 @@ function ServiciosContent() {
   const [loading,   setLoading]   = useState(true)
   const [filterCat, setFilterCat] = useState(sp?.get('categoria') || '')
   const [filterCity,setFilterCity]= useState(sp?.get('ciudad')    || '')
+  const [filterDate,setFilterDate]= useState(sp?.get('fecha')     || '')
   const [search,    setSearch]    = useState(sp?.get('q')         || '')
   const [sortBy,    setSortBy]    = useState<'price_asc'|'price_desc'|'rating'|'recent'>('rating')
+
+  const today = new Date().toISOString().slice(0, 10)
 
   const fetchServices = useCallback(async () => {
     setLoading(true)
@@ -46,6 +49,7 @@ function ServiciosContent() {
     if (filterCat)  params.set('categoria', filterCat)
     if (filterCity) params.set('ciudad', filterCity)
     if (search)     params.set('q', search)
+    if (filterDate) params.set('fecha', filterDate)
     params.set('only_priced', '1')
     const res  = await fetch(`/api/services?${params}`)
     const data = await res.json()
@@ -55,8 +59,9 @@ function ServiciosContent() {
     if (filterCat)  urlParams.set('categoria', filterCat)
     if (filterCity) urlParams.set('ciudad', filterCity)
     if (search)     urlParams.set('q', search)
+    if (filterDate) urlParams.set('fecha', filterDate)
     router.replace(`/servicios${urlParams.toString() ? `?${urlParams}` : ''}`, { scroll: false })
-  }, [filterCat, filterCity, search, router])
+  }, [filterCat, filterCity, search, filterDate, router])
 
   useEffect(() => { fetchServices() }, [fetchServices])
 
@@ -129,10 +134,21 @@ function ServiciosContent() {
               className="flex-1 border-0 outline-none text-sm py-2.5 bg-transparent text-ink"/>
           </div>
           <select value={filterCity} onChange={e => setFilterCity(e.target.value)}
-            className="border border-stone-200 rounded-xl text-sm py-2.5 px-3 bg-white text-ink outline-none sm:w-48 focus:border-ink">
+            className="border border-stone-200 rounded-xl text-sm py-2.5 px-3 bg-white text-ink outline-none sm:w-44 focus:border-ink">
             <option value="">Cualquier ciudad</option>
             {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          <div className="flex items-center border border-stone-200 rounded-xl bg-white sm:w-44">
+            <span className="px-3 text-stone-400 text-sm">📅</span>
+            <input type="date" min={today} value={filterDate}
+              onChange={e => setFilterDate(e.target.value)}
+              className="flex-1 border-0 outline-none text-sm py-2.5 bg-transparent text-ink pr-2"/>
+            {filterDate && (
+              <button onClick={() => setFilterDate('')}
+                className="text-xs text-ink/40 hover:text-ink px-2"
+                title="Quitar fecha">×</button>
+            )}
+          </div>
         </div>
 
         {/* RESULTS */}

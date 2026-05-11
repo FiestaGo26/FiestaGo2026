@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
   const categoria   = searchParams.get('categoria') || ''
   const ciudad      = searchParams.get('ciudad') || ''
   const q           = (searchParams.get('q') || '').trim()
+  const fecha       = searchParams.get('fecha') || ''  // YYYY-MM-DD, opcional
   const onlyPriced  = searchParams.get('only_priced') === '1'
   const limit       = Math.min(parseInt(searchParams.get('limit') || '60'), 120)
 
@@ -35,11 +36,21 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Aplanar la nested table
-  const services = (data || []).map((s: any) => ({
+  let services = (data || []).map((s: any) => ({
     ...s,
     provider: s.providers,
   }))
+
+  // Filtro por fecha: excluir servicios bloqueados ese día
+  if (fecha && services.length) {
+    const { data: blocked } = await supabase
+      .from('service_availability')
+      .select('service_id')
+      .eq('blocked_date', fecha)
+      .in('service_id', services.map((s: any) => s.id))
+    const blockedIds = new Set((blocked || []).map((b: any) => b.service_id))
+    services = services.filter((s: any) => !blockedIds.has(s.id))
+  }
 
   return NextResponse.json({ services })
 }

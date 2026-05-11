@@ -15,7 +15,9 @@ function ResultsInner() {
 
   const [q,      setQ]      = useState(sp?.get('q') || '')
   const [ciudad, setCiudad] = useState(sp?.get('ciudad') || '')
+  const [fecha,  setFecha]  = useState(sp?.get('fecha') || '')
   const [tipo,   setTipo]   = useState<Tipo>((sp?.get('tipo') as Tipo) || 'todo')
+  const today = new Date().toISOString().slice(0, 10)
 
   const [data,    setData]    = useState<any>({ packs: [], providers: [], services: [], counts: { total: 0 } })
   const [loading, setLoading] = useState(true)
@@ -25,6 +27,7 @@ function ResultsInner() {
     const params = new URLSearchParams()
     if (q)      params.set('q', q)
     if (ciudad) params.set('ciudad', ciudad)
+    if (fecha)  params.set('fecha', fecha)
     params.set('tipo', tipo)
     fetch(`/api/search?${params}`)
       .then(r => r.json())
@@ -33,7 +36,7 @@ function ResultsInner() {
     // Sync URL
     router.replace(`/buscar?${params}`, { scroll: false })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipo, ciudad])
+  }, [tipo, ciudad, fecha])
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,6 +44,7 @@ function ResultsInner() {
     const params = new URLSearchParams()
     if (q)      params.set('q', q)
     if (ciudad) params.set('ciudad', ciudad)
+    if (fecha)  params.set('fecha', fecha)
     params.set('tipo', tipo)
     fetch(`/api/search?${params}`)
       .then(r => r.json())
@@ -86,13 +90,18 @@ function ResultsInner() {
               <input value={q} onChange={e => setQ(e.target.value)} placeholder="¿Qué buscas?"
                 className="flex-1 border-0 outline-none text-sm py-2.5 bg-transparent text-ink"/>
             </div>
-            <div className="flex items-center border border-stone-200 rounded-xl md:w-44">
+            <div className="flex items-center border border-stone-200 rounded-xl md:w-40">
               <span className="px-3 text-stone-400">📍</span>
               <select value={ciudad} onChange={e => setCiudad(e.target.value)}
                 className="flex-1 border-0 outline-none text-sm py-2.5 bg-transparent text-ink">
                 <option value="">Cualquier ciudad</option>
                 {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+            <div className="flex items-center border border-stone-200 rounded-xl md:w-40">
+              <span className="px-3 text-stone-400">📅</span>
+              <input type="date" min={today} value={fecha} onChange={e => setFecha(e.target.value)}
+                className="flex-1 border-0 outline-none text-sm py-2.5 bg-transparent text-ink pr-2"/>
             </div>
             <button type="submit" className="bg-coral text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-coral-dark transition-colors">
               Buscar

@@ -157,19 +157,22 @@ export default function ProviderDetailPage() {
     setCreatingAccount(false)
   }
 
+  // Cargar fechas bloqueadas SIEMPRE que cambie el servicio seleccionado
+  // (sea por click manual o por ?svc=ID en la URL)
+  useEffect(() => {
+    if (!selectedSvc) { setBlockedDates([]); return }
+    fetch(`/api/services/availability?service_id=${selectedSvc.id}&months=6`)
+      .then(r => r.json())
+      .then(d => setBlockedDates(d.blocked_dates || []))
+      .catch(() => setBlockedDates([]))
+  }, [selectedSvc])
+
   function selectService(svc: Service) {
     setSelectedSvc(svc)
     setForm(f => ({
       ...f,
-      // Si la fecha actualmente seleccionada está bloqueada para el nuevo svc la reseteamos al cargar
       message: `Hola, me gustaría reservar el servicio "${svc.name}"${svc.price != null ? ` (${svc.price.toLocaleString()}€)` : ''}.${f.message ? `\n\n${f.message}` : ''}`,
     }))
-    // Cargar fechas bloqueadas del servicio
-    fetch(`/api/services/availability?service_id=${svc.id}&months=6`)
-      .then(r => r.json())
-      .then(d => setBlockedDates(d.blocked_dates || []))
-      .catch(() => setBlockedDates([]))
-    // Scroll al formulario en mobile
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setTimeout(() => document.getElementById('booking-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
     }
@@ -558,11 +561,14 @@ export default function ProviderDetailPage() {
                             return (
                               <button key={dateStr} type="button" disabled={disabled}
                                 onClick={() => setForm(f => ({ ...f, event_date: dateStr }))}
+                                title={isBlocked ? 'No disponible' : isPast ? 'Fecha pasada' : ''}
                                 className={`aspect-square rounded-lg text-xs transition-all ${
                                   isSelected
                                     ? 'bg-coral text-white font-bold shadow-sm'
-                                    : disabled
-                                    ? 'text-ink/20 cursor-not-allowed line-through'
+                                    : isBlocked
+                                    ? 'bg-red-100 text-red-400 line-through cursor-not-allowed border border-red-200'
+                                    : isPast
+                                    ? 'text-ink/20 cursor-not-allowed bg-stone-50'
                                     : 'text-ink hover:bg-coral/10 hover:text-coral border border-transparent hover:border-coral/30'
                                 }`}>
                                 {day}
@@ -571,11 +577,14 @@ export default function ProviderDetailPage() {
                           })
                         })()}
                       </div>
-                      <div className="flex gap-3 text-[9px] text-ink/40 mt-2 flex-wrap">
-                        {selectedSvc && (
-                          <span className="flex items-center gap-1"><span className="text-ink/30 line-through">15</span> No disponible</span>
+                      <div className="flex gap-3 text-[10px] text-ink/55 mt-3 flex-wrap items-center">
+                        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-coral rounded inline-block"/> Elegida</span>
+                        {selectedSvc && blockedDates.length > 0 && (
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-red-100 border border-red-200 rounded inline-block"/> No disponible</span>
                         )}
-                        <span className="flex items-center gap-1"><span className="w-2 h-2 bg-coral rounded-full inline-block"/> Elegida</span>
+                        {!selectedSvc && (
+                          <span className="text-[10px] text-ink/40 italic">Elige un servicio arriba para ver disponibilidad</span>
+                        )}
                       </div>
                     </div>
                     {/* Hidden input para validación HTML */}
