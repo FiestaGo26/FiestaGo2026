@@ -49,14 +49,14 @@ export default async function HomePage() {
     <main>
 
       {/* ─────────── HERO ─────────── */}
-      <section className="relative h-[78vh] min-h-[560px] flex items-end overflow-hidden">
+      <section className="relative h-[88vh] min-h-[680px] flex items-end overflow-hidden">
         <Image
           src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1920&q=85&auto=format&fit=crop"
           alt="Amigos celebrando con FiestaGo"
           fill priority className="object-cover"/>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/55" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/25 to-black/65" />
 
-        <div className="relative max-w-6xl mx-auto px-6 pb-24 md:pb-32 w-full text-white">
+        <div className="relative max-w-6xl mx-auto px-6 pb-44 md:pb-52 w-full text-white">
           <div className="max-w-2xl">
             <p className="text-xs md:text-sm font-bold tracking-[0.25em] uppercase mb-5 text-coral">
               🎉 El marketplace #1 de fiestas en España
@@ -74,16 +74,16 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Search bar flotante */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-[-32px] md:bottom-[-36px] w-[92%] max-w-4xl z-20">
-          <div className="bg-white rounded-2xl shadow-2xl p-2 md:p-3">
+        {/* Search bar flotante DENTRO del hero (sobre la foto) */}
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-10 md:bottom-12 w-[92%] max-w-4xl z-20">
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-2 md:p-3">
             <SearchBar />
           </div>
         </div>
       </section>
 
       {/* ─────────── CATEGORÍAS STRIP (Airbnb style) ─────────── */}
-      <section className="mt-20 border-b border-stone-200/70">
+      <section className="border-b border-stone-200/70">
         <div className="max-w-6xl mx-auto px-2 md:px-6 py-4 overflow-x-auto scrollbar-hide">
           <div className="flex gap-7 md:gap-10 px-3 min-w-fit">
             {CATEGORIES.map((c: any) => (
