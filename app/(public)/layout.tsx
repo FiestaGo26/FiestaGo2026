@@ -20,16 +20,16 @@ function Navbar() {
           </Link>
         </div>
         <div className="flex items-center gap-2">
-          {/* PROVEEDOR (acceso profesional, secundario) */}
-          <Link href="/proveedor/login"
+          {/* PROVEEDOR (alta profesional, secundario — el login se hace por 'Acceder') */}
+          <Link href="/registro-proveedor"
             className="hidden lg:inline-flex items-center gap-1 text-xs text-ink/55 hover:text-coral px-3 py-2 rounded-xl border border-dashed border-stone-200 hover:border-coral transition-colors">
-            🛠 Soy proveedor
+            🛠 Darse de alta como proveedor
           </Link>
 
           {/* Divider */}
           <div className="hidden lg:block w-px h-6 bg-stone-200 mx-1" />
 
-          {/* CLIENTE */}
+          {/* ACCEDER (unificado — cliente o proveedor, redirige al panel correcto) */}
           <Link href="/login"
             className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
             Acceder

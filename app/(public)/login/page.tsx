@@ -20,8 +20,22 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
-      toast.success('¡Bienvenido de vuelta!')
-      router.push('/mi-cuenta')
+
+      // Detectar si es proveedor (busca su email en la tabla providers).
+      // Si lo es, lo llevamos a su panel. Si no, al panel de cliente.
+      const { data: providerRow } = await supabase
+        .from('providers')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle()
+
+      if (providerRow) {
+        toast.success('¡Bienvenido, profesional!')
+        router.push('/proveedor/panel')
+      } else {
+        toast.success('¡Bienvenido de vuelta!')
+        router.push('/mi-cuenta')
+      }
     } catch (err: any) {
       toast.error(err.message || 'Email o contraseña incorrectos')
     }
@@ -38,7 +52,7 @@ export default function LoginPage() {
         <div className="bg-white border border-stone-200 rounded-2xl p-8 shadow-card">
           <div className="text-center mb-6">
             <h1 className="font-serif text-3xl font-black text-ink mb-2">Inicia sesión</h1>
-            <p className="text-ink/55 text-sm">Accede a tu calendario de reservas y descuentos.</p>
+            <p className="text-ink/55 text-sm">Te llevaremos a tu panel — sea de cliente o de proveedor.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
