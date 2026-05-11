@@ -93,6 +93,10 @@ export async function POST(req: NextRequest) {
       return `<p style="margin:0 0 16px;line-height:1.65;font-size:15px;color:#5C534A;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${escaped}</p>`
     }).join('')
 
+  // URL de baja (RFC 8058) — la usamos también en el footer del email
+  const unsubscribeUrl = `https://fiestago.es/unsubscribe?email=${encodeURIComponent(recipient)}&id=${id}`
+  const unsubscribeMailto = `mailto:contacto@fiestago.es?subject=unsubscribe-${id}`
+
   // Wrap del body en un template HTML elegante con cabecera, beneficios visuales y CTA.
   const safeName = (prov.name || '').replace(/</g, '&lt;')
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -170,12 +174,16 @@ export async function POST(req: NextRequest) {
           </p>
         </td></tr>
 
-        <!-- Footer dark -->
+        <!-- Footer dark con baja -->
         <tr><td style="padding:18px 36px;background:#1A1612;text-align:center;">
           <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:rgba(255,255,255,0.55);">
             FiestaGo · El marketplace de celebraciones · España
           </div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:8px;">
+          <div style="font-size:10px;color:rgba(255,255,255,0.55);margin-top:10px;line-height:1.6;">
+            Recibes este email porque tu negocio fue identificado como potencial socio.<br/>
+            <a href="${unsubscribeUrl}" style="color:rgba(255,255,255,0.7);text-decoration:underline;">Darme de baja</a>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:10px;">
             <a href="https://instagram.com/fiestagospain" style="color:rgba(255,255,255,0.55);text-decoration:none;">@fiestagospain</a>
             ·
             <a href="https://fiestago.es" style="color:rgba(255,255,255,0.55);text-decoration:none;">fiestago.es</a>
@@ -188,6 +196,8 @@ export async function POST(req: NextRequest) {
 </body></html>`
 
   // Enviar via Resend REST API
+  // Cabeceras requeridas por Microsoft / Gmail para email comercial:
+  // List-Unsubscribe + List-Unsubscribe-Post (RFC 8058) = marketing legítimo
   const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -201,6 +211,11 @@ export async function POST(req: NextRequest) {
       text:    parsedBody,
       html,
       reply_to: REPLY_TO || undefined,
+      headers: {
+        'List-Unsubscribe':      `<${unsubscribeMailto}>, <${unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-Entity-Ref-ID':       id,  // tracking estable
+      },
     }),
   })
 
