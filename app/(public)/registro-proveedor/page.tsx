@@ -1,16 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { CATEGORIES, CITIES } from '@/lib/constants'
 import toast from 'react-hot-toast'
 
-export default function RegistroProveedorPage() {
+function RegistroProveedorInner() {
   const router = useRouter()
+  const sp     = useSearchParams()
   const supabase = createClient()
+  const refParam = sp?.get('ref') || null  // ID del proveedor que refiere
   const [step,    setStep]    = useState(1)
   const [loading, setLoading] = useState(false)
+  const [referrerName, setReferrerName] = useState<string | null>(null)
   const [form, setForm] = useState({
     name:'', category:'foto', city:'Madrid',
     email:'', password:'', confirmPassword:'',
@@ -18,6 +21,15 @@ export default function RegistroProveedorPage() {
     description:'', price_base:'', price_unit:'por evento',
     specialties:[] as string[],
   })
+
+  // Si llega con ?ref=ID, mostrar quién le invitó
+  useEffect(() => {
+    if (!refParam) return
+    fetch(`/api/providers?id=${refParam}`)
+      .then(r => r.json())
+      .then(d => { if (d?.provider?.name) setReferrerName(d.provider.name) })
+      .catch(() => {})
+  }, [refParam])
 
   function set(field: string, value: any) {
     setForm(f => ({ ...f, [field]: value }))
@@ -82,6 +94,7 @@ export default function RegistroProveedorPage() {
           price_unit:  form.price_unit,
           specialties: [],
           source:      'web',
+          referred_by: refParam,
         }),
       })
 
@@ -141,6 +154,17 @@ export default function RegistroProveedorPage() {
           <h1 className="font-serif text-3xl font-black text-ink mb-3">Registra tu negocio</h1>
           <p className="text-ink/55 leading-relaxed">Sin coste hasta tu primera reserva.</p>
         </div>
+
+        {/* Banner si llega vía link de referido */}
+        {referrerName && (
+          <div className="bg-coral/10 border border-coral/30 rounded-2xl p-4 mb-6 text-center">
+            <div className="text-xs font-bold tracking-widest uppercase text-coral mb-1">🤝 Te invita</div>
+            <div className="text-sm text-ink/80">
+              <strong className="text-ink">{referrerName}</strong> te ha invitado a FiestaGo.<br/>
+              <span className="text-xs text-ink/55">Al registrarte, los dos subís a los primeros puestos de vuestra categoría.</span>
+            </div>
+          </div>
+        )}
 
         {/* Value props */}
         <div className="grid grid-cols-3 gap-3 mb-8">
@@ -251,5 +275,13 @@ export default function RegistroProveedorPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function RegistroProveedorPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-cream flex items-center justify-center text-ink/40">Cargando...</div>}>
+      <RegistroProveedorInner />
+    </Suspense>
   )
 }

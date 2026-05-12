@@ -503,6 +503,36 @@ export default function ProveedorPanelPage() {
                 ))}
               </div>
             </div>
+
+            {/* CARD DE REFERIDOS */}
+            {provider && (
+              <div className="mt-6 bg-gradient-to-br from-coral/10 via-amber-50 to-rose-50 border border-coral/30 rounded-3xl p-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">🤝</span>
+                  <div>
+                    <div className="text-[10px] font-bold tracking-widest uppercase text-coral">Bonus de referidos</div>
+                    <h3 className="font-serif text-xl font-black text-ink">Trae a un compañero, sube al top</h3>
+                  </div>
+                </div>
+                <p className="text-xs text-ink/65 mb-4 leading-relaxed">
+                  Invita a otro profesional. Cuando se registre, los dos apareceréis en los primeros puestos de vuestra categoría sin coste. Cuantos más traigas, más arriba.
+                </p>
+                <div className="bg-white border border-coral/30 rounded-xl p-3 flex items-center gap-2">
+                  <input readOnly value={`https://fiestago.es/registro-proveedor?ref=${provider.id}`}
+                    className="flex-1 bg-transparent border-0 outline-none text-xs text-ink font-mono truncate"/>
+                  <button onClick={() => {
+                    navigator.clipboard.writeText(`https://fiestago.es/registro-proveedor?ref=${provider.id}`)
+                    toast.success('Link copiado ✓')
+                  }}
+                    className="text-xs font-bold bg-coral text-white px-3 py-1.5 rounded-lg hover:bg-coral-dark whitespace-nowrap">
+                    Copiar
+                  </button>
+                </div>
+                <div className="text-[10px] text-ink/45 mt-2">
+                  Envía este link por WhatsApp, Instagram o email. Cuando alguien se registre vía tu link, lo verás aquí.
+                </div>
+              </div>
+            )}
           </div>
         )}
 

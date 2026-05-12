@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   const { name, category, city, email, phone, website, instagram,
-          description, price_base, price_unit, specialties } = body
+          description, price_base, price_unit, specialties, referred_by } = body
 
   if (!name || !category || !city || !email) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
       source:       'web',
       status:       'pending',
       contactable,
+      referred_by:  referred_by || null,
     })
     .select()
     .single()

@@ -92,10 +92,11 @@ FiestaGo (sistema automático)`
 export async function emailProviderWelcome(provider: any) {
   if (!provider.email) return { ok: false, error: 'Proveedor sin email' }
 
-  const profileUrl = `https://fiestago.es/proveedores/${provider.slug || provider.id}`
-  const panelUrl   = `https://fiestago.es/proveedor/login`
-  const safeName   = (provider.name || '').replace(/</g, '&lt;')
-  const safeCity   = (provider.city || 'tu ciudad').replace(/</g, '&lt;')
+  const profileUrl    = `https://fiestago.es/proveedores/${provider.slug || provider.id}`
+  const panelUrl      = `https://fiestago.es/proveedor/login`
+  const referralUrl   = `https://fiestago.es/registro-proveedor?ref=${provider.id}`
+  const safeName      = (provider.name || '').replace(/</g, '&lt;')
+  const safeCity      = (provider.city || 'tu ciudad').replace(/</g, '&lt;')
 
   const subject = `🎉 Bienvenido a FiestaGo, ${provider.name}`
 
@@ -108,23 +109,20 @@ export async function emailProviderWelcome(provider: any) {
     ``,
     `LO QUE GANAS POR SER PARTE DE FIESTAGO:`,
     ``,
-    `🎁 Primera venta sin comisión`,
-    `   Tu primera transacción la cobras al 100%. Sin costes.`,
+    `🎁 Primera venta sin comisión — cobras al 100% tu primera transacción.`,
+    `💸 Solo 8% después — la comisión más baja del sector. Sin cuotas.`,
+    `📅 Calendario inteligente — marca días libres, bloqueamos fechas reservadas.`,
+    `🚀 Clientes cualificados — solicitudes serias con fecha y datos completos.`,
+    `🛡 Pago seguro — cliente paga primero, tú cobras tras el servicio.`,
+    `📣 Marketing gratis — te promocionamos en IG y TikTok @fiestagospain.`,
+    `🏆 Sello de calidad gratis — visible junto a tu perfil si mantienes 4,5/5.`,
     ``,
-    `💸 Solo 8% después`,
-    `   La comisión más baja del sector. Sin cuotas mensuales ni permanencia.`,
+    `BONUS — TRAE A UN COMPAÑERO Y SUBE`,
+    `Si invitas a otro profesional y se registra, los dos apareceréis automáticamente`,
+    `en los primeros puestos de vuestra categoría sin coste extra.`,
     ``,
-    `📅 Calendario inteligente`,
-    `   Marca tus días libres. Bloqueamos automáticamente las fechas reservadas.`,
-    ``,
-    `🚀 Clientes cualificados`,
-    `   Solo recibes solicitudes serias, con fecha y datos completos.`,
-    ``,
-    `🛡 Pago seguro`,
-    `   El cliente paga primero. Tú cobras tras el servicio.`,
-    ``,
-    `📣 Marketing gratis`,
-    `   Te promocionamos en Instagram y TikTok @fiestagospain.`,
+    `Tu link de referido único (compártelo por WhatsApp, IG o email):`,
+    `${referralUrl}`,
     ``,
     `---`,
     ``,
@@ -132,7 +130,8 @@ export async function emailProviderWelcome(provider: any) {
     `1. Accede a tu panel y completa tu perfil`,
     `2. Sube tus servicios con fotos y precio cerrado`,
     `3. Marca tu disponibilidad en el calendario`,
-    `4. ¡Espera a tu primera reserva!`,
+    `4. Comparte tu link de referido para subir al top`,
+    `5. ¡Espera a tu primera reserva!`,
     ``,
     `Ver mi perfil:        ${profileUrl}`,
     `Acceder a mi panel:   ${panelUrl}`,
@@ -205,6 +204,29 @@ export async function emailProviderWelcome(provider: any) {
                 </td></tr>
               `).join('')}
             </table>
+          </div>
+        </td></tr>
+
+        <!-- Sello de calidad -->
+        <tr><td style="padding:12px 36px 0;">
+          <div style="background:linear-gradient(135deg,#FFF7ED 0%,#FBF0E0 100%);border:2px solid #C8860A;border-radius:12px;padding:22px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:8px;line-height:1;">🏆</div>
+            <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#C8860A;font-weight:700;margin-bottom:8px;">Tu sello de calidad · GRATIS</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1612;margin-bottom:6px;line-height:1.3;">Ya lo tienes</div>
+            <div style="font-size:13px;color:#5C534A;line-height:1.55;max-width:420px;margin:0 auto;">Aparecerá junto a tu perfil mientras mantengas <strong>4,5/5</strong> en tus reseñas. Aumenta confianza y reservas.</div>
+          </div>
+        </td></tr>
+
+        <!-- Link de referido personalizado -->
+        <tr><td style="padding:12px 36px 0;">
+          <div style="background:linear-gradient(135deg,#FEF2EE 0%,#FCE3DC 100%);border:2px solid #E8553E;border-radius:12px;padding:22px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:8px;line-height:1;">🤝</div>
+            <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;font-weight:700;margin-bottom:8px;">Tu link de referido · BONUS</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1612;margin-bottom:6px;line-height:1.3;">Trae a un compañero y subes</div>
+            <div style="font-size:13px;color:#5C534A;line-height:1.55;max-width:420px;margin:0 auto 14px;">Comparte este link por WhatsApp, Instagram o email. Cuando alguien se registre, los dos apareceréis en el <strong>top de vuestra categoría</strong>.</div>
+            <div style="background:#fff;border:1px solid #FCD2C5;border-radius:8px;padding:10px 14px;font-family:monospace;font-size:11px;color:#1A1612;word-break:break-all;">
+              ${referralUrl}
+            </div>
           </div>
         </td></tr>
 
@@ -565,6 +587,14 @@ export async function emailProviderOutreach(
             <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#C8860A;font-weight:700;margin-bottom:8px;">Sello de calidad · GRATIS</div>
             <div style="font-size:16px;font-weight:700;color:#1A1612;margin-bottom:6px;line-height:1.3;">Te lo regalamos al entrar</div>
             <div style="font-size:13px;color:#5C534A;line-height:1.55;max-width:420px;margin:0 auto;">Lo conservas mientras mantengas <strong>4,5/5</strong> en tus reseñas. Es un distintivo visible junto a tu perfil que aumenta la confianza de los clientes y las reservas.</div>
+          </div>
+        </td></tr>
+        <tr><td style="padding:12px 36px 0;">
+          <div style="background:linear-gradient(135deg,#FEF2EE 0%,#FCE3DC 100%);border:2px solid #E8553E;border-radius:12px;padding:22px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:8px;line-height:1;">🤝</div>
+            <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;font-weight:700;margin-bottom:8px;">Trae a un compañero · BONUS</div>
+            <div style="font-size:16px;font-weight:700;color:#1A1612;margin-bottom:6px;line-height:1.3;">Subes a los primeros puestos</div>
+            <div style="font-size:13px;color:#5C534A;line-height:1.55;max-width:420px;margin:0 auto;">Si invitas a otro profesional y se registra, los dos apareceréis en el <strong>top de vuestra categoría</strong> sin coste. Cuantos más traigas, más arriba.</div>
           </div>
         </td></tr>
         <tr><td style="padding:28px 36px 12px;text-align:center;">
