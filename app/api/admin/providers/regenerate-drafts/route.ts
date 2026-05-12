@@ -8,14 +8,12 @@ function checkAdminAuth(req: NextRequest) {
   return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
 }
 
-// Plantilla del email outreach (alineada con agent/route.ts)
-function buildEmailDraft(p: any): string {
+// Cuerpo base del mensaje (igual para email y DM)
+function buildBaseMessage(p: any): string {
   const sourceLabel = p.source === 'instagram' ? ' en Instagram'
                     : p.source === 'tiktok'    ? ' en TikTok'
                     : ''
-  return `ASUNTO: Tu negocio en FiestaGo · ${p.city}
-
-Hola ${p.name},
+  return `Hola ${p.name},
 
 Somos FiestaGo, un nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados y familiares). Lanzamos oficialmente el 10 de junio de 2026 y estamos seleccionando los primeros profesionales en ${p.city} para tener un catálogo de calidad desde el día uno.
 
@@ -38,40 +36,18 @@ Si invitas a otro profesional de eventos y se registra en FiestaGo, los dos apar
 Si quieres formar parte:
 https://fiestago.es/registro-proveedor
 
-Si tienes dudas, simplemente responde a este email.
+Si tienes dudas, simplemente responde a este mensaje o escribe a contacto@fiestago.es.
 
 Un saludo,
 El equipo de FiestaGo`
 }
 
-// Plantilla del DM Instagram (alineada con agent/route.ts)
+// El email lleva una línea ASUNTO: arriba; el DM no.
+function buildEmailDraft(p: any): string {
+  return `ASUNTO: Tu negocio en FiestaGo · ${p.city}\n\n${buildBaseMessage(p)}`
+}
 function buildDmDraft(p: any): string {
-  const firstName = (p.name || '').split(/[\s|·\-_]/)[0] || ''
-  return `¡Hola ${firstName}! 👋✨
-
-Te escribo del equipo de FiestaGo, el nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados).
-
-🚀 LANZAMOS EL 10 DE JUNIO DE 2026
-Estamos seleccionando los primeros profesionales en ${p.city} para arrancar con catálogo de calidad desde el día uno. Tu trabajo nos ha encajado mucho 🙌
-
-Lo que ganas si entras AHORA, antes del lanzamiento:
-
-✅ Mejor posición en los resultados
-🎁 Primera reserva sin comisión (0%)
-💸 Solo 8% desde la segunda venta
-📅 Sin permanencia ni cuotas mensuales
-📣 Te promocionamos en nuestras redes (@fiestagospain)
-
-🏆 BONUS · SELLO FIESTAGO DE CALIDAD (GRATIS)
-Te lo regalamos al entrar y lo mantienes mientras tengas 4,5/5 en reseñas. Es un distintivo visible junto a tu perfil que aumenta confianza y reservas.
-
-🤝 BONUS · TRAE A UN COMPAÑERO
-Si invitas a otro profesional y se registra, los dos apareceréis en los primeros puestos de vuestra categoría sin coste.
-
-¿Te interesa? Regístrate en menos de 5 minutos:
-👉 https://fiestago.es/registro-proveedor
-
-Cualquier duda, respóndeme por aquí o escribe a contacto@fiestago.es 💌`
+  return buildBaseMessage(p)
 }
 
 // POST /api/admin/providers/regenerate-drafts

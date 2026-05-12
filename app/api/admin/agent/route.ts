@@ -113,9 +113,8 @@ Solo negocios profesionales reales, no particulares. Si no encuentras ${count}, 
       const instagram = p.instagram || null
       const contactable = !!(email || phone || website || instagram)
 
-      const emailDraft = email ? `ASUNTO: Tu negocio en FiestaGo · ${city}
-
-Hola ${p.name},
+      // Mismo cuerpo de mensaje para email y DM
+      const baseMessage = `Hola ${p.name},
 
 Somos FiestaGo, un nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados y familiares). Lanzamos oficialmente el 10 de junio de 2026 y estamos seleccionando los primeros profesionales en ${city} para tener un catálogo de calidad desde el día uno.
 
@@ -137,36 +136,13 @@ Si invitas a otro profesional de eventos y se registra en FiestaGo, los dos apar
 Si quieres formar parte:
 https://fiestago.es/registro-proveedor
 
-Si tienes dudas, simplemente responde a este email.
+Si tienes dudas, simplemente responde a este mensaje o escribe a contacto@fiestago.es.
 
 Un saludo,
-El equipo de FiestaGo` : ''
+El equipo de FiestaGo`
 
-      const dmDraft = instagram ? `¡Hola ${p.name.split(' ')[0]}! 👋✨
-
-Te escribo del equipo de FiestaGo, el nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados).
-
-🚀 LANZAMOS EL 10 DE JUNIO DE 2026
-Estamos seleccionando los primeros profesionales en ${city} para arrancar con catálogo de calidad desde el día uno. Tu trabajo nos ha encajado mucho 🙌
-
-Lo que ganas si entras AHORA, antes del lanzamiento:
-
-✅ Mejor posición en los resultados
-🎁 Primera reserva sin comisión (0%)
-💸 Solo 8% desde la segunda venta
-📅 Sin permanencia ni cuotas mensuales
-📣 Te promocionamos en nuestras redes (@fiestagospain)
-
-🏆 BONUS · SELLO FIESTAGO DE CALIDAD (GRATIS)
-Te lo regalamos al entrar y lo mantienes mientras tengas 4,5/5 en reseñas. Es un distintivo visible junto a tu perfil que aumenta confianza y reservas.
-
-🤝 BONUS · TRAE A UN COMPAÑERO
-Si invitas a otro profesional y se registra, los dos apareceréis en los primeros puestos de vuestra categoría sin coste.
-
-¿Te interesa? Regístrate en menos de 5 minutos:
-👉 https://fiestago.es/registro-proveedor
-
-Cualquier duda, respóndeme por aquí o escribe a contacto@fiestago.es 💌` : ''
+      const emailDraft = email ? `ASUNTO: Tu negocio en FiestaGo · ${city}\n\n${baseMessage}` : ''
+      const dmDraft    = instagram ? baseMessage : ''
 
       const { data: row } = await supabase
         .from('providers')
