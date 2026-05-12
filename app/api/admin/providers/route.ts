@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { emailProviderWelcome, emailProviderRejection } from '@/lib/resend'
+import { emailProviderWelcome, emailProviderRejection, emailProviderOutreach } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -10,39 +10,8 @@ function checkAdminAuth(req: NextRequest) {
   return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
 }
 
-// Email de captación (cuando agente encuentra proveedor y admin aprueba "contactar")
-async function sendOutreachEmail(provider: any) {
-  if (!provider.outreach_email || !provider.email) return false
-  if (!process.env.RESEND_API_KEY) {
-    console.log('[OUTREACH] RESEND_API_KEY no configurada')
-    return false
-  }
-
-  const lines    = provider.outreach_email.split('\n')
-  const subjL    = lines.find((l: string) => l.startsWith('ASUNTO:'))
-  const subject  = subjL ? subjL.replace('ASUNTO:', '').trim() : `Únete a FiestaGo — ${provider.name}`
-  const bodyText = lines.filter((l: string) => !l.startsWith('ASUNTO:')).join('\n').trim()
-
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from:    `FiestaGo <${process.env.OUTREACH_FROM || 'contacto@fiestago.es'}>`,
-        to:      [provider.email],
-        subject,
-        text:    bodyText,
-        reply_to: process.env.OUTREACH_REPLY_TO,
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) { console.error('[OUTREACH] Error:', data); return false }
-    return true
-  } catch (err) { console.error('[OUTREACH]', err); return false }
-}
+// Usa la función compartida emailProviderOutreach de lib/resend.ts
+// (mismo diseño HTML que el botón "Enviar email" manual del admin)
 
 // Generación de imagen hero al aprobar (Flux 1.1 Pro)
 async function generateProviderImage(provider: any): Promise<string | null> {
@@ -154,9 +123,9 @@ export async function PATCH(req: NextRequest) {
     const isRecruitment = !!(current.outreach_email && !current.outreach_sent)
 
     if (isRecruitment) {
-      // Flow 1: enviar outreach, mantener pending
-      const sent = await sendOutreachEmail(current)
-      if (sent) {
+      // Flow 1: enviar outreach con el diseño completo (HTML + sello + List-Unsubscribe), mantener pending
+      const sent = await emailProviderOutreach(current)
+      if (sent.ok) {
         updates.status        = 'pending'
         updates.outreach_sent = true
         updates.outreach_at   = new Date().toISOString()
@@ -164,6 +133,7 @@ export async function PATCH(req: NextRequest) {
         result.flow = 'outreach_sent'
       } else {
         result.flow = 'outreach_failed'
+        result.outreachError = sent.error
       }
     } else {
       // Flow 2: aprobación real
