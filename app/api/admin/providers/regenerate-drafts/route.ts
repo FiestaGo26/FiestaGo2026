@@ -46,8 +46,30 @@ El equipo de FiestaGo`
 function buildEmailDraft(p: any): string {
   return `ASUNTO: Tu negocio en FiestaGo · ${p.city}\n\n${buildBaseMessage(p)}`
 }
+
+// DM compacto (~750 chars) porque Instagram limita los mensajes a ~1000 chars.
+// Mantiene todas las ventajas clave + sello + referidos + link.
 function buildDmDraft(p: any): string {
-  return buildBaseMessage(p)
+  return `Hola ${p.name},
+
+Soy del equipo de FiestaGo, el nuevo marketplace de celebraciones en España. Lanzamos el 10 de junio y estamos seleccionando los primeros profesionales en ${p.city}.
+
+Tu trabajo encaja con lo que buscan nuestros clientes ✨
+
+Ventajas de entrar antes del lanzamiento:
+- Mejor posición en los resultados
+- 0% comisión en tu primera reserva
+- Solo 8% después · sin permanencia
+- Promoción gratuita en @fiestagospain
+
+🏆 SELLO FIESTAGO DE CALIDAD GRATIS — si mantienes 4,5/5 en reseñas
+
+🤝 Trae a un compañero y los dos subís al top de la categoría
+
+Regístrate en 5 minutos:
+👉 https://fiestago.es/registro-proveedor
+
+Cualquier duda, respóndeme por aquí 💌`
 }
 
 // POST /api/admin/providers/regenerate-drafts

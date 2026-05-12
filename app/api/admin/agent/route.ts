@@ -142,7 +142,27 @@ Un saludo,
 El equipo de FiestaGo`
 
       const emailDraft = email ? `ASUNTO: Tu negocio en FiestaGo · ${city}\n\n${baseMessage}` : ''
-      const dmDraft    = instagram ? baseMessage : ''
+      // DM compacto (~750 chars) — Instagram limita a ~1000 chars por mensaje
+      const dmDraft = instagram ? `Hola ${p.name},
+
+Soy del equipo de FiestaGo, el nuevo marketplace de celebraciones en España. Lanzamos el 10 de junio y estamos seleccionando los primeros profesionales en ${city}.
+
+Tu trabajo encaja con lo que buscan nuestros clientes ✨
+
+Ventajas de entrar antes del lanzamiento:
+- Mejor posición en los resultados
+- 0% comisión en tu primera reserva
+- Solo 8% después · sin permanencia
+- Promoción gratuita en @fiestagospain
+
+🏆 SELLO FIESTAGO DE CALIDAD GRATIS — si mantienes 4,5/5 en reseñas
+
+🤝 Trae a un compañero y los dos subís al top de la categoría
+
+Regístrate en 5 minutos:
+👉 https://fiestago.es/registro-proveedor
+
+Cualquier duda, respóndeme por aquí 💌` : ''
 
       const { data: row } = await supabase
         .from('providers')
