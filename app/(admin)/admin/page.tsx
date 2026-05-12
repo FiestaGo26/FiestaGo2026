@@ -207,7 +207,7 @@ export default function AdminPage() {
       setBulkResult({ ok: false, msg: 'No hay candidatos con email pendientes de contactar.' })
       return
     }
-    if (!confirm(`Vas a enviar el email outreach a ${candidatos.length} proveedores. Esto consume tu cuota de Resend. ¿Continuar?`)) return
+    if (!confirm(`Vas a enviar el email outreach a ${candidatos.length} proveedores.\n\n(Cuota Resend: 3.000 emails/mes en plan free — vas a usar ${candidatos.length} de los disponibles).\n\n¿Continuar?`)) return
     setBulkLoading(true)
     setBulkResult({ ok: true, msg: `⏳ Enviando ${candidatos.length} emails (puede tardar 1-3 min)...` })
     try {

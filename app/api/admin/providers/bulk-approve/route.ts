@@ -43,8 +43,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: 0, failed: 0, total: 0, errors: [], note: 'No hay proveedores que cumplan el filtro' })
   }
 
-  // Procesar en paralelo controlado (10 a la vez)
-  const CONCURRENCY = 10
+  // Procesar respetando el rate limit de Resend (free tier: 2 req/seg)
+  // CONCURRENCY=2 + delay 1100ms entre lotes ≈ 2 req/seg sostenido
+  const CONCURRENCY = 2
+  const DELAY_MS    = 1100
   let ok = 0
   let failed = 0
   const errors: any[] = []
@@ -62,6 +64,10 @@ export async function POST(req: NextRequest) {
       if (res.status === 'fulfilled') { ok++; okIds.push(p.id) }
       else { failed++; errors.push({ id: p.id, name: p.name, error: (res.reason as any)?.message || String(res.reason) }) }
     })
+    // Esperar antes del siguiente lote (excepto en el último)
+    if (i + CONCURRENCY < candidates.length) {
+      await new Promise(resolve => setTimeout(resolve, DELAY_MS))
+    }
   }
 
   // Marcar como enviados todos los OK en una sola query
