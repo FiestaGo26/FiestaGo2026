@@ -1421,66 +1421,10 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* DM draft + acción */}
+            {/* DM draft + acción — workflow robusto con fallback y verificación */}
             {(editProv.outreach_dm || editProv.instagram || editProv.tiktok) && (
-              <div style={{ marginTop:14, padding:14, background:'#0D1117', border:'1px solid #1F2937', borderRadius:10 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#E1306C', textTransform:'uppercase', letterSpacing:'0.07em' }}>📸 DM Instagram</div>
-                  <div style={{ display:'flex', gap:6 }}>
-                    <button
-                      onClick={async ()=>{
-                        const txt = editProv.outreach_dm||''
-                        try {
-                          await navigator.clipboard.writeText(txt)
-                          toast.success(`✓ Copiado (${txt.length} chars) — pégalo en el DM`)
-                        } catch {
-                          toast.error('No se pudo copiar. Selecciona el texto del textarea y Ctrl+C manual')
-                        }
-                      }}
-                      style={{ padding:'4px 10px', borderRadius:7, border:'1px solid #1F2937',
-                        background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
-                      📋 Copiar
-                    </button>
-                    <button
-                      disabled={!editProv.instagram}
-                      onClick={async ()=>{
-                        const handle = (editProv.instagram||'').replace(/^@/,'')
-                        if (!handle) return
-                        const txt = editProv.outreach_dm||''
-                        // 1) Copiar PRIMERO (await) — sin esto el window.open roba focus y falla
-                        try {
-                          await navigator.clipboard.writeText(txt)
-                          toast.success(`✓ Mensaje copiado (${txt.length} chars). Abriendo IG...`)
-                        } catch {
-                          toast.error('Copia falló. Cópialo manual del textarea (Ctrl+C) antes de abrir IG')
-                          return
-                        }
-                        // 2) Abrir IG
-                        window.open(`https://instagram.com/${handle}/`, '_blank')
-                        // 3) Marcar como contactado por DM (no como contactado por email)
-                        updateProvider(editProv.id, { outreach_sent: true, tag: 'Contactado por DM' })
-                      }}
-                      style={{ padding:'4px 12px', borderRadius:7, border:'none',
-                        background: editProv.instagram ? '#E1306C' : '#1F2937',
-                        color: editProv.instagram ? '#fff' : '#4B5563',
-                        fontSize:11, fontWeight:700, cursor: editProv.instagram ? 'pointer' : 'not-allowed' }}>
-                      📸 Abrir IG + copiar
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                  value={editProv.outreach_dm||''}
-                  onChange={e=>setEditProv(p=>p?{...p,outreach_dm:e.target.value}:null)}
-                  rows={6}
-                  style={{ width:'100%', background:'#080B12', border:'1px solid #1F2937', borderRadius:8,
-                    padding:'9px 11px', fontSize:11.5, lineHeight:1.55, color:'#F0F4FF', outline:'none',
-                    boxSizing:'border-box', fontFamily:'IBM Plex Mono, monospace', resize:'vertical' }}/>
-                {editProv.instagram && (
-                  <div style={{ fontSize:11, color:'#9CA3AF', marginTop:6 }}>
-                    Al pulsar “Abrir IG + copiar” copia el mensaje y abre instagram.com/{(editProv.instagram||'').replace(/^@/,'')}
-                  </div>
-                )}
-              </div>
+              <DMBlock provider={editProv} updateProvider={updateProvider} setEditProv={setEditProv} />
+            )}
             )}
 
             {/* Flags */}
@@ -1521,6 +1465,125 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── DM BLOCK ROBUSTO ───────────────────────────────────────────────── */
+function DMBlock({ provider, updateProvider, setEditProv }: any) {
+  const [copyState, setCopyState] = useState<{ok:boolean, len:number, preview:string} | null>(null)
+
+  // Copia con fallback legacy si la API moderna falla
+  async function robustCopy(text: string): Promise<boolean> {
+    // Método 1: navigator.clipboard
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {}
+    // Método 2: textarea legacy + execCommand
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.left = '-9999px'
+      ta.style.top = '0'
+      ta.setAttribute('readonly', '')
+      document.body.appendChild(ta)
+      ta.select()
+      ta.setSelectionRange(0, text.length)
+      const ok = document.execCommand('copy')
+      document.body.removeChild(ta)
+      return ok
+    } catch { return false }
+  }
+
+  async function doCopy() {
+    const txt = provider.outreach_dm || ''
+    const ok = await robustCopy(txt)
+    setCopyState({
+      ok,
+      len: txt.length,
+      preview: txt.slice(0, 80) + (txt.length > 80 ? '...' : ''),
+    })
+    if (ok) toast.success(`✓ Copiado ${txt.length} chars`)
+    else    toast.error('No se pudo copiar — selecciona el texto manualmente y Ctrl+C')
+  }
+
+  async function doCopyAndOpen() {
+    const handle = (provider.instagram||'').replace(/^@/,'')
+    if (!handle) return
+    const txt = provider.outreach_dm || ''
+    const ok = await robustCopy(txt)
+    setCopyState({
+      ok,
+      len: txt.length,
+      preview: txt.slice(0, 80) + (txt.length > 80 ? '...' : ''),
+    })
+    if (!ok) {
+      toast.error('Copia falló — Cópialo manual del textarea antes de abrir IG')
+      return
+    }
+    toast.success(`✓ ${txt.length} chars en portapapeles`)
+    setTimeout(() => {
+      window.open(`https://instagram.com/${handle}/`, '_blank')
+      updateProvider(provider.id, { outreach_sent: true, tag: 'Contactado por DM' })
+    }, 250)
+  }
+
+  return (
+    <div style={{ marginTop:14, padding:14, background:'#0D1117', border:'1px solid #1F2937', borderRadius:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'#E1306C', textTransform:'uppercase', letterSpacing:'0.07em' }}>📸 DM Instagram</div>
+        <div style={{ display:'flex', gap:6 }}>
+          <button onClick={doCopy}
+            style={{ padding:'4px 10px', borderRadius:7, border:'1px solid #1F2937',
+              background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+            📋 Copiar
+          </button>
+          <button disabled={!provider.instagram} onClick={doCopyAndOpen}
+            style={{ padding:'4px 12px', borderRadius:7, border:'none',
+              background: provider.instagram ? '#E1306C' : '#1F2937',
+              color: provider.instagram ? '#fff' : '#4B5563',
+              fontSize:11, fontWeight:700, cursor: provider.instagram ? 'pointer' : 'not-allowed' }}>
+            📸 Abrir IG + copiar
+          </button>
+        </div>
+      </div>
+
+      <textarea
+        value={provider.outreach_dm||''}
+        onChange={e=>setEditProv((p:any)=>p?{...p,outreach_dm:e.target.value}:null)}
+        rows={6}
+        style={{ width:'100%', background:'#080B12', border:'1px solid #1F2937', borderRadius:8,
+          padding:'9px 11px', fontSize:11.5, lineHeight:1.55, color:'#F0F4FF', outline:'none',
+          boxSizing:'border-box', fontFamily:'IBM Plex Mono, monospace', resize:'vertical' }}/>
+
+      {/* Verificación visual de lo que se copió */}
+      {copyState && (
+        <div style={{ marginTop:10, padding:'10px 12px', borderRadius:8,
+          background: copyState.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+          border: `1px solid ${copyState.ok ? '#10B981' : '#EF4444'}` }}>
+          <div style={{ fontSize:10, fontWeight:700, color: copyState.ok ? '#10B981' : '#EF4444',
+            letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:4 }}>
+            {copyState.ok ? `✓ Portapapeles · ${copyState.len} caracteres` : '✗ Copia falló'}
+          </div>
+          <div style={{ fontSize:11, color:'#9CA3AF', fontFamily:'monospace', whiteSpace:'pre-wrap' }}>
+            {copyState.preview}
+          </div>
+          {copyState.ok && copyState.len < 800 && (
+            <div style={{ fontSize:10, color:'#F59E0B', marginTop:6 }}>
+              ⚠ Mensaje muy corto ({copyState.len} chars) — el mensaje nuevo tiene ~1800. Quizás aún no se regeneró el draft.
+            </div>
+          )}
+        </div>
+      )}
+
+      {provider.instagram && (
+        <div style={{ fontSize:11, color:'#9CA3AF', marginTop:8, lineHeight:1.5 }}>
+          ① Click <strong style={{color:'#fff'}}>"📋 Copiar"</strong> → revisa que aparezca el cuadro verde abajo con +1800 chars.<br/>
+          ② Click <strong style={{color:'#fff'}}>"📸 Abrir IG + copiar"</strong> → te abre instagram.com/{(provider.instagram||'').replace(/^@/,'')} → ahí Ctrl+V en el chat.
         </div>
       )}
     </div>
