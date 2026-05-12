@@ -1425,7 +1425,6 @@ export default function AdminPage() {
             {(editProv.outreach_dm || editProv.instagram || editProv.tiktok) && (
               <DMBlock provider={editProv} updateProvider={updateProvider} setEditProv={setEditProv} />
             )}
-            )}
 
             {/* Flags */}
             <div style={{ marginTop:14, display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
