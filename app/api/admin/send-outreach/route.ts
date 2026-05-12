@@ -172,6 +172,22 @@ export async function POST(req: NextRequest) {
           </div>
         </td></tr>
 
+        <!-- SELLO DE CALIDAD (destacado ancho completo) -->
+        <tr><td style="padding:8px 36px 0;">
+          <div style="background:linear-gradient(135deg,#FFF7ED 0%,#FBF0E0 100%);border:2px solid #C8860A;border-radius:12px;padding:22px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:8px;line-height:1;">🏆</div>
+            <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#C8860A;font-weight:700;margin-bottom:8px;">
+              Sello de calidad · GRATIS
+            </div>
+            <div style="font-size:16px;font-weight:700;color:#1A1612;margin-bottom:6px;line-height:1.3;">
+              Te lo regalamos al entrar
+            </div>
+            <div style="font-size:13px;color:#5C534A;line-height:1.55;max-width:420px;margin:0 auto;">
+              Lo conservas mientras mantengas <strong>4,5/5</strong> en tus reseñas. Es un distintivo visible junto a tu perfil que aumenta la confianza de los clientes y las reservas.
+            </div>
+          </div>
+        </td></tr>
+
         <!-- CTA prominente -->
         <tr><td style="padding:28px 36px 12px;text-align:center;">
           <a href="https://fiestago.es/registro-proveedor" style="display:inline-block;background:#E8553E;color:#FFFFFF;text-decoration:none;font-size:14px;letter-spacing:0.08em;font-weight:700;padding:16px 36px;border-radius:12px;box-shadow:0 4px 12px rgba(232,85,62,0.25);">

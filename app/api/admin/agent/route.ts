@@ -128,6 +128,9 @@ Ventajas de entrar antes del lanzamiento:
 - Sin permanencia ni cuotas mensuales
 - Promoción gratuita en nuestras redes (@fiestagospain)
 
+🏆 SELLO FIESTAGO DE CALIDAD
+Te lo regalamos al entrar. Lo mantienes mientras conserves una nota mínima de 4,5/5 en tus reseñas. Es un sello visible junto a tu perfil que da confianza a los clientes y aumenta las reservas.
+
 Si quieres formar parte:
 https://fiestago.es/registro-proveedor
 
