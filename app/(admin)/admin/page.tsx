@@ -24,10 +24,23 @@ function ago(ts: string) {
 }
 
 const STATUS_MAP = {
-  approved: { label:'Aprobado',  bg:'#D1FAE5', color:'#065F46' },
-  pending:  { label:'Pendiente', bg:'#FEF3C7', color:'#92400E' },
-  rejected: { label:'Rechazado', bg:'#FEE2E2', color:'#991B1B' },
+  approved: { label:'✅ Aprobado',  bg:'#D1FAE5', color:'#065F46' },
+  pending:  { label:'⏳ Pendiente', bg:'#FEF3C7', color:'#92400E' },
+  rejected: { label:'❌ Rechazado', bg:'#FEE2E2', color:'#991B1B' },
   suspended:{ label:'Suspendido',bg:'#F3F4F6', color:'#4B5563' },
+}
+
+// Devuelve el "estado real" del proveedor según su lifecycle
+function getProviderState(p: any) {
+  if (p.status === 'approved')  return { label:'✅ En marketplace',     bg:'#D1FAE5', color:'#065F46' }
+  if (p.status === 'rejected')  return { label:'❌ Rechazado',           bg:'#FEE2E2', color:'#991B1B' }
+  if (p.status === 'pending') {
+    if (!p.outreach_sent)       return { label:'🆕 Sin contactar',      bg:'#E5E7EB', color:'#374151' }
+    if (p.tag === 'Contactado por DM') return { label:'💬 Contactado DM',  bg:'#FCE7F3', color:'#9D174D' }
+    if (p.tag === 'Contactado')        return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
+    return { label:'⏳ Pendiente', bg:'#FEF3C7', color:'#92400E' }
+  }
+  return { label: p.status, bg:'#F3F4F6', color:'#4B5563' }
 }
 
 /* ─── LOGIN ──────────────────────────────────────────────────────────────── */
@@ -148,12 +161,25 @@ export default function AdminPage() {
   const fetchProviders = useCallback(async () => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (filterStatus) params.set('status', filterStatus)
+    // Los sub-estados de pending (nuevo, contactado_email, contactado_dm) se filtran
+    // cliente-side. Solo mandamos al API los status reales de DB.
+    const realStatus = ['approved','rejected','pending'].includes(filterStatus) ? filterStatus
+                      : (['nuevo','contactado_email','contactado_dm'].includes(filterStatus) ? 'pending' : '')
+    if (realStatus)   params.set('status', realStatus)
     if (filterCat)    params.set('category', filterCat)
     if (search)       params.set('search', search)
     const res  = await fetch(`/api/admin/providers?${params}`, { headers: adminHeaders() })
     const data = await res.json()
-    setProviders(data.providers || [])
+    let list = data.providers || []
+    // Sub-filtros cliente:
+    if (filterStatus === 'nuevo') {
+      list = list.filter((p: any) => !p.outreach_sent)
+    } else if (filterStatus === 'contactado_email') {
+      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado')
+    } else if (filterStatus === 'contactado_dm') {
+      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado por DM')
+    }
+    setProviders(list)
     setLoading(false)
   }, [filterStatus, filterCat, search])
 
@@ -188,6 +214,8 @@ export default function AdminPage() {
     setEditProv(prev => prev && prev.id === id ? { ...prev, ...fresh } : prev)
     // Toast de feedback (si hay flujos especiales)
     if (data && data.flow === 'outreach_sent')   toast.success('Email de captación enviado · proveedor sigue pendiente')
+    else if (data && data.flow === 'mark_for_dm') toast.success('Marcado como contactado · envíale el DM desde IG · sigue pendiente')
+    else if (data && data.flow === 'outreach_failed') toast.error(`No se pudo enviar outreach: ${data.outreachError || 'sin email/IG'}`)
     else if (data && data.flow === 'approval')   toast.success(`Aprobado${data.welcomeEmail ? ' · email bienvenida enviado' : ''}${data.imageGenerated ? ' · imagen generada' : ''}`)
     else if (updates.status === 'rejected')      toast.success(`Rechazado${data?.rejectionEmail ? ' · email enviado' : ''}`)
     return data
@@ -544,12 +572,49 @@ export default function AdminPage() {
           {/* ══ PROVIDERS TABLE ══ */}
           {section === 'providers' && (
             <div>
+              {/* PANEL DE STATS DEL LIFECYCLE */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10, marginBottom:16 }}>
+                {(() => {
+                  const all = providers
+                  const counts = {
+                    nuevo:     all.filter((p:any) => p.status==='pending' && !p.outreach_sent).length,
+                    email:     all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado').length,
+                    dm:        all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado por DM').length,
+                    approved:  all.filter((p:any) => p.status==='approved').length,
+                    rejected:  all.filter((p:any) => p.status==='rejected').length,
+                  }
+                  const tiles = [
+                    { key:'nuevo',     label:'🆕 Sin contactar',     value:counts.nuevo,    color:'#9CA3AF', filter:'nuevo' },
+                    { key:'email',     label:'📧 Contactado email',  value:counts.email,    color:'#3B82F6', filter:'contactado_email' },
+                    { key:'dm',        label:'💬 Contactado DM',     value:counts.dm,       color:'#EC4899', filter:'contactado_dm' },
+                    { key:'approved',  label:'✅ En marketplace',     value:counts.approved, color:'#10B981', filter:'approved' },
+                    { key:'rejected',  label:'❌ Rechazados',         value:counts.rejected, color:'#EF4444', filter:'rejected' },
+                  ]
+                  return tiles.map(t => (
+                    <button key={t.key} onClick={() => setFilterStatus(t.filter)}
+                      style={{ background:'#111827', border:`1px solid ${filterStatus===t.filter?t.color:'#1F2937'}`,
+                        borderRadius:12, padding:'12px 14px', textAlign:'left', cursor:'pointer',
+                        transition:'all 0.15s' }}>
+                      <div style={{ fontSize:10, color:'#9CA3AF', marginBottom:4, fontWeight:600 }}>{t.label}</div>
+                      <div style={{ fontSize:24, fontWeight:700, color:t.color }}>{t.value}</div>
+                    </button>
+                  ))
+                })()}
+              </div>
+
               <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
                 <input placeholder="🔍 Buscar por nombre o email..." value={search}
                   onChange={e=>setSearch(e.target.value)}
                   style={{ flex:1, minWidth:200, background:'#111827', border:'1px solid #1F2937',
                     borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
-                {[['filterStatus','Estado',[['','Todos'],['approved','Aprobados'],['pending','Pendientes'],['rejected','Rechazados']]],
+                {[['filterStatus','Estado',[
+                    ['','Todos'],
+                    ['nuevo','🆕 Sin contactar'],
+                    ['contactado_email','📧 Contactado email'],
+                    ['contactado_dm','💬 Contactado DM'],
+                    ['pending','⏳ Todos pendientes'],
+                    ['approved','✅ Aprobados'],
+                    ['rejected','❌ Rechazados']]],
                   ['filterCat','Categoría',[['','Todas'],...CATEGORIES.map(c=>[c.id,`${c.icon} ${c.label}`])]],
                 ].map(([field,ph,opts]: any) => (
                   <select key={field}
@@ -597,7 +662,7 @@ export default function AdminPage() {
                   <div style={{ padding:'40px', textAlign:'center', color:'#374151' }}>No hay proveedores con estos filtros.</div>
                 ) : providers.map((p, i) => {
                   const cat = CATEGORIES.find(c=>c.id===p.category)
-                  const st  = STATUS_MAP[p.status] || STATUS_MAP.pending
+                  const st  = getProviderState(p)
                   return (
                     <div key={p.id}
                       style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr auto',
