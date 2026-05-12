@@ -267,7 +267,9 @@ export default function ProveedorPanelPage() {
       setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'',
                   mediaFile: null, mediaPreview: null })
       setShowNewSvc(false)
-      toast.success('Servicio añadido ✓')
+      toast.success('Servicio añadido ✓ · Marca ahora los días que NO estés disponible')
+      // Abrir automáticamente el calendario de disponibilidad para el servicio recién creado
+      setAvailSvc(data.service)
     } catch (err: any) {
       toast.error(err.message)
     }
