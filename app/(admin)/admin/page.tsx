@@ -1291,10 +1291,51 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Estado */}
+            {/* Lifecycle badge actual + acciones rápidas */}
+            <div style={{ marginTop:14, padding:'14px 16px', borderRadius:12, background:'#0D1117', border:'1px solid #1F2937' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF',
+                  textTransform:'uppercase', letterSpacing:'0.1em' }}>Etapa de contacto</label>
+                {(() => {
+                  const st = getProviderState(editProv)
+                  return (
+                    <span style={{ fontSize:11, fontWeight:700, padding:'4px 12px', borderRadius:14,
+                      background:st.bg, color:st.color }}>
+                      {st.label}
+                    </span>
+                  )
+                })()}
+              </div>
+              <p style={{ fontSize:11, color:'#6B7280', margin:'0 0 10px', lineHeight:1.5 }}>
+                Si has enviado el mensaje manualmente (por IG, WhatsApp, otro email), márcalo aquí.
+                El proveedor sigue pendiente hasta que se registre.
+              </p>
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                {[
+                  { label:'🆕 Sin contactar',     outreach_sent:false, tag:null },
+                  { label:'📧 Contactado email',   outreach_sent:true,  tag:'Contactado' },
+                  { label:'💬 Contactado por DM',  outreach_sent:true,  tag:'Contactado por DM' },
+                ].map((opt:any) => {
+                  const isActive = editProv.outreach_sent === opt.outreach_sent &&
+                    ((!opt.tag && !editProv.tag) || editProv.tag === opt.tag)
+                  return (
+                    <button key={opt.label}
+                      onClick={()=>setEditProv(p=>p?{...p, outreach_sent: opt.outreach_sent, tag: opt.tag }:null)}
+                      style={{ padding:'6px 12px', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer',
+                        border:`1px solid ${isActive ? '#F43F5E' : '#1F2937'}`,
+                        background: isActive ? 'rgba(244,63,94,0.12)' : 'transparent',
+                        color: isActive ? '#F43F5E' : '#9CA3AF' }}>
+                      {opt.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Status final (aprobado / rechazado) */}
             <div style={{ marginTop:14 }}>
               <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
-                marginBottom:4, textTransform:'uppercase', letterSpacing:'0.07em' }}>Estado</label>
+                marginBottom:4, textTransform:'uppercase', letterSpacing:'0.07em' }}>Estado final</label>
               <div style={{ display:'flex', gap:6 }}>
                 {(['approved','pending','rejected','suspended'] as const).map(s=>(
                   <button key={s} onClick={()=>setEditProv(p=>p?{...p,status:s}:null)}
