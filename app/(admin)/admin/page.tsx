@@ -1428,9 +1428,14 @@ export default function AdminPage() {
                   <div style={{ fontSize:11, fontWeight:700, color:'#E1306C', textTransform:'uppercase', letterSpacing:'0.07em' }}>📸 DM Instagram</div>
                   <div style={{ display:'flex', gap:6 }}>
                     <button
-                      onClick={()=>{
-                        navigator.clipboard.writeText(editProv.outreach_dm||'')
-                        alert('Mensaje copiado al portapapeles — pégalo en el DM')
+                      onClick={async ()=>{
+                        const txt = editProv.outreach_dm||''
+                        try {
+                          await navigator.clipboard.writeText(txt)
+                          toast.success(`✓ Copiado (${txt.length} chars) — pégalo en el DM`)
+                        } catch {
+                          toast.error('No se pudo copiar. Selecciona el texto del textarea y Ctrl+C manual')
+                        }
                       }}
                       style={{ padding:'4px 10px', borderRadius:7, border:'1px solid #1F2937',
                         background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
@@ -1438,12 +1443,22 @@ export default function AdminPage() {
                     </button>
                     <button
                       disabled={!editProv.instagram}
-                      onClick={()=>{
+                      onClick={async ()=>{
                         const handle = (editProv.instagram||'').replace(/^@/,'')
                         if (!handle) return
-                        navigator.clipboard.writeText(editProv.outreach_dm||'').catch(()=>{})
+                        const txt = editProv.outreach_dm||''
+                        // 1) Copiar PRIMERO (await) — sin esto el window.open roba focus y falla
+                        try {
+                          await navigator.clipboard.writeText(txt)
+                          toast.success(`✓ Mensaje copiado (${txt.length} chars). Abriendo IG...`)
+                        } catch {
+                          toast.error('Copia falló. Cópialo manual del textarea (Ctrl+C) antes de abrir IG')
+                          return
+                        }
+                        // 2) Abrir IG
                         window.open(`https://instagram.com/${handle}/`, '_blank')
-                        updateProvider(editProv.id, { outreach_sent: true })
+                        // 3) Marcar como contactado por DM (no como contactado por email)
+                        updateProvider(editProv.id, { outreach_sent: true, tag: 'Contactado por DM' })
                       }}
                       style={{ padding:'4px 12px', borderRadius:7, border:'none',
                         background: editProv.instagram ? '#E1306C' : '#1F2937',
