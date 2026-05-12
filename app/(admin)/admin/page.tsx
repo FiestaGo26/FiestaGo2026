@@ -112,6 +112,8 @@ export default function AdminPage() {
   // Bulk approve
   const [bulkLoading,    setBulkLoading]    = useState(false)
   const [bulkResult,     setBulkResult]     = useState<{ok:boolean,msg:string}|null>(null)
+  // Regenerar drafts
+  const [regenLoading,   setRegenLoading]   = useState(false)
   // Reservas
   const [bookings,       setBookings]       = useState<any[]>([])
   const [bookingFilter,  setBookingFilter]  = useState<'pending'|'confirmed'|'cancelled'|'all'>('pending')
@@ -225,6 +227,24 @@ export default function AdminPage() {
     if (!confirm('¿Eliminar este proveedor?')) return
     await fetch(`/api/admin/providers?id=${id}`, { method:'DELETE', headers: adminHeaders() })
     setProviders(prev => prev.filter(p => p.id !== id))
+  }
+
+  async function regenerateDrafts() {
+    if (!confirm('Regenerar todos los drafts de email y DM con el mensaje nuevo (sello + referidos + lanzamiento 10-jun). Solo afecta a pendientes sin contactar. ¿Continuar?')) return
+    setRegenLoading(true)
+    try {
+      const res = await fetch('/api/admin/providers/regenerate-drafts', {
+        method: 'POST',
+        headers: adminHeaders(),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      toast.success(`✓ Regenerados: ${data.emailDraftsRegenerated} emails · ${data.dmDraftsRegenerated} DMs · ${data.updated}/${data.total} filas`)
+      fetchProviders()
+    } catch (err: any) {
+      toast.error(err.message || 'Error regenerando drafts')
+    }
+    setRegenLoading(false)
   }
 
   async function bulkApprove() {
@@ -625,6 +645,12 @@ export default function AdminPage() {
                     {opts.map(([v,l]: any) => <option key={v} value={v} style={{ background:'#0D1117' }}>{l}</option>)}
                   </select>
                 ))}
+                <button onClick={regenerateDrafts} disabled={regenLoading}
+                  style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #8B5CF6',
+                    background: regenLoading ? '#374151' : 'transparent', color:'#8B5CF6',
+                    fontSize:12, fontWeight:700, cursor: regenLoading ? 'wait' : 'pointer' }}>
+                  {regenLoading ? '⏳ Regenerando...' : '🔄 Regenerar drafts'}
+                </button>
                 <button onClick={bulkApprove} disabled={bulkLoading}
                   style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #F43F5E',
                     background: bulkLoading ? '#374151' : '#F43F5E', color:'#fff',
