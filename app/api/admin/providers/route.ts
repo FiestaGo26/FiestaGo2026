@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get('category')
   const city     = searchParams.get('city')
   const search   = searchParams.get('search')
-  const limit    = parseInt(searchParams.get('limit') || '100')
+  const limit    = parseInt(searchParams.get('limit') || '500')
 
   let query = supabase
     .from('providers').select('*').order('created_at', { ascending: false }).limit(limit)

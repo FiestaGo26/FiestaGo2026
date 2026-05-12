@@ -96,6 +96,9 @@ export default function AdminPage() {
   const [customPrompt,   setCustomPrompt]   = useState('')
   const [customLoading,  setCustomLoading]  = useState(false)
   const [customMsg,      setCustomMsg]      = useState<{ok:boolean,msg:string}|null>(null)
+  // Bulk approve
+  const [bulkLoading,    setBulkLoading]    = useState(false)
+  const [bulkResult,     setBulkResult]     = useState<{ok:boolean,msg:string}|null>(null)
   // Reservas
   const [bookings,       setBookings]       = useState<any[]>([])
   const [bookingFilter,  setBookingFilter]  = useState<'pending'|'confirmed'|'cancelled'|'all'>('pending')
@@ -194,6 +197,36 @@ export default function AdminPage() {
     if (!confirm('¿Eliminar este proveedor?')) return
     await fetch(`/api/admin/providers?id=${id}`, { method:'DELETE', headers: adminHeaders() })
     setProviders(prev => prev.filter(p => p.id !== id))
+  }
+
+  async function bulkApprove() {
+    const candidatos = providers.filter(p =>
+      p.status === 'pending' && !p.outreach_sent && p.outreach_email && p.email
+    )
+    if (!candidatos.length) {
+      setBulkResult({ ok: false, msg: 'No hay candidatos con email pendientes de contactar.' })
+      return
+    }
+    if (!confirm(`Vas a enviar el email outreach a ${candidatos.length} proveedores. Esto consume tu cuota de Resend. ¿Continuar?`)) return
+    setBulkLoading(true)
+    setBulkResult({ ok: true, msg: `⏳ Enviando ${candidatos.length} emails (puede tardar 1-3 min)...` })
+    try {
+      const res = await fetch('/api/admin/providers/bulk-approve', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ onlyWithEmail: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error inesperado')
+      setBulkResult({
+        ok: data.failed === 0,
+        msg: `✓ ${data.ok} enviados · ${data.failed} fallaron (de ${data.total} totales)${data.errors?.length ? ` · Primer error: ${data.errors[0].error}` : ''}`,
+      })
+      fetchProviders()  // refresca el listado
+    } catch (err: any) {
+      setBulkResult({ ok: false, msg: '❌ ' + (err.message || 'Error') })
+    }
+    setBulkLoading(false)
   }
 
   async function markNotifsRead() {
@@ -527,12 +560,28 @@ export default function AdminPage() {
                     {opts.map(([v,l]: any) => <option key={v} value={v} style={{ background:'#0D1117' }}>{l}</option>)}
                   </select>
                 ))}
+                <button onClick={bulkApprove} disabled={bulkLoading}
+                  style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #F43F5E',
+                    background: bulkLoading ? '#374151' : '#F43F5E', color:'#fff',
+                    fontSize:12, fontWeight:700, cursor: bulkLoading ? 'wait' : 'pointer' }}>
+                  {bulkLoading ? '⏳ Enviando...' : '🚀 Aprobar todos pending con email'}
+                </button>
                 <button onClick={fetchProviders}
                   style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #1F2937',
                     background:'transparent', color:'#9CA3AF', fontSize:12, cursor:'pointer' }}>
                   🔄 Actualizar
                 </button>
               </div>
+
+              {bulkResult && (
+                <div style={{ marginBottom: 14, padding:'10px 14px', borderRadius:10,
+                  background: bulkResult.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                  border: `1px solid ${bulkResult.ok ? '#10B981' : '#EF4444'}`,
+                  color: bulkResult.ok ? '#10B981' : '#EF4444',
+                  fontSize:12 }}>
+                  {bulkResult.msg}
+                </div>
+              )}
 
               <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, overflow:'hidden' }}>
                 {/* Table header */}
