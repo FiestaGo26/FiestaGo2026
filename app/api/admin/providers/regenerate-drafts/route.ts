@@ -82,12 +82,11 @@ export async function POST(req: NextRequest) {
   }
   const supabase = createAdminClient()
 
-  // Cargar candidates
+  // Cargar TODOS los pendientes (haya sido contactado o no — el draft solo se muestra al admin)
   const { data: candidates, error } = await supabase
     .from('providers')
-    .select('id, name, city, email, instagram, source')
+    .select('id, name, city, email, instagram, source, outreach_sent')
     .eq('status', 'pending')
-    .eq('outreach_sent', false)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!candidates || !candidates.length) {
