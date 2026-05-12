@@ -131,6 +131,9 @@ Ventajas de entrar antes del lanzamiento:
 🏆 SELLO FIESTAGO DE CALIDAD
 Te lo regalamos al entrar. Lo mantienes mientras conserves una nota mínima de 4,5/5 en tus reseñas. Es un sello visible junto a tu perfil que da confianza a los clientes y aumenta las reservas.
 
+🤝 TRAE A UN COMPAÑERO Y SUBE
+Si invitas a otro profesional de eventos y se registra en FiestaGo, los dos apareceréis automáticamente en los primeros puestos de vuestra categoría sin coste extra. Cuantos más traigas, más arriba.
+
 Si quieres formar parte:
 https://fiestago.es/registro-proveedor
 
@@ -139,17 +142,31 @@ Si tienes dudas, simplemente responde a este email.
 Un saludo,
 El equipo de FiestaGo` : ''
 
-      const dmDraft = instagram ? `¡Hola ${p.name.split(' ')[0]}! 👋
+      const dmDraft = instagram ? `¡Hola ${p.name.split(' ')[0]}! 👋✨
 
-Te escribo del equipo de FiestaGo, marketplace de celebraciones en España. Lanzamos el 10 de junio y estamos seleccionando los primeros profesionales en ${city} para arrancar con catálogo de calidad.
+Te escribo del equipo de FiestaGo, el nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados).
 
-Tu trabajo encaja. Ventajas de entrar ahora:
-✓ Mejor posición en resultados
-✓ 0% comisión en tu primera reserva
-✓ Sin permanencia
+🚀 LANZAMOS EL 10 DE JUNIO DE 2026
+Estamos seleccionando los primeros profesionales en ${city} para arrancar con catálogo de calidad desde el día uno. Tu trabajo nos ha encajado mucho 🙌
 
-¿Te lo cuento?
-👉 https://fiestago.es/registro-proveedor` : ''
+Lo que ganas si entras AHORA, antes del lanzamiento:
+
+✅ Mejor posición en los resultados
+🎁 Primera reserva sin comisión (0%)
+💸 Solo 8% desde la segunda venta
+📅 Sin permanencia ni cuotas mensuales
+📣 Te promocionamos en nuestras redes (@fiestagospain)
+
+🏆 BONUS · SELLO FIESTAGO DE CALIDAD (GRATIS)
+Te lo regalamos al entrar y lo mantienes mientras tengas 4,5/5 en reseñas. Es un distintivo visible junto a tu perfil que aumenta confianza y reservas.
+
+🤝 BONUS · TRAE A UN COMPAÑERO
+Si invitas a otro profesional y se registra, los dos apareceréis en los primeros puestos de vuestra categoría sin coste.
+
+¿Te interesa? Regístrate en menos de 5 minutos:
+👉 https://fiestago.es/registro-proveedor
+
+Cualquier duda, respóndeme por aquí o escribe a contacto@fiestago.es 💌` : ''
 
       const { data: row } = await supabase
         .from('providers')
