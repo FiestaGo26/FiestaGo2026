@@ -372,23 +372,31 @@ FiestaGo (sistema automático)`
 export async function emailProviderNewBooking(booking: any, provider: any) {
   if (!provider?.email) return { ok: false, error: 'Proveedor sin email' }
 
-  const subject = `🎉 Tienes una nueva solicitud de reserva en FiestaGo`
+  // NUNCA incluimos datos personales del cliente en el primer email.
+  // El proveedor los verá tras aceptar la reserva en el panel.
+  // Limpiar el mensaje de posibles emails/teléfonos que el cliente haya dejado:
+  const safeMsg = booking.message
+    ? booking.message
+        .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email oculto]')
+        .replace(/\b(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3}[\s.-]?\d{3,4}\b/g, '[teléfono oculto]')
+    : null
+
+  const subject = `🔔 Nueva solicitud de reserva — ${bookingDateF(booking.event_date)}`
   const text = `Hola ${provider.name},
 
-Has recibido una nueva solicitud de reserva a través de FiestaGo.
+Tienes una nueva solicitud de reserva en FiestaGo.
 
-Cliente:   ${booking.client_name}
-Email:     ${booking.client_email}
-Teléfono:  ${booking.client_phone || '—'}
 Fecha:     ${bookingDateF(booking.event_date)}
 Evento:    ${booking.event_type || 'otro'}
 Invitados: ${booking.guests ?? '—'}
 Importe:   ${(booking.total_amount || 0).toLocaleString()}€
 
 Mensaje del cliente:
-${booking.message || '(sin mensaje)'}
+${safeMsg || '(sin mensaje)'}
 
-Accede a tu panel para confirmar o rechazar:
+Los datos de contacto del cliente (nombre, email, teléfono) se mostrarán SOLO una vez aceptes la reserva, no antes. Esto protege a ambas partes y evita confusiones.
+
+Acepta o rechaza en tu panel:
 https://fiestago.es/proveedor/panel
 
 Un saludo,
@@ -399,41 +407,47 @@ El equipo de FiestaGo`
     <tr><td align="center">
       <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
         <tr><td style="padding:36px 36px 24px;border-bottom:1px solid #ECE3D2;">
-          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#E8553E;margin-bottom:14px;">Nueva reserva</div>
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#E8553E;margin-bottom:14px;">🔔 Nueva solicitud</div>
           <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:26px;color:#1A1612;line-height:1.2;">
-            Hola ${(provider.name || '').replace(/</g, '&lt;')}, tienes una reserva.
+            Hola ${(provider.name || '').replace(/</g, '&lt;')}, te quieren reservar.
           </h1>
           <p style="margin:0;font-size:15px;color:#5C534A;line-height:1.55;">
-            Un cliente quiere reservar contigo a través de FiestaGo. Aquí van los detalles:
+            Un cliente quiere reservar contigo a través de FiestaGo para el <strong style="color:#E8553E;">${bookingDateF(booking.event_date)}</strong>.
           </p>
         </td></tr>
         <tr><td style="padding:24px 36px;">
           <table width="100%" style="font-size:14px;color:#1A1612;">
-            <tr><td style="padding:6px 0;color:#8A7968;width:120px;">👤 Cliente</td><td style="padding:6px 0;font-weight:bold;">${(booking.client_name || '').replace(/</g, '&lt;')}</td></tr>
-            <tr><td style="padding:6px 0;color:#8A7968;">📧 Email</td><td style="padding:6px 0;">${(booking.client_email || '').replace(/</g, '&lt;')}</td></tr>
-            ${booking.client_phone ? `<tr><td style="padding:6px 0;color:#8A7968;">📞 Teléfono</td><td style="padding:6px 0;">${booking.client_phone.replace(/</g, '&lt;')}</td></tr>` : ''}
-            <tr><td style="padding:6px 0;color:#8A7968;">📅 Fecha</td><td style="padding:6px 0;font-weight:bold;color:#E8553E;">${bookingDateF(booking.event_date)}</td></tr>
+            <tr><td style="padding:6px 0;color:#8A7968;width:120px;">📅 Fecha</td><td style="padding:6px 0;font-weight:bold;color:#E8553E;">${bookingDateF(booking.event_date)}</td></tr>
             <tr><td style="padding:6px 0;color:#8A7968;">🎉 Evento</td><td style="padding:6px 0;">${(booking.event_type || 'otro').replace(/</g, '&lt;')}</td></tr>
             ${booking.guests ? `<tr><td style="padding:6px 0;color:#8A7968;">👥 Invitados</td><td style="padding:6px 0;">${booking.guests}</td></tr>` : ''}
+            ${booking.city  ? `<tr><td style="padding:6px 0;color:#8A7968;">📍 Ciudad</td><td style="padding:6px 0;">${booking.city.replace(/</g, '&lt;')}</td></tr>` : ''}
             <tr><td style="padding:6px 0;color:#8A7968;">💸 Importe</td><td style="padding:6px 0;font-weight:bold;">${(booking.total_amount || 0).toLocaleString()}€</td></tr>
           </table>
-          ${booking.message ? `
+          ${safeMsg ? `
           <div style="background:#FBF9F4;border-left:3px solid #E8553E;padding:14px 18px;margin:18px 0 0;font-size:14px;line-height:1.5;color:#5C534A;font-style:italic;">
-            "${booking.message.replace(/</g, '&lt;').replace(/\n/g, '<br>')}"
+            "${safeMsg.replace(/</g, '&lt;').replace(/\n/g, '<br>')}"
           </div>` : ''}
         </td></tr>
-        <tr><td style="padding:0 36px 28px;">
-          <div style="text-align:center;margin:18px 0 8px;">
-            <a href="https://fiestago.es/proveedor/panel" style="display:inline-block;background:#E8553E;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:14px;">
-              Ver en mi panel →
+
+        <!-- Aviso datos ocultos -->
+        <tr><td style="padding:0 36px;">
+          <div style="background:#FFF7ED;border:1px solid #FFE1CC;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
+            🔒 <strong>Datos del cliente protegidos.</strong> Nombre, email y teléfono se mostrarán cuando aceptes la reserva en tu panel. Esto protege a ambas partes y agiliza el cobro.
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:24px 36px 28px;">
+          <div style="text-align:center;">
+            <a href="https://fiestago.es/proveedor/panel" style="display:inline-block;background:#E8553E;color:#fff;padding:13px 30px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:14px;">
+              Aceptar o rechazar →
             </a>
           </div>
-          <p style="margin:18px 0 0;font-size:13px;color:#8A7968;line-height:1.55;text-align:center;">
-            Contacta cuanto antes con ${(booking.client_name || '').replace(/</g, '&lt;')} para coordinar los detalles.
+          <p style="margin:14px 0 0;font-size:12px;color:#8A7968;line-height:1.5;text-align:center;">
+            Respondé en menos de 24h para una buena tasa de aceptación
           </p>
         </td></tr>
         <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
-          FiestaGo · El marketplace de celebraciones #1 en España
+          FiestaGo · El marketplace de celebraciones · España
         </td></tr>
       </table>
     </td></tr>

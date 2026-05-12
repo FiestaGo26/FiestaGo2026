@@ -5,6 +5,27 @@ function checkAuth(req: NextRequest) {
   return !!req.headers.get('x-provider-token')
 }
 
+// Antes de aceptar la reserva, el proveedor solo ve datos generales.
+// Esto evita que el proveedor contacte al cliente fuera de la plataforma
+// y se salte la comisión. Una vez confirmada, ve todos los datos.
+function maskForProvider(b: any) {
+  if (b.status === 'confirmed' || b.status === 'completed') return b
+  // Limpiamos también el mensaje de posibles emails/teléfonos colados:
+  const safeMsg = b.message
+    ? b.message
+        .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email oculto]')
+        .replace(/\b(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3}[\s.-]?\d{3,4}\b/g, '[teléfono oculto]')
+    : null
+  return {
+    ...b,
+    client_name:  '🔒 Cliente (acepta para ver)',
+    client_email: null,
+    client_phone: null,
+    message:      safeMsg,
+    _masked:      true,
+  }
+}
+
 export async function GET(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const supabase = createAdminClient()
@@ -18,7 +39,8 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ bookings: data || [] })
+  const bookings = (data || []).map(maskForProvider)
+  return NextResponse.json({ bookings })
 }
 
 export async function PATCH(req: NextRequest) {
