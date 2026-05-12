@@ -52,15 +52,15 @@ export async function POST(req: NextRequest) {
 
   for (let i = 0; i < candidates.length; i += CONCURRENCY) {
     const chunk = candidates.slice(i, i + CONCURRENCY)
-    const results = await Promise.allSettled(chunk.map(async (p) => {
+    const results = await Promise.allSettled(chunk.map(async (p: any) => {
       const r = await emailProviderOutreach(p)
       if (!r.ok) throw new Error(r.error || 'fallo desconocido')
-      return p.id
+      return p.id as string
     }))
     results.forEach((res, idx) => {
-      const p = chunk[idx]
+      const p: any = chunk[idx]
       if (res.status === 'fulfilled') { ok++; okIds.push(p.id) }
-      else { failed++; errors.push({ id: p.id, name: p.name, error: res.reason?.message || String(res.reason) }) }
+      else { failed++; errors.push({ id: p.id, name: p.name, error: (res.reason as any)?.message || String(res.reason) }) }
     })
   }
 
