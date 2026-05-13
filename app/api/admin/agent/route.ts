@@ -59,7 +59,15 @@ export async function POST(req: NextRequest) {
     log(`🤖 Agente rápido — ${cat.label} en ${city}`)
     log(`🌐 Buscando ${count} proveedores reales en Google...`)
 
-    const prompt = `Busca en Google ${count} negocios reales de "${cat.label}" en ${city}, España. Para cada uno, encuentra: nombre exacto del negocio, email de contacto, teléfono, web, handle de Instagram (@usuario), descripción de 1 frase, precio medio aproximado en euros.
+    const prompt = `Busca en Google ${count} negocios REALES de "${cat.label}" en ${city}, España.
+
+REQUISITO OBLIGATORIO: cada negocio debe tener al menos UNO de estos dos canales de contacto:
+- Email de contacto (debe ser un email real, NO "info@" inventado)
+- Handle de Instagram (@usuario)
+
+Si no consigues encontrar ni email ni Instagram de un negocio, NO lo incluyas en la respuesta. Es preferible devolver menos resultados que devolver negocios sin forma de contactarlos.
+
+Para cada uno, encuentra: nombre exacto del negocio, email de contacto, teléfono, web, handle de Instagram (@usuario), descripción de 1 frase, precio medio aproximado en euros.
 
 Devuelve SOLO un array JSON con esta forma exacta (sin texto antes ni después):
 [
@@ -76,7 +84,7 @@ Devuelve SOLO un array JSON con esta forma exacta (sin texto antes ni después):
   }
 ]
 
-Solo negocios profesionales reales, no particulares. Si no encuentras ${count}, devuelve los que encuentres.`
+Solo negocios profesionales reales, no particulares. Recuerda: si NO tienen email ni Instagram, NO los incluyas.`
 
     const text = await claudeWebSearch(prompt)
     log(`✅ Búsqueda completada`)
@@ -100,7 +108,24 @@ Solo negocios profesionales reales, no particulares. Si no encuentras ${count}, 
       return NextResponse.json({ providers: [], logs, stats: { found: 0, saved: 0 } })
     }
 
-    log(`📊 ${providers.length} proveedores extraídos. Guardando en Supabase...`)
+    // Filtro DURO: solo proveedores con email o Instagram. Sin canal de contacto
+    // no podemos hacer outreach automatizado.
+    const beforeFilter = providers.length
+    providers = providers.filter((p: any) => {
+      const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
+      const ig       = (p.instagram || '').toString().trim()
+      const hasIg    = ig.length > 1 && ig !== '@'
+      return hasEmail || hasIg
+    })
+    const rejected = beforeFilter - providers.length
+    if (rejected > 0) log(`🚫 ${rejected} descartados (sin email ni Instagram)`)
+
+    if (!providers.length) {
+      log(`❌ Ningún proveedor con contacto válido`)
+      return NextResponse.json({ providers: [], logs, stats: { found: beforeFilter, saved: 0, rejected } })
+    }
+
+    log(`📊 ${providers.length} proveedores válidos. Guardando en Supabase...`)
 
     const supabase = createAdminClient()
     const saved: any[] = []
@@ -203,7 +228,8 @@ Cualquier duda, respóndeme por aquí 💌` : ''
       stats: {
         found: providers.length,
         saved: saved.length,
-        withEmail: saved.filter((p: any) => p.email).length,
+        withEmail:     saved.filter((p: any) => p.email).length,
+        withInstagram: saved.filter((p: any) => p.instagram).length,
         web: saved.length,
       },
       logs,

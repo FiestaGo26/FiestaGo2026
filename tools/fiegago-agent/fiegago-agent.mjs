@@ -276,12 +276,13 @@ JSON array (o [] si no hay):
 
 async function searchGoogle(catObj, city, count) {
   log(`\n🌐 GOOGLE`)
-  const query = `${catObj.query} ${city} España contacto email teléfono`
+  // Forzamos la búsqueda a páginas con contacto explícito: email o instagram.
+  const query = `${catObj.query} ${city} España (email OR contacto OR instagram) -wikipedia -directorios`
   log(`   Query: "${query}"`)
 
   const results = await apifyRun('apify~google-search-scraper', {
     queries: query,
-    maxPagesPerQuery: 2,
+    maxPagesPerQuery: 3,
     resultsPerPage: 10,
   })
 
@@ -293,11 +294,13 @@ async function searchGoogle(catObj, city, count) {
     'Agente captación FiestaGo. Extrae negocios reales de resultados de Google. Solo JSON válido.',
     `Analiza estos resultados de Google para "${catObj.label}" en ${city} y extrae hasta ${count} negocios REALES.
 
+REGLA OBLIGATORIA: solo incluye negocios para los que puedas extraer un email REAL (con @) o un handle de Instagram (@usuario) del snippet/URL/título. Si no hay ninguno de los dos, NO incluyas el negocio. Mejor 2 buenos que 5 sin contacto.
+
 Resultados:
 ${JSON.stringify(organicResults.slice(0,10).map(r => ({ title:r.title, url:r.url, description:r.description })), null, 1)}
 
-JSON array (o [] si no hay negocios claros):
-[{"name":"nombre real","type":"tipo","city":"${city}","email":"","phone":"","website":"URL",
+JSON array (o [] si ninguno tiene email ni Instagram visible):
+[{"name":"nombre real","type":"tipo","city":"${city}","email":"email@real.com o vacío","phone":"","website":"URL","instagram":"@usuario o vacío",
 "source":"URL donde encontraste info","avgPrice":1200,"priceUnit":"por evento",
 "specialties":["e1"],"description":"desc basada en resultado","strengths":["s1"]}]`
   )
@@ -404,7 +407,19 @@ async function runOne(categoryId, city) {
     seen.add(key); return true
   }).slice(0, RUN_OPTS.count * 2)
 
-  log(`\n📊 ${rawProviders.length} candidatos detectados para ${catObj.label} en ${city}`)
+  // FILTRO DURO: descartar cualquier proveedor sin email ni Instagram, no
+  // sirve enviar outreach si no tenemos un canal directo de contacto.
+  const beforeContact = rawProviders.length
+  rawProviders = rawProviders.filter(p => {
+    const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
+    const ig = (p.instagram || p.socialHandle || '').toString().trim()
+    const hasIg = ig.length > 1 && ig !== '@'
+    return hasEmail || hasIg
+  })
+  const rejected = beforeContact - rawProviders.length
+  if (rejected > 0) log(`   🚫 ${rejected} descartados (sin email ni Instagram)`)
+
+  log(`\n📊 ${rawProviders.length} candidatos válidos para ${catObj.label} en ${city}`)
   if (rawProviders.length === 0) return { saved: 0, found: 0 }
 
   let savedCount = 0
