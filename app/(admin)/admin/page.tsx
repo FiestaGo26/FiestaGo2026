@@ -95,7 +95,7 @@ export default function AdminPage() {
   const [filterCat,    setFilterCat]    = useState('')
   const [search,       setSearch]       = useState('')
   // Agent state
-  const [agentCfg,  setAgentCfg]  = useState({ category:'foto', city:'Madrid', count:5, tone:'profesional y cercano', sources:['web'] })
+  const [agentCfg,  setAgentCfg]  = useState({ category:'foto', city:'Madrid', count:3, tone:'profesional y cercano', sources:['web'] })
   const [agentRunning, setAgentRunning] = useState(false)
   const [agentLogs,    setAgentLogs]    = useState<string[]>([])
   const [agentResults, setAgentResults] = useState<any[]>([])
@@ -299,14 +299,32 @@ export default function AdminPage() {
 
   async function runAgent() {
     setAgentRunning(true)
-    setAgentLogs([`🤖 Iniciando agente — ${agentCfg.category} en ${agentCfg.city}...`])
+    setAgentLogs([
+      `🤖 Iniciando agente — ${agentCfg.category} en ${agentCfg.city}...`,
+      `⏱ Esto puede tardar 10-25 segundos (búsqueda web + análisis). Por favor espera.`,
+    ])
     setAgentResults([])
     try {
       const res  = await fetch('/api/admin/agent', {
         method:'POST', headers: adminHeaders(),
         body: JSON.stringify(agentCfg),
       })
-      const data = await res.json()
+      // Leer texto primero para detectar HTML (timeouts de Netlify devuelven HTML 504)
+      const raw = await res.text()
+      let data: any = {}
+      try { data = JSON.parse(raw) } catch {
+        const lookHtml = /^\s*<(\!doctype|html|head|body)/i.test(raw)
+        if (!res.ok && lookHtml) {
+          setAgentLogs(l => [...l,
+            `❌ Netlify cortó la función por timeout (>26s).`,
+            `💡 Prueba con menos proveedores (3) o ejecuta el script local "node tools/fiegago-agent/fiegago-agent.mjs" para captación masiva.`,
+          ])
+        } else {
+          setAgentLogs(l => [...l, `❌ Respuesta no-JSON del servidor: ${raw.slice(0, 120)}...`])
+        }
+        setAgentRunning(false)
+        return
+      }
       if (data.logs)      setAgentLogs(data.logs)
       if (data.providers) setAgentResults(data.providers)
       if (data.error)     setAgentLogs(l => [...l, `❌ Error: ${data.error}`])
@@ -828,7 +846,7 @@ export default function AdminPage() {
                   <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
                     marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Nº de proveedores</label>
                   <div style={{ display:'flex', gap:5 }}>
-                    {[3,5,8].map(n=>(
+                    {[2,3,4].map(n=>(
                       <button key={n} onClick={()=>setAgentCfg(c=>({...c,count:n}))} disabled={agentRunning}
                         style={{ flex:1, padding:'7px', borderRadius:7, fontSize:13, fontWeight:700,
                           border:`1px solid ${agentCfg.count===n?'#06B6D4':'#1F2937'}`,

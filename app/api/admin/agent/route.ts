@@ -18,26 +18,34 @@ function checkAdminAuth(req: NextRequest) {
 // `fiegago-agent.mjs` que NO tiene limite de tiempo.
 
 async function claudeWebSearch(prompt: string): Promise<string> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 4000,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-  const data = await res.json()
-  if (data.error) throw new Error(data.error.message || 'Claude error')
-  return (data.content || [])
-    .filter((b: any) => b.type === 'text')
-    .map((b: any) => b.text)
-    .join('')
+  // AbortController para no esperar más de 22s (Netlify max 26s)
+  const controller = new AbortController()
+  const tick = setTimeout(() => controller.abort(), 22_000)
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 2200,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      signal: controller.signal,
+    })
+    const data = await res.json()
+    if (data.error) throw new Error(data.error.message || 'Claude error')
+    return (data.content || [])
+      .filter((b: any) => b.type === 'text')
+      .map((b: any) => b.text)
+      .join('')
+  } finally {
+    clearTimeout(tick)
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -50,7 +58,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}))
-    const { category = 'foto', city = 'Madrid', count = 3 } = body
+    let { category = 'foto', city = 'Madrid', count = 3 } = body
+    // Capear a 4 para que entre en el timeout de Netlify (26s)
+    count = Math.min(Math.max(parseInt(String(count)) || 3, 1), 4)
     const cat = CATEGORIES.find(c => c.id === category)
     if (!cat) {
       return NextResponse.json({ error: 'Categoría inválida', logs }, { status: 400 })
@@ -59,32 +69,12 @@ export async function POST(req: NextRequest) {
     log(`🤖 Agente rápido — ${cat.label} en ${city}`)
     log(`🌐 Buscando ${count} proveedores reales en Google...`)
 
-    const prompt = `Busca en Google ${count} negocios REALES de "${cat.label}" en ${city}, España.
+    const prompt = `Busca ${count} negocios profesionales reales de "${cat.label}" en ${city}, España.
 
-REQUISITO OBLIGATORIO: cada negocio debe tener al menos UNO de estos dos canales de contacto:
-- Email de contacto (debe ser un email real, NO "info@" inventado)
-- Handle de Instagram (@usuario)
+REGLA INNEGOCIABLE: cada negocio DEBE tener email REAL (con @) o handle de Instagram (@usuario). Si no tiene ninguno, NO lo incluyas. Mejor menos que sin contacto.
 
-Si no consigues encontrar ni email ni Instagram de un negocio, NO lo incluyas en la respuesta. Es preferible devolver menos resultados que devolver negocios sin forma de contactarlos.
-
-Para cada uno, encuentra: nombre exacto del negocio, email de contacto, teléfono, web, handle de Instagram (@usuario), descripción de 1 frase, precio medio aproximado en euros.
-
-Devuelve SOLO un array JSON con esta forma exacta (sin texto antes ni después):
-[
-  {
-    "name": "nombre del negocio",
-    "email": "info@example.com" o "",
-    "phone": "+34 ..." o "",
-    "website": "https://..." o "",
-    "instagram": "@usuario" o "",
-    "description": "frase corta",
-    "avgPrice": 1200,
-    "city": "${city}",
-    "specialties": ["e1","e2"]
-  }
-]
-
-Solo negocios profesionales reales, no particulares. Recuerda: si NO tienen email ni Instagram, NO los incluyas.`
+Devuelve SOLO este JSON, sin texto extra:
+[{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
 
     const text = await claudeWebSearch(prompt)
     log(`✅ Búsqueda completada`)
