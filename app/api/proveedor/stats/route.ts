@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       .select('id, name, price')
       .in('id', topServiceIds)
     topServices = (svcs || []).map((s: any) => ({ ...s, views: byService[s.id] || 0 }))
-      .sort((a, b) => b.views - a.views)
+      .sort((a: any, b: any) => b.views - a.views)
   }
 
   return NextResponse.json({

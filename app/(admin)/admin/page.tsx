@@ -35,6 +35,8 @@ function getProviderState(p: any) {
   if (p.status === 'approved')  return { label:'✅ En marketplace',     bg:'#D1FAE5', color:'#065F46' }
   if (p.status === 'rejected')  return { label:'❌ Rechazado',           bg:'#FEE2E2', color:'#991B1B' }
   if (p.status === 'pending') {
+    // PRIORIDAD MÁXIMA: el proveedor se ha registrado por sí mismo, hay que aprobarlo.
+    if (p.self_registered)      return { label:'✍️ Registrado · APROBAR', bg:'#FEE2E2', color:'#991B1B' }
     if (!p.outreach_sent)       return { label:'🆕 Sin contactar',      bg:'#E5E7EB', color:'#374151' }
     if (p.tag === 'Contactado por DM') return { label:'💬 Contactado DM',  bg:'#FCE7F3', color:'#9D174D' }
     if (p.tag === 'Contactado')        return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
@@ -174,13 +176,22 @@ export default function AdminPage() {
     const data = await res.json()
     let list = data.providers || []
     // Sub-filtros cliente:
-    if (filterStatus === 'nuevo') {
-      list = list.filter((p: any) => !p.outreach_sent)
+    if (filterStatus === 'registrados') {
+      list = list.filter((p: any) => p.self_registered && p.status === 'pending')
+    } else if (filterStatus === 'nuevo') {
+      list = list.filter((p: any) => !p.outreach_sent && !p.self_registered)
     } else if (filterStatus === 'contactado_email') {
-      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado')
+      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado' && !p.self_registered)
     } else if (filterStatus === 'contactado_dm') {
-      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado por DM')
+      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado por DM' && !p.self_registered)
     }
+    // Ordenar: los auto-registrados pendientes SIEMPRE arriba
+    list.sort((a: any, b: any) => {
+      const aReg = a.self_registered && a.status === 'pending' ? 1 : 0
+      const bReg = b.self_registered && b.status === 'pending' ? 1 : 0
+      if (aReg !== bReg) return bReg - aReg
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
     setProviders(list)
     setLoading(false)
   }, [filterStatus, filterCat, search])
@@ -593,17 +604,19 @@ export default function AdminPage() {
           {section === 'providers' && (
             <div>
               {/* PANEL DE STATS DEL LIFECYCLE */}
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10, marginBottom:16 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:10, marginBottom:16 }}>
                 {(() => {
                   const all = providers
                   const counts = {
-                    nuevo:     all.filter((p:any) => p.status==='pending' && !p.outreach_sent).length,
-                    email:     all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado').length,
-                    dm:        all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado por DM').length,
+                    registrados: all.filter((p:any) => p.status==='pending' && p.self_registered).length,
+                    nuevo:     all.filter((p:any) => p.status==='pending' && !p.outreach_sent && !p.self_registered).length,
+                    email:     all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado' && !p.self_registered).length,
+                    dm:        all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado por DM' && !p.self_registered).length,
                     approved:  all.filter((p:any) => p.status==='approved').length,
                     rejected:  all.filter((p:any) => p.status==='rejected').length,
                   }
                   const tiles = [
+                    { key:'registrados', label:'✍️ Registrados · APROBAR', value:counts.registrados, color:'#EF4444', filter:'registrados', highlight: counts.registrados > 0 },
                     { key:'nuevo',     label:'🆕 Sin contactar',     value:counts.nuevo,    color:'#9CA3AF', filter:'nuevo' },
                     { key:'email',     label:'📧 Contactado email',  value:counts.email,    color:'#3B82F6', filter:'contactado_email' },
                     { key:'dm',        label:'💬 Contactado DM',     value:counts.dm,       color:'#EC4899', filter:'contactado_dm' },
@@ -612,10 +625,14 @@ export default function AdminPage() {
                   ]
                   return tiles.map(t => (
                     <button key={t.key} onClick={() => setFilterStatus(t.filter)}
-                      style={{ background:'#111827', border:`1px solid ${filterStatus===t.filter?t.color:'#1F2937'}`,
+                      style={{
+                        background: t.highlight ? 'rgba(239,68,68,0.10)' : '#111827',
+                        border:`1px solid ${filterStatus===t.filter ? t.color : (t.highlight ? '#EF4444' : '#1F2937')}`,
                         borderRadius:12, padding:'12px 14px', textAlign:'left', cursor:'pointer',
-                        transition:'all 0.15s' }}>
-                      <div style={{ fontSize:10, color:'#9CA3AF', marginBottom:4, fontWeight:600 }}>{t.label}</div>
+                        transition:'all 0.15s',
+                        boxShadow: t.highlight ? '0 0 0 1px rgba(239,68,68,0.25)' : 'none',
+                      }}>
+                      <div style={{ fontSize:10, color: t.highlight ? '#FCA5A5' : '#9CA3AF', marginBottom:4, fontWeight:600 }}>{t.label}</div>
                       <div style={{ fontSize:24, fontWeight:700, color:t.color }}>{t.value}</div>
                     </button>
                   ))
@@ -629,6 +646,7 @@ export default function AdminPage() {
                     borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
                 {[['filterStatus','Estado',[
                     ['','Todos'],
+                    ['registrados','✍️ Registrados · APROBAR'],
                     ['nuevo','🆕 Sin contactar'],
                     ['contactado_email','📧 Contactado email'],
                     ['contactado_dm','💬 Contactado DM'],
