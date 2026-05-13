@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
         outreach_sent: true,
         outreach_at:   new Date().toISOString(),
         tag:           'Contactado',
+        contacted_via: 'email',
       })
       .in('id', okIds)
   }

@@ -1338,15 +1338,15 @@ export default function AdminPage() {
               </p>
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {[
-                  { label:'🆕 Sin contactar',     outreach_sent:false, tag:null },
-                  { label:'📧 Contactado email',   outreach_sent:true,  tag:'Contactado' },
-                  { label:'💬 Contactado por DM',  outreach_sent:true,  tag:'Contactado por DM' },
+                  { label:'🆕 Sin contactar',     outreach_sent:false, tag:null,                  contacted_via:null },
+                  { label:'📧 Contactado email',   outreach_sent:true,  tag:'Contactado',          contacted_via:'email' },
+                  { label:'💬 Contactado por DM',  outreach_sent:true,  tag:'Contactado por DM',   contacted_via:'instagram' },
                 ].map((opt:any) => {
                   const isActive = editProv.outreach_sent === opt.outreach_sent &&
                     ((!opt.tag && !editProv.tag) || editProv.tag === opt.tag)
                   return (
                     <button key={opt.label}
-                      onClick={()=>setEditProv(p=>p?{...p, outreach_sent: opt.outreach_sent, tag: opt.tag }:null)}
+                      onClick={()=>setEditProv(p=>p?{...p, outreach_sent: opt.outreach_sent, tag: opt.tag, contacted_via: opt.contacted_via }:null)}
                       style={{ padding:'6px 12px', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer',
                         border:`1px solid ${isActive ? '#F43F5E' : '#1F2937'}`,
                         background: isActive ? 'rgba(244,63,94,0.12)' : 'transparent',
@@ -1527,7 +1527,7 @@ function DMBlock({ provider, updateProvider, setEditProv }: any) {
     toast.success(`✓ ${txt.length} chars en portapapeles`)
     setTimeout(() => {
       window.open(`https://instagram.com/${handle}/`, '_blank')
-      updateProvider(provider.id, { outreach_sent: true, tag: 'Contactado por DM' })
+      updateProvider(provider.id, { outreach_sent: true, tag: 'Contactado por DM', contacted_via: 'instagram' })
     }, 250)
   }
 

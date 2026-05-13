@@ -123,14 +123,23 @@ export async function PATCH(req: NextRequest) {
     const isRecruitment = !!(current.outreach_email && !current.outreach_sent)
 
     if (isRecruitment) {
-      // Flow 1: enviar outreach con el diseño completo (HTML + sello + List-Unsubscribe), mantener pending
+      // Flow 1: intentar enviar outreach con el diseño completo, mantener pending
       const sent = await emailProviderOutreach(current)
+      // Pase lo que pase, MANTENER como pending (el proveedor aún no se ha registrado)
+      updates.status = 'pending'
       if (sent.ok) {
-        updates.status        = 'pending'
         updates.outreach_sent = true
         updates.outreach_at   = new Date().toISOString()
         updates.tag           = 'Contactado'
+        updates.contacted_via = 'email'
         result.flow = 'outreach_sent'
+      } else if (!current.email && current.instagram) {
+        // Sin email pero sí IG: marcamos como contactado vía DM (el admin lo manda manual)
+        updates.outreach_sent = true
+        updates.outreach_at   = new Date().toISOString()
+        updates.tag           = 'Contactado por DM'
+        updates.contacted_via = 'instagram'
+        result.flow = 'mark_for_dm'
       } else {
         result.flow = 'outreach_failed'
         result.outreachError = sent.error

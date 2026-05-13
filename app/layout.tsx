@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import { DM_Sans, Fraunces, IBM_Plex_Mono } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID  // Google Analytics 4 Measurement ID (G-XXXXXXXXXX)
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -44,6 +47,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" className={`${dmSans.variable} ${fraunces.variable} ${ibmMono.variable}`}>
       <body className="font-sans bg-cream text-ink antialiased">
+        {/* Google Analytics 4 — solo se carga si NEXT_PUBLIC_GA_ID está configurado */}
+        {GA_ID && (
+          <>
+            <Script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+            <Script id="ga-init" strategy="afterInteractive">{`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_ID}', { anonymize_ip: true });
+            `}</Script>
+          </>
+        )}
         {children}
         <Toaster
           position="bottom-right"
