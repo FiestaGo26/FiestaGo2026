@@ -85,6 +85,21 @@ export default function ProviderDetailPage() {
     })
   }, [supabase])
 
+  // Helper para tracking de eventos
+  function trackEvent(provider_id: string, event_type: string, service_id?: string) {
+    if (typeof window === 'undefined') return
+    let session_id = localStorage.getItem('fg_session')
+    if (!session_id) {
+      session_id = Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
+      localStorage.setItem('fg_session', session_id)
+    }
+    fetch('/api/analytics/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider_id, event_type, service_id, session_id }),
+    }).catch(() => {})
+  }
+
   useEffect(() => {
     if (!id) return
     // Lookup directo: primero por id, fallback por slug si no es UUID
@@ -96,6 +111,8 @@ export default function ProviderDetailPage() {
         const p = data.provider || null
         setProvider(p)
         setLoading(false)
+        // TRACK: profile_view
+        if (p?.id) trackEvent(p.id, 'profile_view')
         // Cargar servicios sólo si el proveedor existe
         if (p?.id) {
           fetch(`/api/proveedor/services?provider_id=${p.id}`)
@@ -176,6 +193,11 @@ export default function ProviderDetailPage() {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setTimeout(() => document.getElementById('booking-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
     }
+    // TRACK: service_view + booking_started (al elegir un servicio se considera intención de reserva)
+    if (provider?.id) {
+      trackEvent(provider.id, 'service_view', svc.id)
+      trackEvent(provider.id, 'booking_started', svc.id)
+    }
     toast.success(`Servicio seleccionado: ${svc.name}`)
   }
 
@@ -212,6 +234,8 @@ export default function ProviderDetailPage() {
         throw new Error(data.error || `Error ${res.status} del servidor`)
       }
       setBooked(true)
+      // TRACK: booking_completed
+      if (provider?.id) trackEvent(provider.id, 'booking_completed', selectedSvc?.id)
       // Si no está logueado, ofrecer crear cuenta socio para ver el calendario
       if (!isLogged) setShowSocioCTA(true)
       toast.success('¡Reserva enviada! El proveedor te contactará pronto.')
@@ -387,6 +411,7 @@ export default function ProviderDetailPage() {
                   ['📸 Instagram', provider.instagram, provider.instagram ? `https://instagram.com/${provider.instagram.replace('@','')}` : null],
                 ].map(([icon, val, href]) => val ? (
                   <a key={icon as string} href={href as string} target="_blank" rel="noreferrer"
+                    onClick={() => { if (provider?.id) trackEvent(provider.id, 'contact_clicked') }}
                     className="flex flex-col gap-0.5 text-ink/65 hover:text-ink transition-colors py-2 border-b border-stone-100">
                     <span className="text-[10px] uppercase tracking-widest text-ink/45 font-medium">{icon}</span>
                     <span className="truncate">{val}</span>

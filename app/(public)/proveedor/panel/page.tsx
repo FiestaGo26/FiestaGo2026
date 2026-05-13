@@ -54,6 +54,7 @@ type Provider = {
 
 const TABS = [
   { id:'dashboard',    icon:'📊', label:'Resumen'        },
+  { id:'stats',        icon:'📈', label:'Estadísticas'   },
   { id:'profile',      icon:'✏️', label:'Mi perfil'      },
   { id:'services',     icon:'💼', label:'Mis servicios'  },
   { id:'availability', icon:'📅', label:'Disponibilidad' },
@@ -109,6 +110,42 @@ export default function ProveedorPanelPage() {
   const [newPassword,     setNewPassword]     = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [changingPass,    setChangingPass]    = useState(false)
+
+  // Stats
+  const [statsData, setStatsData] = useState<{
+    total_events: number
+    profile_views: number
+    service_views: number
+    booking_started: number
+    booking_completed: number
+    contact_clicked: number
+    conversion_rate: number
+    series: { date: string; views: number }[]
+    top_services: { id: string; name: string; price: number | null; views: number }[]
+  } | null>(null)
+  const [statsRange,    setStatsRange]    = useState<7 | 30 | 90>(30)
+  const [statsLoading,  setStatsLoading]  = useState(false)
+
+  async function loadStats(providerId: string, days: number) {
+    setStatsLoading(true)
+    try {
+      const res = await fetch(`/api/proveedor/stats?provider_id=${providerId}&days=${days}`, {
+        headers: { 'x-provider-token': providerId }
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setStatsData(data)
+    } catch (err: any) {
+      toast.error('Error cargando estadísticas')
+    }
+    setStatsLoading(false)
+  }
+
+  // Cargar stats cuando se entra en la pestaña o cambia el rango
+  useEffect(() => {
+    if (tab === 'stats' && provider?.id) loadStats(provider.id, statsRange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, statsRange, provider?.id])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -534,6 +571,132 @@ export default function ProveedorPanelPage() {
                   Envía este link por WhatsApp, Instagram o email. Cuando alguien se registre vía tu link, lo verás aquí.
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* STATS · Estadísticas de visitas y conversiones */}
+        {tab==='stats' && (
+          <div>
+            <div className="flex items-baseline justify-between mb-2">
+              <h1 className="font-serif text-2xl font-black text-ink">Estadísticas</h1>
+              <div className="flex gap-1 bg-stone-100 p-1 rounded-xl">
+                {([7, 30, 90] as const).map(d => (
+                  <button key={d} onClick={() => setStatsRange(d)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                      statsRange === d ? 'bg-white text-coral shadow-sm' : 'text-ink/55 hover:text-ink'
+                    }`}>
+                    {d} días
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-ink/55 text-sm mb-6">
+              Cuántas personas han visto tu perfil y servicios, y cuántas acabaron reservando.
+            </p>
+
+            {statsLoading && !statsData ? (
+              <div className="text-ink/40 text-sm">Cargando estadísticas...</div>
+            ) : !statsData || statsData.total_events === 0 ? (
+              <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center shadow-card">
+                <div className="text-5xl mb-3">📈</div>
+                <h3 className="font-serif text-lg font-bold text-ink mb-2">Aún no hay datos</h3>
+                <p className="text-ink/50 text-sm max-w-md mx-auto">
+                  Cuando los usuarios visiten tu perfil empezarás a ver aquí cuántas vistas, clicks en servicios, formularios iniciados y reservas completadas tienes.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Stat cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+                  {[
+                    { label: 'Vistas perfil',       value: statsData.profile_views,     icon: '👁️',  color: '#3B82F6' },
+                    { label: 'Vistas servicios',    value: statsData.service_views,     icon: '💼',  color: '#8B5CF6' },
+                    { label: 'Inicios reserva',     value: statsData.booking_started,   icon: '✍️',  color: '#F59E0B' },
+                    { label: 'Reservas hechas',     value: statsData.booking_completed, icon: '✅',  color: '#10B981' },
+                    { label: 'Clicks contacto',     value: statsData.contact_clicked,   icon: '📞',  color: '#E8553E' },
+                  ].map(s => (
+                    <div key={s.label} className="bg-white border border-stone-200 rounded-2xl p-4 shadow-card">
+                      <div className="text-xl mb-2">{s.icon}</div>
+                      <div className="font-serif text-2xl font-bold mb-0.5" style={{color: s.color}}>{s.value}</div>
+                      <div className="text-[11px] text-ink/55">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Conversion rate */}
+                <div className="bg-gradient-to-br from-coral/10 via-amber-50 to-rose-50 border border-coral/30 rounded-2xl p-5 mb-6">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] font-bold tracking-widest uppercase text-coral">Tasa de conversión</div>
+                      <div className="font-serif text-3xl font-black text-ink mt-1">
+                        {statsData.conversion_rate}%
+                      </div>
+                      <p className="text-xs text-ink/60 mt-1">
+                        De cada 100 personas que visitan tu perfil, <strong>{Math.round(statsData.conversion_rate)}</strong> acaban reservando.
+                      </p>
+                    </div>
+                    <div className="text-4xl opacity-30">🎯</div>
+                  </div>
+                </div>
+
+                {/* Daily chart */}
+                <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card mb-6">
+                  <h3 className="font-semibold text-ink mb-4 text-sm">Vistas por día (últimos {statsRange} días)</h3>
+                  {(() => {
+                    const max = Math.max(1, ...statsData.series.map(p => p.views))
+                    return (
+                      <div className="flex items-end gap-[2px] h-32">
+                        {statsData.series.map(p => {
+                          const h = (p.views / max) * 100
+                          return (
+                            <div key={p.date} className="flex-1 flex flex-col justify-end group relative"
+                                 title={`${p.date}: ${p.views} vista${p.views === 1 ? '' : 's'}`}>
+                              <div
+                                className="w-full bg-coral/70 hover:bg-coral rounded-t transition-colors"
+                                style={{ height: `${h}%`, minHeight: p.views ? '3px' : '0px' }}
+                              />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  })()}
+                  <div className="flex justify-between text-[10px] text-ink/40 mt-2">
+                    <span>{statsData.series[0]?.date}</span>
+                    <span>{statsData.series[statsData.series.length - 1]?.date}</span>
+                  </div>
+                </div>
+
+                {/* Top services */}
+                {statsData.top_services.length > 0 && (
+                  <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
+                    <h3 className="font-semibold text-ink mb-4 text-sm">Servicios más vistos</h3>
+                    <div className="space-y-2">
+                      {statsData.top_services.map((s, i) => (
+                        <div key={s.id} className="flex items-center justify-between py-2 border-b border-stone-100 last:border-0">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className="text-xs font-bold text-ink/40 w-5">#{i + 1}</span>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium text-ink truncate">{s.name}</div>
+                              {s.price != null && (
+                                <div className="text-xs text-ink/50">{s.price.toLocaleString()}€</div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 ml-3">
+                            <div className="w-24 bg-stone-100 rounded-full h-1.5 overflow-hidden">
+                              <div className="bg-coral h-full"
+                                   style={{ width: `${(s.views / statsData.top_services[0].views) * 100}%` }}/>
+                            </div>
+                            <span className="text-xs font-bold text-ink w-8 text-right">{s.views}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
