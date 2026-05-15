@@ -3,6 +3,7 @@
     {
       "id": "inspiration_video",
       "label": "Inspiración (vídeo hook)",
+      "audience": "client",
       "weight": 25,
       "media": "video",
       "video_duration": 5,
@@ -23,6 +24,7 @@
     {
       "id": "tip_educational",
       "label": "Tip educativo (carrusel imagen)",
+      "audience": "client",
       "weight": 20,
       "media": "image",
       "prompt_template": "Aesthetic flat-lay photograph of wedding planning materials on a marble surface, soft natural light, ivory and gold tones, premium editorial style, no text or letters visible, elegant minimal composition",
@@ -42,6 +44,7 @@
     {
       "id": "pack_promo",
       "label": "Promo de pack",
+      "audience": "client",
       "weight": 20,
       "media": "image",
       "prompt_template": "Premium editorial photograph of {pack_visual}, golden hour, soft warm tones, aspirational lifestyle aesthetic, no text overlays, magazine-quality composition",
@@ -57,6 +60,7 @@
     {
       "id": "social_proof",
       "label": "Testimonio cliente",
+      "audience": "client",
       "weight": 15,
       "media": "image",
       "prompt_template": "Joyful candid photograph of {client_scene}, warm authentic emotion, soft natural light, real-moment editorial style, no text overlays",
@@ -72,6 +76,7 @@
     {
       "id": "behind_scenes",
       "label": "Behind the scenes",
+      "audience": "client",
       "weight": 10,
       "media": "video",
       "video_duration": 5,
@@ -88,6 +93,7 @@
     {
       "id": "fomo_seasonal",
       "label": "FOMO temporada",
+      "audience": "client",
       "weight": 10,
       "media": "video",
       "video_duration": 5,
@@ -100,6 +106,128 @@
       ],
       "caption_brief": "Caption con urgencia: 'Quedan X fechas/plazas/packs en {ciudad}'. Tono vibrante, FOMO sin agobiar. CTA 'Reserva ya en fiestago.es'.",
       "hashtags_base": ["plazaslimitadas", "fiestaurgente", "fiestago", "celebra2026", "eventoespaña"]
+    },
+
+    {
+      "id": "provider_zero_commission_video",
+      "label": "Proveedor · 0% primera venta (vídeo)",
+      "audience": "provider",
+      "weight": 25,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Cinematic 5-second vertical 9:16 video of {scene}, professional editorial style, warm natural light, Spanish small business owner aesthetic, modern and aspirational, no text overlays, no logos",
+      "scenes": [
+        "a wedding photographer reviewing photos on a laptop in a sunlit studio in Spain, focused and confident",
+        "a chef in a small catering kitchen plating tapas with concentration, warm light through a window",
+        "a DJ adjusting controllers at a Spanish venue at golden hour, festoon lights in background",
+        "a florist arranging an elegant bouquet in a Mediterranean workshop, hands working with focus",
+        "a Spanish wedding planner taking a phone call while flipping through a planner, calm and professional",
+        "a decorator hanging fabric and lights for a celebration setup in a Spanish patio"
+      ],
+      "caption_brief": "Caption dirigido a PROVEEDORES de eventos en España (fotógrafos, catering, DJ, animadores, decoradores). Hook punzante sobre cobrar la primera venta sin comisión. Tono cercano, tuteo, español de España. Estructura: hook 1 línea → propuesta (registro gratis + 0% 1ª venta + 8% desde la 2ª) → CTA 'Date de alta gratis · fiestago.es/registro-proveedor'. Máx 220 chars. Cero emojis al inicio, 1-2 al final como mucho.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "autonomosespaña", "eventosespaña", "fotografodebodas", "catering", "djbodas", "weddingplannerespaña"]
+    },
+    {
+      "id": "provider_anti_subscription_video",
+      "label": "Proveedor · Anti-suscripción (vídeo)",
+      "audience": "provider",
+      "weight": 20,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Cinematic 5-second vertical 9:16 video of {scene}, documentary editorial style, slightly moody warm light, Spanish small business context, no text overlays, no recognizable brands",
+      "scenes": [
+        "an empty wedding photographer's calendar on a wooden desk with a coffee cup, hands flipping pages slowly",
+        "a small business owner looking thoughtfully at a phone showing a subscription invoice, soft window light",
+        "a DJ unpacking equipment in an empty venue, slight frustration in the body language",
+        "a florist sitting in a quiet workshop checking her phone with a worried expression"
+      ],
+      "caption_brief": "Caption a PROVEEDORES en España. Ángulo: estás cansado de pagar cuota mensual sin clientes. FiestaGo es comisión, no suscripción: pagas solo cuando vendes, y la primera venta es íntegra para ti. Sin permanencia, sin tarjeta. Tuteo, español de España, frases cortas. CTA 'Empieza por aquí 👉 fiestago.es/registro-proveedor'. Máx 220 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "autonomos", "marketingparaautonomos", "eventosespaña", "bodasespaña", "cateringespaña"]
+    },
+    {
+      "id": "provider_low_season_video",
+      "label": "Proveedor · Temporada baja (vídeo)",
+      "audience": "provider",
+      "weight": 15,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Cinematic 5-second vertical 9:16 video of {scene}, warm hopeful tone, autumn or winter Spanish setting, professional but intimate, no text overlays",
+      "scenes": [
+        "a calendar showing November and February pages with very few entries, hand turning the page slowly",
+        "an empty venue during off-season with chairs stacked, light coming through tall windows",
+        "a Spanish caterer reviewing a half-empty bookings list on a tablet by a window in winter",
+        "a photographer organizing equipment in a quiet studio during a rainy day"
+      ],
+      "caption_brief": "Caption a PROVEEDORES en España. Ángulo: temporada baja con agenda vacía. Recuérdales que en FiestaGo se reservan también cumples de 40, eventos de empresa, comuniones, bautizos, despedidas... no solo bodas. Llena los meses muertos. Tono optimista, español de España, tuteo. CTA 'Date de alta gratis · fiestago.es/registro-proveedor'. Máx 220 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "temporadabaja", "autonomosespaña", "comuniones", "eventoscorporativos", "cumples", "eventosespaña"]
+    },
+    {
+      "id": "provider_not_only_weddings_carousel",
+      "label": "Proveedor · No es solo bodas (carrusel)",
+      "audience": "provider",
+      "weight": 15,
+      "media": "image",
+      "prompt_template": "Premium editorial flat-lay or wide shot photograph of {scene}, soft natural light, Spanish event aesthetic, magazine-quality composition, no text or letters visible, no logos, vertical 4:5 framing",
+      "scenes": [
+        "a communion lunch table set with white flowers, pastel napkins and small gifts in a Spanish home",
+        "a corporate event setup with elegant cocktails and minimalist decoration in a Mediterranean venue",
+        "a 40th birthday party in a Spanish patio with festoon lights, balloons and a long dinner table",
+        "a baby shower setup with pastel decorations, balloons and dessert table",
+        "a bachelorette party setup at a beach villa with cocktails, flowers and personalised signage",
+        "a Christmas company dinner setup at a Spanish restaurant with elegant table decoration"
+      ],
+      "caption_brief": "Caption a PROVEEDORES en España. Carrusel educativo: '7 negocios que están perdiendo dinero por no estar en FiestaGo'. Hook problema, lista breve (food trucks, magos, decoradores, photocall, animadores, catering pequeño, fotógrafos no-boda), cierre 'Tú también te has visto. Link en bio'. Tuteo, español de España. CTA 'Date de alta en fiestago.es/registro-proveedor'. 200-300 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "noessolobodas", "comuniones", "cumples", "eventoscorporativos", "decoracionEventos", "photocall", "magos", "foodtrucks"]
+    },
+    {
+      "id": "provider_comparison_carousel",
+      "label": "Proveedor · Comparativa coste (carrusel)",
+      "audience": "provider",
+      "weight": 10,
+      "media": "image",
+      "prompt_template": "Aesthetic editorial photograph of a {scene}, soft natural light, clean minimal composition, premium business aesthetic, no text or numbers visible, no logos, vertical 4:5 framing",
+      "scenes": [
+        "a Spanish small business owner reviewing finances on a laptop at a wooden desk with a coffee cup",
+        "an open notebook next to a calculator on a marble surface, soft morning light",
+        "a tablet showing a clean dashboard graphic on a minimalist desk in a Mediterranean workspace",
+        "a wallet, a phone and a business card holder arranged on a textured neutral background"
+      ],
+      "caption_brief": "Caption a PROVEEDORES en España. Carrusel comparativa: cuánto cuesta salir en cada sitio. Estructura: 'Lo que te cuesta cada plataforma →' Bodas.net (cuota anual), Google Ads (coste por clic, sin garantía), Instagram orgánico (horas), FiestaGo (0€ alta + 0% primera venta + 8% desde la 2ª). NO inventes precios concretos de competidores, usa rangos genéricos 'desde X€/mes'. CTA 'Hazlo bien: fiestago.es/registro-proveedor'. 200-300 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "marketingparaautonomos", "comoconseguirclientes", "autonomosespaña", "eventosespaña", "negocioseventos"]
+    },
+    {
+      "id": "provider_demo_signup_video",
+      "label": "Proveedor · Alta en 60s (vídeo)",
+      "audience": "provider",
+      "weight": 10,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Cinematic 5-second vertical 9:16 video of {scene}, clean modern aesthetic, daylight, Spanish small business context, no text overlays, no recognizable logos or UI",
+      "scenes": [
+        "hands holding a smartphone with a clean signup form visible on screen, close-up, modern minimal aesthetic",
+        "a Spanish small business owner smiling while filling out a form on a phone at a wooden table",
+        "a photographer's hands taking out a phone from an apron pocket, daylight, focused mood",
+        "a close-up of a phone on a kitchen counter showing a confirmation green check on the screen"
+      ],
+      "caption_brief": "Caption a PROVEEDORES en España. Ángulo: 'Te doy de alta en FiestaGo en 60 segundos. Sin tarjeta. Sin cuota. Sin permanencia'. Tono directo, demostrativo, tuteo, español de España. Cierre con CTA 'Cronómetro listo 👉 fiestago.es/registro-proveedor'. Máx 200 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "altagratis", "comoconseguirclientes", "autonomosespaña", "marketingparaautonomos", "eventosespaña"]
+    },
+    {
+      "id": "provider_hot_take_video",
+      "label": "Proveedor · Hot take contrarian (vídeo)",
+      "audience": "provider",
+      "weight": 10,
+      "media": "video",
+      "video_duration": 5,
+      "prompt_template": "Cinematic 5-second vertical 9:16 video of {scene}, slightly confrontational mood, professional editorial style, warm dramatic light, no text overlays, no logos",
+      "scenes": [
+        "a Spanish entrepreneur sitting in front of a laptop crossing arms with a determined expression, warm desk lamp light",
+        "a wedding photographer flipping a tablet that shows declining graphics, slight frustration",
+        "an empty wedding venue with one chair tipped over, dramatic side light",
+        "a hand crossing out items on a printed marketing invoice with a red pen"
+      ],
+      "caption_brief": "Caption a PROVEEDORES en España. Ángulo opinión impopular: 'Si pagas cuota anual a un portal y no vendes, te están robando. El modelo correcto es comisión sobre ventas, y la primera gratis. Por eso montamos FiestaGo'. Tono directo, sin agresividad, tuteo, español de España. CTA 'Cámbiate · fiestago.es/registro-proveedor'. Máx 220 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "opinionimpopular", "marketingparaautonomos", "autonomosespaña", "eventosespaña", "fotografodebodas", "cateringespaña"]
     }
   ]
 }

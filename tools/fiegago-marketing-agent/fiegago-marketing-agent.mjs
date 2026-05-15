@@ -3,10 +3,13 @@
 // Genera posts (imagen/vídeo + caption + hashtags) para Instagram + TikTok
 //
 // USO:
-//   node fiegago-marketing-agent.mjs                  # dry-run (sin coste)
-//   node fiegago-marketing-agent.mjs --confirm        # genera 3 posts (default)
-//   node fiegago-marketing-agent.mjs --confirm --n 8  # genera N posts
-//   node fiegago-marketing-agent.mjs --confirm --type inspiration_video  # solo un tipo
+//   node fiegago-marketing-agent.mjs                              # dry-run (sin coste)
+//   node fiegago-marketing-agent.mjs --confirm                    # genera 3 posts (default)
+//   node fiegago-marketing-agent.mjs --confirm --n 8              # genera N posts
+//   node fiegago-marketing-agent.mjs --confirm --type inspiration_video    # solo un tipo
+//   node fiegago-marketing-agent.mjs --confirm --audience provider --n 3   # solo plantillas para proveedores
+//   node fiegago-marketing-agent.mjs --confirm --audience client  --n 3    # solo plantillas para clientes
+//   node fiegago-marketing-agent.mjs --confirm --audience mix     --n 6    # mezcla (default)
 // ═══════════════════════════════════════════════════════════════════
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
@@ -37,9 +40,14 @@ const argv = process.argv.slice(2)
 const arg = (name, fallback = null) => {
   const i = argv.indexOf(`--${name}`); return i >= 0 ? (argv[i+1] || true) : fallback
 }
-const CONFIRM   = argv.includes('--confirm')
-const N_POSTS   = Number(arg('n', 3))
-const ONLY_TYPE = arg('type', null)
+const CONFIRM    = argv.includes('--confirm')
+const N_POSTS    = Number(arg('n', 3))
+const ONLY_TYPE  = arg('type', null)
+const AUDIENCE   = (arg('audience', 'mix') || 'mix').toString().toLowerCase()
+if (!['mix', 'client', 'provider'].includes(AUDIENCE)) {
+  console.error(`❌ --audience inválido: ${AUDIENCE}. Usa: mix | client | provider`)
+  process.exit(1)
+}
 
 // ── Templates ─────────────────────────────────────────────────────
 const TEMPLATES = JSON.parse(readFileSync(resolve('post-templates.json'), 'utf-8')).templates
@@ -58,6 +66,17 @@ function weightedPick(templates) {
 
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)] }
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+
+// Normaliza un hashtag: quita # previos, tildes, ñ y caracteres no válidos.
+// '##Bodas España!' → 'bodasespana'  ·  'trabajarsincomisión' → 'trabajarsincomision'
+const COMBINING_MARKS_RE = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g')
+const normalizeHashtag = h => String(h || '')
+  .replace(/^#+/, '')
+  .normalize('NFD').replace(COMBINING_MARKS_RE, '')
+  .replace(/ñ/g, 'n').replace(/Ñ/g, 'N')
+  .toLowerCase()
+  .replace(/[^a-z0-9_]/g, '')
+const renderHashtagLine = hs => (hs || []).map(normalizeHashtag).filter(Boolean).map(h => '#' + h).join(' ')
 
 // ── fal.ai: Flux 1.1 Pro ──────────────────────────────────────────
 async function falImage(prompt) {
@@ -106,10 +125,33 @@ async function falVideo(prompt, duration = 5) {
 
 // ── Claude: caption + hashtags ────────────────────────────────────
 async function claudeCaption(template, context) {
-  const sysPrompt = `Eres copywriter de redes sociales para FiestaGo (@fiestagospain), marketplace español de proveedores de eventos.
-Tono: vibrante, joven, cercano. Audiencia: cualquiera que celebre algo (bodas, cumples, despedidas, comuniones, eventos corporativos).
-La marca recalca: TODO en una sola web · sin estrés · sin coordinar con 10 sitios · primera transacción sin comisión.
+  const audience = template.audience || 'client'
+
+  const sysClient = `Eres copywriter de redes sociales para FiestaGo (@fiestagospain), marketplace español de proveedores de eventos.
+Tono: vibrante, joven, cercano. Audiencia: PARTICULARES Y EMPRESAS que celebran algo (bodas, cumples, despedidas, comuniones, eventos corporativos) y buscan proveedores.
+La marca recalca al cliente: TODO en una sola web · sin estrés · sin coordinar con 10 sitios · proveedores verificados.
+CTA típica: 'Tu fiesta empieza en fiestago.es' o 'Reserva en fiestago.es'.
 Devuelves SOLO JSON válido, sin markdown ni explicación.`
+
+  const sysProvider = `Eres copywriter de redes sociales para FiestaGo (@fiestagospain), marketplace español de proveedores de eventos.
+Tono: cercano, directo, profesional, español de España (tuteo, sin latinoamericanismos, sin jerga de startup tipo 'ecosistema' o 'disruptivo').
+Audiencia: PROVEEDORES (fotógrafos, catering, DJ, animadores, decoradores, floristas, wedding planners, espacios, food trucks, magos, etc.) en España que quieren más clientes para sus eventos.
+Mensajes clave a martillear según el ángulo de cada plantilla:
+- Registro GRATIS, sin tarjeta, sin permanencia
+- La PRIMERA venta es íntegra para el proveedor (0% comisión)
+- A partir de la segunda venta, 8% de comisión y nada más
+- NO es una suscripción tipo Bodas.net: solo pagas cuando vendes
+- Cubre TODOS los tipos de evento (no solo bodas): cumples, comuniones, despedidas, corporate, baby showers, bautizos...
+- Llena temporada baja: clientes activamente buscando, no dependes del boca a boca
+- CTA estándar: 'Date de alta gratis 👉 fiestago.es/registro-proveedor' (o 'Link en bio')
+Reglas estilísticas:
+- Tuteo singular ('te das de alta', 'consigues clientes'), NO 'vosotros'
+- Frases cortas, sin emojis al inicio, máximo 1-2 emojis al final
+- NO inventes precios concretos de competidores; usa rangos genéricos ('cuotas anuales de 600€+', 'desde 60€/mes')
+- NO uses claims sin respaldo ('el mejor marketplace', etc.)
+Devuelves SOLO JSON válido, sin markdown ni explicación.`
+
+  const sysPrompt = audience === 'provider' ? sysProvider : sysClient
 
   const userPrompt = `Genera contenido para un post en Instagram y TikTok.
 
@@ -258,15 +300,17 @@ async function generatePost(template) {
   const caption = await claudeCaption(template, context)
 
   // 3. Save assets
+  const cleanHashtags = (caption.hashtags || []).map(normalizeHashtag).filter(Boolean)
   writeFileSync(join(dir, 'caption_instagram.txt'),
-    `${caption.caption_es}\n\n${(caption.hashtags || []).map(h => '#' + h).join(' ')}`)
+    `${caption.caption_es}\n\n${renderHashtagLine(caption.hashtags)}`)
   writeFileSync(join(dir, 'caption_tiktok.txt'),
-    `${caption.caption_short_tiktok}\n\n${(caption.hashtags || []).map(h => '#' + h).join(' ')}`)
-  writeFileSync(join(dir, 'hashtags.txt'), (caption.hashtags || []).map(h => '#' + h).join('\n'))
+    `${caption.caption_short_tiktok}\n\n${renderHashtagLine(caption.hashtags)}`)
+  writeFileSync(join(dir, 'hashtags.txt'), cleanHashtags.map(h => '#' + h).join('\n'))
   writeFileSync(join(dir, 'hook_overlay.txt'), caption.hook_overlay || '')
   writeFileSync(join(dir, 'prompt_usado.txt'), mediaPrompt)
   writeFileSync(join(dir, 'meta.json'), JSON.stringify({
     id, template_id: template.id, label: template.label, media: template.media,
+    audience: template.audience || 'client',
     scene, topic, context, generated_at: new Date().toISOString(),
     source_url: mediaUrl,
     caption: caption,
@@ -295,13 +339,13 @@ async function generatePost(template) {
         prompt_used:       mediaPrompt,
         scene:             scene || null,
         topic:             topic || null,
-        context:           context,
+        context:           { ...context, audience: template.audience || 'client' },
         media_url:         publicMediaUrl,
         local_path:        dir.replace(OUT_BASE, ''),
         caption_instagram: caption.caption_es || null,
         caption_tiktok:    caption.caption_short_tiktok || null,
         hook_overlay:      caption.hook_overlay || null,
-        hashtags:          caption.hashtags || [],
+        hashtags:          cleanHashtags,
         status:            'pending',
       })
       console.log(`   ✓ Insertado en cola (status=pending)`)
@@ -335,15 +379,23 @@ async function main() {
   console.log('\n' + '═'.repeat(56))
   console.log('🎯 FiestaGo · Marketing Agent')
   console.log('═'.repeat(56))
-  console.log(`Modo:    ${CONFIRM ? 'GENERAR' : 'DRY RUN (sin coste)'}`)
-  console.log(`Posts:   ${N_POSTS}`)
-  console.log(`Filtro:  ${ONLY_TYPE || 'mezcla por pesos'}`)
-  console.log(`Salida:  ${OUT_BASE}`)
+  console.log(`Modo:      ${CONFIRM ? 'GENERAR' : 'DRY RUN (sin coste)'}`)
+  console.log(`Posts:     ${N_POSTS}`)
+  console.log(`Audiencia: ${AUDIENCE}`)
+  console.log(`Filtro:    ${ONLY_TYPE || 'mezcla por pesos'}`)
+  console.log(`Salida:    ${OUT_BASE}`)
   console.log()
 
   // Plan
-  const pool = ONLY_TYPE ? TEMPLATES.filter(t => t.id === ONLY_TYPE) : TEMPLATES
-  if (pool.length === 0) { console.error(`❌ Tipo no encontrado: ${ONLY_TYPE}`); process.exit(1) }
+  let pool = TEMPLATES
+  if (AUDIENCE !== 'mix') {
+    pool = pool.filter(t => (t.audience || 'client') === AUDIENCE)
+    if (pool.length === 0) {
+      console.error(`❌ No hay plantillas para audience=${AUDIENCE}`); process.exit(1)
+    }
+  }
+  if (ONLY_TYPE) pool = pool.filter(t => t.id === ONLY_TYPE)
+  if (pool.length === 0) { console.error(`❌ Tipo no encontrado en audience=${AUDIENCE}: ${ONLY_TYPE}`); process.exit(1) }
 
   const plan = []
   for (let i = 0; i < N_POSTS; i++) {
@@ -351,7 +403,7 @@ async function main() {
   }
 
   console.log('📋 Plan de generación:')
-  plan.forEach((t, i) => console.log(`  ${i + 1}. ${t.label.padEnd(35)} ${t.media}`))
+  plan.forEach((t, i) => console.log(`  ${i + 1}. [${(t.audience || 'client').padEnd(8)}] ${t.label.padEnd(42)} ${t.media}`))
   console.log()
   console.log(`💸 Coste estimado: ~$${plan.reduce((s, t) => s + (t.media === 'video' ? 0.5 : 0.04), 0).toFixed(2)}`)
   console.log()
