@@ -37,3 +37,8 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Marketing agent: binarios, música y contenido generado (no subir al repo)
+tools/fiegago-marketing-agent/bin/
+tools/fiegago-marketing-agent/music/
+tools/fiegago-marketing-agent/FiestaGo-Contenido/

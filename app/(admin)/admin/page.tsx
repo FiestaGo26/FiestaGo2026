@@ -1105,7 +1105,7 @@ export default function AdminPage() {
                         {/* Media preview */}
                         <div style={{ position:'relative', background:'#000', aspectRatio:'1/1', overflow:'hidden' }}>
                           {p.media_type === 'video' ? (
-                            <video src={p.media_url} autoPlay muted loop playsInline
+                            <video src={p.media_url} autoPlay muted loop playsInline controls
                               style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
                           ) : (
                             <img src={p.media_url} alt=""
