@@ -22,6 +22,9 @@ type Booking = {
   city: string | null
   provider_id: string | null
   pack_id: string | null
+  review_rating: number | null
+  review_text: string | null
+  reviewed_at: string | null
   providers?: { name: string; category: string; city: string; photo_idx: number; slug: string | null } | null
   packs?: { name: string; emoji: string | null; color: string | null } | null
 }
@@ -156,7 +159,7 @@ export default function MiCuentaPage() {
               />
             ) : (
               <div className="space-y-3 mb-8">
-                {upcoming.slice(0, 5).map(b => <BookingCard key={b.id} booking={b} />)}
+                {upcoming.slice(0, 5).map(b => <BookingCard key={b.id} booking={b} onReviewed={u => setBookings(prev => prev.map(x => x.id === u.id ? { ...x, ...u } : x))} />)}
               </div>
             )}
 
@@ -245,7 +248,7 @@ export default function MiCuentaPage() {
               />
             ) : (
               <div className="space-y-3">
-                {bookings.map(b => <BookingCard key={b.id} booking={b} />)}
+                {bookings.map(b => <BookingCard key={b.id} booking={b} onReviewed={u => setBookings(prev => prev.map(x => x.id === u.id ? { ...x, ...u } : x))} />)}
               </div>
             )}
           </div>
@@ -285,11 +288,48 @@ function EmptyState({ emoji, title, hint, cta }: { emoji: string; title: string;
   )
 }
 
-function BookingCard({ booking }: { booking: Booking }) {
+function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (b: Partial<Booking> & { id: string }) => void }) {
   const status = STATUS_LABEL[booking.status] || STATUS_LABEL.pending
   const date   = new Date(booking.event_date)
   const dateF  = `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`
   const title  = booking.providers?.name || booking.packs?.name || 'Reserva'
+
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const eventPassed   = date <= today
+  const canReview     = !!booking.provider_id && eventPassed
+    && ['confirmed', 'completed'].includes(booking.status)
+    && booking.review_rating == null
+  const hasReview     = booking.review_rating != null
+
+  const [showForm,   setShowForm]   = useState(false)
+  const [hover,      setHover]      = useState(0)
+  const [rating,     setRating]     = useState(0)
+  const [text,       setText]       = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function submitReview() {
+    if (!rating) { toast.error('Elige una puntuación'); return }
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/bookings/${booking.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_email: booking.client_email,
+          rating,
+          text: text.trim() || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      toast.success('¡Gracias por tu reseña! ★')
+      onReviewed?.({ id: booking.id, review_rating: rating, review_text: text.trim() || null, reviewed_at: new Date().toISOString() })
+      setShowForm(false)
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo enviar la reseña')
+    }
+    setSubmitting(false)
+  }
 
   return (
     <div className="bg-white border border-stone-200 rounded-2xl p-4 flex items-start gap-4 hover:shadow-md transition-shadow">
@@ -315,6 +355,64 @@ function BookingCard({ booking }: { booking: Booking }) {
           <span className="text-xs text-ink/45 uppercase tracking-widest font-bold">Total</span>
           <span className="font-serif text-lg font-bold text-coral">{booking.total_amount.toLocaleString()}€</span>
         </div>
+
+        {/* Reseña ya dejada */}
+        {hasReview && (
+          <div className="mt-3 pt-3 border-t border-stone-100">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] uppercase tracking-widest text-ink/45 font-bold">Tu reseña</span>
+              <span className="text-coral text-sm">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <span key={i} className={i < (booking.review_rating || 0) ? '' : 'text-ink/15'}>★</span>
+                ))}
+              </span>
+            </div>
+            {booking.review_text && (
+              <p className="text-xs text-ink/65 italic">"{booking.review_text}"</p>
+            )}
+          </div>
+        )}
+
+        {/* CTA para reseñar */}
+        {canReview && !showForm && (
+          <button onClick={() => setShowForm(true)}
+            className="mt-3 text-xs font-bold text-coral hover:text-coral-dark transition-colors flex items-center gap-1">
+            ★ Dejar reseña
+          </button>
+        )}
+
+        {/* Formulario de reseña */}
+        {canReview && showForm && (
+          <div className="mt-3 pt-3 border-t border-stone-100">
+            <div className="text-[10px] uppercase tracking-widest text-ink/45 font-bold mb-2">¿Cómo fue tu experiencia?</div>
+            <div className="flex items-center gap-1 mb-3" onMouseLeave={() => setHover(0)}>
+              {[1,2,3,4,5].map(n => (
+                <button key={n} type="button"
+                  onMouseEnter={() => setHover(n)}
+                  onClick={() => setRating(n)}
+                  className="text-2xl leading-none transition-transform hover:scale-110"
+                  style={{ color: n <= (hover || rating) ? '#E8553E' : '#E5E1D8' }}>
+                  ★
+                </button>
+              ))}
+              {rating > 0 && <span className="text-xs text-ink/55 ml-2">{rating}/5</span>}
+            </div>
+            <textarea value={text} onChange={e => setText(e.target.value)}
+              rows={3} maxLength={1000}
+              placeholder="Cuenta cómo fue (opcional, máx 1000 caracteres)"
+              className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
+            <div className="flex gap-2 mt-2">
+              <button onClick={submitReview} disabled={submitting || !rating}
+                className="bg-coral text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
+                {submitting ? 'Enviando...' : 'Publicar reseña'}
+              </button>
+              <button onClick={() => { setShowForm(false); setRating(0); setText('') }}
+                className="text-xs text-ink/55 hover:text-ink px-3 transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
