@@ -121,6 +121,11 @@ export default function AdminPage() {
   const [bookingFilter,  setBookingFilter]  = useState<'pending'|'confirmed'|'cancelled'|'all'>('pending')
   const [bookingStats,   setBookingStats]   = useState<Record<string, number>>({})
   const [bookingLoading, setBookingLoading] = useState(false)
+
+  const [customers,         setCustomers]         = useState<any[]>([])
+  const [customersStats,    setCustomersStats]    = useState<{total:number,marketing:number,confirmed:number}>({total:0,marketing:0,confirmed:0})
+  const [customersLoading,  setCustomersLoading]  = useState(false)
+  const [customersSearch,   setCustomersSearch]   = useState('')
   const logRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -370,6 +375,49 @@ export default function AdminPage() {
     fetchBookings()
   }, [authed, section, fetchBookings])
 
+  // ── CUSTOMERS / SOCIOS ───────────────────────────────────────────────────
+  const fetchCustomers = useCallback(async () => {
+    setCustomersLoading(true)
+    const params = new URLSearchParams()
+    if (customersSearch.trim()) params.set('q', customersSearch.trim())
+    const res = await fetch(`/api/admin/customers?${params}`, { headers: adminHeaders() })
+    const data = await res.json()
+    setCustomers(data.customers || [])
+    setCustomersStats(data.stats || { total:0, marketing:0, confirmed:0 })
+    setCustomersLoading(false)
+  }, [customersSearch])
+
+  useEffect(() => {
+    if (!authed) return
+    if (section !== 'customers') return
+    fetchCustomers()
+  }, [authed, section, fetchCustomers])
+
+  function exportCustomersCSV() {
+    if (!customers.length) return
+    const head = ['email','nombre','telefono','ciudad','marketing','email_confirmado','creado','ultimo_acceso']
+    const rows = customers.map(c => [
+      c.email || '',
+      c.name || '',
+      c.phone || '',
+      c.city || '',
+      c.accepts_marketing ? 'si' : 'no',
+      c.email_confirmed ? 'si' : 'no',
+      c.created_at || '',
+      c.last_sign_in_at || '',
+    ])
+    const csv = [head, ...rows].map(r =>
+      r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    ).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url
+    a.download = `fiestago-socios-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   async function updateBookingStatus(id: string, status: string) {
     await fetch('/api/admin/bookings', {
       method: 'PATCH',
@@ -470,6 +518,7 @@ export default function AdminPage() {
     { id:'dashboard',    icon:'📊', label:'Dashboard' },
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
+    { id:'customers',    icon:'👥', label:'Socios' },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
@@ -1015,6 +1064,110 @@ export default function AdminPage() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══ SOCIOS ══ */}
+          {section === 'customers' && (
+            <div>
+              <h1 style={{ fontSize:24, fontWeight:700, marginBottom:18, color:'#F9FAFB' }}>👥 Socios</h1>
+
+              {/* Stats */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:18 }}>
+                {[
+                  { label:'Total socios',          value: customersStats.total,     color:'#F43F5E' },
+                  { label:'Acepta marketing',      value: customersStats.marketing, color:'#10B981' },
+                  { label:'Email confirmado',      value: customersStats.confirmed, color:'#3B82F6' },
+                ].map(s => (
+                  <div key={s.label} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
+                    <div style={{ fontSize:11, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>{s.label}</div>
+                    <div style={{ fontSize:26, fontWeight:700, color:s.color }}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Search + actions */}
+              <div style={{ display:'flex', gap:8, marginBottom:14, alignItems:'center' }}>
+                <input
+                  value={customersSearch}
+                  onChange={e => setCustomersSearch(e.target.value)}
+                  placeholder="Buscar por email, nombre o ciudad..."
+                  style={{ flex:1, background:'#0D1117', border:'1px solid #1F2937', borderRadius:8,
+                    padding:'8px 12px', color:'#F0F4FF', fontSize:12, outline:'none' }}
+                />
+                <button onClick={fetchCustomers}
+                  style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #1F2937',
+                    background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+                  🔄 Actualizar
+                </button>
+                <button onClick={exportCustomersCSV} disabled={!customers.length}
+                  style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #10B981',
+                    background:'#10B98122', color:'#10B981', fontSize:11, fontWeight:600,
+                    cursor: customers.length ? 'pointer' : 'not-allowed', opacity: customers.length ? 1 : 0.4 }}>
+                  ⬇ Exportar CSV
+                </button>
+              </div>
+
+              {customersLoading ? (
+                <div style={{ padding:60, textAlign:'center', color:'#374151' }}>Cargando...</div>
+              ) : customers.length === 0 ? (
+                <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14,
+                  padding:'48px 20px', textAlign:'center', color:'#374151' }}>
+                  <div style={{ fontSize:36, marginBottom:10 }}>👥</div>
+                  <p>{customersSearch ? 'No hay socios que coincidan con la búsqueda.' : 'Todavía no hay socios registrados.'}</p>
+                </div>
+              ) : (
+                <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, overflow:'hidden' }}>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                    <thead>
+                      <tr style={{ background:'#0D1117', borderBottom:'1px solid #1F2937' }}>
+                        {['Socio','Contacto','Ciudad','Marketing','Estado','Registrado'].map(h => (
+                          <th key={h} style={{ padding:'10px 14px', textAlign:'left', fontSize:10, fontWeight:700,
+                            color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customers.map(c => {
+                        const created = c.created_at ? new Date(c.created_at).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—'
+                        const last    = c.last_sign_in_at ? new Date(c.last_sign_in_at).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit' }) : null
+                        return (
+                          <tr key={c.id} style={{ borderBottom:'1px solid #1F2937' }}>
+                            <td style={{ padding:'12px 14px', color:'#F9FAFB' }}>
+                              <div style={{ fontWeight:600 }}>{c.name || <span style={{ color:'#4B5563', fontStyle:'italic' }}>Sin nombre</span>}</div>
+                              <div style={{ fontSize:10, color:'#6B7280', marginTop:2, fontFamily:'monospace' }}>{c.id.slice(0,8)}</div>
+                            </td>
+                            <td style={{ padding:'12px 14px', color:'#D1D5DB' }}>
+                              <div>{c.email || '—'}</div>
+                              {c.phone && <div style={{ fontSize:10, color:'#6B7280', marginTop:2 }}>{c.phone}</div>}
+                            </td>
+                            <td style={{ padding:'12px 14px', color:'#9CA3AF' }}>{c.city || '—'}</td>
+                            <td style={{ padding:'12px 14px' }}>
+                              {c.accepts_marketing ? (
+                                <span style={{ padding:'2px 8px', borderRadius:10, fontSize:9, fontWeight:700,
+                                  background:'#10B98122', color:'#10B981', textTransform:'uppercase', letterSpacing:'0.08em' }}>Sí</span>
+                              ) : (
+                                <span style={{ color:'#4B5563' }}>—</span>
+                              )}
+                            </td>
+                            <td style={{ padding:'12px 14px' }}>
+                              {c.email_confirmed ? (
+                                <span style={{ color:'#10B981', fontSize:11 }}>✓ Confirmado</span>
+                              ) : (
+                                <span style={{ color:'#F59E0B', fontSize:11 }}>● Pendiente</span>
+                              )}
+                            </td>
+                            <td style={{ padding:'12px 14px', color:'#9CA3AF', fontSize:11 }}>
+                              {created}
+                              {last && <div style={{ fontSize:10, color:'#4B5563', marginTop:2 }}>último acceso: {last}</div>}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
