@@ -12,10 +12,6 @@ type Provider = {
   name: string
   category: string
   city: string
-  email: string | null
-  phone: string | null
-  website: string | null
-  instagram: string | null
   description: string | null
   price_base: number | null
   price_unit: string
@@ -400,23 +396,14 @@ export default function ProviderDetailPage() {
               </section>
             )}
 
-            {/* Contact */}
+            {/* Aviso: el contacto se hace vía FiestaGo, no exponemos datos del proveedor */}
             <section className="pb-2">
-              <h2 className="font-serif text-2xl text-ink mb-4">Contacto</h2>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                {[
-                  ['📧 Email',     provider.email,     provider.email ? `mailto:${provider.email}` : null],
-                  ['📞 Teléfono',  provider.phone,     provider.phone ? `tel:${provider.phone}` : null],
-                  ['🌐 Web',       provider.website,   provider.website],
-                  ['📸 Instagram', provider.instagram, provider.instagram ? `https://instagram.com/${provider.instagram.replace('@','')}` : null],
-                ].map(([icon, val, href]) => val ? (
-                  <a key={icon as string} href={href as string} target="_blank" rel="noreferrer"
-                    onClick={() => { if (provider?.id) trackEvent(provider.id, 'contact_clicked') }}
-                    className="flex flex-col gap-0.5 text-ink/65 hover:text-ink transition-colors py-2 border-b border-stone-100">
-                    <span className="text-[10px] uppercase tracking-widest text-ink/45 font-medium">{icon}</span>
-                    <span className="truncate">{val}</span>
-                  </a>
-                ) : null)}
+              <div className="bg-cream border border-stone-200 rounded-2xl p-4 flex items-start gap-3 text-sm">
+                <span className="text-xl leading-none mt-0.5">🔒</span>
+                <div className="text-ink/70 leading-relaxed">
+                  <div className="font-semibold text-ink mb-0.5">Reserva a través de FiestaGo</div>
+                  Por seguridad, los datos de contacto del proveedor solo se comparten una vez confirmada la reserva.
+                </div>
               </div>
             </section>
           </div>
