@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { emailAdminNewProvider } from '@/lib/resend'
 
+// Campos que SÍ pueden viajar al cliente público. Se excluye cualquier canal
+// de contacto directo (email, phone, website, instagram, tiktok, social_*) y
+// cualquier dato interno (outreach_*, agent_*, user_id) para que un cliente
+// no pueda saltarse el flujo de reserva de FiestaGo.
+const PUBLIC_PROVIDER_FIELDS = `
+  id, slug, name, category, city, address, description, short_desc,
+  price_base, price_unit, years_active, specialties, tag,
+  rating, total_reviews, total_bookings, featured, verified,
+  photo_url, photo_idx, created_at
+`
+
 // GET /api/providers — list approved providers
 export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
@@ -17,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   // Lookup directo por id o slug (para ficha individual)
   if (id || slug) {
-    let q = supabase.from('providers').select('*').eq('status', 'approved')
+    let q = supabase.from('providers').select(PUBLIC_PROVIDER_FIELDS).eq('status', 'approved')
     if (id)   q = q.eq('id', id)
     if (slug) q = q.eq('slug', slug)
     const { data, error } = await q.maybeSingle()
@@ -28,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('providers')
-    .select('*')
+    .select(PUBLIC_PROVIDER_FIELDS)
     .eq('status', 'approved')
     .order('featured', { ascending: false })
     .order('rating', { ascending: false })

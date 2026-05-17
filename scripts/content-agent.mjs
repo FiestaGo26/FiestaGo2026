@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import * as fal from "@fal-ai/client";
+import { fal } from "@fal-ai/client";
 import fs from "fs";
 import path from "path";
 

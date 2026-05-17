@@ -46,6 +46,7 @@ type Provider = {
   instagram: string | null
   description: string | null
   photo_idx: number
+  photo_url: string | null
   rating: number
   total_reviews: number
   total_bookings: number
@@ -88,8 +89,10 @@ export default function ProveedorPanelPage() {
 
   // Profile form
   const [profile, setProfile] = useState({
-    name:'', phone:'', website:'', instagram:'', description:'', specialties:''
+    name:'', phone:'', website:'', instagram:'', description:'', specialties:'',
+    photo_url:'' as string,
   })
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   // Services form
   const [showNewSvc, setShowNewSvc] = useState(false)
@@ -181,6 +184,7 @@ export default function ProveedorPanelPage() {
         instagram:   data.provider.instagram || '',
         description: data.provider.description || '',
         specialties: (data.provider.specialties || []).join(', '),
+        photo_url:   data.provider.photo_url || '',
       })
 
       // Load bookings (envía header de auth)
@@ -201,6 +205,29 @@ export default function ProveedorPanelPage() {
       toast.error('Error cargando datos')
     }
     setLoading(false)
+  }
+
+  async function uploadProfilePhoto(file: File) {
+    if (!provider) return
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Imagen demasiado grande (máx 10MB)')
+      return
+    }
+    setUploadingPhoto(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('provider_id', provider.id)
+      const res = await fetch('/api/proveedor/profile/upload-photo', { method:'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error HTTP ${res.status}`)
+      setProfile(p => ({ ...p, photo_url: data.url }))
+      setProvider(p => p ? { ...p, photo_url: data.url } as Provider : p)
+      toast.success('Foto actualizada ✓')
+    } catch (err: any) {
+      toast.error(err.message || 'Error al subir la foto')
+    }
+    setUploadingPhoto(false)
   }
 
   async function saveProfile() {
@@ -705,6 +732,35 @@ export default function ProveedorPanelPage() {
         {tab==='profile' && (
           <div className="max-w-lg">
             <h1 className="font-serif text-2xl font-black text-ink mb-6">Mi perfil</h1>
+
+            {/* Foto de cabecera */}
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card mb-5">
+              <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-3">Foto de cabecera</label>
+              <div className="flex items-center gap-4">
+                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200 flex-shrink-0">
+                  {profile.photo_url ? (
+                    <img src={profile.photo_url} alt="Foto del proveedor" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-3xl text-ink/25">📷</div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className={`inline-block ${uploadingPhoto ? 'opacity-50 pointer-events-none' : 'cursor-pointer'} bg-ink text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-ink/85 transition-colors`}>
+                    {uploadingPhoto ? 'Subiendo...' : (profile.photo_url ? 'Cambiar foto' : 'Subir foto')}
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/heic" className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) uploadProfilePhoto(f)
+                        e.target.value = ''
+                      }} />
+                  </label>
+                  <p className="text-[11px] text-ink/45 mt-2 leading-relaxed">
+                    Es la imagen que aparecerá en tu ficha y en los listados públicos. JPG, PNG o WEBP. Máximo 10MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card">
               {[['Nombre del negocio','name','text','Tu nombre'],
                 ['Teléfono','phone','tel','+34 600 000 000'],

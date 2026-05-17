@@ -32,7 +32,9 @@ export async function GET(req: NextRequest) {
   // PROVIDERS
   let providers: any[] = []
   if (wantProviders) {
-    let query = supabase.from('providers').select('*').eq('status', 'approved').order('rating', { ascending: false }).limit(limit)
+    // Allowlist público: sin email/phone/website/instagram/tiktok ni datos internos
+    const publicFields = 'id, slug, name, category, city, address, description, short_desc, price_base, price_unit, years_active, specialties, tag, rating, total_reviews, total_bookings, featured, verified, photo_url, photo_idx'
+    let query = supabase.from('providers').select(publicFields).eq('status', 'approved').order('rating', { ascending: false }).limit(limit)
     if (ciudad) query = query.eq('city', ciudad)
     if (ilike)  query = query.or(`name.ilike.${ilike},description.ilike.${ilike},short_desc.ilike.${ilike},category.ilike.${ilike}`)
     const { data } = await query

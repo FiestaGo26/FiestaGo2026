@@ -12,10 +12,6 @@ type Provider = {
   name: string
   category: string
   city: string
-  email: string | null
-  phone: string | null
-  website: string | null
-  instagram: string | null
   description: string | null
   price_base: number | null
   price_unit: string
@@ -53,6 +49,8 @@ export default function ProviderDetailPage() {
   const supabase = createClient()
   const [provider, setProvider] = useState<Provider | null>(null)
   const [services, setServices] = useState<Service[]>([])
+  const [reviews,  setReviews]  = useState<Array<{id:string;author:string;rating:number;text:string;event_type:string|null;date:string}>>([])
+  const [showAllReviews, setShowAllReviews] = useState(false)
   const [loading,  setLoading]  = useState(true)
   const [sending,  setSending]  = useState(false)
   const [booked,   setBooked]   = useState(false)
@@ -113,6 +111,13 @@ export default function ProviderDetailPage() {
         setLoading(false)
         // TRACK: profile_view
         if (p?.id) trackEvent(p.id, 'profile_view')
+        // Cargar reseñas
+        if (p?.id) {
+          fetch(`/api/providers/reviews?provider_id=${p.id}`)
+            .then(r => r.json())
+            .then(d => setReviews(d.reviews || []))
+            .catch(() => {})
+        }
         // Cargar servicios sólo si el proveedor existe
         if (p?.id) {
           fetch(`/api/proveedor/services?provider_id=${p.id}`)
@@ -400,23 +405,68 @@ export default function ProviderDetailPage() {
               </section>
             )}
 
-            {/* Contact */}
+            {/* Reseñas */}
+            {reviews.length > 0 && (
+              <section className="pb-2">
+                <div className="flex items-baseline justify-between mb-5">
+                  <h2 className="font-serif text-2xl text-ink">
+                    <span className="text-coral">★</span>{' '}
+                    {provider.rating > 0 ? Number(provider.rating).toFixed(1) : '—'}
+                    <span className="text-ink/55 text-lg font-normal"> · {reviews.length} reseña{reviews.length !== 1 ? 's' : ''}</span>
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  {(showAllReviews ? reviews : reviews.slice(0, 4)).map(r => {
+                    const dateF = r.date
+                      ? new Date(r.date).toLocaleDateString('es-ES', { month:'long', year:'numeric' })
+                      : ''
+                    return (
+                      <div key={r.id} className="flex flex-col gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-coral/10 text-coral flex items-center justify-center font-bold text-sm">
+                            {r.author.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-ink truncate">{r.author}</div>
+                            <div className="text-[11px] text-ink/45 capitalize">{dateF}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-coral text-sm">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <span key={i} className={i < r.rating ? '' : 'text-ink/15'}>★</span>
+                          ))}
+                          {r.event_type && (
+                            <span className="ml-2 text-[11px] text-ink/45">· {r.event_type}</span>
+                          )}
+                        </div>
+                        {r.text && (
+                          <p className="text-sm text-ink/75 leading-relaxed">
+                            {r.text}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {reviews.length > 4 && (
+                  <div className="mt-6">
+                    <button onClick={() => setShowAllReviews(s => !s)}
+                      className="text-sm font-semibold text-ink border border-ink/15 px-5 py-2.5 rounded-xl hover:bg-ink hover:text-white transition-colors">
+                      {showAllReviews ? 'Mostrar menos' : `Mostrar las ${reviews.length} reseñas`}
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Aviso: el contacto se hace vía FiestaGo, no exponemos datos del proveedor */}
             <section className="pb-2">
-              <h2 className="font-serif text-2xl text-ink mb-4">Contacto</h2>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                {[
-                  ['📧 Email',     provider.email,     provider.email ? `mailto:${provider.email}` : null],
-                  ['📞 Teléfono',  provider.phone,     provider.phone ? `tel:${provider.phone}` : null],
-                  ['🌐 Web',       provider.website,   provider.website],
-                  ['📸 Instagram', provider.instagram, provider.instagram ? `https://instagram.com/${provider.instagram.replace('@','')}` : null],
-                ].map(([icon, val, href]) => val ? (
-                  <a key={icon as string} href={href as string} target="_blank" rel="noreferrer"
-                    onClick={() => { if (provider?.id) trackEvent(provider.id, 'contact_clicked') }}
-                    className="flex flex-col gap-0.5 text-ink/65 hover:text-ink transition-colors py-2 border-b border-stone-100">
-                    <span className="text-[10px] uppercase tracking-widest text-ink/45 font-medium">{icon}</span>
-                    <span className="truncate">{val}</span>
-                  </a>
-                ) : null)}
+              <div className="bg-cream border border-stone-200 rounded-2xl p-4 flex items-start gap-3 text-sm">
+                <span className="text-xl leading-none mt-0.5">🔒</span>
+                <div className="text-ink/70 leading-relaxed">
+                  <div className="font-semibold text-ink mb-0.5">Reserva a través de FiestaGo</div>
+                  Por seguridad, los datos de contacto del proveedor solo se comparten una vez confirmada la reserva.
+                </div>
               </div>
             </section>
           </div>
