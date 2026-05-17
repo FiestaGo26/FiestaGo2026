@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { CATEGORIES } from '@/lib/constants'
@@ -60,8 +60,21 @@ const TABS = [
   { id:'services',     icon:'💼', label:'Mis servicios'  },
   { id:'availability', icon:'📅', label:'Disponibilidad' },
   { id:'bookings',     icon:'📋', label:'Reservas'       },
+  { id:'reviews',      icon:'⭐', label:'Reseñas'        },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
+
+type Review = {
+  id: string
+  author: string
+  rating: number
+  text: string
+  event_type: string | null
+  event_date: string
+  date: string
+  reply: string | null
+  reply_date: string | null
+}
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DAYS   = ['L','M','X','J','V','S','D']
@@ -69,9 +82,12 @@ const DAYS   = ['L','M','X','J','V','S','D']
 function getDaysInMonth(y: number, m: number) { return new Date(y, m+1, 0).getDate() }
 function getFirstDay(y: number, m: number) { const d = new Date(y,m,1).getDay(); return d===0?6:d-1 }
 
-export default function ProveedorPanelPage() {
-  const router   = useRouter()
-  const supabase = createClient()
+function ProveedorPanelInner() {
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const supabase     = createClient()
+  const adminAsId    = searchParams?.get('as') || null
+  const [isAdminView, setIsAdminView] = useState(false)
   const [tab,      setTab]      = useState('dashboard')
   const [provider, setProvider] = useState<Provider | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -114,6 +130,12 @@ export default function ProveedorPanelPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [changingPass,    setChangingPass]    = useState(false)
 
+  // Reviews
+  const [reviews,        setReviews]        = useState<Review[]>([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [replyDraft,     setReplyDraft]     = useState<Record<string, string>>({})
+  const [replyingId,     setReplyingId]     = useState<string | null>(null)
+
   // Stats
   const [statsData, setStatsData] = useState<{
     total_events: number
@@ -150,22 +172,76 @@ export default function ProveedorPanelPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, statsRange, provider?.id])
 
+  async function loadReviews(providerId: string) {
+    setReviewsLoading(true)
+    try {
+      const res = await fetch(`/api/proveedor/reviews?provider_id=${providerId}`)
+      const data = await res.json()
+      setReviews(data.reviews || [])
+    } catch {
+      setReviews([])
+    }
+    setReviewsLoading(false)
+  }
+
   useEffect(() => {
+    if (tab === 'reviews' && provider?.id) loadReviews(provider.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, provider?.id])
+
+  async function submitReply(bookingId: string) {
+    if (!provider) return
+    const text = (replyDraft[bookingId] || '').trim()
+    setReplyingId(bookingId)
+    try {
+      const res = await fetch('/api/proveedor/reviews', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id:  bookingId,
+          provider_id: provider.id,
+          reply:       text || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setReviews(prev => prev.map(r => r.id === bookingId
+        ? { ...r, reply: text || null, reply_date: text ? new Date().toISOString() : null }
+        : r))
+      setReplyDraft(d => ({ ...d, [bookingId]: '' }))
+      toast.success(text ? 'Respuesta publicada ✓' : 'Respuesta eliminada')
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo guardar la respuesta')
+    }
+    setReplyingId(null)
+  }
+
+  useEffect(() => {
+    // Modo admin: el admin abre el panel de cualquier proveedor con ?as=<id>
+    // si tiene la contraseña admin en localStorage.
+    if (adminAsId && typeof window !== 'undefined' && localStorage.getItem('fg_admin_pass')) {
+      setIsAdminView(true)
+      loadData(null, adminAsId)
+      return
+    }
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push('/proveedor/login'); return }
       setUserId(user.id)
-      loadData(user.email!)
+      loadData(user.email!, null)
     })
   }, [])
 
-  async function loadData(email: string) {
+  async function loadData(email: string | null, providerIdOverride: string | null) {
     setLoading(true)
     try {
-      // Find provider by email
-      const res  = await fetch(`/api/proveedor/profile?email=${encodeURIComponent(email)}`)
+      // Find provider by id (admin) o por email (proveedor logueado)
+      const url = providerIdOverride
+        ? `/api/proveedor/profile?id=${providerIdOverride}`
+        : `/api/proveedor/profile?email=${encodeURIComponent(email!)}`
+      const res  = await fetch(url)
       const data = await res.json()
       if (!data.provider) {
-        setNoProviderForEmail(email)
+        setNoProviderForEmail(email || providerIdOverride)
         setLoading(false)
         return
       }
@@ -492,7 +568,7 @@ export default function ProveedorPanelPage() {
           <div className="text-xs text-ink/50 mt-1">Panel del proveedor</div>
         </div>
         <nav className="p-3 flex-1 overflow-y-auto">
-          {TABS.map(t => (
+          {TABS.filter(t => !(isAdminView && t.id === 'security')).map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-1 transition-colors text-left
                 ${tab===t.id ? 'bg-coral/10 text-coral font-bold' : 'text-ink/60 hover:bg-stone-100'}`}>
@@ -513,6 +589,19 @@ export default function ProveedorPanelPage() {
 
       {/* Main content */}
       <main className="ml-56 flex-1 p-8">
+
+        {/* Banner modo admin */}
+        {isAdminView && (
+          <div className="mb-6 -mt-2 bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+            <div className="text-sm text-amber-900">
+              <span className="font-bold">🔓 Modo administrador</span>
+              <span className="text-amber-800/80"> · Estás viendo el panel de <strong>{provider?.name}</strong> como admin. Los cambios que hagas afectarán al proveedor real.</span>
+            </div>
+            <a href="/admin" className="text-xs font-bold bg-amber-900 text-amber-50 px-3 py-1.5 rounded-lg hover:bg-amber-950 transition-colors whitespace-nowrap">
+              ← Volver al admin
+            </a>
+          </div>
+        )}
 
         {/* DASHBOARD */}
         {tab==='dashboard' && (
@@ -1071,6 +1160,85 @@ export default function ProveedorPanelPage() {
           </div>
         )}
 
+        {/* REVIEWS */}
+        {tab==='reviews' && (
+          <div className="max-w-3xl">
+            <h1 className="font-serif text-2xl font-black text-ink mb-2">Reseñas</h1>
+            <p className="text-ink/55 text-sm mb-6">
+              {reviews.length > 0
+                ? `${reviews.length} reseña${reviews.length !== 1 ? 's' : ''} · media ${Number(provider?.rating || 0).toFixed(1)}★`
+                : 'Aún no tienes reseñas. Cuando un cliente reserve y deje su valoración, aparecerá aquí.'}
+            </p>
+
+            {reviewsLoading ? (
+              <div className="text-center text-ink/40 py-12">Cargando reseñas...</div>
+            ) : reviews.length === 0 ? (
+              <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
+                <div className="text-4xl mb-3">⭐</div>
+                <p className="text-ink/55 text-sm">Sin reseñas todavía.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map(r => {
+                  const dateF = r.date
+                    ? new Date(r.date).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })
+                    : ''
+                  const draft = replyDraft[r.id] ?? (r.reply || '')
+                  const dirty = draft !== (r.reply || '')
+                  return (
+                    <div key={r.id} className="bg-white border border-stone-200 rounded-2xl p-5">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-coral/10 text-coral flex items-center justify-center font-bold text-sm shrink-0">
+                          {r.author.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                            <div className="text-sm font-semibold text-ink">{r.author}</div>
+                            <div className="text-[11px] text-ink/45">{dateF}{r.event_type ? ` · ${r.event_type}` : ''}</div>
+                          </div>
+                          <div className="text-coral text-sm">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <span key={i} className={i < r.rating ? '' : 'text-ink/15'}>★</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      {r.text && (
+                        <p className="text-sm text-ink/75 leading-relaxed mb-4">{r.text}</p>
+                      )}
+
+                      <div className="pt-3 border-t border-stone-100">
+                        <label className="block text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">
+                          {r.reply ? 'Tu respuesta (pública)' : 'Responder públicamente'}
+                        </label>
+                        <textarea value={draft}
+                          onChange={e => setReplyDraft(d => ({ ...d, [r.id]: e.target.value }))}
+                          rows={2} maxLength={1000}
+                          placeholder="Agradece al cliente o aclara algo. Máx 1000 caracteres."
+                          className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button onClick={() => submitReply(r.id)}
+                            disabled={replyingId === r.id || !dirty}
+                            className="bg-coral text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
+                            {replyingId === r.id ? 'Guardando...' : (r.reply ? 'Actualizar respuesta' : 'Publicar respuesta')}
+                          </button>
+                          {r.reply && (
+                            <button onClick={() => { setReplyDraft(d => ({ ...d, [r.id]: '' })); submitReply(r.id) }}
+                              disabled={replyingId === r.id}
+                              className="text-xs text-ink/55 hover:text-coral px-2 transition-colors disabled:opacity-50">
+                              Eliminar respuesta
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* SECURITY */}
         {tab==='security' && (
           <div className="max-w-md">
@@ -1189,6 +1357,14 @@ export default function ProveedorPanelPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ProveedorPanelPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-cream flex items-center justify-center text-ink/40">Cargando panel...</div>}>
+      <ProveedorPanelInner />
+    </Suspense>
   )
 }
 

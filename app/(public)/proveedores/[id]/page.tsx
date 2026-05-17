@@ -49,7 +49,7 @@ export default function ProviderDetailPage() {
   const supabase = createClient()
   const [provider, setProvider] = useState<Provider | null>(null)
   const [services, setServices] = useState<Service[]>([])
-  const [reviews,  setReviews]  = useState<Array<{id:string;author:string;rating:number;text:string;event_type:string|null;date:string}>>([])
+  const [reviews,  setReviews]  = useState<Array<{id:string;author:string;rating:number;text:string;event_type:string|null;date:string;reply:string|null;reply_date:string|null}>>([])
   const [showAllReviews, setShowAllReviews] = useState(false)
   const [loading,  setLoading]  = useState(true)
   const [sending,  setSending]  = useState(false)
@@ -443,6 +443,14 @@ export default function ProviderDetailPage() {
                           <p className="text-sm text-ink/75 leading-relaxed">
                             {r.text}
                           </p>
+                        )}
+                        {r.reply && (
+                          <div className="mt-2 ml-4 border-l-2 border-coral/30 pl-3 py-1">
+                            <div className="text-[10px] uppercase tracking-widest text-coral font-bold mb-1">
+                              ↳ Respuesta de {provider.name}
+                            </div>
+                            <p className="text-sm text-ink/70 leading-relaxed">{r.reply}</p>
+                          </div>
                         )}
                       </div>
                     )

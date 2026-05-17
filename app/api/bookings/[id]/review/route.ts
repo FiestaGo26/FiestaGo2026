@@ -59,13 +59,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
 
-  // Recalcular nota agregada del proveedor
+  // Recalcular nota agregada del proveedor + notificar al admin
   if (booking.provider_id) {
-    const { data: stats } = await supabase
-      .from('bookings')
-      .select('review_rating')
-      .eq('provider_id', booking.provider_id)
-      .not('review_rating', 'is', null)
+    const [{ data: stats }, { data: prov }] = await Promise.all([
+      supabase.from('bookings').select('review_rating')
+        .eq('provider_id', booking.provider_id)
+        .not('review_rating', 'is', null),
+      supabase.from('providers').select('id, name')
+        .eq('id', booking.provider_id).single(),
+    ])
 
     const ratings = (stats || []).map((s: any) => Number(s.review_rating)).filter(Number.isFinite)
     const total = ratings.length
@@ -75,7 +77,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .from('providers')
       .update({ rating: Number(avg.toFixed(2)), total_reviews: total })
       .eq('id', booking.provider_id)
-      .then(() => {})
+
+    await supabase.from('notifications').insert({
+      type:    'new_review',
+      title:   `Nueva reseña · ${ratingNum}★ · ${prov?.name || 'Proveedor'}`,
+      message: cleanText ? cleanText.slice(0, 160) : 'Sin texto',
+      data:    {
+        booking_id:  bookingId,
+        provider_id: booking.provider_id,
+        rating:      ratingNum,
+      },
+      action_url: `/admin?provider=${booking.provider_id}`,
+    }).then(() => {})
   }
 
   return NextResponse.json({ booking: updated })

@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('bookings')
-    .select('id, client_name, event_type, review_rating, review_text, reviewed_at')
+    .select('id, client_name, event_type, review_rating, review_text, reviewed_at, review_reply, review_reply_at')
     .eq('provider_id', providerId)
     .not('review_rating', 'is', null)
     .order('reviewed_at', { ascending: false })
@@ -36,6 +36,8 @@ export async function GET(req: NextRequest) {
       text: r.review_text || '',
       event_type: r.event_type || null,
       date: r.reviewed_at,
+      reply:      r.review_reply || null,
+      reply_date: r.review_reply_at || null,
     }
   })
 

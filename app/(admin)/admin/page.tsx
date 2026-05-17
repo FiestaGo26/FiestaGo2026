@@ -816,6 +816,12 @@ export default function AdminPage() {
                             background:'transparent', color:'#9CA3AF', fontSize:10, cursor:'pointer' }}>
                           ✏️
                         </button>
+                        <a href={`/proveedor/panel?as=${p.id}`} target="_blank" rel="noreferrer"
+                          title="Abrir panel del proveedor"
+                          style={{ padding:'4px 9px', borderRadius:6, border:'1px solid #1F2937',
+                            background:'transparent', color:'#9CA3AF', fontSize:10, cursor:'pointer', textDecoration:'none' }}>
+                          🔑
+                        </a>
                         {p.status==='pending'&&<>
                           <button onClick={()=>updateProvider(p.id,{status:'approved'})}
                             style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#10B98120', color:'#10B981', fontSize:10, cursor:'pointer' }}>✓</button>
@@ -1476,8 +1482,13 @@ export default function AdminPage() {
           <div style={{ position:'relative', background:'#111827', borderRadius:20, width:'100%', maxWidth:680,
             maxHeight:'92vh', overflowY:'auto', margin:'0 20px', border:'1px solid #1F2937',
             boxShadow:'0 40px 100px rgba(0,0,0,0.8)', padding:24 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18, gap:10, flexWrap:'wrap' }}>
               <div style={{ fontSize:15, fontWeight:700, color:'#F0F4FF' }}>✏️ Editar: {editProv.name}</div>
+              <a href={`/proveedor/panel?as=${editProv.id}`} target="_blank" rel="noreferrer"
+                style={{ fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:10,
+                  background:'#F43F5E', color:'#fff', textDecoration:'none' }}>
+                🔑 Abrir panel del proveedor →
+              </a>
               {editProv.contactable === false && (
                 <span style={{ fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:10,
                   background:'#EF444422', color:'#EF4444' }}>⚠ sin canales</span>
