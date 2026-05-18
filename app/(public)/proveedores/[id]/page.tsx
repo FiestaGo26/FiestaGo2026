@@ -39,6 +39,7 @@ type Service = {
   thumbnail_url: string | null
   status: string
   cancellation_policy: 'flexible' | 'moderate' | 'strict' | null
+  addons?: Array<{ id: string; label: string; description?: string | null; price: number }>
   media?: Array<{
     id: string
     url: string
@@ -121,6 +122,7 @@ export default function ProviderDetailPage() {
   const [sending,  setSending]  = useState(false)
   const [booked,   setBooked]   = useState(false)
   const [selectedSvc, setSelectedSvc] = useState<Service | null>(null)
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set())
   const [isLogged, setIsLogged] = useState(false)
   const [showSocioCTA, setShowSocioCTA] = useState(false)
   const [signupPwd, setSignupPwd] = useState('')
@@ -257,6 +259,7 @@ export default function ProviderDetailPage() {
 
   function selectService(svc: Service) {
     setSelectedSvc(svc)
+    setSelectedAddons(new Set())
     setForm(f => ({
       ...f,
       message: `Hola, me gustaría reservar el servicio "${svc.name}"${svc.price != null ? ` (${svc.price.toLocaleString()}€)` : ''}.${f.message ? `\n\n${f.message}` : ''}`,
@@ -277,9 +280,9 @@ export default function ProviderDetailPage() {
     if (!provider) return
     setSending(true)
     try {
-      const totalAmount = selectedSvc?.price ?? provider.price_base ?? 0
-      // El servicio elegido se identifica en el mensaje (lo añade selectService) +
-      // total_amount ya refleja el precio del servicio.
+      const chosenAddons = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
+      const addonsTotal  = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
+      const totalAmount  = (selectedSvc?.price ?? provider.price_base ?? 0) + addonsTotal
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -295,6 +298,7 @@ export default function ProviderDetailPage() {
           guests:       parseInt(form.guests) || null,
           message:      form.message || null,
           total_amount: totalAmount,
+          selected_addons: chosenAddons,
           city:         provider.city,
         }),
       })
@@ -335,7 +339,10 @@ export default function ProviderDetailPage() {
   )
 
   const cat = CATEGORIES.find(c => c.id === provider.category)
-  const effectivePrice = selectedSvc?.price ?? provider.price_base ?? 0
+  const basePrice      = selectedSvc?.price ?? provider.price_base ?? 0
+  const chosenAddons   = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
+  const addonsTotal    = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
+  const effectivePrice = basePrice + addonsTotal
   const commission     = calcCommission(effectivePrice, provider.total_bookings || 0)
 
   return (
@@ -579,6 +586,43 @@ export default function ProviderDetailPage() {
                   <span className="text-lg text-ink/50">Precio a consultar</span>
                 )}
               </div>
+
+              {/* Extras opcionales del servicio */}
+              {selectedSvc && (selectedSvc.addons || []).length > 0 && (
+                <div className="mb-5">
+                  <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">Añade extras opcionales</div>
+                  <div className="space-y-2">
+                    {(selectedSvc.addons || []).map(a => {
+                      const checked = selectedAddons.has(a.id)
+                      return (
+                        <label key={a.id}
+                          className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${checked ? 'bg-coral/5 border-coral/40' : 'bg-white border-stone-200 hover:border-stone-300'}`}>
+                          <input type="checkbox" checked={checked}
+                            onChange={() => setSelectedAddons(prev => {
+                              const next = new Set(prev)
+                              if (checked) next.delete(a.id); else next.add(a.id)
+                              return next
+                            })}
+                            className="mt-0.5 accent-coral"/>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <div className="font-medium text-ink text-sm truncate">{a.label}</div>
+                              <div className="text-sm font-bold text-coral whitespace-nowrap">+{Number(a.price).toLocaleString()}€</div>
+                            </div>
+                            {a.description && <div className="text-[11px] text-ink/55 mt-0.5">{a.description}</div>}
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {addonsTotal > 0 && (
+                    <div className="mt-3 flex justify-between text-sm text-ink/70 px-2">
+                      <span>Base + {chosenAddons.length} extra{chosenAddons.length!==1?'s':''}</span>
+                      <span className="font-bold text-coral">{effectivePrice.toLocaleString()}€</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Política de cancelación del servicio seleccionado */}
               {selectedSvc?.cancellation_policy && CANCELLATION_POLICIES[selectedSvc.cancellation_policy] && (

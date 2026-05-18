@@ -29,6 +29,7 @@ type Service = {
   status: string
   sort_order: number
   cancellation_policy: 'flexible' | 'moderate' | 'strict' | null
+  addons?: Array<{ id: string; label: string; description?: string | null; price: number }>
   media?: ServiceMedia[]
 }
 
@@ -644,6 +645,7 @@ function ProveedorPanelInner() {
           duration:     editSvc.duration,
           max_guests:   editSvc.max_guests,
           cancellation_policy: editSvc.cancellation_policy,
+          addons:       editSvc.addons || [],
           status:       editSvc.status,
         }),
       })
@@ -1265,6 +1267,45 @@ function ProveedorPanelInner() {
                             <option key={key} value={key}>{p.icon} {p.label} — {p.short}</option>
                           ))}
                         </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">
+                          Extras opcionales ({(editSvc.addons || []).length}/10)
+                        </label>
+                        <p className="text-[11px] text-ink/45 mb-2">
+                          El cliente verá estos extras al reservar y podrá añadirlos sumando al precio base.
+                        </p>
+                        {(editSvc.addons || []).map((a, idx) => (
+                          <div key={a.id} className="flex gap-2 mb-2 items-start">
+                            <input value={a.label} placeholder="Nombre (ej. Álbum 30x30)"
+                              onChange={e => setEditSvc(s => s ? {
+                                ...s,
+                                addons: (s.addons || []).map((x, i) => i === idx ? { ...x, label: e.target.value } : x)
+                              } : null)}
+                              className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-coral"/>
+                            <input type="number" value={a.price} placeholder="0"
+                              onChange={e => setEditSvc(s => s ? {
+                                ...s,
+                                addons: (s.addons || []).map((x, i) => i === idx ? { ...x, price: parseFloat(e.target.value) || 0 } : x)
+                              } : null)}
+                              className="w-20 border border-stone-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-coral"/>
+                            <span className="text-xs text-ink/45 pt-2">€</span>
+                            <button onClick={() => setEditSvc(s => s ? {
+                              ...s,
+                              addons: (s.addons || []).filter((_, i) => i !== idx)
+                            } : null)}
+                              className="text-red-400 hover:text-red-600 text-sm px-1.5">🗑️</button>
+                          </div>
+                        ))}
+                        {(editSvc.addons || []).length < 10 && (
+                          <button onClick={() => setEditSvc(s => s ? {
+                            ...s,
+                            addons: [...(s.addons || []), { id: 'addon_' + Date.now() + '_' + Math.random().toString(36).slice(2,6), label: '', price: 0 }]
+                          } : null)}
+                            className="text-xs font-bold text-coral hover:text-coral-dark border border-dashed border-stone-200 hover:border-coral rounded-lg w-full py-1.5 transition-colors">
+                            + Añadir extra
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       booking_type, provider_id, pack_id, service_id,
       client_name, client_email, client_phone,
       event_date, event_type, city, guests, message,
-      total_amount,
+      total_amount, selected_addons,
     } = body || {}
 
     if (!client_name || !client_email || !event_date) {
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
         guests: guests || null,
         message: message || null,
         total_amount: amount,
+        selected_addons: Array.isArray(selected_addons) ? selected_addons : [],
         commission_rate:  commission.rate,
         commission_amt:   commission.amount,
         provider_earns:   commission.providerEarns,
