@@ -49,6 +49,7 @@ type Booking = {
 
 type Provider = {
   id: string
+  slug: string | null
   name: string
   category: string
   city: string
@@ -78,6 +79,7 @@ const TABS = [
   { id:'bookings',     icon:'📋', label:'Reservas'       },
   { id:'earnings',     icon:'💶', label:'Cobros'         },
   { id:'messages',     icon:'💬', label:'Mensajes'       },
+  { id:'embed',        icon:'🔗', label:'Widget para mi web' },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
@@ -1751,6 +1753,11 @@ function ProveedorPanelInner() {
           </div>
         )}
 
+        {/* EMBED WIDGET */}
+        {tab==='embed' && (
+          <EmbedTab provider={provider} />
+        )}
+
         {/* MESSAGES */}
         {tab==='messages' && (
           <div className="max-w-4xl">
@@ -2083,6 +2090,110 @@ function ProveedorPanelInner() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function EmbedTab({ provider }: { provider: Provider | null }) {
+  const [variant, setVariant] = useState<'button' | 'card'>('button')
+  const [copied,  setCopied]  = useState(false)
+  if (!provider) return null
+
+  const url = `https://fiestago.es/proveedores/${provider.slug || provider.id}?utm_source=widget&utm_medium=${variant}&utm_campaign=embed`
+  const safeName = provider.name.replace(/"/g, '&quot;')
+
+  const buttonHtml =
+`<!-- FiestaGo · botón de reserva -->
+<a href="${url}" target="_blank" rel="noopener" style="
+  display:inline-flex;align-items:center;gap:8px;
+  background:#E8553E;color:#fff;text-decoration:none;
+  font-family:system-ui,-apple-system,sans-serif;font-weight:700;font-size:14px;
+  padding:12px 22px;border-radius:12px;
+  box-shadow:0 4px 12px rgba(232,85,62,.25);">
+  <span>📅</span><span>Reserva en FiestaGo</span>
+</a>`
+
+  const cardHtml =
+`<!-- FiestaGo · tarjeta de reserva -->
+<a href="${url}" target="_blank" rel="noopener" style="
+  display:flex;align-items:center;gap:14px;
+  max-width:380px;background:#fff;border:1px solid #E5E1D8;
+  border-radius:16px;padding:14px 16px;text-decoration:none;
+  font-family:system-ui,-apple-system,sans-serif;color:#1A1612;
+  box-shadow:0 4px 16px rgba(0,0,0,.06);">
+  ${provider.photo_url
+    ? `<img src="${provider.photo_url}" alt="" style="width:56px;height:56px;border-radius:12px;object-fit:cover;flex-shrink:0;" />`
+    : `<div style="width:56px;height:56px;border-radius:12px;background:#FBF7F0;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">🎉</div>`}
+  <div style="flex:1;min-width:0;">
+    <div style="font-size:11px;font-weight:700;color:#E8553E;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">Reserva en FiestaGo</div>
+    <div style="font-size:15px;font-weight:700;line-height:1.2;">${safeName}</div>
+    ${provider.rating > 0
+      ? `<div style="font-size:12px;color:#5C534A;margin-top:2px;">★ ${Number(provider.rating).toFixed(1)} · ${provider.total_reviews||0} reseñas</div>`
+      : ''}
+  </div>
+  <span style="background:#E8553E;color:#fff;font-size:12px;font-weight:700;padding:8px 14px;border-radius:10px;flex-shrink:0;">Reservar →</span>
+</a>`
+
+  const snippet = variant === 'button' ? buttonHtml : cardHtml
+
+  function copy() {
+    navigator.clipboard.writeText(snippet).then(() => {
+      setCopied(true)
+      toast.success('Copiado al portapapeles ✓')
+      setTimeout(() => setCopied(false), 2500)
+    })
+  }
+
+  return (
+    <div className="max-w-3xl">
+      <h1 className="font-serif text-2xl font-black text-ink mb-2">Widget para tu web</h1>
+      <p className="text-ink/55 text-sm mb-6 leading-relaxed">
+        Pega este código en tu propia web (WordPress, Wix, HTML directo, etc.) para que tus visitantes puedan reservarte vía FiestaGo. Cada click queda etiquetado como tráfico de tu widget para que sepamos cuánto te trae.
+      </p>
+
+      <div className="flex gap-2 mb-6">
+        {([
+          ['button', '🔘 Botón pequeño', 'Discreto, encaja en cualquier sitio'],
+          ['card',   '🪪 Tarjeta',       'Mejor conversión, con tu foto y rating'],
+        ] as const).map(([key, label, hint]) => (
+          <button key={key} onClick={() => setVariant(key)}
+            className={`flex-1 text-left p-4 border-2 rounded-2xl transition-colors ${
+              variant === key
+                ? 'border-coral bg-coral/5'
+                : 'border-stone-200 hover:border-stone-300'
+            }`}>
+            <div className="font-bold text-sm text-ink mb-1">{label}</div>
+            <div className="text-xs text-ink/55">{hint}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Preview */}
+      <div className="mb-5">
+        <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">Vista previa</div>
+        <div className="bg-stone-50 border border-stone-200 rounded-2xl p-8 flex items-center justify-center">
+          <div dangerouslySetInnerHTML={{ __html: snippet }} />
+        </div>
+      </div>
+
+      {/* Code */}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest">Código para copiar</div>
+        <button onClick={copy}
+          className="bg-ink text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-ink/85 transition-colors">
+          {copied ? '✓ Copiado' : '📋 Copiar'}
+        </button>
+      </div>
+      <pre className="bg-stone-900 text-stone-100 text-[11px] leading-relaxed rounded-xl p-4 overflow-x-auto whitespace-pre-wrap font-mono">{snippet}</pre>
+
+      <div className="mt-5 bg-cream border border-stone-200 rounded-xl p-4 text-xs text-ink/65 leading-relaxed">
+        <div className="font-bold text-ink mb-1">¿Dónde lo pego?</div>
+        <ul className="list-disc ml-5 space-y-1">
+          <li><strong>WordPress</strong>: en un bloque tipo "HTML personalizado" o en el footer del tema.</li>
+          <li><strong>Wix / Squarespace</strong>: en un bloque "Embed code" o "Insertar HTML".</li>
+          <li><strong>Web propia</strong>: pégalo donde quieras que aparezca, igual que cualquier HTML.</li>
+        </ul>
+      </div>
     </div>
   )
 }
