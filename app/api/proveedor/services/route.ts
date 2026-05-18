@@ -13,13 +13,24 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('provider_services')
-    .select('*')
+    .select('*, service_media(id, url, thumbnail_url, media_type, sort_order, is_primary)')
     .eq('provider_id', providerId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ services: data || [] })
+
+  // Ordenar el array de medios: portada primero, después por sort_order
+  const services = (data || []).map((s: any) => ({
+    ...s,
+    media: (s.service_media || []).sort((a: any, b: any) => {
+      if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1
+      return (a.sort_order || 0) - (b.sort_order || 0)
+    }),
+    service_media: undefined,
+  }))
+
+  return NextResponse.json({ services })
 }
 
 // POST /api/proveedor/services

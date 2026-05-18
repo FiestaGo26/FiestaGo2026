@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     .select(`
       id, name, description, price, price_unit, duration, max_guests,
       media_type, media_url, thumbnail_url, status, created_at,
+      service_media(id, url, thumbnail_url, media_type, sort_order, is_primary),
       providers!inner(id, name, slug, city, category, rating, total_reviews, photo_url, photo_idx, status)
     `)
     .eq('status', 'active')
@@ -39,6 +40,11 @@ export async function GET(req: NextRequest) {
   let services = (data || []).map((s: any) => ({
     ...s,
     provider: s.providers,
+    media: (s.service_media || []).sort((a: any, b: any) => {
+      if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1
+      return (a.sort_order || 0) - (b.sort_order || 0)
+    }),
+    service_media: undefined,
   }))
 
   // Filtro por fecha: excluir servicios bloqueados ese día

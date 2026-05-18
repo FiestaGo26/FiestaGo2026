@@ -6,6 +6,15 @@ import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { CATEGORIES } from '@/lib/constants'
 
+type ServiceMedia = {
+  id: string
+  url: string
+  thumbnail_url: string | null
+  media_type: 'image' | 'video'
+  sort_order: number
+  is_primary: boolean
+}
+
 type Service = {
   id: string
   name: string
@@ -19,6 +28,7 @@ type Service = {
   thumbnail_url: string | null
   status: string
   sort_order: number
+  media?: ServiceMedia[]
 }
 
 type Booking = {
@@ -136,6 +146,9 @@ function ProveedorPanelInner() {
   const [replyDraft,     setReplyDraft]     = useState<Record<string, string>>({})
   const [replyingId,     setReplyingId]     = useState<string | null>(null)
 
+  // Galería de servicios (subida múltiple)
+  const [uploadingMediaFor, setUploadingMediaFor] = useState<string | null>(null)
+
   // Stats
   const [statsData, setStatsData] = useState<{
     total_events: number
@@ -188,6 +201,67 @@ function ProveedorPanelInner() {
     if (tab === 'reviews' && provider?.id) loadReviews(provider.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, provider?.id])
+
+  async function uploadServiceMedia(serviceId: string, file: File) {
+    if (!provider) return
+    setUploadingMediaFor(serviceId)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('service_id', serviceId)
+      fd.append('provider_id', provider.id)
+      const res = await fetch('/api/proveedor/services/media', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setServices(prev => prev.map(s => s.id === serviceId
+        ? { ...s, media: [...(s.media || []), data.media] }
+        : s))
+      toast.success('Archivo subido ✓')
+    } catch (err: any) {
+      toast.error(err.message || 'Error al subir')
+    }
+    setUploadingMediaFor(null)
+  }
+
+  async function deleteServiceMedia(serviceId: string, mediaId: string) {
+    if (!provider) return
+    if (!confirm('¿Eliminar este archivo de la galería?')) return
+    try {
+      const url = `/api/proveedor/services/media?id=${mediaId}&service_id=${serviceId}&provider_id=${provider.id}`
+      const res = await fetch(url, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setServices(prev => prev.map(s => {
+        if (s.id !== serviceId) return s
+        const remaining = (s.media || []).filter(m => m.id !== mediaId)
+        const wasPrimary = (s.media || []).find(m => m.id === mediaId)?.is_primary
+        if (wasPrimary && remaining.length) remaining[0] = { ...remaining[0], is_primary: true }
+        return { ...s, media: remaining }
+      }))
+    } catch (err: any) {
+      toast.error(err.message || 'Error al eliminar')
+    }
+  }
+
+  async function setPrimaryMedia(serviceId: string, mediaId: string) {
+    if (!provider) return
+    try {
+      const res = await fetch('/api/proveedor/services/media', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: mediaId, service_id: serviceId, provider_id: provider.id, is_primary: true }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setServices(prev => prev.map(s => s.id !== serviceId ? s : ({
+        ...s,
+        media: (s.media || []).map(m => ({ ...m, is_primary: m.id === mediaId })),
+      })))
+      toast.success('Portada actualizada ✓')
+    } catch (err: any) {
+      toast.error(err.message || 'Error')
+    }
+  }
 
   async function submitReply(bookingId: string) {
     if (!provider) return
@@ -1025,31 +1099,96 @@ function ProveedorPanelInner() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <h3 className="font-semibold text-ink">{svc.name}</h3>
-                        <span className="text-xs text-ink/50 bg-stone-100 px-2 py-0.5 rounded-full">{svc.duration}</span>
-                        {svc.max_guests!=null&&<span className="text-xs text-ink/50">max. {svc.max_guests} pax</span>}
+                  <>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1.5">
+                          <h3 className="font-semibold text-ink">{svc.name}</h3>
+                          <span className="text-xs text-ink/50 bg-stone-100 px-2 py-0.5 rounded-full">{svc.duration}</span>
+                          {svc.max_guests!=null&&<span className="text-xs text-ink/50">max. {svc.max_guests} pax</span>}
+                        </div>
+                        {svc.description&&<p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
+                        <div className="font-serif text-xl font-bold text-coral">{svc.price!=null ? `${svc.price.toLocaleString()}€` : '—'}</div>
                       </div>
-                      {svc.description&&<p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
-                      <div className="font-serif text-xl font-bold text-coral">{svc.price!=null ? `${svc.price.toLocaleString()}€` : '—'}</div>
+                      <div className="flex gap-2 ml-4">
+                        <button onClick={() => setAvailSvc(svc)}
+                          className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/60 hover:border-coral hover:text-coral transition-colors">
+                          📅 Disponibilidad
+                        </button>
+                        <button onClick={() => setEditSvc(svc)}
+                          className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/60 hover:border-coral hover:text-coral transition-colors">
+                          ✏️ Editar
+                        </button>
+                        <button onClick={() => deleteService(svc.id)}
+                          className="text-xs px-3 py-1.5 border border-red-200 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
+                          🗑️
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-2 ml-4">
-                      <button onClick={() => setAvailSvc(svc)}
-                        className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/60 hover:border-coral hover:text-coral transition-colors">
-                        📅 Disponibilidad
-                      </button>
-                      <button onClick={() => setEditSvc(svc)}
-                        className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/60 hover:border-coral hover:text-coral transition-colors">
-                        ✏️ Editar
-                      </button>
-                      <button onClick={() => deleteService(svc.id)}
-                        className="text-xs px-3 py-1.5 border border-red-200 rounded-lg text-red-400 hover:bg-red-50 transition-colors">
-                        🗑️
-                      </button>
+
+                    {/* Galería */}
+                    <div className="mt-4 pt-4 border-t border-stone-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold text-ink/45 uppercase tracking-widest">
+                          Galería ({(svc.media || []).length}/10)
+                        </span>
+                        <span className="text-[10px] text-ink/40">
+                          La portada es la imagen principal del servicio
+                        </span>
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {(svc.media || []).map(m => (
+                          <div key={m.id} className="relative group flex-shrink-0">
+                            <div className="w-24 h-24 rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
+                              {m.media_type === 'video' ? (
+                                <video src={m.url} muted loop className="w-full h-full object-cover" />
+                              ) : (
+                                <img src={m.url} alt="" className="w-full h-full object-cover" />
+                              )}
+                            </div>
+                            {m.is_primary && (
+                              <span className="absolute top-1 left-1 text-[9px] font-bold uppercase tracking-widest bg-coral text-white px-1.5 py-0.5 rounded">
+                                Portada
+                              </span>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors rounded-lg flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                              {!m.is_primary && (
+                                <button onClick={() => setPrimaryMedia(svc.id, m.id)}
+                                  title="Marcar como portada"
+                                  className="text-xs bg-white/95 text-ink rounded-md px-2 py-1 font-bold hover:bg-white">
+                                  ★
+                                </button>
+                              )}
+                              <button onClick={() => deleteServiceMedia(svc.id, m.id)}
+                                title="Eliminar"
+                                className="text-xs bg-red-500/95 text-white rounded-md px-2 py-1 font-bold hover:bg-red-600">
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {(svc.media || []).length < 10 && (
+                          <label className={`w-24 h-24 flex-shrink-0 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${uploadingMediaFor === svc.id ? 'border-coral bg-coral/5' : 'border-stone-200 hover:border-coral hover:bg-coral/5'}`}>
+                            {uploadingMediaFor === svc.id ? (
+                              <span className="text-xs text-coral">Subiendo...</span>
+                            ) : (
+                              <>
+                                <span className="text-2xl text-ink/30">+</span>
+                                <span className="text-[10px] text-ink/45">Añadir</span>
+                              </>
+                            )}
+                            <input type="file" accept="image/*,video/*" className="hidden"
+                              disabled={uploadingMediaFor === svc.id}
+                              onChange={e => {
+                                const f = e.target.files?.[0]
+                                if (f) uploadServiceMedia(svc.id, f)
+                                e.target.value = ''
+                              }} />
+                          </label>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             ))}

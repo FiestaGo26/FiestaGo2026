@@ -38,6 +38,71 @@ type Service = {
   media_url: string | null
   thumbnail_url: string | null
   status: string
+  media?: Array<{
+    id: string
+    url: string
+    thumbnail_url: string | null
+    media_type: 'image' | 'video'
+    sort_order: number
+    is_primary: boolean
+  }>
+}
+
+function ServiceGallery({ service, fallback, isSelected }: {
+  service: Service
+  fallback: string
+  isSelected: boolean
+}) {
+  const media = service.media && service.media.length > 0
+    ? service.media
+    : (service.media_url
+        ? [{ id: 'fallback', url: service.media_url, thumbnail_url: null, media_type: service.media_type as 'image' | 'video', sort_order: 0, is_primary: true }]
+        : [])
+  const [idx, setIdx] = useState(0)
+  const current = media[idx]
+  const total = media.length
+
+  return (
+    <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-stone-100 mb-3 group/gal">
+      {current ? (
+        current.media_type === 'video' ? (
+          <video src={current.url} muted loop autoPlay playsInline className="w-full h-full object-cover" />
+        ) : (
+          <img src={current.url} alt={service.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        )
+      ) : (
+        <img src={fallback} alt={service.name} className="w-full h-full object-cover" />
+      )}
+
+      {isSelected && (
+        <div className="absolute top-2 right-2 bg-ink text-white text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full">
+          ✓ Elegido
+        </div>
+      )}
+
+      {total > 1 && (
+        <>
+          {/* Flechas */}
+          <button onClick={e => { e.stopPropagation(); e.preventDefault(); setIdx((idx - 1 + total) % total) }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-ink shadow flex items-center justify-center opacity-0 group-hover/gal:opacity-100 transition-opacity hover:bg-white"
+            aria-label="Anterior">‹</button>
+          <button onClick={e => { e.stopPropagation(); e.preventDefault(); setIdx((idx + 1) % total) }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 text-ink shadow flex items-center justify-center opacity-0 group-hover/gal:opacity-100 transition-opacity hover:bg-white"
+            aria-label="Siguiente">›</button>
+          {/* Indicador */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            {media.map((_, i) => (
+              <span key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === idx ? 'bg-white w-4' : 'bg-white/60'}`} />
+            ))}
+          </div>
+          <div className="absolute bottom-2 right-2 bg-ink/70 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+            {idx + 1}/{total}
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 export default function ProviderDetailPage() {
@@ -364,20 +429,11 @@ export default function ProviderDetailPage() {
                         className={`text-left group block rounded-2xl transition-all overflow-hidden ${
                           isSelected ? 'ring-2 ring-ink' : ''
                         }`}>
-                        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-stone-100 mb-3">
-                          {svc.media_url && svc.media_type === 'video' ? (
-                            <video src={svc.media_url} muted loop autoPlay playsInline
-                              className="w-full h-full object-cover" />
-                          ) : (
-                            <img src={svc.media_url || getPhoto(provider.category, 0, 600, 450)} alt={svc.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          )}
-                          {isSelected && (
-                            <div className="absolute top-2 right-2 bg-ink text-white text-[10px] font-semibold tracking-widest uppercase px-3 py-1 rounded-full">
-                              ✓ Elegido
-                            </div>
-                          )}
-                        </div>
+                        <ServiceGallery
+                          service={svc}
+                          fallback={getPhoto(provider.category, 0, 600, 450)}
+                          isSelected={isSelected}
+                        />
                         <div className="px-1">
                           <h3 className="font-medium text-ink text-[15px] mb-1 line-clamp-1">{svc.name}</h3>
                           <div className="flex gap-2 mb-1 text-[11px] text-ink/55">
