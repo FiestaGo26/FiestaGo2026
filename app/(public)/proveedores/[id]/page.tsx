@@ -372,6 +372,25 @@ export default function ProviderDetailPage() {
 
   return (
     <main className="bg-white">
+      {/* Schema.org JSON-LD para rich results en Google */}
+      <script type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'LocalBusiness',
+          name: provider.name,
+          description: provider.description || `${provider.name} en ${provider.city}`,
+          image: provider.photo_url || undefined,
+          address: { '@type': 'PostalAddress', addressLocality: provider.city, addressCountry: 'ES' },
+          url: `https://fiestago.es/proveedores/${(provider as any).slug || provider.id}`,
+          priceRange: provider.price_base ? `€${provider.price_base}` : undefined,
+          ...(provider.rating > 0 && provider.total_reviews > 0 ? {
+            aggregateRating: {
+              '@type': 'AggregateRating',
+              ratingValue: Number(provider.rating).toFixed(1),
+              reviewCount: provider.total_reviews,
+            },
+          } : {}),
+        }) }}/>
       <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* Back */}
