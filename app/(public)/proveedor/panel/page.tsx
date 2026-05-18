@@ -150,6 +150,8 @@ function ProveedorPanelInner() {
   const [reviewsLoading, setReviewsLoading] = useState(false)
   const [replyDraft,     setReplyDraft]     = useState<Record<string, string>>({})
   const [replyingId,     setReplyingId]     = useState<string | null>(null)
+  const [replyTemplates, setReplyTemplates] = useState<Array<{ label: string; body: string }>>([])
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false)
 
   // Galería de servicios (subida múltiple)
   const [uploadingMediaFor, setUploadingMediaFor] = useState<string | null>(null)
@@ -334,6 +336,28 @@ function ProveedorPanelInner() {
     }
   }
 
+  async function saveReplyTemplates(next: Array<{ label: string; body: string }>) {
+    if (!provider) return
+    try {
+      const res = await fetch('/api/proveedor/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: provider.id, reply_templates: next }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setReplyTemplates(next)
+      toast.success('Plantillas guardadas ✓')
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo guardar')
+    }
+  }
+
+  function applyTemplate(reviewId: string, body: string, authorName: string) {
+    const filled = body.replace(/\{nombre\}/gi, authorName || '')
+    setReplyDraft(d => ({ ...d, [reviewId]: filled }))
+  }
+
   async function submitReply(bookingId: string) {
     if (!provider) return
     const text = (replyDraft[bookingId] || '').trim()
@@ -408,6 +432,7 @@ function ProveedorPanelInner() {
         photo_url:   data.provider.photo_url || '',
         auto_reply_message: data.provider.auto_reply_message || '',
       })
+      setReplyTemplates(Array.isArray(data.provider.reply_templates) ? data.provider.reply_templates : [])
 
       // Load bookings (envía header de auth)
       const bookRes  = await fetch(`/api/proveedor/bookings?id=${data.provider.id}`, {
@@ -1528,7 +1553,13 @@ function ProveedorPanelInner() {
         {/* REVIEWS */}
         {tab==='reviews' && (
           <div className="max-w-3xl">
-            <h1 className="font-serif text-2xl font-black text-ink mb-2">Reseñas</h1>
+            <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2">
+              <h1 className="font-serif text-2xl font-black text-ink">Reseñas</h1>
+              <button onClick={() => setShowTemplatesModal(true)}
+                className="text-xs font-bold text-coral hover:text-coral-dark transition-colors">
+                ⚙️ Gestionar plantillas ({replyTemplates.length})
+              </button>
+            </div>
             <p className="text-ink/55 text-sm mb-6">
               {reviews.length > 0
                 ? `${reviews.length} reseña${reviews.length !== 1 ? 's' : ''} · media ${Number(provider?.rating || 0).toFixed(1)}★`
@@ -1573,9 +1604,21 @@ function ProveedorPanelInner() {
                       )}
 
                       <div className="pt-3 border-t border-stone-100">
-                        <label className="block text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">
-                          {r.reply ? 'Tu respuesta (pública)' : 'Responder públicamente'}
-                        </label>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <label className="text-[10px] font-bold text-ink/45 uppercase tracking-widest">
+                            {r.reply ? 'Tu respuesta (pública)' : 'Responder públicamente'}
+                          </label>
+                          {replyTemplates.length > 0 && (
+                            <select value=""
+                              onChange={e => { if (e.target.value !== '') applyTemplate(r.id, e.target.value, r.author); e.target.value = '' }}
+                              className="text-[11px] border border-stone-200 rounded-lg px-2 py-1 text-ink/60 outline-none focus:border-coral">
+                              <option value="">📋 Usar plantilla...</option>
+                              {replyTemplates.map((t, i) => (
+                                <option key={i} value={t.body}>{t.label}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
                         <textarea value={draft}
                           onChange={e => setReplyDraft(d => ({ ...d, [r.id]: e.target.value }))}
                           rows={2} maxLength={1000}
@@ -1641,6 +1684,15 @@ function ProveedorPanelInner() {
           </div>
         )}
       </main>
+
+      {/* MODAL PLANTILLAS DE RESPUESTA */}
+      {showTemplatesModal && (
+        <TemplatesModal
+          initial={replyTemplates}
+          onClose={() => setShowTemplatesModal(false)}
+          onSave={async next => { await saveReplyTemplates(next); setShowTemplatesModal(false) }}
+        />
+      )}
 
       {/* MODAL DISPONIBILIDAD POR SERVICIO */}
       {availSvc && (
@@ -1721,6 +1773,93 @@ function ProveedorPanelInner() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function TemplatesModal({ initial, onSave, onClose }: {
+  initial: Array<{ label: string; body: string }>
+  onSave: (next: Array<{ label: string; body: string }>) => void | Promise<void>
+  onClose: () => void
+}) {
+  const MAX = 5
+  const [items, setItems] = useState<Array<{ label: string; body: string }>>(
+    initial.length ? initial : []
+  )
+  const [saving, setSaving] = useState(false)
+
+  function addItem() {
+    if (items.length >= MAX) return
+    setItems(prev => [...prev, { label: '', body: '' }])
+  }
+  function updateItem(i: number, patch: Partial<{ label: string; body: string }>) {
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, ...patch } : it))
+  }
+  function removeItem(i: number) {
+    setItems(prev => prev.filter((_, idx) => idx !== i))
+  }
+  async function handleSave() {
+    const clean = items
+      .map(it => ({ label: it.label.trim().slice(0, 60), body: it.body.trim().slice(0, 1000) }))
+      .filter(it => it.label && it.body)
+    setSaving(true)
+    await onSave(clean)
+    setSaving(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-baseline justify-between mb-2">
+          <h2 className="font-serif text-xl font-black text-ink">Plantillas de respuesta</h2>
+          <button onClick={onClose} className="text-ink/40 hover:text-ink text-2xl leading-none">×</button>
+        </div>
+        <p className="text-xs text-ink/55 mb-5 leading-relaxed">
+          Guarda hasta {MAX} respuestas tipo. Usa <code className="bg-stone-100 px-1.5 py-0.5 rounded text-coral">{'{nombre}'}</code> y se sustituirá por el nombre de pila del cliente al aplicarla.
+        </p>
+
+        {items.length === 0 && (
+          <div className="text-center text-ink/45 text-sm py-8 border border-dashed border-stone-200 rounded-xl mb-4">
+            No tienes plantillas todavía. Crea la primera.
+          </div>
+        )}
+
+        {items.map((t, i) => (
+          <div key={i} className="border border-stone-200 rounded-xl p-3 mb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <input value={t.label} maxLength={60}
+                onChange={e => updateItem(i, { label: e.target.value })}
+                placeholder="Nombre de la plantilla (ej. 5★ agradecimiento)"
+                className="flex-1 border border-stone-200 rounded-lg px-3 py-1.5 text-sm text-ink outline-none focus:border-coral"/>
+              <button onClick={() => removeItem(i)}
+                className="text-xs text-red-500 hover:text-red-700 px-2">🗑️</button>
+            </div>
+            <textarea value={t.body} rows={3} maxLength={1000}
+              onChange={e => updateItem(i, { body: e.target.value })}
+              placeholder={'Ej. ¡Muchas gracias por tu reseña, {nombre}! Fue un placer formar parte de tu día.'}
+              className="w-full border border-stone-200 rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
+          </div>
+        ))}
+
+        {items.length < MAX && (
+          <button onClick={addItem}
+            className="w-full border-2 border-dashed border-stone-200 hover:border-coral hover:text-coral text-ink/50 rounded-xl py-2 text-sm font-bold transition-colors mb-4">
+            + Añadir plantilla ({items.length}/{MAX})
+          </button>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 bg-coral text-white font-bold py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors disabled:opacity-50">
+            {saving ? 'Guardando...' : 'Guardar plantillas'}
+          </button>
+          <button onClick={onClose}
+            className="px-5 border border-stone-200 rounded-xl text-sm text-ink/60 hover:bg-stone-50">
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
