@@ -751,6 +751,9 @@ function ProveedorPanelInner() {
               Hola, {provider?.name} 👋
             </h1>
             <p className="text-ink/50 text-sm mb-8">{cat?.icon} {cat?.label} · 📍 {provider?.city}</p>
+
+            <OnboardingChecklist provider={provider} services={services} onGoTab={setTab} />
+
             <div className="grid grid-cols-4 gap-4 mb-8">
               {[
                 { label:'Pendientes',    value:stats.pending,   color:'#F59E0B', icon:'⏳' },
@@ -1671,6 +1674,110 @@ function ProveedorPanelInner() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function OnboardingChecklist({ provider, services, onGoTab }: {
+  provider: Provider | null
+  services: Service[]
+  onGoTab: (tab: string) => void
+}) {
+  if (!provider) return null
+  const items = [
+    {
+      key: 'photo',
+      done: !!provider.photo_url,
+      label: 'Sube tu foto de cabecera',
+      hint:  'La primera imagen que ven los clientes en tu ficha.',
+      tab:   'profile',
+    },
+    {
+      key: 'description',
+      done: !!(provider.description && provider.description.trim().length >= 40),
+      label: 'Escribe una descripción (mínimo 40 caracteres)',
+      hint:  'Explica quién eres y qué te diferencia.',
+      tab:   'profile',
+    },
+    {
+      key: 'phone',
+      done: !!provider.phone,
+      label: 'Añade un teléfono',
+      hint:  'No se muestra al público, lo usamos para urgencias.',
+      tab:   'profile',
+    },
+    {
+      key: 'specialties',
+      done: Array.isArray(provider.specialties) && provider.specialties.length > 0,
+      label: 'Indica al menos una especialidad',
+      hint:  'Aparecen como etiquetas en tu ficha (ej. Bodas íntimas, Vídeo 4K).',
+      tab:   'profile',
+    },
+    {
+      key: 'service',
+      done: services.filter(s => s.status === 'active').length > 0,
+      label: 'Crea al menos un servicio activo con precio',
+      hint:  'Sin servicios no puedes recibir reservas.',
+      tab:   'services',
+    },
+    {
+      key: 'gallery',
+      done: services.some(s => (s.media || []).length > 0),
+      label: 'Sube al menos una imagen a la galería',
+      hint:  'Las bodas se venden por foto. Sube al menos 1 por servicio.',
+      tab:   'services',
+    },
+  ]
+  const total = items.length
+  const doneCount = items.filter(i => i.done).length
+  const pct = Math.round((doneCount / total) * 100)
+
+  if (pct === 100) return null
+
+  return (
+    <div className="bg-white border-2 border-coral/30 rounded-2xl p-5 mb-6 shadow-card">
+      <div className="flex items-center justify-between gap-4 mb-3">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-coral mb-0.5">Configura tu perfil</div>
+          <h2 className="font-serif text-lg font-black text-ink">
+            Tu perfil está al {pct}% — completa lo que falta
+          </h2>
+          <p className="text-xs text-ink/55 mt-0.5">
+            Los proveedores con perfil completo reciben hasta 3× más reservas.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="font-serif text-3xl font-bold text-coral leading-none">{doneCount}/{total}</div>
+        </div>
+      </div>
+      <div className="h-2 bg-stone-100 rounded-full overflow-hidden mb-4">
+        <div className="h-full bg-coral transition-all duration-500" style={{ width: `${pct}%` }} />
+      </div>
+      <ul className="space-y-2">
+        {items.map(it => (
+          <li key={it.key}>
+            <button
+              onClick={() => !it.done && onGoTab(it.tab)}
+              disabled={it.done}
+              className={`w-full text-left flex items-start gap-3 px-3 py-2 rounded-xl transition-colors ${
+                it.done ? 'opacity-60 cursor-default' : 'hover:bg-coral/5 cursor-pointer'
+              }`}>
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs shrink-0 ${
+                it.done ? 'bg-emerald-500 text-white' : 'border-2 border-stone-300'
+              }`}>
+                {it.done && '✓'}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className={`text-sm font-semibold ${it.done ? 'text-ink/50 line-through' : 'text-ink'}`}>
+                  {it.label}
+                </div>
+                {!it.done && <div className="text-xs text-ink/50">{it.hint}</div>}
+              </div>
+              {!it.done && <span className="text-xs text-coral font-bold whitespace-nowrap self-center">Hacerlo →</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
