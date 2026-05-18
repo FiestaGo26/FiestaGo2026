@@ -309,12 +309,28 @@ function ProveedorPanelInner() {
       const res = await apiFetch(`/api/messages?booking_id=${thread.booking_id}&role=provider&token=${provider.id}`)
       const data = await res.json()
       setThreadMessages(data.messages || [])
-      // Refrescar contador de no leídos en la lista
       setThreads(prev => prev.map(t => t.booking_id === thread.booking_id ? { ...t, unread_count: 0 } : t))
     } catch {
       setThreadMessages([])
     }
   }
+
+  // Suscripción Realtime: cuando hay un hilo abierto, escucha inserts de
+  // messages para esa reserva y los añade en vivo (evita refrescar).
+  useEffect(() => {
+    if (!openThread?.booking_id) return
+    const ch = supabase.channel(`thread-${openThread.booking_id}`)
+      .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `booking_id=eq.${openThread.booking_id}` },
+          (payload: any) => {
+            setThreadMessages(prev => {
+              if (prev.some(m => m.id === payload.new.id)) return prev
+              return [...prev, payload.new]
+            })
+          })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [openThread?.booking_id, supabase])
 
   async function sendChatMessage() {
     if (!provider || !openThread) return

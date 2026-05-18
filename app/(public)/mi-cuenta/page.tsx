@@ -431,6 +431,7 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
 }
 
 function ChatModal({ booking, onClose }: { booking: Booking; onClose: () => void }) {
+  const supabase = createClient()
   const [messages, setMessages]   = useState<any[]>([])
   const [loading,  setLoading]    = useState(true)
   const [input,    setInput]      = useState('')
@@ -446,8 +447,16 @@ function ChatModal({ booking, onClose }: { booking: Booking; onClose: () => void
       setLoading(false)
     }
     load()
-    return () => { alive = false }
-  }, [booking.id, booking.client_email])
+    // Suscripción Realtime para recibir respuestas del proveedor en vivo
+    const ch = supabase.channel(`chat-${booking.id}`)
+      .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'messages', filter: `booking_id=eq.${booking.id}` },
+          (payload: any) => {
+            setMessages(prev => prev.some(m => m.id === payload.new.id) ? prev : [...prev, payload.new])
+          })
+      .subscribe()
+    return () => { alive = false; supabase.removeChannel(ch) }
+  }, [booking.id, booking.client_email, supabase])
 
   async function send() {
     const text = input.trim()
