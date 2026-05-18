@@ -71,6 +71,7 @@ const TABS = [
   { id:'services',     icon:'💼', label:'Mis servicios'  },
   { id:'availability', icon:'📅', label:'Disponibilidad' },
   { id:'bookings',     icon:'📋', label:'Reservas'       },
+  { id:'earnings',     icon:'💶', label:'Cobros'         },
   { id:'messages',     icon:'💬', label:'Mensajes'       },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
@@ -156,6 +157,11 @@ function ProveedorPanelInner() {
   // Galería de servicios (subida múltiple)
   const [uploadingMediaFor, setUploadingMediaFor] = useState<string | null>(null)
 
+  // Cobros
+  const [earnings,        setEarnings]        = useState<any | null>(null)
+  const [earningsYear,    setEarningsYear]    = useState<number>(new Date().getFullYear())
+  const [earningsLoading, setEarningsLoading] = useState(false)
+
   // Mensajería
   const [threads,       setThreads]       = useState<any[]>([])
   const [threadsLoading, setThreadsLoading] = useState(false)
@@ -216,6 +222,39 @@ function ProveedorPanelInner() {
     if (tab === 'reviews' && provider?.id) loadReviews(provider.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, provider?.id])
+
+  async function loadEarnings(providerId: string, year: number) {
+    setEarningsLoading(true)
+    try {
+      const res = await fetch(`/api/proveedor/earnings?provider_id=${providerId}&year=${year}`)
+      const data = await res.json()
+      setEarnings(data)
+    } catch { setEarnings(null) }
+    setEarningsLoading(false)
+  }
+
+  useEffect(() => {
+    if (tab === 'earnings' && provider?.id) loadEarnings(provider.id, earningsYear)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, earningsYear, provider?.id])
+
+  function exportEarningsCSV() {
+    if (!earnings?.transactions?.length) return
+    const head = ['fecha_evento','fecha_cobro','cliente','servicio','tipo_evento','ciudad','estado','importe_bruto','comision','neto']
+    const rows = earnings.transactions.map((t: any) => [
+      t.event_date || '', t.paid_at || '', t.client_name || '',
+      t.service_name || '', t.event_type || '', t.city || '', t.status,
+      t.total, t.commission, t.net,
+    ])
+    const csv = [head, ...rows].map(r => r.map((v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url
+    a.download = `fiestago-cobros-${earnings.year}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   async function loadThreads(providerId: string) {
     setThreadsLoading(true)
@@ -1438,6 +1477,131 @@ function ProveedorPanelInner() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* EARNINGS */}
+        {tab==='earnings' && (
+          <div className="max-w-4xl">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
+              <h1 className="font-serif text-2xl font-black text-ink">Cobros y facturación</h1>
+              <div className="flex items-center gap-2">
+                <select value={earningsYear}
+                  onChange={e => setEarningsYear(parseInt(e.target.value))}
+                  className="border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral">
+                  {(earnings?.years || [earningsYear]).map((y: number) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+                <button onClick={exportEarningsCSV}
+                  disabled={!earnings?.transactions?.length}
+                  className="bg-ink text-white font-bold text-xs px-4 py-2 rounded-xl hover:bg-ink/85 transition-colors disabled:opacity-40">
+                  ⬇ Export CSV
+                </button>
+              </div>
+            </div>
+
+            {earningsLoading ? (
+              <div className="text-center text-ink/40 py-12">Cargando cobros...</div>
+            ) : !earnings || earnings.totals.count === 0 ? (
+              <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
+                <div className="text-4xl mb-3">💶</div>
+                <p className="text-ink/55 text-sm">
+                  Aún no hay cobros en {earningsYear}. Cuando confirmes una reserva, su importe aparecerá aquí.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
+                    <div className="text-xs text-ink/50 uppercase tracking-widest mb-2">Bruto facturado</div>
+                    <div className="font-serif text-3xl font-bold text-ink">{earnings.totals.gross.toLocaleString()}€</div>
+                    <div className="text-xs text-ink/45 mt-1">{earnings.totals.count} reserva{earnings.totals.count!==1?'s':''}</div>
+                  </div>
+                  <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
+                    <div className="text-xs text-ink/50 uppercase tracking-widest mb-2">Comisión FiestaGo</div>
+                    <div className="font-serif text-3xl font-bold text-amber-600">−{earnings.totals.commission.toLocaleString()}€</div>
+                    <div className="text-xs text-ink/45 mt-1">
+                      {earnings.totals.gross > 0
+                        ? `${((earnings.totals.commission / earnings.totals.gross) * 100).toFixed(1)}% medio`
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="bg-coral/5 border-2 border-coral/30 rounded-2xl p-5">
+                    <div className="text-xs text-coral uppercase tracking-widest mb-2 font-bold">Neto para ti</div>
+                    <div className="font-serif text-3xl font-bold text-coral">{earnings.totals.net.toLocaleString()}€</div>
+                    <div className="text-xs text-ink/55 mt-1">Después de comisión</div>
+                  </div>
+                </div>
+
+                {/* Mensual */}
+                <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card mb-6">
+                  <h3 className="font-semibold text-ink text-sm mb-4">Mes a mes</h3>
+                  <div className="grid grid-cols-12 gap-1 items-end" style={{ minHeight: 120 }}>
+                    {earnings.monthly.map((m: any) => {
+                      const max = Math.max(1, ...earnings.monthly.map((x: any) => x.net))
+                      const h = max > 0 ? Math.round((m.net / max) * 100) : 0
+                      return (
+                        <div key={m.month} className="flex flex-col items-center gap-1">
+                          <div className="text-[9px] font-bold text-ink/55">{m.net > 0 ? `${m.net.toLocaleString()}€` : ''}</div>
+                          <div className="w-full bg-stone-100 rounded-t-md overflow-hidden flex items-end" style={{ height: 90 }}>
+                            <div className="w-full bg-coral rounded-t-md transition-all" style={{ height: `${h}%`, minHeight: m.net > 0 ? 2 : 0 }}/>
+                          </div>
+                          <div className="text-[10px] text-ink/50 capitalize">{m.label}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Transacciones */}
+                <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-card">
+                  <div className="px-5 py-4 border-b border-stone-200">
+                    <h3 className="font-semibold text-ink text-sm">Transacciones ({earnings.transactions.length})</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-stone-50 border-b border-stone-200 text-left">
+                          {['Fecha evento','Cliente','Servicio','Bruto','Comisión','Neto','Estado'].map(h => (
+                            <th key={h} className="px-4 py-2 text-[10px] font-bold text-ink/45 uppercase tracking-widest">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {earnings.transactions.map((t: any) => {
+                          const d = t.event_date ? new Date(t.event_date).toLocaleDateString('es-ES', { day:'2-digit', month:'short' }) : '—'
+                          return (
+                            <tr key={t.id} className="border-b border-stone-100 last:border-0">
+                              <td className="px-4 py-3 text-ink/65 text-xs whitespace-nowrap">{d}</td>
+                              <td className="px-4 py-3 text-ink font-medium">{t.client_name}</td>
+                              <td className="px-4 py-3 text-ink/65 text-xs">{t.service_name || '—'}</td>
+                              <td className="px-4 py-3 text-ink font-medium tabular-nums">{t.total.toLocaleString()}€</td>
+                              <td className="px-4 py-3 text-amber-700 tabular-nums">
+                                {t.is_free ? <span className="text-xs text-emerald-600">Gratis (1ª)</span> : `−${t.commission.toLocaleString()}€`}
+                              </td>
+                              <td className="px-4 py-3 text-coral font-bold tabular-nums">{t.net.toLocaleString()}€</td>
+                              <td className="px-4 py-3">
+                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                  t.status === 'completed'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-emerald-100 text-emerald-700'
+                                }`}>{t.status}</span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-ink/45 mt-4 leading-relaxed">
+                  Los importes mostrados son los que figuran en cada reserva. El cobro real depende del calendario de pagos de FiestaGo (te lo notificaremos cuando se transfiera). Las reservas canceladas o disputadas no aparecen.
+                </p>
+              </>
+            )}
           </div>
         )}
 
