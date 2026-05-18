@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
-import { getPhoto, CATEGORIES, calcCommission } from '@/lib/constants'
+import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
@@ -38,6 +38,7 @@ type Service = {
   media_url: string | null
   thumbnail_url: string | null
   status: string
+  cancellation_policy: 'flexible' | 'moderate' | 'strict' | null
   media?: Array<{
     id: string
     url: string
@@ -578,6 +579,27 @@ export default function ProviderDetailPage() {
                   <span className="text-lg text-ink/50">Precio a consultar</span>
                 )}
               </div>
+
+              {/* Política de cancelación del servicio seleccionado */}
+              {selectedSvc?.cancellation_policy && CANCELLATION_POLICIES[selectedSvc.cancellation_policy] && (
+                <details className="mb-5 bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-xs group">
+                  <summary className="cursor-pointer flex items-center gap-2 list-none">
+                    <span>{CANCELLATION_POLICIES[selectedSvc.cancellation_policy].icon}</span>
+                    <span className="font-semibold text-ink">
+                      Cancelación {CANCELLATION_POLICIES[selectedSvc.cancellation_policy].label.toLowerCase()}
+                    </span>
+                    <span className="text-ink/45 truncate flex-1">
+                      · {CANCELLATION_POLICIES[selectedSvc.cancellation_policy].short}
+                    </span>
+                    <span className="text-ink/40 text-[10px] group-open:rotate-180 transition-transform">▾</span>
+                  </summary>
+                  <ul className="mt-3 ml-6 space-y-1 list-disc text-ink/65">
+                    {CANCELLATION_POLICIES[selectedSvc.cancellation_policy].rules.map((r, i) => (
+                      <li key={i}>{r}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
 
               {/* Commission info */}
               <div className={`rounded-xl p-3.5 mb-5 text-xs ${commission.isFree

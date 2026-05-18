@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
-import { CATEGORIES } from '@/lib/constants'
+import { CATEGORIES, CANCELLATION_POLICIES } from '@/lib/constants'
 
 type ServiceMedia = {
   id: string
@@ -28,6 +28,7 @@ type Service = {
   thumbnail_url: string | null
   status: string
   sort_order: number
+  cancellation_policy: 'flexible' | 'moderate' | 'strict' | null
   media?: ServiceMedia[]
 }
 
@@ -131,9 +132,11 @@ function ProveedorPanelInner() {
   const [availYear,  setAvailYear]  = useState<number>(new Date().getFullYear())
   const [newSvc, setNewSvc] = useState<{
     name: string; description: string; price: string; duration: string; maxGuests: string
+    cancellation_policy: 'flexible' | 'moderate' | 'strict'
     mediaFile: File | null; mediaPreview: string | null
   }>({
     name: '', description: '', price: '', duration: 'Todo el día', maxGuests: '',
+    cancellation_policy: 'moderate',
     mediaFile: null, mediaPreview: null,
   })
 
@@ -541,6 +544,7 @@ function ProveedorPanelInner() {
           price:       parseFloat(newSvc.price),
           duration:    newSvc.duration,
           max_guests:  newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
+          cancellation_policy: newSvc.cancellation_policy,
           media_type,
           media_url,
         }),
@@ -549,6 +553,7 @@ function ProveedorPanelInner() {
       if (!res.ok) throw new Error(data.error)
       setServices(s => [...s, data.service])
       setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'',
+                  cancellation_policy: 'moderate',
                   mediaFile: null, mediaPreview: null })
       setShowNewSvc(false)
       toast.success('Servicio añadido ✓ · Marca ahora los días que NO estés disponible')
@@ -574,6 +579,7 @@ function ProveedorPanelInner() {
           price:        editSvc.price,
           duration:     editSvc.duration,
           max_guests:   editSvc.max_guests,
+          cancellation_policy: editSvc.cancellation_policy,
           status:       editSvc.status,
         }),
       })
@@ -1093,6 +1099,16 @@ function ProveedorPanelInner() {
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div className="col-span-2">
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Política de cancelación</label>
+                    <select value={newSvc.cancellation_policy}
+                      onChange={e => setNewSvc(s=>({...s, cancellation_policy: e.target.value as any}))}
+                      className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors">
+                      {(Object.entries(CANCELLATION_POLICIES) as Array<[string, any]>).map(([key, p]) => (
+                        <option key={key} value={key}>{p.icon} {p.label} — {p.short}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Descripción</label>
                     <textarea value={newSvc.description} rows={2}
                       onChange={e => setNewSvc(s=>({...s,description:e.target.value}))}
@@ -1176,6 +1192,16 @@ function ProveedorPanelInner() {
                           onChange={e => setEditSvc(s=>s?{...s,description:e.target.value}:null)}
                           className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral resize-none"/>
                       </div>
+                      <div className="col-span-2">
+                        <label className="block text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-1">Política de cancelación</label>
+                        <select value={editSvc.cancellation_policy || 'moderate'}
+                          onChange={e => setEditSvc(s=>s?{...s, cancellation_policy: e.target.value as any}:null)}
+                          className="w-full border border-stone-200 rounded-xl px-4 py-2 text-sm text-ink outline-none focus:border-coral">
+                          {(Object.entries(CANCELLATION_POLICIES) as Array<[string, any]>).map(([key, p]) => (
+                            <option key={key} value={key}>{p.icon} {p.label} — {p.short}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={updateService}
@@ -1192,6 +1218,11 @@ function ProveedorPanelInner() {
                           <h3 className="font-semibold text-ink">{svc.name}</h3>
                           <span className="text-xs text-ink/50 bg-stone-100 px-2 py-0.5 rounded-full">{svc.duration}</span>
                           {svc.max_guests!=null&&<span className="text-xs text-ink/50">max. {svc.max_guests} pax</span>}
+                          {svc.cancellation_policy && CANCELLATION_POLICIES[svc.cancellation_policy] && (
+                            <span className="text-xs text-ink/55" title={CANCELLATION_POLICIES[svc.cancellation_policy].short}>
+                              {CANCELLATION_POLICIES[svc.cancellation_policy].icon} Cancelación {CANCELLATION_POLICIES[svc.cancellation_policy].label.toLowerCase()}
+                            </span>
+                          )}
                         </div>
                         {svc.description&&<p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
                         <div className="font-serif text-xl font-bold text-coral">{svc.price!=null ? `${svc.price.toLocaleString()}€` : '—'}</div>

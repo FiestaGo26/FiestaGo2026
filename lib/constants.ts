@@ -78,3 +78,43 @@ export function calcCommission(amount: number, totalBookings: number) {
   const comm   = Math.round(amount * rate * 100) / 100
   return { rate, amount: comm, providerEarns: amount - comm, isFree }
 }
+
+// ─── Políticas de cancelación ────────────────────────────────────────────
+export type CancellationPolicy = 'flexible' | 'moderate' | 'strict'
+
+export const CANCELLATION_POLICIES: Record<CancellationPolicy, {
+  label: string
+  short: string
+  icon: string
+  rules: string[]
+}> = {
+  flexible: {
+    label: 'Flexible',
+    short: 'Reembolso completo hasta 7 días antes del evento.',
+    icon:  '🟢',
+    rules: [
+      'Cancelación gratuita hasta 7 días antes del evento → 100% reembolso.',
+      'Entre 7 días y 48 horas antes → 50% reembolso.',
+      'Menos de 48 horas antes → sin reembolso.',
+    ],
+  },
+  moderate: {
+    label: 'Moderada',
+    short: 'Reembolso completo hasta 14 días antes del evento.',
+    icon:  '🟡',
+    rules: [
+      'Cancelación gratuita hasta 14 días antes del evento → 100% reembolso.',
+      'Entre 14 y 7 días antes → 50% reembolso.',
+      'Menos de 7 días antes → sin reembolso.',
+    ],
+  },
+  strict: {
+    label: 'Estricta',
+    short: 'Reembolso parcial solo con 30+ días de antelación.',
+    icon:  '🔴',
+    rules: [
+      'Cancelación hasta 30 días antes del evento → 50% reembolso.',
+      'Menos de 30 días antes → sin reembolso.',
+    ],
+  },
+}
