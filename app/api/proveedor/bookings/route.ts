@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
 import { emailClientBookingConfirmed, emailClientBookingCancelled } from '@/lib/resend'
+import { calcRefund } from '@/lib/constants'
 
 // Antes de aceptar la reserva, el proveedor solo ve datos generales.
 // Esto evita que el proveedor contacte al cliente fuera de la plataforma
@@ -52,8 +53,22 @@ export async function PATCH(req: NextRequest) {
   if (status === 'confirmed') updates.confirmed_at = new Date().toISOString()
   if (status === 'cancelled') updates.cancelled_at = new Date().toISOString()
 
-  // Lookup previa para conocer la fecha (necesaria si vamos a desbloquear)
-  const { data: prev } = await supabase.from('bookings').select('event_date').eq('id', id).single()
+  // Lookup previa para conocer la fecha y calcular refund si toca cancelar
+  const { data: prev } = await supabase
+    .from('bookings')
+    .select('event_date, total_amount, service_id, provider_services(cancellation_policy)')
+    .eq('id', id).single()
+
+  let refund: { percent: number; amount: number; rule: string } | null = null
+  if (status === 'cancelled' && prev) {
+    refund = calcRefund({
+      policy: (prev as any).provider_services?.cancellation_policy,
+      eventDate: prev.event_date,
+      totalAmount: prev.total_amount || 0,
+    })
+    updates.refund_percent = refund.percent
+    updates.refund_amount  = refund.amount
+  }
 
   const { data, error } = await supabase
     .from('bookings')
@@ -86,8 +101,18 @@ export async function PATCH(req: NextRequest) {
           emailClientBookingConfirmed(data, prov).catch(err =>
             console.error('emailClientBookingConfirmed:', err?.message))
         } else {
-          emailClientBookingCancelled(data, prov, 'provider').catch(err =>
+          emailClientBookingCancelled(data, prov, 'provider', undefined, refund).catch(err =>
             console.error('emailClientBookingCancelled:', err?.message))
+          // Notificar al admin del importe a procesar
+          if (refund && refund.amount > 0) {
+            await supabase.from('notifications').insert({
+              type: 'refund_pending',
+              title: `💸 Reembolso pendiente · ${refund.amount.toLocaleString()}€`,
+              message: `Reserva cancelada por proveedor · ${refund.percent}% · ${refund.rule}`,
+              data: { booking_id: id, amount: refund.amount, percent: refund.percent },
+              action_url: `/admin?booking=${id}`,
+            }).then(() => {})
+          }
         }
       }
     } catch { /* no-op */ }

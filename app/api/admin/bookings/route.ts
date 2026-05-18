@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { emailClientBookingConfirmed, emailClientBookingCancelled } from '@/lib/resend'
+import { calcRefund } from '@/lib/constants'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,8 +47,22 @@ export async function PATCH(req: NextRequest) {
   if (status === 'confirmed') updates.confirmed_at = new Date().toISOString()
   if (status === 'cancelled') updates.cancelled_at = new Date().toISOString()
 
-  // Lookup previous booking to know event_date / service_id en caso de cancelar
-  const { data: prev } = await supabase.from('bookings').select('event_date, message').eq('id', id).single()
+  // Lookup previa: fecha + total + política del servicio para refund
+  const { data: prev } = await supabase
+    .from('bookings')
+    .select('event_date, message, total_amount, service_id, provider_services(cancellation_policy)')
+    .eq('id', id).single()
+
+  let refund: { percent: number; amount: number; rule: string } | null = null
+  if (status === 'cancelled' && prev) {
+    refund = calcRefund({
+      policy: (prev as any).provider_services?.cancellation_policy,
+      eventDate: prev.event_date,
+      totalAmount: prev.total_amount || 0,
+    })
+    updates.refund_percent = refund.percent
+    updates.refund_amount  = refund.amount
+  }
 
   const { data, error } = await supabase.from('bookings').update(updates).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -76,7 +91,7 @@ export async function PATCH(req: NextRequest) {
             emailClientBookingConfirmed(data, prov).catch(err =>
               console.error('emailClientBookingConfirmed:', err?.message))
           } else {
-            emailClientBookingCancelled(data, prov, 'admin').catch(err =>
+            emailClientBookingCancelled(data, prov, 'admin', undefined, refund).catch(err =>
               console.error('emailClientBookingCancelled:', err?.message))
           }
         }

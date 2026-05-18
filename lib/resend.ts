@@ -627,6 +627,7 @@ export async function emailClientBookingCancelled(
   provider: any,
   cancelledBy: 'provider' | 'admin' | 'client' = 'provider',
   reason?: string,
+  refund?: { percent: number; amount: number; rule: string } | null,
 ) {
   if (!booking?.client_email) return { ok: false, error: 'Cliente sin email' }
 
@@ -637,13 +638,17 @@ export async function emailClientBookingCancelled(
 
   const subject = `Reserva cancelada · ${bookingDateF(booking.event_date)}`
 
+  const refundLine = refund
+    ? (refund.amount > 0
+        ? `Reembolso aplicable: ${refund.amount.toLocaleString()}€ (${refund.percent}%) — ${refund.rule}.\nLo procesaremos en los próximos 5 días hábiles.\n\n`
+        : `Reembolso aplicable: 0€ (${refund.rule}).\n\n`)
+    : 'Si has pagado un anticipo, te contactaremos en las próximas 48h para gestionar el reembolso según la política de cancelación del servicio.\n\n'
+
   const text = `Hola ${firstName},
 
 ${who} ha cancelado la reserva del ${bookingDateF(booking.event_date)} con ${provider?.name || 'el proveedor'}.
 
-${reason ? `Motivo: ${reason}\n\n` : ''}Si has pagado un anticipo, te contactaremos en las próximas 48h para gestionar el reembolso según la política de cancelación del servicio.
-
-Buscar otro proveedor: https://fiestago.es/servicios
+${reason ? `Motivo: ${reason}\n\n` : ''}${refundLine}Buscar otro proveedor: https://fiestago.es/servicios
 
 Un saludo,
 El equipo de FiestaGo`
@@ -662,7 +667,11 @@ El equipo de FiestaGo`
         </td></tr>
         <tr><td style="padding:20px 36px 8px;">
           <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
-            💸 <strong>Reembolso.</strong> Si pagaste un anticipo, te contactaremos en las próximas 48h para procesarlo según la política de cancelación del servicio.
+            ${refund
+              ? (refund.amount > 0
+                  ? `💸 <strong>Reembolso aplicable: ${refund.amount.toLocaleString()}€</strong> (${refund.percent}%, según política <em>${safe(refund.rule)}</em>). Se procesará en los próximos 5 días hábiles.`
+                  : `💸 <strong>Reembolso aplicable: 0€</strong> según política <em>${safe(refund.rule)}</em>.`)
+              : `💸 <strong>Reembolso.</strong> Si pagaste un anticipo, te contactaremos en las próximas 48h para procesarlo según la política de cancelación del servicio.`}
           </div>
         </td></tr>
         <tr><td style="padding:14px 36px 28px;">

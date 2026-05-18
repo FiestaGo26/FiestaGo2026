@@ -118,3 +118,42 @@ export const CANCELLATION_POLICIES: Record<CancellationPolicy, {
     ],
   },
 }
+
+// Calcula el reembolso aplicando la política. Devuelve % (0–100), importe
+// y la regla concreta que ha disparado.
+export function calcRefund(opts: {
+  policy: CancellationPolicy | null | undefined
+  eventDate: string | Date | null | undefined
+  totalAmount: number
+  now?: Date
+}): { percent: number; amount: number; rule: string } {
+  const policy = (opts.policy || 'moderate') as CancellationPolicy
+  const event  = opts.eventDate ? new Date(opts.eventDate) : null
+  const now    = opts.now || new Date()
+  const total  = Number(opts.totalAmount) || 0
+
+  if (!event || isNaN(event.getTime())) {
+    return { percent: 0, amount: 0, rule: 'Sin fecha de evento — reembolso a evaluar por FiestaGo.' }
+  }
+
+  const msPerDay = 24 * 60 * 60 * 1000
+  const daysUntil = Math.floor((event.getTime() - now.getTime()) / msPerDay)
+
+  let percent = 0
+  let rule    = ''
+  if (policy === 'flexible') {
+    if      (daysUntil >= 7) { percent = 100; rule = '7+ días antes (Flexible)' }
+    else if (daysUntil >= 2) { percent = 50;  rule = '7-2 días antes (Flexible)' }
+    else                     { percent = 0;   rule = 'Menos de 48h (Flexible)' }
+  } else if (policy === 'moderate') {
+    if      (daysUntil >= 14) { percent = 100; rule = '14+ días antes (Moderada)' }
+    else if (daysUntil >= 7)  { percent = 50;  rule = '14-7 días antes (Moderada)' }
+    else                      { percent = 0;   rule = 'Menos de 7 días (Moderada)' }
+  } else if (policy === 'strict') {
+    if (daysUntil >= 30) { percent = 50; rule = '30+ días antes (Estricta)' }
+    else                 { percent = 0;  rule = 'Menos de 30 días (Estricta)' }
+  }
+
+  const amount = Math.round(total * percent) / 100
+  return { percent, amount, rule }
+}
