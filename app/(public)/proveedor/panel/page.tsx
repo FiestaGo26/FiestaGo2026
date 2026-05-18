@@ -171,8 +171,9 @@ function ProveedorPanelInner() {
   const [replyTemplates, setReplyTemplates] = useState<Array<{ label: string; body: string }>>([])
   const [showTemplatesModal, setShowTemplatesModal] = useState(false)
 
-  // Galería de servicios (subida múltiple)
+  // Galería de servicios (subida múltiple + drag&drop reorder)
   const [uploadingMediaFor, setUploadingMediaFor] = useState<string | null>(null)
+  const [draggedMedia, setDraggedMedia] = useState<{ serviceId: string; mediaId: string } | null>(null)
 
   // Verificación
   const [verifDocType, setVerifDocType] = useState<'dni' | 'cif' | 'rc'>('dni')
@@ -396,6 +397,40 @@ function ProveedorPanelInner() {
       }))
     } catch (err: any) {
       toast.error(err.message || 'Error al eliminar')
+    }
+  }
+
+  async function reorderMedia(serviceId: string, fromMediaId: string, toMediaId: string) {
+    if (!provider || fromMediaId === toMediaId) return
+    const svc = services.find(s => s.id === serviceId)
+    if (!svc?.media?.length) return
+
+    const ids = svc.media.map(m => m.id)
+    const fromIdx = ids.indexOf(fromMediaId)
+    const toIdx   = ids.indexOf(toMediaId)
+    if (fromIdx < 0 || toIdx < 0) return
+
+    // Mover en local
+    const next = [...svc.media]
+    const [moved] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, moved)
+    setServices(prev => prev.map(s => s.id === serviceId ? { ...s, media: next } : s))
+
+    // Persistir
+    try {
+      const res = await apiFetch('/api/proveedor/services/media', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: serviceId,
+          provider_id: provider.id,
+          ordered_ids: next.map(m => m.id),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+    } catch (err: any) {
+      toast.error(err.message || 'Error al reordenar')
     }
   }
 
@@ -1472,17 +1507,36 @@ function ProveedorPanelInner() {
                           Galería ({(svc.media || []).length}/10)
                         </span>
                         <span className="text-[10px] text-ink/40">
-                          La portada es la imagen principal del servicio
+                          Arrastra para reordenar · ★ marca la portada
                         </span>
                       </div>
                       <div className="flex gap-2 overflow-x-auto pb-2">
-                        {(svc.media || []).map(m => (
-                          <div key={m.id} className="relative group flex-shrink-0">
+                        {(svc.media || []).map(m => {
+                          const isDragged = draggedMedia?.serviceId === svc.id && draggedMedia?.mediaId === m.id
+                          return (
+                          <div key={m.id}
+                            draggable
+                            onDragStart={e => {
+                              setDraggedMedia({ serviceId: svc.id, mediaId: m.id })
+                              e.dataTransfer.effectAllowed = 'move'
+                            }}
+                            onDragOver={e => {
+                              if (draggedMedia?.serviceId === svc.id) e.preventDefault()
+                            }}
+                            onDrop={e => {
+                              e.preventDefault()
+                              if (draggedMedia?.serviceId === svc.id && draggedMedia.mediaId !== m.id) {
+                                reorderMedia(svc.id, draggedMedia.mediaId, m.id)
+                              }
+                              setDraggedMedia(null)
+                            }}
+                            onDragEnd={() => setDraggedMedia(null)}
+                            className={`relative group flex-shrink-0 cursor-move transition-opacity ${isDragged ? 'opacity-30' : ''}`}>
                             <div className="w-24 h-24 rounded-lg overflow-hidden bg-stone-100 border border-stone-200">
                               {m.media_type === 'video' ? (
                                 <video src={m.url} muted loop className="w-full h-full object-cover" />
                               ) : (
-                                <img src={m.url} alt="" className="w-full h-full object-cover" />
+                                <img src={m.url} alt="" className="w-full h-full object-cover pointer-events-none" />
                               )}
                             </div>
                             {m.is_primary && (
@@ -1505,7 +1559,8 @@ function ProveedorPanelInner() {
                               </button>
                             </div>
                           </div>
-                        ))}
+                          )
+                        })}
                         {(svc.media || []).length < 10 && (
                           <label className={`w-24 h-24 flex-shrink-0 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${uploadingMediaFor === svc.id ? 'border-coral bg-coral/5' : 'border-stone-200 hover:border-coral hover:bg-coral/5'}`}>
                             {uploadingMediaFor === svc.id ? (

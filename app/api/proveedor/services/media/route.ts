@@ -131,13 +131,15 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ media: row })
 }
 
-// PATCH body: { id, service_id, provider_id, is_primary?: true }
-// Marca una imagen como portada (y desmarca el resto del servicio).
+// PATCH /api/proveedor/services/media
+// body: { id, service_id, provider_id, is_primary?: true }
+//       o { service_id, provider_id, ordered_ids: [id1, id2, ...] } para reorden
 export async function PATCH(req: NextRequest) {
-  const { id, service_id, provider_id, is_primary } = await req.json().catch(() => ({}))
+  const body = await req.json().catch(() => ({}))
+  const { id, service_id, provider_id, is_primary, ordered_ids } = body
 
-  if (!id || !service_id || !provider_id) {
-    return NextResponse.json({ error: 'id, service_id y provider_id requeridos' }, { status: 400 })
+  if (!service_id || !provider_id) {
+    return NextResponse.json({ error: 'service_id y provider_id requeridos' }, { status: 400 })
   }
 
   const auth = await requireProviderAuth(req, provider_id)
@@ -151,7 +153,22 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  if (is_primary === true) {
+  // Modo: reorden masivo
+  if (Array.isArray(ordered_ids) && ordered_ids.length > 0) {
+    // Verificar que todos los ids pertenecen al servicio
+    const { data: existing } = await supabase
+      .from('service_media').select('id').eq('service_id', service_id)
+    const validIds = new Set((existing || []).map((m: any) => m.id))
+    const filtered = ordered_ids.filter((x: string) => validIds.has(x))
+    // Aplicar sort_order = índice en el array
+    await Promise.all(filtered.map((mediaId: string, idx: number) =>
+      supabase.from('service_media').update({ sort_order: idx }).eq('id', mediaId)
+    ))
+    return NextResponse.json({ ok: true, reordered: filtered.length })
+  }
+
+  // Modo: marcar portada
+  if (is_primary === true && id) {
     // Desmarcar el actual primary, luego marcar el nuevo
     await supabase.from('service_media').update({ is_primary: false })
       .eq('service_id', service_id).eq('is_primary', true)
