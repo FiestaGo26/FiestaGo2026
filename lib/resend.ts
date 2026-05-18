@@ -552,6 +552,137 @@ El equipo de FiestaGo`
   return sendEmail({ to: booking.client_email, subject, text, html })
 }
 
+// El proveedor ha aceptado la reserva. Se libera el contacto del proveedor
+// (email/teléfono que el cliente ya puede usar) y se confirma la fecha.
+export async function emailClientBookingConfirmed(booking: any, provider: any) {
+  if (!booking?.client_email) return { ok: false, error: 'Cliente sin email' }
+
+  const subject = `✅ Reserva confirmada · ${provider?.name || 'Tu proveedor'} · ${bookingDateF(booking.event_date)}`
+  const firstName = (booking.client_name || '').split(' ')[0] || ''
+
+  const text = `Hola ${firstName},
+
+¡Buenas noticias! ${provider?.name || 'El proveedor'} ha confirmado tu reserva para el ${bookingDateF(booking.event_date)}.
+
+Datos de contacto del proveedor (ya puedes escribirle por chat o llamarle):
+- Email:    ${provider?.email || '—'}
+- Teléfono: ${provider?.phone || '—'}
+
+Tu reserva:
+- Fecha:    ${bookingDateF(booking.event_date)}
+- Evento:   ${booking.event_type || 'otro'}
+- Importe:  ${(booking.total_amount || 0).toLocaleString()}€
+
+Puedes seguir hablando con el proveedor a través del chat de FiestaGo:
+https://fiestago.es/mi-cuenta
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:36px 36px 24px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#10B981;margin-bottom:14px;">✓ Reserva confirmada</div>
+          <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:26px;color:#1A1612;line-height:1.2;">
+            ¡${safe(firstName)}, ${safe(provider?.name || 'tu proveedor')} acepta tu reserva!
+          </h1>
+          <p style="margin:0;font-size:15px;color:#5C534A;line-height:1.55;">
+            Te están esperando el <strong style="color:#E8553E;">${bookingDateF(booking.event_date)}</strong>.
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px 36px 8px;">
+          <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:14px 16px;">
+            <div style="font-size:10px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#10B981;margin-bottom:8px;">Contacto del proveedor</div>
+            <table width="100%" style="font-size:14px;color:#1A1612;">
+              ${provider?.email ? `<tr><td style="padding:4px 0;color:#5C534A;width:90px;">📧 Email</td><td style="padding:4px 0;"><a href="mailto:${safe(provider.email)}" style="color:#10B981;text-decoration:none;">${safe(provider.email)}</a></td></tr>` : ''}
+              ${provider?.phone ? `<tr><td style="padding:4px 0;color:#5C534A;">📞 Teléfono</td><td style="padding:4px 0;"><a href="tel:${safe(provider.phone)}" style="color:#10B981;text-decoration:none;">${safe(provider.phone)}</a></td></tr>` : ''}
+            </table>
+          </div>
+        </td></tr>
+        <tr><td style="padding:14px 36px 28px;">
+          <div style="text-align:center;">
+            <a href="https://fiestago.es/mi-cuenta" style="display:inline-block;background:#E8553E;color:#fff;padding:13px 30px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:14px;">
+              💬 Abrir chat con el proveedor →
+            </a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · El marketplace de celebraciones · España
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: booking.client_email, subject, text, html })
+}
+
+// La reserva se ha cancelado (por el proveedor, el admin o el propio cliente).
+// `cancelledBy` indica quién la canceló para mostrar mensaje adecuado.
+export async function emailClientBookingCancelled(
+  booking: any,
+  provider: any,
+  cancelledBy: 'provider' | 'admin' | 'client' = 'provider',
+  reason?: string,
+) {
+  if (!booking?.client_email) return { ok: false, error: 'Cliente sin email' }
+
+  const firstName = (booking.client_name || '').split(' ')[0] || ''
+  const who =
+    cancelledBy === 'provider' ? (provider?.name || 'El proveedor') :
+    cancelledBy === 'admin'    ? 'El equipo de FiestaGo' : 'Tú'
+
+  const subject = `Reserva cancelada · ${bookingDateF(booking.event_date)}`
+
+  const text = `Hola ${firstName},
+
+${who} ha cancelado la reserva del ${bookingDateF(booking.event_date)} con ${provider?.name || 'el proveedor'}.
+
+${reason ? `Motivo: ${reason}\n\n` : ''}Si has pagado un anticipo, te contactaremos en las próximas 48h para gestionar el reembolso según la política de cancelación del servicio.
+
+Buscar otro proveedor: https://fiestago.es/servicios
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:36px 36px 24px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#EF4444;margin-bottom:14px;">Reserva cancelada</div>
+          <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:24px;color:#1A1612;line-height:1.25;">
+            Hola ${safe(firstName)}, ${cancelledBy === 'client' ? 'has cancelado' : safe(who) + ' ha cancelado'} la reserva del ${bookingDateF(booking.event_date)}.
+          </h1>
+          ${reason ? `<p style="margin:12px 0 0;font-size:14px;color:#5C534A;line-height:1.55;font-style:italic;">Motivo: ${safe(reason)}</p>` : ''}
+        </td></tr>
+        <tr><td style="padding:20px 36px 8px;">
+          <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
+            💸 <strong>Reembolso.</strong> Si pagaste un anticipo, te contactaremos en las próximas 48h para procesarlo según la política de cancelación del servicio.
+          </div>
+        </td></tr>
+        <tr><td style="padding:14px 36px 28px;">
+          <div style="text-align:center;">
+            <a href="https://fiestago.es/servicios" style="display:inline-block;background:#1A1612;color:#fff;padding:13px 28px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:13px;">
+              Buscar otro proveedor →
+            </a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · El marketplace de celebraciones · España
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: booking.client_email, subject, text, html })
+}
+
 // ════════════════════════════════════════════════════════════════
 //  OUTREACH (email del agente de captación, con List-Unsubscribe + HTML completo)
 // ════════════════════════════════════════════════════════════════

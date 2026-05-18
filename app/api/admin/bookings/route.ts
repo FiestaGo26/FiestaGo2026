@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { emailClientBookingConfirmed, emailClientBookingCancelled } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,26 @@ export async function PATCH(req: NextRequest) {
         .delete()
         .eq('blocked_date', prev.event_date)
         .like('reason', 'Reservado por%')
+    } catch { /* no-op */ }
+  }
+
+  // Email al cliente avisando del cambio
+  if (status === 'confirmed' || status === 'cancelled') {
+    try {
+      if (data.provider_id) {
+        const { data: prov } = await supabase
+          .from('providers').select('id, name, email, phone')
+          .eq('id', data.provider_id).single()
+        if (prov) {
+          if (status === 'confirmed') {
+            emailClientBookingConfirmed(data, prov).catch(err =>
+              console.error('emailClientBookingConfirmed:', err?.message))
+          } else {
+            emailClientBookingCancelled(data, prov, 'admin').catch(err =>
+              console.error('emailClientBookingCancelled:', err?.message))
+          }
+        }
+      }
     } catch { /* no-op */ }
   }
 

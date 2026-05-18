@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
+import { emailClientBookingConfirmed, emailClientBookingCancelled } from '@/lib/resend'
 
 // Antes de aceptar la reserva, el proveedor solo ve datos generales.
 // Esto evita que el proveedor contacte al cliente fuera de la plataforma
@@ -71,6 +72,24 @@ export async function PATCH(req: NextRequest) {
         .delete()
         .eq('blocked_date', prev.event_date)
         .like('reason', 'Reservado por%')
+    } catch { /* no-op */ }
+  }
+
+  // Email al cliente avisando del cambio. No bloquea la respuesta.
+  if (status === 'confirmed' || status === 'cancelled') {
+    try {
+      const { data: prov } = await supabase
+        .from('providers').select('id, name, email, phone')
+        .eq('id', providerId).single()
+      if (prov) {
+        if (status === 'confirmed') {
+          emailClientBookingConfirmed(data, prov).catch(err =>
+            console.error('emailClientBookingConfirmed:', err?.message))
+        } else {
+          emailClientBookingCancelled(data, prov, 'provider').catch(err =>
+            console.error('emailClientBookingCancelled:', err?.message))
+        }
+      }
     } catch { /* no-op */ }
   }
 
