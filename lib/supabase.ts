@@ -41,6 +41,9 @@ export type Provider = {
   conversion_prob: number | null
   agent_notes: string | null
   contactable: boolean
+  verification_status: 'none' | 'pending' | 'approved' | 'rejected' | null
+  verification_doc_type: string | null
+  verification_notes: string | null
 }
 
 export type Pack = {

@@ -171,6 +171,25 @@ export async function PATCH(req: NextRequest) {
     result.rejectionEmail = sent.ok
   }
 
+  // ── VERIFICACIÓN: aprobada o rechazada ──
+  if (updates.verification_status === 'approved') {
+    // Activa el sello "Verificado" y borra el documento sensible
+    updates.verified = true
+    if (current.verification_doc_path) {
+      await supabase.storage.from('verification-docs')
+        .remove([current.verification_doc_path]).catch(() => {})
+      updates.verification_doc_path = null
+    }
+  }
+  if (updates.verification_status === 'rejected') {
+    // Mantiene verified como estaba; el proveedor puede reintentar
+    if (current.verification_doc_path) {
+      await supabase.storage.from('verification-docs')
+        .remove([current.verification_doc_path]).catch(() => {})
+      updates.verification_doc_path = null
+    }
+  }
+
   // Update final
   const { data, error } = await supabase
     .from('providers').update(updates).eq('id', id).select().single()

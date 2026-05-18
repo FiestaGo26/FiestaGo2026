@@ -1499,6 +1499,71 @@ export default function AdminPage() {
               )}
             </div>
 
+            {/* Verificación */}
+            {editProv.verification_status && editProv.verification_status !== 'none' && (
+              <div style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:12, padding:14, marginTop:16 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#F0F4FF', textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                    Verificación
+                  </span>
+                  <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:10,
+                    background:
+                      editProv.verification_status === 'pending'  ? '#F59E0B22' :
+                      editProv.verification_status === 'approved' ? '#10B98122' : '#EF444422',
+                    color:
+                      editProv.verification_status === 'pending'  ? '#F59E0B' :
+                      editProv.verification_status === 'approved' ? '#10B981' : '#EF4444',
+                  }}>
+                    {editProv.verification_status === 'pending'  ? 'PENDIENTE DE REVISIÓN' :
+                     editProv.verification_status === 'approved' ? 'APROBADA' : 'RECHAZADA'}
+                  </span>
+                  {editProv.verification_doc_type && (
+                    <span style={{ fontSize:10, color:'#9CA3AF' }}>· tipo: {String(editProv.verification_doc_type).toUpperCase()}</span>
+                  )}
+                </div>
+
+                {editProv.verification_status === 'pending' && (
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    <button onClick={async () => {
+                      const res = await fetch(`/api/admin/verification/doc?provider_id=${editProv.id}`, { headers: adminHeaders() })
+                      const data = await res.json()
+                      if (data.url) window.open(data.url, '_blank')
+                      else toast.error(data.error || 'No se pudo abrir el documento')
+                    }}
+                      style={{ background:'#3B82F6', color:'#fff', border:'none', padding:'6px 14px',
+                        borderRadius:8, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      📄 Ver documento
+                    </button>
+                    <button onClick={async () => {
+                      if (!confirm('¿Aprobar la verificación? Se activará el sello "Verificado" y se borrará el documento.')) return
+                      await updateProvider(editProv.id, { verification_status: 'approved' })
+                    }}
+                      style={{ background:'#10B981', color:'#fff', border:'none', padding:'6px 14px',
+                        borderRadius:8, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      ✓ Aprobar
+                    </button>
+                    <button onClick={async () => {
+                      const reason = prompt('Motivo del rechazo (lo verá el proveedor):')
+                      if (reason == null) return
+                      await updateProvider(editProv.id, {
+                        verification_status: 'rejected',
+                        verification_notes:  reason.trim() || null,
+                      })
+                    }}
+                      style={{ background:'#EF4444', color:'#fff', border:'none', padding:'6px 14px',
+                        borderRadius:8, fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                      ✕ Rechazar
+                    </button>
+                  </div>
+                )}
+                {editProv.verification_status === 'rejected' && editProv.verification_notes && (
+                  <div style={{ fontSize:11, color:'#9CA3AF', fontStyle:'italic' }}>
+                    Motivo: {editProv.verification_notes}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Datos básicos */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               {[['Nombre','name','text'],['Ciudad','city','text'],

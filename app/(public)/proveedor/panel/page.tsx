@@ -59,6 +59,10 @@ type Provider = {
   description: string | null
   photo_idx: number
   photo_url: string | null
+  verified: boolean
+  verification_status: 'none' | 'pending' | 'approved' | 'rejected' | null
+  verification_doc_type: string | null
+  verification_notes: string | null
   rating: number
   total_reviews: number
   total_bookings: number
@@ -157,6 +161,10 @@ function ProveedorPanelInner() {
 
   // Galería de servicios (subida múltiple)
   const [uploadingMediaFor, setUploadingMediaFor] = useState<string | null>(null)
+
+  // Verificación
+  const [verifDocType, setVerifDocType] = useState<'dni' | 'cif' | 'rc'>('dni')
+  const [verifUploading, setVerifUploading] = useState(false)
 
   // Cobros
   const [earnings,        setEarnings]        = useState<any | null>(null)
@@ -313,6 +321,29 @@ function ProveedorPanelInner() {
       toast.error(err.message || 'No se pudo enviar')
     }
     setSendingMsg(false)
+  }
+
+  async function uploadVerificationDoc(file: File) {
+    if (!provider) return
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Archivo demasiado grande (máx 8MB)')
+      return
+    }
+    setVerifUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('provider_id', provider.id)
+      fd.append('doc_type', verifDocType)
+      const res = await fetch('/api/proveedor/verification', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setProvider(p => p ? { ...p, verification_status: 'pending', verification_doc_type: verifDocType } as Provider : p)
+      toast.success('Documento enviado. Te avisaremos por email cuando lo revisemos.')
+    } catch (err: any) {
+      toast.error(err.message || 'Error al subir el documento')
+    }
+    setVerifUploading(false)
   }
 
   async function uploadServiceMedia(serviceId: string, file: File) {
@@ -1064,6 +1095,80 @@ function ProveedorPanelInner() {
                   </label>
                   <p className="text-[11px] text-ink/45 mt-2 leading-relaxed">
                     Es la imagen que aparecerá en tu ficha y en los listados públicos. JPG, PNG o WEBP. Máximo 10MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Verificación */}
+            <div className={`border-2 rounded-2xl p-5 mb-5 shadow-card ${
+              provider?.verified
+                ? 'bg-emerald-50 border-emerald-200'
+                : provider?.verification_status === 'pending'
+                  ? 'bg-amber-50 border-amber-200'
+                  : provider?.verification_status === 'rejected'
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-white border-stone-200'
+            }`}>
+              <div className="flex items-start gap-3">
+                <div className="text-3xl">
+                  {provider?.verified ? '🛡️' :
+                   provider?.verification_status === 'pending' ? '⏳' :
+                   provider?.verification_status === 'rejected' ? '❌' : '📄'}
+                </div>
+                <div className="flex-1">
+                  <div className="text-[10px] font-bold uppercase tracking-widest mb-1"
+                    style={{ color: provider?.verified ? '#059669' : provider?.verification_status === 'rejected' ? '#dc2626' : '#92400e' }}>
+                    Verificación
+                  </div>
+                  {provider?.verified ? (
+                    <>
+                      <div className="font-semibold text-ink">Cuenta verificada</div>
+                      <p className="text-xs text-ink/65 mt-0.5">El sello "Verificado" aparece en tu ficha pública. Los clientes confían más en proveedores verificados.</p>
+                    </>
+                  ) : provider?.verification_status === 'pending' ? (
+                    <>
+                      <div className="font-semibold text-ink">En revisión</div>
+                      <p className="text-xs text-ink/65 mt-0.5">Tu documento está siendo revisado por nuestro equipo. Te avisaremos en menos de 48h.</p>
+                    </>
+                  ) : provider?.verification_status === 'rejected' ? (
+                    <>
+                      <div className="font-semibold text-ink">Documento rechazado</div>
+                      {provider?.verification_notes && (
+                        <p className="text-xs text-red-700 mt-1 italic">Motivo: {provider.verification_notes}</p>
+                      )}
+                      <p className="text-xs text-ink/65 mt-1">Puedes volver a subir un documento corrigiendo el motivo indicado.</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-semibold text-ink">Consigue el sello "Verificado"</div>
+                      <p className="text-xs text-ink/65 mt-0.5">Sube tu DNI, CIF o seguro de RC. Los proveedores verificados convierten hasta 2× más.</p>
+                    </>
+                  )}
+
+                  {(!provider?.verified && provider?.verification_status !== 'pending') && (
+                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                      <select value={verifDocType}
+                        onChange={e => setVerifDocType(e.target.value as any)}
+                        disabled={verifUploading}
+                        className="border border-stone-200 bg-white rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-coral">
+                        <option value="dni">DNI / NIE</option>
+                        <option value="cif">CIF / autónomo</option>
+                        <option value="rc">Seguro de RC</option>
+                      </select>
+                      <label className={`inline-flex items-center justify-center bg-ink text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer hover:bg-ink/85 transition-colors ${verifUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {verifUploading ? 'Subiendo...' : '📤 Subir documento'}
+                        <input type="file" accept="image/*,application/pdf" className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (f) uploadVerificationDoc(f)
+                            e.target.value = ''
+                          }} />
+                      </label>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-ink/40 mt-2 leading-relaxed">
+                    🔒 El documento se guarda en un bucket privado, solo lo ve el equipo de FiestaGo y se borra automáticamente tras la revisión.
                   </p>
                 </div>
               </div>
