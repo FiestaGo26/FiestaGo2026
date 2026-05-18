@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { calcCommission } from '@/lib/constants'
 import { emailAdminNewBooking, emailProviderNewBooking, emailClientBookingReceived } from '@/lib/resend'
+import { requireClientAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -123,13 +124,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// GET /api/bookings — get bookings for client
+// GET /api/bookings — get bookings for client (must be the client themselves)
 export async function GET(req: NextRequest) {
-  const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
   const email = searchParams.get('email')
 
-  if (!email) return NextResponse.json({ error: 'Email requerido' }, { status: 400 })
+  const auth = await requireClientAuth(req, email)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('bookings')

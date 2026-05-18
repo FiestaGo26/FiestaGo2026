@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -13,6 +14,13 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const serviceId = searchParams.get('service_id')
   if (!serviceId) return NextResponse.json({ error: 'service_id requerido' }, { status: 400 })
+
+  const { data: svc } = await supabase
+    .from('provider_services').select('provider_id').eq('id', serviceId).maybeSingle()
+  if (!svc) return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 404 })
+
+  const auth = await requireProviderAuth(req, svc.provider_id)
+  if (!auth.ok) return auth.response
 
   const { data, error } = await supabase
     .from('service_media')
@@ -29,7 +37,6 @@ export async function GET(req: NextRequest) {
 // Sube el archivo y crea fila en service_media. Si es la primera imagen
 // del servicio, queda marcada como primary y actualiza provider_services.media_url.
 export async function POST(req: NextRequest) {
-  const supabase = createAdminClient()
   const formData = await req.formData()
   const file       = formData.get('file') as File | null
   const serviceId  = formData.get('service_id') as string | null
@@ -38,6 +45,11 @@ export async function POST(req: NextRequest) {
   if (!file || !serviceId || !providerId) {
     return NextResponse.json({ error: 'file, service_id y provider_id requeridos' }, { status: 400 })
   }
+
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   // Validar que el servicio pertenece al provider
   const { data: svc } = await supabase
@@ -122,13 +134,16 @@ export async function POST(req: NextRequest) {
 // PATCH body: { id, service_id, provider_id, is_primary?: true }
 // Marca una imagen como portada (y desmarca el resto del servicio).
 export async function PATCH(req: NextRequest) {
-  const supabase = createAdminClient()
   const { id, service_id, provider_id, is_primary } = await req.json().catch(() => ({}))
 
   if (!id || !service_id || !provider_id) {
     return NextResponse.json({ error: 'id, service_id y provider_id requeridos' }, { status: 400 })
   }
 
+  const auth = await requireProviderAuth(req, provider_id)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
   const { data: svc } = await supabase
     .from('provider_services')
     .select('provider_id').eq('id', service_id).maybeSingle()
@@ -157,7 +172,6 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE ?id=...&service_id=...&provider_id=...
 export async function DELETE(req: NextRequest) {
-  const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
   const id         = searchParams.get('id')
   const serviceId  = searchParams.get('service_id')
@@ -167,6 +181,10 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'id, service_id y provider_id requeridos' }, { status: 400 })
   }
 
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
   const { data: svc } = await supabase
     .from('provider_services').select('provider_id')
     .eq('id', serviceId).maybeSingle()

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireClientAuth, requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 // GET /api/messages/threads?role=provider&token=<provider_id>
 // GET /api/messages/threads?role=client&token=<client_email>
-// Devuelve, por cada reserva confirmada/completada, último mensaje +
-// número de no leídos para el rol que consulta.
 export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
@@ -24,8 +23,12 @@ export async function GET(req: NextRequest) {
     .in('status', ['confirmed', 'completed'])
 
   if (role === 'provider') {
+    const auth = await requireProviderAuth(req, token)
+    if (!auth.ok) return auth.response
     bookingsQ = bookingsQ.eq('provider_id', token)
   } else if (role === 'client') {
+    const auth = await requireClientAuth(req, token)
+    if (!auth.ok) return auth.response
     bookingsQ = bookingsQ.eq('client_email', token)
   } else {
     return NextResponse.json({ error: 'role no válido' }, { status: 400 })

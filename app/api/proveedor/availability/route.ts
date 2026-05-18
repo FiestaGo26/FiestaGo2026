@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-
-function checkAuth(req: NextRequest) {
-  return !!req.headers.get('x-provider-token')
-}
+import { requireProviderAuth } from '@/lib/auth'
 
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  const supabase = createAdminClient()
   const id = new URL(req.url).searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+  const auth = await requireProviderAuth(req, id)
+  if (!auth.ok) return auth.response
 
-  // Get availability from a JSON field we store in the provider record
+  const supabase = createAdminClient()
   const { data: provider } = await supabase
     .from('providers')
     .select('short_desc')
-    .eq('id', id)
+    .eq('id', id!)
     .single()
 
   let availability = []
@@ -29,12 +25,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  const supabase = createAdminClient()
   const { providerId, date, available } = await req.json()
   if (!providerId || !date) return NextResponse.json({ error: 'Datos requeridos' }, { status: 400 })
 
-  // Get current availability
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
   const { data: provider } = await supabase
     .from('providers')
     .select('short_desc')
@@ -48,7 +45,6 @@ export async function POST(req: NextRequest) {
     }
   } catch {}
 
-  // Update or add the date
   const idx = availability.findIndex((a: any) => a.date === date)
   if (idx >= 0) {
     availability[idx].available = available
@@ -56,7 +52,6 @@ export async function POST(req: NextRequest) {
     availability.push({ date, available })
   }
 
-  // Save back — clean old dates
   const cutoff = new Date().toISOString().split('T')[0]
   availability = availability.filter((a: any) => a.date >= cutoff)
 

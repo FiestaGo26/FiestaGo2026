@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-
-function checkAuth(req: NextRequest) {
-  return !!req.headers.get('x-provider-token')
-}
+import { requireProviderAuth } from '@/lib/auth'
 
 // Antes de aceptar la reserva, el proveedor solo ve datos generales.
 // Esto evita que el proveedor contacte al cliente fuera de la plataforma
@@ -27,10 +24,10 @@ function maskForProvider(b: any) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  const supabase = createAdminClient()
   const id = new URL(req.url).searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+  const auth = await requireProviderAuth(req, id)
+  if (!auth.ok) return auth.response
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('bookings')
@@ -44,10 +41,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  const supabase = createAdminClient()
   const { id, status, providerId } = await req.json()
   if (!id || !status) return NextResponse.json({ error: 'Datos requeridos' }, { status: 400 })
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+  const supabase = createAdminClient()
 
   const updates: any = { status }
   if (status === 'confirmed') updates.confirmed_at = new Date().toISOString()

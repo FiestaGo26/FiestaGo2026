@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function checkAuth(req: NextRequest) {
-  return !!req.headers.get('x-provider-token')
-}
-
 // GET /api/proveedor/stats?provider_id=...&days=30
 export async function GET(req: NextRequest) {
-  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-
   const { searchParams } = new URL(req.url)
   const providerId = searchParams.get('provider_id')
   const days       = Math.min(parseInt(searchParams.get('days') || '30'), 365)
-  if (!providerId) return NextResponse.json({ error: 'provider_id requerido' }, { status: 400 })
+
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()

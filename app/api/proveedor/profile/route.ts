@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireProviderAuth, getAuthUser, isAdminRequest } from '@/lib/auth'
+
+// Lista blanca de campos que el proveedor puede modificar en su perfil.
+// status, featured, verified, verification_status, agent_*, outreach_* y
+// otros campos de control NO entran — esos los gestiona el admin.
+const ALLOWED_FIELDS = new Set([
+  'name', 'phone', 'website', 'instagram', 'description', 'short_desc',
+  'price_base', 'price_unit', 'specialties', 'photo_url',
+  'auto_reply_message', 'reply_templates',
+])
 
 export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
@@ -9,6 +19,18 @@ export async function GET(req: NextRequest) {
 
   if (!id && !email) {
     return NextResponse.json({ error: 'ID o email requerido' }, { status: 400 })
+  }
+
+  // Autenticación: admin OK, o el propio proveedor (sesión Supabase).
+  if (!isAdminRequest(req)) {
+    const user = await getAuthUser()
+    if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    const targetEmail = email || (
+      id ? (await supabase.from('providers').select('email').eq('id', id).maybeSingle()).data?.email : null
+    )
+    if (!targetEmail || (user.email || '').toLowerCase() !== String(targetEmail).toLowerCase()) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
   }
 
   let query = supabase.from('providers').select('*')
@@ -37,9 +59,21 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const supabase = createAdminClient()
   const body = await req.json()
-  const { id, ...updates } = body
+  const { id, ...rawUpdates } = body
 
-  if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+  const auth = await requireProviderAuth(req, id)
+  if (!auth.ok) return auth.response
+
+  // Filtrar a campos editables. Cualquier campo fuera de ALLOWED_FIELDS
+  // se ignora (esto incluye status, featured, verified, etc).
+  const updates: Record<string, any> = {}
+  for (const [k, v] of Object.entries(rawUpdates)) {
+    if (ALLOWED_FIELDS.has(k)) updates[k] = v
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'Nada que actualizar' }, { status: 400 })
+  }
 
   const { data, error } = await supabase
     .from('providers')

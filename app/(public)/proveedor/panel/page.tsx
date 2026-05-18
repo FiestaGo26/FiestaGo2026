@@ -108,6 +108,16 @@ function ProveedorPanelInner() {
   const supabase     = createClient()
   const adminAsId    = searchParams?.get('as') || null
   const [isAdminView, setIsAdminView] = useState(false)
+  // Wrapper que añade x-admin-password si estamos en modo admin. Sin esto
+  // los endpoints autenticados rechazarían al admin impersonando.
+  const apiFetch = (url: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers || {})
+    if (typeof window !== 'undefined' && adminAsId) {
+      const pwd = localStorage.getItem('fg_admin_pass')
+      if (pwd) headers.set('x-admin-password', pwd)
+    }
+    return fetch(url, { ...init, headers })
+  }
   const [tab,      setTab]      = useState('dashboard')
   const [provider, setProvider] = useState<Provider | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -199,7 +209,7 @@ function ProveedorPanelInner() {
   async function loadStats(providerId: string, days: number) {
     setStatsLoading(true)
     try {
-      const res = await fetch(`/api/proveedor/stats?provider_id=${providerId}&days=${days}`, {
+      const res = await apiFetch(`/api/proveedor/stats?provider_id=${providerId}&days=${days}`, {
         headers: { 'x-provider-token': providerId }
       })
       const data = await res.json()
@@ -220,7 +230,7 @@ function ProveedorPanelInner() {
   async function loadReviews(providerId: string) {
     setReviewsLoading(true)
     try {
-      const res = await fetch(`/api/proveedor/reviews?provider_id=${providerId}`)
+      const res = await apiFetch(`/api/proveedor/reviews?provider_id=${providerId}`)
       const data = await res.json()
       setReviews(data.reviews || [])
     } catch {
@@ -237,7 +247,7 @@ function ProveedorPanelInner() {
   async function loadEarnings(providerId: string, year: number) {
     setEarningsLoading(true)
     try {
-      const res = await fetch(`/api/proveedor/earnings?provider_id=${providerId}&year=${year}`)
+      const res = await apiFetch(`/api/proveedor/earnings?provider_id=${providerId}&year=${year}`)
       const data = await res.json()
       setEarnings(data)
     } catch { setEarnings(null) }
@@ -270,7 +280,7 @@ function ProveedorPanelInner() {
   async function loadThreads(providerId: string) {
     setThreadsLoading(true)
     try {
-      const res = await fetch(`/api/messages/threads?role=provider&token=${providerId}`)
+      const res = await apiFetch(`/api/messages/threads?role=provider&token=${providerId}`)
       const data = await res.json()
       setThreads(data.threads || [])
     } catch {
@@ -289,7 +299,7 @@ function ProveedorPanelInner() {
     setOpenThread(thread)
     setThreadMessages([])
     try {
-      const res = await fetch(`/api/messages?booking_id=${thread.booking_id}&role=provider&token=${provider.id}`)
+      const res = await apiFetch(`/api/messages?booking_id=${thread.booking_id}&role=provider&token=${provider.id}`)
       const data = await res.json()
       setThreadMessages(data.messages || [])
       // Refrescar contador de no leídos en la lista
@@ -305,7 +315,7 @@ function ProveedorPanelInner() {
     if (!text) return
     setSendingMsg(true)
     try {
-      const res = await fetch('/api/messages', {
+      const res = await apiFetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -337,7 +347,7 @@ function ProveedorPanelInner() {
       fd.append('file', file)
       fd.append('provider_id', provider.id)
       fd.append('doc_type', verifDocType)
-      const res = await fetch('/api/proveedor/verification', { method: 'POST', body: fd })
+      const res = await apiFetch('/api/proveedor/verification', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
       setProvider(p => p ? { ...p, verification_status: 'pending', verification_doc_type: verifDocType } as Provider : p)
@@ -356,7 +366,7 @@ function ProveedorPanelInner() {
       fd.append('file', file)
       fd.append('service_id', serviceId)
       fd.append('provider_id', provider.id)
-      const res = await fetch('/api/proveedor/services/media', { method: 'POST', body: fd })
+      const res = await apiFetch('/api/proveedor/services/media', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
       setServices(prev => prev.map(s => s.id === serviceId
@@ -374,7 +384,7 @@ function ProveedorPanelInner() {
     if (!confirm('¿Eliminar este archivo de la galería?')) return
     try {
       const url = `/api/proveedor/services/media?id=${mediaId}&service_id=${serviceId}&provider_id=${provider.id}`
-      const res = await fetch(url, { method: 'DELETE' })
+      const res = await apiFetch(url, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
       setServices(prev => prev.map(s => {
@@ -392,7 +402,7 @@ function ProveedorPanelInner() {
   async function setPrimaryMedia(serviceId: string, mediaId: string) {
     if (!provider) return
     try {
-      const res = await fetch('/api/proveedor/services/media', {
+      const res = await apiFetch('/api/proveedor/services/media', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: mediaId, service_id: serviceId, provider_id: provider.id, is_primary: true }),
@@ -412,7 +422,7 @@ function ProveedorPanelInner() {
   async function saveReplyTemplates(next: Array<{ label: string; body: string }>) {
     if (!provider) return
     try {
-      const res = await fetch('/api/proveedor/profile', {
+      const res = await apiFetch('/api/proveedor/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: provider.id, reply_templates: next }),
@@ -436,7 +446,7 @@ function ProveedorPanelInner() {
     const text = (replyDraft[bookingId] || '').trim()
     setReplyingId(bookingId)
     try {
-      const res = await fetch('/api/proveedor/reviews', {
+      const res = await apiFetch('/api/proveedor/reviews', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -480,7 +490,7 @@ function ProveedorPanelInner() {
       const url = providerIdOverride
         ? `/api/proveedor/profile?id=${providerIdOverride}`
         : `/api/proveedor/profile?email=${encodeURIComponent(email!)}`
-      const res  = await fetch(url)
+      const res  = await apiFetch(url)
       const data = await res.json()
       if (!data.provider) {
         setNoProviderForEmail(email || providerIdOverride)
@@ -491,7 +501,7 @@ function ProveedorPanelInner() {
       setProvider(data.provider)
       // Cargar servicios desde la nueva tabla provider_services
       try {
-        const svcRes = await fetch(`/api/proveedor/services?provider_id=${data.provider.id}`)
+        const svcRes = await apiFetch(`/api/proveedor/services?provider_id=${data.provider.id}`)
         const svcData = await svcRes.json()
         setServices(svcData.services || [])
       } catch { setServices([]) }
@@ -508,14 +518,14 @@ function ProveedorPanelInner() {
       setReplyTemplates(Array.isArray(data.provider.reply_templates) ? data.provider.reply_templates : [])
 
       // Load bookings (envía header de auth)
-      const bookRes  = await fetch(`/api/proveedor/bookings?id=${data.provider.id}`, {
+      const bookRes  = await apiFetch(`/api/proveedor/bookings?id=${data.provider.id}`, {
         headers: { 'x-provider-token': data.provider.id }
       })
       const bookData = await bookRes.json()
       setBookings(bookData.bookings || [])
 
       // Load availability
-      const availRes  = await fetch(`/api/proveedor/availability?id=${data.provider.id}`)
+      const availRes  = await apiFetch(`/api/proveedor/availability?id=${data.provider.id}`)
       const availData = await availRes.json()
       const map: Record<string,boolean> = {}
       ;(availData.availability || []).forEach((a: any) => { map[a.date] = a.available })
@@ -538,7 +548,7 @@ function ProveedorPanelInner() {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('provider_id', provider.id)
-      const res = await fetch('/api/proveedor/profile/upload-photo', { method:'POST', body: fd })
+      const res = await apiFetch('/api/proveedor/profile/upload-photo', { method:'POST', body: fd })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || `Error HTTP ${res.status}`)
       setProfile(p => ({ ...p, photo_url: data.url }))
@@ -554,7 +564,7 @@ function ProveedorPanelInner() {
     if (!provider) return
     setSaving(true)
     try {
-      const res = await fetch('/api/proveedor/profile', {
+      const res = await apiFetch('/api/proveedor/profile', {
         method: 'PATCH',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({
@@ -598,7 +608,7 @@ function ProveedorPanelInner() {
     const newVal  = !current
     setAvailability(prev => ({ ...prev, [dateStr]: newVal }))
     try {
-      await fetch('/api/proveedor/availability', {
+      await apiFetch('/api/proveedor/availability', {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({ providerId: provider.id, date: dateStr, available: newVal }),
@@ -614,7 +624,7 @@ function ProveedorPanelInner() {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('provider_id', provider.id)
-    const res = await fetch('/api/proveedor/services/upload', { method: 'POST', body: fd })
+    const res = await apiFetch('/api/proveedor/services/upload', { method: 'POST', body: fd })
     const data = await res.json()
     if (!res.ok) { toast.error(data.error || 'Error subiendo archivo'); return null }
     return { url: data.url, media_type: data.media_type }
@@ -632,7 +642,7 @@ function ProveedorPanelInner() {
         if (upl) { media_url = upl.url; media_type = upl.media_type }
       }
 
-      const res = await fetch('/api/proveedor/services', {
+      const res = await apiFetch('/api/proveedor/services', {
         method: 'POST',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({
@@ -667,7 +677,7 @@ function ProveedorPanelInner() {
     if (!editSvc || !provider) return
     setSaving(true)
     try {
-      const res = await fetch('/api/proveedor/services', {
+      const res = await apiFetch('/api/proveedor/services', {
         method: 'PATCH',
         headers: { 'Content-Type':'application/json' },
         body: JSON.stringify({
@@ -693,7 +703,7 @@ function ProveedorPanelInner() {
 
   async function deleteService(id: string) {
     if (!provider || !confirm('¿Eliminar este servicio?')) return
-    await fetch(`/api/proveedor/services?id=${id}`, { method:'DELETE' })
+    await apiFetch(`/api/proveedor/services?id=${id}`, { method:'DELETE' })
     setServices(s => s.filter(x => x.id !== id))
     toast.success('Servicio eliminado')
   }
@@ -701,7 +711,7 @@ function ProveedorPanelInner() {
   // ── DISPONIBILIDAD POR SERVICIO ────────────────────────────────────────
   async function loadAvailability(serviceId: string) {
     if (!provider) return
-    const res = await fetch(`/api/proveedor/service-availability?service_id=${serviceId}`, {
+    const res = await apiFetch(`/api/proveedor/service-availability?service_id=${serviceId}`, {
       headers: { 'x-provider-token': provider.id }
     })
     const data = await res.json()
@@ -724,7 +734,7 @@ function ProveedorPanelInner() {
     // Optimistic update
     const wasBlocked = availBlocked.includes(dateStr)
     setAvailBlocked(prev => wasBlocked ? prev.filter(d => d !== dateStr) : [...prev, dateStr])
-    const res = await fetch('/api/proveedor/service-availability', {
+    const res = await apiFetch('/api/proveedor/service-availability', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'x-provider-token': provider.id },
       body: JSON.stringify({ service_id: availSvc.id, blocked_date: dateStr }),
@@ -738,7 +748,7 @@ function ProveedorPanelInner() {
 
   async function updateBooking(id: string, status: string) {
     if (!provider) return
-    await fetch('/api/proveedor/bookings', {
+    await apiFetch('/api/proveedor/bookings', {
       method: 'PATCH',
       headers: { 'Content-Type':'application/json', 'x-provider-token': provider.id },
       body: JSON.stringify({ id, status, providerId: provider.id }),

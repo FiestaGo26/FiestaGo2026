@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
 export const dynamic = 'force-dynamic'
 
 // POST /api/proveedor/services/upload
-// multipart/form-data: file, provider_id, service_id (opcional)
-// devuelve { url, media_type }
+// multipart/form-data: file, provider_id
 export async function POST(req: NextRequest) {
-  const supabase = createAdminClient()
-
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   const providerId = formData.get('provider_id') as string | null
 
-  if (!file || !providerId) {
-    return NextResponse.json({ error: 'file y provider_id requeridos' }, { status: 400 })
-  }
+  if (!file) return NextResponse.json({ error: 'file requerido' }, { status: 400 })
+
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
   const mediaType =

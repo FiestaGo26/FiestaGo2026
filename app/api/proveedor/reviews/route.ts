@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 // GET /api/proveedor/reviews?provider_id=...
-// Lista todas las reseñas (con datos completos) de un proveedor para su panel.
 export async function GET(req: NextRequest) {
-  const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
   const providerId = searchParams.get('provider_id')
 
-  if (!providerId) {
-    return NextResponse.json({ error: 'provider_id requerido' }, { status: 400 })
-  }
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('bookings')
@@ -40,16 +40,17 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/proveedor/reviews
-// body: { booking_id, provider_id, reply }
-// El proveedor responde a una reseña. Solo puede responder a reseñas de sus
-// propias reservas. Reply vacío/null borra la respuesta.
 export async function PATCH(req: NextRequest) {
-  const supabase = createAdminClient()
   const { booking_id, provider_id, reply } = await req.json().catch(() => ({}))
 
   if (!booking_id || !provider_id) {
     return NextResponse.json({ error: 'booking_id y provider_id requeridos' }, { status: 400 })
   }
+
+  const auth = await requireProviderAuth(req, provider_id)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   const { data: booking, error: getErr } = await supabase
     .from('bookings')

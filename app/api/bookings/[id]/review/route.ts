@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireClientAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 // POST /api/bookings/[id]/review
-// body: { client_email, rating (1-5), text? }
-// El cliente solo puede reseñar reservas suyas (mismo email), confirmadas
-// o completadas, cuya fecha ya haya pasado, y solo una vez.
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createAdminClient()
   const bookingId = params.id
   const { client_email, rating, text } = await req.json().catch(() => ({}))
 
@@ -17,6 +14,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!client_email || !Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 5) {
     return NextResponse.json({ error: 'Email y rating (1-5) requeridos' }, { status: 400 })
   }
+
+  const auth = await requireClientAuth(req, client_email)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   const { data: booking, error: getErr } = await supabase
     .from('bookings')

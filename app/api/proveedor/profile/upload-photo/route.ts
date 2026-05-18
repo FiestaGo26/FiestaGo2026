@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
 export const dynamic = 'force-dynamic'
 
 // POST /api/proveedor/profile/upload-photo
-// multipart/form-data: file, provider_id
-// Sube la imagen al bucket `provider-media` y actualiza providers.photo_url
-// en una sola request para evitar estado inconsistente.
 export async function POST(req: NextRequest) {
-  const supabase = createAdminClient()
-
   const formData   = await req.formData()
   const file       = formData.get('file') as File | null
   const providerId = formData.get('provider_id') as string | null
@@ -19,6 +15,11 @@ export async function POST(req: NextRequest) {
   if (!file || !providerId) {
     return NextResponse.json({ error: 'file y provider_id requeridos' }, { status: 400 })
   }
+
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
   if (!['jpg','jpeg','png','webp','heic'].includes(ext)) {

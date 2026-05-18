@@ -1,31 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireClientAuth, requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const MAX_BODY = 2000
 
-// Identifica que el llamante es realmente la parte que dice ser y devuelve
-// la reserva ya cargada. Para cliente: sender_token = email del cliente.
-// Para proveedor: sender_token = provider_id.
-async function authorize(supabase: any, bookingId: string, role: string, token: string) {
+// Verifica auth real (Supabase session / admin) y la pertenencia a la
+// reserva. Devuelve la reserva o un NextResponse de error.
+async function authorize(req: NextRequest, bookingId: string, role: string, token: string) {
+  const supabase = createAdminClient()
   const { data: booking } = await supabase
     .from('bookings')
     .select('id, client_email, provider_id, status')
     .eq('id', bookingId)
     .maybeSingle()
-  if (!booking) return { error: 'Reserva no encontrada', status: 404 }
+  if (!booking) return { errorResponse: NextResponse.json({ error: 'Reserva no encontrada' }, { status: 404 }) }
   if (!['confirmed', 'completed'].includes(booking.status)) {
-    return { error: 'Solo se puede chatear sobre reservas confirmadas', status: 400 }
+    return { errorResponse: NextResponse.json({ error: 'Solo se puede chatear sobre reservas confirmadas' }, { status: 400 }) }
   }
   if (role === 'client') {
     if ((booking.client_email || '').toLowerCase() !== String(token).toLowerCase())
-      return { error: 'No autorizado', status: 403 }
+      return { errorResponse: NextResponse.json({ error: 'No autorizado' }, { status: 403 }) }
+    const auth = await requireClientAuth(req, booking.client_email)
+    if (!auth.ok) return { errorResponse: auth.response }
   } else if (role === 'provider') {
-    if (booking.provider_id !== token) return { error: 'No autorizado', status: 403 }
+    if (booking.provider_id !== token)
+      return { errorResponse: NextResponse.json({ error: 'No autorizado' }, { status: 403 }) }
+    const auth = await requireProviderAuth(req, booking.provider_id)
+    if (!auth.ok) return { errorResponse: auth.response }
   } else {
-    return { error: 'Rol no válido', status: 400 }
+    return { errorResponse: NextResponse.json({ error: 'Rol no válido' }, { status: 400 }) }
   }
   return { booking }
 }
@@ -43,8 +49,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'booking_id, role y token requeridos' }, { status: 400 })
   }
 
-  const auth = await authorize(supabase, bookingId, role, token)
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = await authorize(req, bookingId, role, token)
+  if ('errorResponse' in auth) return auth.errorResponse
 
   const { data: messages, error } = await supabase
     .from('messages')
@@ -79,8 +85,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Máximo ${MAX_BODY} caracteres` }, { status: 400 })
   }
 
-  const auth = await authorize(supabase, booking_id, role, token)
-  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+  const auth = await authorize(req, booking_id, role, token)
+  if ('errorResponse' in auth) return auth.errorResponse
 
   const { data, error } = await supabase
     .from('messages')

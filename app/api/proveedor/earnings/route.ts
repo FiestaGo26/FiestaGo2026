@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { requireProviderAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 // GET /api/proveedor/earnings?provider_id=...&year=2026
-// Devuelve el desglose de cobros: total, comisión, neto + agregado mensual
-// + lista de transacciones individuales. Solo cuenta reservas confirmadas
-// o completadas (las canceladas/disputadas no entran).
 export async function GET(req: NextRequest) {
-  const supabase = createAdminClient()
   const { searchParams } = new URL(req.url)
   const providerId = searchParams.get('provider_id')
   const yearParam  = searchParams.get('year')
   const year       = yearParam ? parseInt(yearParam) : new Date().getFullYear()
 
-  if (!providerId) {
-    return NextResponse.json({ error: 'provider_id requerido' }, { status: 400 })
-  }
+  const auth = await requireProviderAuth(req, providerId)
+  if (!auth.ok) return auth.response
+
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('bookings')
