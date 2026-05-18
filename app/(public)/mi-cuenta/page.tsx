@@ -296,11 +296,14 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const eventPassed   = date <= today
+  const canChat       = !!booking.provider_id
+    && ['confirmed', 'completed'].includes(booking.status)
   const canReview     = !!booking.provider_id && eventPassed
     && ['confirmed', 'completed'].includes(booking.status)
     && booking.review_rating == null
   const hasReview     = booking.review_rating != null
 
+  const [showChat,   setShowChat]   = useState(false)
   const [showForm,   setShowForm]   = useState(false)
   const [hover,      setHover]      = useState(0)
   const [rating,     setRating]     = useState(0)
@@ -373,13 +376,21 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
           </div>
         )}
 
-        {/* CTA para reseñar */}
-        {canReview && !showForm && (
-          <button onClick={() => setShowForm(true)}
-            className="mt-3 text-xs font-bold text-coral hover:text-coral-dark transition-colors flex items-center gap-1">
-            ★ Dejar reseña
-          </button>
-        )}
+        {/* CTAs */}
+        <div className="flex flex-wrap gap-3 mt-3">
+          {canChat && (
+            <button onClick={() => setShowChat(true)}
+              className="text-xs font-bold text-coral hover:text-coral-dark transition-colors flex items-center gap-1">
+              💬 Chat con {booking.providers?.name || 'el proveedor'}
+            </button>
+          )}
+          {canReview && !showForm && (
+            <button onClick={() => setShowForm(true)}
+              className="text-xs font-bold text-coral hover:text-coral-dark transition-colors flex items-center gap-1">
+              ★ Dejar reseña
+            </button>
+          )}
+        </div>
 
         {/* Formulario de reseña */}
         {canReview && showForm && (
@@ -413,6 +424,99 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
             </div>
           </div>
         )}
+      </div>
+      {showChat && <ChatModal booking={booking} onClose={() => setShowChat(false)} />}
+    </div>
+  )
+}
+
+function ChatModal({ booking, onClose }: { booking: Booking; onClose: () => void }) {
+  const [messages, setMessages]   = useState<any[]>([])
+  const [loading,  setLoading]    = useState(true)
+  const [input,    setInput]      = useState('')
+  const [sending,  setSending]    = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    async function load() {
+      const res  = await fetch(`/api/messages?booking_id=${booking.id}&role=client&token=${encodeURIComponent(booking.client_email)}`)
+      const data = await res.json()
+      if (!alive) return
+      setMessages(data.messages || [])
+      setLoading(false)
+    }
+    load()
+    return () => { alive = false }
+  }, [booking.id, booking.client_email])
+
+  async function send() {
+    const text = input.trim()
+    if (!text) return
+    setSending(true)
+    try {
+      const res  = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          role: 'client',
+          token: booking.client_email,
+          body: text,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setMessages(prev => [...prev, data.message])
+      setInput('')
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo enviar')
+    }
+    setSending(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose}/>
+      <div className="relative w-full sm:max-w-lg bg-white sm:rounded-2xl shadow-2xl flex flex-col" style={{ height:'min(640px, 85vh)' }}>
+        <div className="px-5 py-3 border-b border-stone-200 flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-semibold text-ink">{booking.providers?.name || 'Proveedor'}</div>
+            <div className="text-[11px] text-ink/50">Evento {new Date(booking.event_date).toLocaleDateString('es-ES')}</div>
+          </div>
+          <button onClick={onClose}
+            className="text-2xl text-ink/40 hover:text-ink leading-none px-2">×</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 bg-stone-50/50 space-y-2">
+          {loading ? (
+            <div className="text-center text-ink/40 text-sm py-10">Cargando...</div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-ink/40 text-sm py-10">
+              Sé el primero en escribir. El proveedor recibirá tu mensaje en su panel.
+            </div>
+          ) : messages.map(m => {
+            const mine = m.sender_role === 'client'
+            const time = new Date(m.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+            return (
+              <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-snug ${mine ? 'bg-coral text-white' : 'bg-white border border-stone-200 text-ink'}`}>
+                  <div className="whitespace-pre-wrap">{m.body}</div>
+                  <div className={`text-[10px] mt-1 ${mine ? 'text-white/70' : 'text-ink/40'} text-right`}>{time}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="border-t border-stone-200 p-3 flex gap-2">
+          <input value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+            placeholder="Escribe un mensaje..."
+            maxLength={2000}
+            className="flex-1 border border-stone-200 rounded-xl px-4 py-2 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+          <button onClick={send} disabled={sending || !input.trim()}
+            className="bg-coral text-white font-bold text-sm px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
+            {sending ? '...' : 'Enviar'}
+          </button>
+        </div>
       </div>
     </div>
   )

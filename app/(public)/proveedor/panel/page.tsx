@@ -70,6 +70,7 @@ const TABS = [
   { id:'services',     icon:'💼', label:'Mis servicios'  },
   { id:'availability', icon:'📅', label:'Disponibilidad' },
   { id:'bookings',     icon:'📋', label:'Reservas'       },
+  { id:'messages',     icon:'💬', label:'Mensajes'       },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
@@ -149,6 +150,14 @@ function ProveedorPanelInner() {
   // Galería de servicios (subida múltiple)
   const [uploadingMediaFor, setUploadingMediaFor] = useState<string | null>(null)
 
+  // Mensajería
+  const [threads,       setThreads]       = useState<any[]>([])
+  const [threadsLoading, setThreadsLoading] = useState(false)
+  const [openThread,    setOpenThread]    = useState<any | null>(null)
+  const [threadMessages, setThreadMessages] = useState<any[]>([])
+  const [msgInput,      setMsgInput]      = useState('')
+  const [sendingMsg,    setSendingMsg]    = useState(false)
+
   // Stats
   const [statsData, setStatsData] = useState<{
     total_events: number
@@ -201,6 +210,64 @@ function ProveedorPanelInner() {
     if (tab === 'reviews' && provider?.id) loadReviews(provider.id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, provider?.id])
+
+  async function loadThreads(providerId: string) {
+    setThreadsLoading(true)
+    try {
+      const res = await fetch(`/api/messages/threads?role=provider&token=${providerId}`)
+      const data = await res.json()
+      setThreads(data.threads || [])
+    } catch {
+      setThreads([])
+    }
+    setThreadsLoading(false)
+  }
+
+  useEffect(() => {
+    if (tab === 'messages' && provider?.id) loadThreads(provider.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, provider?.id])
+
+  async function openChat(thread: any) {
+    if (!provider) return
+    setOpenThread(thread)
+    setThreadMessages([])
+    try {
+      const res = await fetch(`/api/messages?booking_id=${thread.booking_id}&role=provider&token=${provider.id}`)
+      const data = await res.json()
+      setThreadMessages(data.messages || [])
+      // Refrescar contador de no leídos en la lista
+      setThreads(prev => prev.map(t => t.booking_id === thread.booking_id ? { ...t, unread_count: 0 } : t))
+    } catch {
+      setThreadMessages([])
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!provider || !openThread) return
+    const text = msgInput.trim()
+    if (!text) return
+    setSendingMsg(true)
+    try {
+      const res = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: openThread.booking_id,
+          role: 'provider',
+          token: provider.id,
+          body: text,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setThreadMessages(prev => [...prev, data.message])
+      setMsgInput('')
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo enviar')
+    }
+    setSendingMsg(false)
+  }
 
   async function uploadServiceMedia(serviceId: string, file: File) {
     if (!provider) return
@@ -1296,6 +1363,115 @@ function ProveedorPanelInner() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* MESSAGES */}
+        {tab==='messages' && (
+          <div className="max-w-4xl">
+            <h1 className="font-serif text-2xl font-black text-ink mb-2">Mensajes</h1>
+            <p className="text-ink/55 text-sm mb-6">
+              Conversaciones con clientes de tus reservas confirmadas. El cliente solo te puede escribir aquí tras aceptar su reserva.
+            </p>
+
+            {threadsLoading ? (
+              <div className="text-center text-ink/40 py-12">Cargando conversaciones...</div>
+            ) : threads.length === 0 ? (
+              <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
+                <div className="text-4xl mb-3">💬</div>
+                <p className="text-ink/55 text-sm">Aún no tienes conversaciones. Cuando aceptes una reserva, el chat con ese cliente aparecerá aquí.</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-[320px_1fr] gap-4 bg-white border border-stone-200 rounded-2xl overflow-hidden" style={{ minHeight: 540 }}>
+                {/* Lista de hilos */}
+                <div className="border-r border-stone-200 overflow-y-auto" style={{ maxHeight: 600 }}>
+                  {threads.map(t => {
+                    const isOpen = openThread?.booking_id === t.booking_id
+                    const last   = t.last_message
+                    const dateF  = last?.created_at
+                      ? new Date(last.created_at).toLocaleDateString('es-ES', { day:'2-digit', month:'short' })
+                      : ''
+                    return (
+                      <button key={t.booking_id} onClick={() => openChat(t)}
+                        className={`w-full text-left px-4 py-3 border-b border-stone-100 flex items-start gap-3 transition-colors ${isOpen ? 'bg-coral/5' : 'hover:bg-stone-50'}`}>
+                        <div className="w-10 h-10 rounded-full bg-coral/10 text-coral flex items-center justify-center font-bold text-sm shrink-0">
+                          {(t.client_name || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div className="text-sm font-semibold text-ink truncate">{t.client_name}</div>
+                            <div className="text-[10px] text-ink/40 whitespace-nowrap">{dateF}</div>
+                          </div>
+                          <div className="text-xs text-ink/55 truncate">
+                            {last ? (
+                              <>{last.sender_role === 'provider' ? 'Tú: ' : ''}{last.body}</>
+                            ) : (
+                              <span className="italic text-ink/40">Sin mensajes — empieza la conversación</span>
+                            )}
+                          </div>
+                        </div>
+                        {t.unread_count > 0 && (
+                          <span className="bg-coral text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            {t.unread_count}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Conversación */}
+                {openThread ? (
+                  <div className="flex flex-col" style={{ maxHeight: 600 }}>
+                    <div className="px-4 py-3 border-b border-stone-200 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-semibold text-ink">{openThread.client_name}</div>
+                        <div className="text-[11px] text-ink/45">
+                          {openThread.client_email} · evento {new Date(openThread.event_date).toLocaleDateString('es-ES')}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                        {openThread.status}
+                      </span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-4 py-4 bg-stone-50/50 space-y-2">
+                      {threadMessages.length === 0 && (
+                        <div className="text-center text-ink/40 text-sm py-10">
+                          Aún no hay mensajes. Sé el primero en escribir.
+                        </div>
+                      )}
+                      {threadMessages.map(m => {
+                        const mine = m.sender_role === 'provider'
+                        const time = new Date(m.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+                        return (
+                          <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-snug ${mine ? 'bg-coral text-white' : 'bg-white border border-stone-200 text-ink'}`}>
+                              <div className="whitespace-pre-wrap">{m.body}</div>
+                              <div className={`text-[10px] mt-1 ${mine ? 'text-white/70' : 'text-ink/40'} text-right`}>{time}</div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="border-t border-stone-200 p-3 flex gap-2">
+                      <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                        placeholder="Escribe un mensaje..."
+                        maxLength={2000}
+                        className="flex-1 border border-stone-200 rounded-xl px-4 py-2 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                      <button onClick={sendChatMessage} disabled={sendingMsg || !msgInput.trim()}
+                        className="bg-coral text-white font-bold text-sm px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
+                        {sendingMsg ? '...' : 'Enviar'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center text-ink/40 text-sm p-10">
+                    Elige una conversación para empezar a chatear.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
