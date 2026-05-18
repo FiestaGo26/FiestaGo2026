@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireClientAuth, requireProviderAuth } from '@/lib/auth'
+import { emailChatMessage } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -99,5 +100,68 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Notificación por email al otro lado — solo si NO había ya mensajes sin
+  // leer de este emisor (para no spamear durante una conversación activa).
+  notifyByEmail(supabase, auth.booking, role, text, data.id).catch(err =>
+    console.error('notifyByEmail:', err?.message))
+
   return NextResponse.json({ message: data })
+}
+
+async function notifyByEmail(
+  supabase: any,
+  booking: any,
+  senderRole: string,
+  body: string,
+  newMessageId: string,
+) {
+  // Si ya existe otro mensaje del mismo emisor sin leer, este no genera email
+  // (consideramos que la conversación está activa y ya hay aviso pendiente).
+  const { count: pending } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('booking_id', booking.id)
+    .eq('sender_role', senderRole)
+    .is('read_at', null)
+    .neq('id', newMessageId)
+  if ((pending || 0) > 0) return
+
+  const { data: full } = await supabase
+    .from('bookings')
+    .select('client_name, client_email, event_date, providers(name, email)')
+    .eq('id', booking.id)
+    .single()
+  if (!full) return
+
+  const bookingDate = full.event_date
+    ? new Date(full.event_date).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' })
+    : ''
+
+  if (senderRole === 'client') {
+    // Notificar al proveedor
+    const provEmail = full.providers?.email
+    const provName  = full.providers?.name || 'Proveedor'
+    if (provEmail) {
+      await emailChatMessage({
+        to: provEmail,
+        recipientName: provName,
+        senderName: full.client_name || 'Cliente',
+        body,
+        bookingDate,
+        recipientRole: 'provider',
+      })
+    }
+  } else if (senderRole === 'provider') {
+    if (full.client_email) {
+      await emailChatMessage({
+        to: full.client_email,
+        recipientName: full.client_name || '',
+        senderName: full.providers?.name || 'Tu proveedor',
+        body,
+        bookingDate,
+        recipientRole: 'client',
+      })
+    }
+  }
 }

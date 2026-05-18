@@ -683,9 +683,70 @@ El equipo de FiestaGo`
   return sendEmail({ to: booking.client_email, subject, text, html })
 }
 
-// ════════════════════════════════════════════════════════════════
-//  OUTREACH (email del agente de captación, con List-Unsubscribe + HTML completo)
-// ════════════════════════════════════════════════════════════════
+// Aviso de mensaje nuevo en el chat de una reserva. Solo se envía cuando
+// no hay otros mensajes sin leer del mismo emisor (para no spamear durante
+// una conversación activa).
+export async function emailChatMessage(opts: {
+  to: string
+  recipientName: string
+  senderName: string
+  body: string
+  bookingDate: string
+  recipientRole: 'client' | 'provider'
+}) {
+  const { to, recipientName, senderName, body, bookingDate, recipientRole } = opts
+  if (!to) return { ok: false, error: 'Sin email destinatario' }
+
+  const ctaUrl = recipientRole === 'provider'
+    ? 'https://fiestago.es/proveedor/panel'
+    : 'https://fiestago.es/mi-cuenta'
+
+  const firstName = (recipientName || '').split(' ')[0] || ''
+  const subject = `💬 ${senderName}: "${body.slice(0, 60)}${body.length > 60 ? '…' : ''}"`
+
+  const text = `Hola ${firstName},
+
+${senderName} te ha escrito sobre la reserva del ${bookingDate}:
+
+"${body}"
+
+Responde desde tu panel: ${ctaUrl}
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:32px 36px 18px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#E8553E;margin-bottom:12px;">💬 Nuevo mensaje</div>
+          <h1 style="margin:0;font-family:Georgia,serif;font-size:22px;color:#1A1612;line-height:1.3;">
+            ${safe(senderName)} te ha escrito
+          </h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#8A7968;">Sobre la reserva del ${bookingDate}</p>
+        </td></tr>
+        <tr><td style="padding:20px 36px;">
+          <div style="background:#FBF9F4;border-left:3px solid #E8553E;padding:14px 18px;border-radius:0 8px 8px 0;font-size:14px;color:#1A1612;line-height:1.6;white-space:pre-wrap;">${safe(body)}</div>
+        </td></tr>
+        <tr><td style="padding:8px 36px 26px;">
+          <div style="text-align:center;">
+            <a href="${ctaUrl}" style="display:inline-block;background:#E8553E;color:#fff;padding:13px 30px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:14px;">
+              Responder en FiestaGo →
+            </a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:14px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:11px;color:#8A7968;">
+          Recibes este aviso porque hay un mensaje sin leer en tu chat de FiestaGo.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to, subject, text, html })
+}
 
 function splitSubjectAndBody(raw: string, fallbackSubject: string) {
   const m = raw.match(/^\s*ASUNTO:\s*(.+?)\s*\r?\n+/m)
