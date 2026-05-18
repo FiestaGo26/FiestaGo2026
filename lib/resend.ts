@@ -479,6 +479,79 @@ El equipo de FiestaGo`
   return sendEmail({ to: provider.email, subject, text, html })
 }
 
+// Confirma al cliente que su solicitud llegó y le entrega la auto-respuesta
+// del proveedor (si la tiene configurada). Es el primer email que recibe
+// el cliente nada más reservar.
+export async function emailClientBookingReceived(booking: any, provider: any) {
+  if (!booking?.client_email) return { ok: false, error: 'Cliente sin email' }
+
+  const replyMsg = (provider?.auto_reply_message || '').trim()
+  const subject  = `✓ Solicitud enviada a ${provider?.name || 'tu proveedor'}`
+
+  const text = `Hola ${(booking.client_name || '').split(' ')[0] || ''},
+
+Hemos enviado tu solicitud de reserva a ${provider?.name || 'el proveedor'} para el ${bookingDateF(booking.event_date)}.
+
+${replyMsg ? `Mensaje del proveedor:\n"${replyMsg}"\n\n` : ''}El proveedor confirmará tu reserva en su panel. Cuando lo haga te lo notificaremos por email y podrás chatear con él desde tu cuenta.
+
+Tu reserva:
+- Fecha:    ${bookingDateF(booking.event_date)}
+- Evento:   ${booking.event_type || 'otro'}
+- Importe:  ${(booking.total_amount || 0).toLocaleString()}€
+
+Ver el estado en tu cuenta: https://fiestago.es/mi-cuenta
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const replyBlock = replyMsg ? `
+        <tr><td style="padding:8px 36px 0;">
+          <div style="background:#FFF7ED;border:1px solid #FFE1CC;border-radius:10px;padding:16px 18px;">
+            <div style="font-size:10px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#E8553E;margin-bottom:8px;">💬 Mensaje de ${safe(provider?.name || 'tu proveedor')}</div>
+            <div style="font-size:14px;color:#1A1612;line-height:1.55;white-space:pre-wrap;">${safe(replyMsg)}</div>
+          </div>
+        </td></tr>` : ''
+
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:36px 36px 24px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#10B981;margin-bottom:14px;">✓ Solicitud enviada</div>
+          <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:26px;color:#1A1612;line-height:1.2;">
+            Hola ${safe((booking.client_name || '').split(' ')[0] || '')}, tu solicitud está en marcha.
+          </h1>
+          <p style="margin:0;font-size:15px;color:#5C534A;line-height:1.55;">
+            Hemos avisado a <strong>${safe(provider?.name || 'tu proveedor')}</strong> de tu reserva para el <strong style="color:#E8553E;">${bookingDateF(booking.event_date)}</strong>.
+          </p>
+        </td></tr>
+        ${replyBlock}
+        <tr><td style="padding:20px 36px 8px;">
+          <table width="100%" style="font-size:14px;color:#1A1612;">
+            <tr><td style="padding:6px 0;color:#8A7968;width:120px;">📅 Fecha</td><td style="padding:6px 0;font-weight:bold;color:#E8553E;">${bookingDateF(booking.event_date)}</td></tr>
+            <tr><td style="padding:6px 0;color:#8A7968;">🎉 Evento</td><td style="padding:6px 0;">${safe(booking.event_type || 'otro')}</td></tr>
+            <tr><td style="padding:6px 0;color:#8A7968;">💸 Importe</td><td style="padding:6px 0;font-weight:bold;">${(booking.total_amount || 0).toLocaleString()}€</td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:14px 36px 28px;">
+          <div style="text-align:center;">
+            <a href="https://fiestago.es/mi-cuenta" style="display:inline-block;background:#1A1612;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:13px;">
+              Ver mi reserva →
+            </a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · El marketplace de celebraciones · España
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: booking.client_email, subject, text, html })
+}
+
 // ════════════════════════════════════════════════════════════════
 //  OUTREACH (email del agente de captación, con List-Unsubscribe + HTML completo)
 // ════════════════════════════════════════════════════════════════

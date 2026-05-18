@@ -118,6 +118,7 @@ function ProveedorPanelInner() {
   const [profile, setProfile] = useState({
     name:'', phone:'', website:'', instagram:'', description:'', specialties:'',
     photo_url:'' as string,
+    auto_reply_message:'' as string,
   })
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
@@ -402,6 +403,7 @@ function ProveedorPanelInner() {
         description: data.provider.description || '',
         specialties: (data.provider.specialties || []).join(', '),
         photo_url:   data.provider.photo_url || '',
+        auto_reply_message: data.provider.auto_reply_message || '',
       })
 
       // Load bookings (envía header de auth)
@@ -462,6 +464,7 @@ function ProveedorPanelInner() {
           instagram:   profile.instagram || null,
           description: profile.description || null,
           specialties: profile.specialties.split(',').map(s=>s.trim()).filter(Boolean),
+          auto_reply_message: profile.auto_reply_message.trim() || null,
         }),
       })
       const data = await res.json()
@@ -1022,6 +1025,19 @@ function ProveedorPanelInner() {
                   onChange={e => setProfile(p => ({...p,specialties:e.target.value}))}
                   placeholder="ej. Bodas íntimas, Vídeo 4K"
                   className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+              </div>
+              <div className="mb-5 pt-4 border-t border-stone-200">
+                <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">
+                  Auto-respuesta al cliente
+                </label>
+                <p className="text-[11px] text-ink/45 mb-2 leading-relaxed">
+                  Email que recibirá el cliente nada más reservar. Reduce la ansiedad de la espera y mejora tu tasa de aceptación. Déjalo vacío para no enviar nada.
+                </p>
+                <textarea value={profile.auto_reply_message} rows={4} maxLength={1000}
+                  onChange={e => setProfile(p => ({...p, auto_reply_message: e.target.value}))}
+                  placeholder="¡Hola! Gracias por confiar en nosotros. Te respondo en menos de 24h con la confirmación. Si tienes alguna duda urgente, escríbeme por aquí."
+                  className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
+                <div className="text-[10px] text-ink/40 text-right mt-1">{profile.auto_reply_message.length}/1000</div>
               </div>
               <button onClick={saveProfile} disabled={saving}
                 className="w-full bg-coral text-white font-bold py-3 rounded-xl text-sm hover:bg-coral-dark transition-colors disabled:opacity-50">

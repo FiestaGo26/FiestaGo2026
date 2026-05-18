@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { calcCommission } from '@/lib/constants'
-import { emailAdminNewBooking, emailProviderNewBooking } from '@/lib/resend'
+import { emailAdminNewBooking, emailProviderNewBooking, emailClientBookingReceived } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -96,20 +96,22 @@ export async function POST(req: NextRequest) {
       } catch { /* si ya estaba bloqueado, no pasa nada */ }
     }
 
-    // Notificar via email (admin + proveedor). No bloquea la respuesta si falla.
+    // Notificar via email (admin + proveedor + auto-respuesta al cliente).
+    // No bloquea la respuesta si falla.
     if (provider_id) {
       try {
         const { data: prov } = await supabase
           .from('providers')
-          .select('id, name, slug, email, city, category')
+          .select('id, name, slug, email, city, category, auto_reply_message')
           .eq('id', provider_id)
           .single()
         if (prov) {
-          // Ejecuta en paralelo, sin esperar — errores silenciados
           emailAdminNewBooking(data, prov).catch(err =>
             console.error('emailAdminNewBooking:', err?.message))
           emailProviderNewBooking(data, prov).catch(err =>
             console.error('emailProviderNewBooking:', err?.message))
+          emailClientBookingReceived(data, prov).catch(err =>
+            console.error('emailClientBookingReceived:', err?.message))
         }
       } catch { /* no-op */ }
     }
