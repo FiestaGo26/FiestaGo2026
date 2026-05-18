@@ -80,6 +80,7 @@ const TABS = [
   { id:'earnings',     icon:'💶', label:'Cobros'         },
   { id:'messages',     icon:'💬', label:'Mensajes'       },
   { id:'embed',        icon:'🔗', label:'Widget para mi web' },
+  { id:'coupons',      icon:'🎟️', label:'Cupones'        },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
@@ -178,6 +179,11 @@ function ProveedorPanelInner() {
   // Verificación
   const [verifDocType, setVerifDocType] = useState<'dni' | 'cif' | 'rc'>('dni')
   const [verifUploading, setVerifUploading] = useState(false)
+
+  // Cupones
+  const [coupons, setCoupons] = useState<any[]>([])
+  const [couponsLoading, setCouponsLoading] = useState(false)
+  const [newCoupon, setNewCoupon] = useState({ code:'', description:'', percent_off:'10', max_uses:'', expires_at:'' })
 
   // Cobros
   const [earnings,        setEarnings]        = useState<any | null>(null)
@@ -357,6 +363,73 @@ function ProveedorPanelInner() {
       toast.error(err.message || 'Error al subir el documento')
     }
     setVerifUploading(false)
+  }
+
+  async function loadCoupons(providerId: string) {
+    setCouponsLoading(true)
+    try {
+      const res = await apiFetch(`/api/proveedor/coupons?provider_id=${providerId}`)
+      const data = await res.json()
+      setCoupons(data.coupons || [])
+    } catch { setCoupons([]) }
+    setCouponsLoading(false)
+  }
+
+  useEffect(() => {
+    if (tab === 'coupons' && provider?.id) loadCoupons(provider.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, provider?.id])
+
+  async function createCoupon() {
+    if (!provider) return
+    const code = newCoupon.code.trim()
+    const percent = parseInt(newCoupon.percent_off)
+    if (!code) { toast.error('Pon un código'); return }
+    if (!percent || percent < 1 || percent > 100) { toast.error('Porcentaje entre 1 y 100'); return }
+    try {
+      const res = await apiFetch('/api/proveedor/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider_id: provider.id,
+          code,
+          description: newCoupon.description || null,
+          percent_off: percent,
+          max_uses:    newCoupon.max_uses ? parseInt(newCoupon.max_uses) : null,
+          expires_at:  newCoupon.expires_at || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setCoupons(prev => [data.coupon, ...prev])
+      setNewCoupon({ code:'', description:'', percent_off:'10', max_uses:'', expires_at:'' })
+      toast.success('Cupón creado ✓')
+    } catch (err: any) {
+      toast.error(err.message || 'Error')
+    }
+  }
+
+  async function toggleCoupon(id: string, active: boolean) {
+    if (!provider) return
+    try {
+      const res = await apiFetch('/api/proveedor/coupons', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, provider_id: provider.id, active }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error)
+      setCoupons(prev => prev.map(c => c.id === id ? { ...c, active } : c))
+    } catch (err: any) { toast.error(err.message || 'Error') }
+  }
+
+  async function deleteCoupon(id: string) {
+    if (!provider) return
+    if (!confirm('¿Borrar este cupón? Las reservas que ya lo usaron se mantienen.')) return
+    try {
+      await apiFetch(`/api/proveedor/coupons?id=${id}&provider_id=${provider.id}`, { method: 'DELETE' })
+      setCoupons(prev => prev.filter(c => c.id !== id))
+    } catch (err: any) { toast.error(err.message || 'Error') }
   }
 
   async function uploadServiceMedia(serviceId: string, file: File) {
@@ -1927,6 +2000,89 @@ function ProveedorPanelInner() {
                     Elige una conversación para empezar a chatear.
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* COUPONS */}
+        {tab==='coupons' && (
+          <div className="max-w-3xl">
+            <h1 className="font-serif text-2xl font-black text-ink mb-2">Cupones</h1>
+            <p className="text-ink/55 text-sm mb-6 leading-relaxed">
+              Crea códigos de descuento para tus clientes (ej. <code className="bg-stone-100 px-1.5 py-0.5 rounded text-coral">PROMO20</code>). El cliente lo introduce al reservar y se le aplica el porcentaje al total. La comisión de FiestaGo se calcula sobre el importe ya descontado.
+            </p>
+
+            <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card mb-6">
+              <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-3">Nuevo cupón</div>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <input value={newCoupon.code} onChange={e => setNewCoupon(c => ({...c, code: e.target.value.toUpperCase()}))}
+                  placeholder="Código (ej. AMIGO20)" maxLength={32}
+                  className="border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono uppercase outline-none focus:border-coral"/>
+                <div className="flex items-center gap-1">
+                  <input type="number" value={newCoupon.percent_off}
+                    onChange={e => setNewCoupon(c => ({...c, percent_off: e.target.value}))}
+                    min={1} max={100}
+                    className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral"/>
+                  <span className="text-sm text-ink/50">% off</span>
+                </div>
+                <input value={newCoupon.description}
+                  onChange={e => setNewCoupon(c => ({...c, description: e.target.value}))}
+                  placeholder="Descripción (opcional, solo tú la ves)"
+                  className="col-span-2 border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral"/>
+                <input type="number" value={newCoupon.max_uses}
+                  onChange={e => setNewCoupon(c => ({...c, max_uses: e.target.value}))}
+                  placeholder="Máx. usos (vacío = sin límite)"
+                  className="border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral"/>
+                <input type="date" value={newCoupon.expires_at}
+                  onChange={e => setNewCoupon(c => ({...c, expires_at: e.target.value}))}
+                  className="border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral"/>
+              </div>
+              <button onClick={createCoupon}
+                className="w-full bg-coral text-white font-bold py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">
+                + Crear cupón
+              </button>
+            </div>
+
+            {couponsLoading ? (
+              <div className="text-center text-ink/40 py-8">Cargando...</div>
+            ) : coupons.length === 0 ? (
+              <div className="bg-white border border-stone-200 rounded-2xl p-8 text-center">
+                <div className="text-3xl mb-2">🎟️</div>
+                <p className="text-ink/55 text-sm">Aún no tienes cupones.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {coupons.map(c => {
+                  const expired = c.expires_at && new Date(c.expires_at) < new Date()
+                  const exhausted = c.max_uses != null && c.used_count >= c.max_uses
+                  return (
+                    <div key={c.id} className="bg-white border border-stone-200 rounded-xl p-4 flex items-center gap-4">
+                      <div className="font-mono font-bold text-lg text-coral">{c.code}</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-ink">{c.percent_off}% descuento</div>
+                        <div className="text-xs text-ink/55 mt-0.5">
+                          {c.description && <span>{c.description} · </span>}
+                          {c.used_count} usos{c.max_uses != null ? ` / ${c.max_uses}` : ''}
+                          {c.expires_at && <span> · caduca {new Date(c.expires_at).toLocaleDateString('es-ES')}</span>}
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
+                        expired || exhausted ? 'bg-stone-100 text-stone-500'
+                          : c.active ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {expired ? 'Caducado' : exhausted ? 'Agotado' : c.active ? 'Activo' : 'Pausado'}
+                      </span>
+                      <button onClick={() => toggleCoupon(c.id, !c.active)}
+                        className="text-xs text-ink/55 hover:text-coral px-2 transition-colors">
+                        {c.active ? 'Pausar' : 'Activar'}
+                      </button>
+                      <button onClick={() => deleteCoupon(c.id)}
+                        className="text-xs text-red-400 hover:text-red-600 px-1">🗑️</button>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

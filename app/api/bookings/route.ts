@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       booking_type, provider_id, pack_id, service_id,
       client_name, client_email, client_phone,
       event_date, event_type, city, guests, message,
-      total_amount, selected_addons,
+      total_amount, selected_addons, coupon_code,
     } = body || {}
 
     if (!client_name || !client_email || !event_date) {
@@ -38,7 +38,33 @@ export async function POST(req: NextRequest) {
     }
 
     // total_amount puede ser 0 cuando es "precio a consultar" — lo permitimos
-    const amount = Number(total_amount) || 0
+    let amount = Number(total_amount) || 0
+
+    // Aplicar cupón si viene y es válido (re-valida en el servidor, no fiamos
+    // del cliente). Si es válido, descuenta el importe y reserva una "plaza"
+    // del cupón incrementando used_count atómicamente.
+    let appliedCoupon: { code: string; percent: number; amount: number } | null = null
+    if (coupon_code && provider_id && amount > 0) {
+      const normalized = String(coupon_code).toUpperCase().trim()
+      const { data: c } = await supabase
+        .from('coupons')
+        .select('id, code, percent_off, max_uses, used_count, expires_at, active')
+        .eq('provider_id', provider_id).eq('code', normalized).maybeSingle()
+
+      const stillValid =
+        c && c.active &&
+        (!c.expires_at || new Date(c.expires_at) > new Date()) &&
+        (c.max_uses == null || c.used_count < c.max_uses)
+
+      if (stillValid) {
+        const off = Math.round((amount * c.percent_off / 100) * 100) / 100
+        appliedCoupon = { code: c.code, percent: c.percent_off, amount: off }
+        amount = Math.max(0, Math.round((amount - off) * 100) / 100)
+        await supabase.from('coupons')
+          .update({ used_count: c.used_count + 1 })
+          .eq('id', c.id)
+      }
+    }
 
     // Calculate commission
     let commission = { rate: 0, amount: 0, providerEarns: amount, isFree: true }
@@ -67,6 +93,9 @@ export async function POST(req: NextRequest) {
         message: message || null,
         total_amount: amount,
         selected_addons: Array.isArray(selected_addons) ? selected_addons : [],
+        coupon_code:    appliedCoupon?.code || null,
+        coupon_percent: appliedCoupon?.percent || null,
+        coupon_amount:  appliedCoupon?.amount || null,
         commission_rate:  commission.rate,
         commission_amt:   commission.amount,
         provider_earns:   commission.providerEarns,

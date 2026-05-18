@@ -123,6 +123,10 @@ export default function ProviderDetailPage() {
   const [booked,   setBooked]   = useState(false)
   const [selectedSvc, setSelectedSvc] = useState<Service | null>(null)
   const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set())
+  const [couponInput,    setCouponInput]    = useState('')
+  const [couponApplied,  setCouponApplied]  = useState<{ code: string; percent: number; amount: number } | null>(null)
+  const [couponChecking, setCouponChecking] = useState(false)
+  const [couponError,    setCouponError]    = useState<string | null>(null)
   const [isLogged, setIsLogged] = useState(false)
   const [showSocioCTA, setShowSocioCTA] = useState(false)
   const [signupPwd, setSignupPwd] = useState('')
@@ -299,6 +303,7 @@ export default function ProviderDetailPage() {
           message:      form.message || null,
           total_amount: totalAmount,
           selected_addons: chosenAddons,
+          coupon_code:  couponApplied?.code || null,
           city:         provider.city,
         }),
       })
@@ -342,8 +347,28 @@ export default function ProviderDetailPage() {
   const basePrice      = selectedSvc?.price ?? provider.price_base ?? 0
   const chosenAddons   = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
   const addonsTotal    = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
-  const effectivePrice = basePrice + addonsTotal
+  const subtotal       = basePrice + addonsTotal
+  const couponDiscount = couponApplied ? Math.round((subtotal * couponApplied.percent / 100) * 100) / 100 : 0
+  const effectivePrice = Math.max(0, Math.round((subtotal - couponDiscount) * 100) / 100)
   const commission     = calcCommission(effectivePrice, provider.total_bookings || 0)
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase()
+    if (!code) return
+    setCouponChecking(true); setCouponError(null)
+    try {
+      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(code)}&provider_id=${provider!.id}&total=${subtotal}`)
+      const data = await res.json()
+      if (!data.valid) {
+        setCouponError(data.error || 'Cupón no válido')
+        setCouponApplied(null)
+      } else {
+        setCouponApplied({ code: data.code, percent: data.percent_off, amount: data.amount_off })
+        setCouponError(null)
+      }
+    } catch { setCouponError('Error al validar el cupón'); setCouponApplied(null) }
+    setCouponChecking(false)
+  }
 
   return (
     <main className="bg-white">
@@ -621,6 +646,38 @@ export default function ProviderDetailPage() {
                       <span className="font-bold text-coral">{effectivePrice.toLocaleString()}€</span>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Cupón de descuento */}
+              {selectedSvc && subtotal > 0 && (
+                <div className="mb-5">
+                  <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">¿Tienes un código?</div>
+                  {!couponApplied ? (
+                    <div className="flex gap-2">
+                      <input value={couponInput}
+                        onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                        placeholder="EJ. AMIGO20"
+                        maxLength={32}
+                        className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm font-mono uppercase outline-none focus:border-coral"/>
+                      <button onClick={applyCoupon} disabled={couponChecking || !couponInput.trim()}
+                        className="bg-ink text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-ink/85 transition-colors disabled:opacity-50">
+                        {couponChecking ? '…' : 'Aplicar'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                      <div className="text-xs">
+                        <span className="font-mono font-bold text-emerald-700">{couponApplied.code}</span>
+                        <span className="text-emerald-600"> · −{couponApplied.percent}% (−{couponDiscount.toLocaleString()}€)</span>
+                      </div>
+                      <button onClick={() => { setCouponApplied(null); setCouponInput('') }}
+                        className="text-xs text-emerald-700 hover:text-emerald-900 underline">
+                        Quitar
+                      </button>
+                    </div>
+                  )}
+                  {couponError && <p className="text-xs text-red-600 mt-1.5">{couponError}</p>}
                 </div>
               )}
 
