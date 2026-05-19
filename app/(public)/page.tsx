@@ -54,22 +54,22 @@ export default async function HomePage() {
           src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1920&q=85&auto=format&fit=crop"
           alt="Amigos celebrando con FiestaGo"
           fill priority className="object-cover"/>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/25 to-black/65" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/25 to-black/70" />
 
         <div className="relative max-w-6xl mx-auto px-6 pb-44 md:pb-52 w-full text-white">
           <div className="max-w-2xl">
-            <p className="text-xs md:text-sm font-bold tracking-[0.25em] uppercase mb-5 text-coral">
-              🎉 El marketplace #1 de fiestas en España
+            <p className="inline-flex items-center gap-2 text-xs md:text-sm font-bold tracking-[0.22em] uppercase mb-5 bg-coral/95 text-white px-4 py-1.5 rounded-full">
+              🛡 Garantía de Éxito
             </p>
             <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.02] tracking-tight mb-6">
-              Vive la fiesta.{' '}
-              <span className="italic font-light text-coral">Olvida el estrés.</span>
+              Tu celebración,{' '}
+              <span className="italic font-light text-coral">garantizada.</span>
             </h1>
-            <p className="text-base md:text-xl text-white/90 max-w-xl leading-relaxed mb-2">
-              Reserva en <strong className="text-white">2 minutos</strong> a los mejores fotógrafos, espacios, catering, DJs y más.
+            <p className="text-lg md:text-2xl text-white/95 max-w-xl leading-relaxed mb-4">
+              Si tu proveedor te falla, te devolvemos el dinero.
             </p>
-            <p className="text-sm md:text-base text-white/70 max-w-xl leading-relaxed">
-              ✓ Precio cerrado · ✓ Sin sorpresas · ✓ Profesionales verificados
+            <p className="text-sm md:text-base text-white/80 max-w-xl leading-relaxed">
+              Bodas, cumpleaños, comuniones o cualquier evento privado. Profesionales verificados, pago seguro hasta el evento, y nuestra mediación si algo se complica.
             </p>
           </div>
         </div>
@@ -79,6 +79,40 @@ export default async function HomePage() {
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-2 md:p-3">
             <SearchBar />
           </div>
+        </div>
+      </section>
+
+      {/* ─────────── GARANTÍA DE ÉXITO ─────────── */}
+      <section className="bg-ink text-white">
+        <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+          <div className="text-center mb-12">
+            <p className="text-xs font-bold tracking-[0.25em] uppercase text-coral mb-3">
+              Por qué somos distintos
+            </p>
+            <h2 className="font-serif text-3xl md:text-4xl leading-tight tracking-tight">
+              No somos un directorio.{' '}
+              <span className="italic font-light">Respondemos.</span>
+            </h2>
+            <p className="text-white/65 mt-4 max-w-2xl mx-auto leading-relaxed">
+              Mientras otras plataformas se desentienden cuando hay un problema, en FiestaGo respaldamos cada reserva con nuestro dinero. Esto cambia cómo se reserva.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon:'💸', title:'Te devolvemos hasta el 110%', body:'Si tu proveedor cancela o no aparece, te conseguimos un sustituto en 48h o te reembolsamos el 110% del importe pagado.' },
+              { icon:'🔒', title:'Pago retenido hasta el evento', body:'El dinero queda en FiestaGo, no en el proveedor, hasta que tu celebración termina. Si algo falla, podemos actuar de verdad.' },
+              { icon:'✅', title:'Profesionales verificados', body:'DNI/CIF y seguro de responsabilidad civil contrastados. Solo aparece en la web quien puede demostrar que es de fiar.' },
+            ].map(b => (
+              <div key={b.title} className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="text-3xl mb-4">{b.icon}</div>
+                <h3 className="font-serif text-xl font-black mb-3 leading-snug">{b.title}</h3>
+                <p className="text-white/65 text-sm leading-relaxed">{b.body}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-center text-xs text-white/45 mt-10 leading-relaxed max-w-xl mx-auto">
+            La Garantía aplica a reservas realizadas y pagadas íntegramente dentro de FiestaGo. Condiciones detalladas en la página de Garantía.
+          </p>
         </div>
       </section>
 
