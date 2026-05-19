@@ -1816,24 +1816,22 @@ function ProveedorPanelInner() {
               <>
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-coral/5 border-2 border-coral/30 rounded-2xl p-5">
+                    <div className="text-xs text-coral uppercase tracking-widest mb-2 font-bold">Cobras tú</div>
+                    <div className="font-serif text-3xl font-bold text-coral">{earnings.totals.net.toLocaleString()}€</div>
+                    <div className="text-xs text-ink/55 mt-1">100% del precio de tus servicios</div>
+                  </div>
                   <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
-                    <div className="text-xs text-ink/50 uppercase tracking-widest mb-2">Bruto facturado</div>
+                    <div className="text-xs text-ink/50 uppercase tracking-widest mb-2">Cliente pagó</div>
                     <div className="font-serif text-3xl font-bold text-ink">{earnings.totals.gross.toLocaleString()}€</div>
                     <div className="text-xs text-ink/45 mt-1">{earnings.totals.count} reserva{earnings.totals.count!==1?'s':''}</div>
                   </div>
                   <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
                     <div className="text-xs text-ink/50 uppercase tracking-widest mb-2">Comisión FiestaGo</div>
-                    <div className="font-serif text-3xl font-bold text-amber-600">−{earnings.totals.commission.toLocaleString()}€</div>
+                    <div className="font-serif text-3xl font-bold text-amber-600">{earnings.totals.commission.toLocaleString()}€</div>
                     <div className="text-xs text-ink/45 mt-1">
-                      {earnings.totals.gross > 0
-                        ? `${((earnings.totals.commission / earnings.totals.gross) * 100).toFixed(1)}% medio`
-                        : '—'}
+                      La paga el cliente (no tú)
                     </div>
-                  </div>
-                  <div className="bg-coral/5 border-2 border-coral/30 rounded-2xl p-5">
-                    <div className="text-xs text-coral uppercase tracking-widest mb-2 font-bold">Neto para ti</div>
-                    <div className="font-serif text-3xl font-bold text-coral">{earnings.totals.net.toLocaleString()}€</div>
-                    <div className="text-xs text-ink/55 mt-1">Después de comisión</div>
                   </div>
                 </div>
 
@@ -1866,7 +1864,7 @@ function ProveedorPanelInner() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-stone-50 border-b border-stone-200 text-left">
-                          {['Fecha evento','Cliente','Servicio','Bruto','Comisión','Neto','Estado'].map(h => (
+                          {['Fecha evento','Cliente','Servicio','Cliente pagó','Comisión','Cobras tú','Estado'].map(h => (
                             <th key={h} className="px-4 py-2 text-[10px] font-bold text-ink/45 uppercase tracking-widest">{h}</th>
                           ))}
                         </tr>
@@ -1881,7 +1879,7 @@ function ProveedorPanelInner() {
                               <td className="px-4 py-3 text-ink/65 text-xs">{t.service_name || '—'}</td>
                               <td className="px-4 py-3 text-ink font-medium tabular-nums">{t.total.toLocaleString()}€</td>
                               <td className="px-4 py-3 text-amber-700 tabular-nums">
-                                {t.is_free ? <span className="text-xs text-emerald-600">Gratis (1ª)</span> : `−${t.commission.toLocaleString()}€`}
+                                {t.is_free ? <span className="text-xs text-emerald-600">Sin coste (1ª)</span> : `${t.commission.toLocaleString()}€`}
                               </td>
                               <td className="px-4 py-3 text-coral font-bold tabular-nums">{t.net.toLocaleString()}€</td>
                               <td className="px-4 py-3">

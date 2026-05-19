@@ -721,26 +721,28 @@ export default function ProviderDetailPage() {
                 </details>
               )}
 
-              {/* Commission info */}
+              {/* Desglose del precio (nuevo modelo: cliente paga base + comisión) */}
               <div className={`rounded-xl p-3.5 mb-5 text-xs ${commission.isFree
                 ? 'bg-sage/10 border border-sage/20'
                 : 'bg-cream-dark border border-stone-200'}`}>
                 <div className={`font-bold mb-2 ${commission.isFree ? 'text-sage' : 'text-ink/60'}`}>
-                  {commission.isFree ? '🎁 ¡1ª transacción GRATIS!' : '💳 Desglose'}
+                  {commission.isFree ? '🎁 ¡Esta reserva sin coste de servicio!' : '💳 Desglose'}
                 </div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-ink/50">Precio del servicio</span>
+                  <span className="text-ink/50">Precio del proveedor</span>
                   <span className="font-semibold">{effectivePrice.toLocaleString()}€</span>
                 </div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-ink/50">Comisión FiestaGo</span>
-                  <span className={commission.isFree ? 'text-sage font-bold' : 'text-ink/60'}>
-                    {commission.isFree ? '¡GRATIS!' : `-${commission.amount.toLocaleString()}€`}
+                  <span className="text-ink/50" title="Incluye Garantía de Éxito: si la reserva falla, FiestaGo te devuelve el dinero">
+                    Servicio FiestaGo (Garantía de Éxito) 🛡
+                  </span>
+                  <span className={commission.isFree ? 'text-sage font-bold' : 'text-ink/65'}>
+                    {commission.isFree ? '¡GRATIS!' : `+${commission.amount.toLocaleString()}€`}
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
-                  <span className="text-ink/50">Tú pagas</span>
-                  <span className="font-bold text-ink">{effectivePrice.toLocaleString()}€</span>
+                  <span className="text-ink font-semibold">Total a pagar</span>
+                  <span className="font-bold text-coral text-base">{commission.clientPays.toLocaleString()}€</span>
                 </div>
               </div>
 

@@ -411,7 +411,7 @@ Tienes una nueva solicitud de reserva en FiestaGo.
 Fecha:     ${bookingDateF(booking.event_date)}
 Evento:    ${booking.event_type || 'otro'}
 Invitados: ${booking.guests ?? '—'}
-Importe:   ${(booking.total_amount || 0).toLocaleString()}€
+Cobrarías: ${(booking.provider_earns || 0).toLocaleString()}€  (cliente pagó ${(booking.total_amount || 0).toLocaleString()}€, incluye nuestra comisión)
 
 Mensaje del cliente:
 ${safeMsg || '(sin mensaje)'}
@@ -443,7 +443,8 @@ El equipo de FiestaGo`
             <tr><td style="padding:6px 0;color:#8A7968;">🎉 Evento</td><td style="padding:6px 0;">${(booking.event_type || 'otro').replace(/</g, '&lt;')}</td></tr>
             ${booking.guests ? `<tr><td style="padding:6px 0;color:#8A7968;">👥 Invitados</td><td style="padding:6px 0;">${booking.guests}</td></tr>` : ''}
             ${booking.city  ? `<tr><td style="padding:6px 0;color:#8A7968;">📍 Ciudad</td><td style="padding:6px 0;">${booking.city.replace(/</g, '&lt;')}</td></tr>` : ''}
-            <tr><td style="padding:6px 0;color:#8A7968;">💸 Importe</td><td style="padding:6px 0;font-weight:bold;">${(booking.total_amount || 0).toLocaleString()}€</td></tr>
+            <tr><td style="padding:6px 0;color:#8A7968;">💸 Cobrarías</td><td style="padding:6px 0;font-weight:bold;color:#10B981;">${(booking.provider_earns || 0).toLocaleString()}€</td></tr>
+            <tr><td style="padding:2px 0;color:#8A7968;font-size:12px;">Cliente pagó</td><td style="padding:2px 0;font-size:12px;color:#8A7968;">${(booking.total_amount || 0).toLocaleString()}€ (con nuestra comisión)</td></tr>
           </table>
           ${safeMsg ? `
           <div style="background:#FBF9F4;border-left:3px solid #E8553E;padding:14px 18px;margin:18px 0 0;font-size:14px;line-height:1.5;color:#5C534A;font-style:italic;">

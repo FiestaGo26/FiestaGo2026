@@ -72,11 +72,21 @@ export function getCat(id: string) {
   return CATEGORIES.find(c => c.id === id)
 }
 
-export function calcCommission(amount: number, totalBookings: number) {
+// Modelo nuevo: el cliente paga la comisión encima del precio del proveedor.
+// El proveedor recibe el 100% del precio que pone (`providerBase`).
+// El cliente paga `providerBase + commission` (= clientPays).
+// La primera reserva del proveedor sigue siendo 0% (incentivo de entrada).
+export function calcCommission(providerBase: number, totalBookings: number) {
   const isFree = totalBookings === 0
   const rate   = isFree ? 0 : COMMISSION_RATE
-  const comm   = Math.round(amount * rate * 100) / 100
-  return { rate, amount: comm, providerEarns: amount - comm, isFree }
+  const comm   = Math.round(providerBase * rate * 100) / 100
+  return {
+    rate,
+    amount:        comm,                // lo que se queda FiestaGo
+    providerEarns: providerBase,        // 100% del precio del proveedor
+    clientPays:    providerBase + comm, // lo que paga el cliente
+    isFree,
+  }
 }
 
 // ─── Políticas de cancelación ────────────────────────────────────────────

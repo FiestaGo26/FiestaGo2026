@@ -66,8 +66,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Calculate commission
-    let commission = { rate: 0, amount: 0, providerEarns: amount, isFree: true }
+    // Calcular comisión sobre lo que cobra el proveedor (modelo nuevo:
+    // cliente paga base + comisión, proveedor recibe el 100% de base).
+    // `amount` aquí ya tiene aplicado el cupón si lo había.
+    let commission: { rate: number; amount: number; providerEarns: number; clientPays: number; isFree: boolean }
+      = { rate: 0, amount: 0, providerEarns: amount, clientPays: amount, isFree: true }
     if (provider_id) {
       const { data: provider } = await supabase
         .from('providers')
@@ -91,7 +94,8 @@ export async function POST(req: NextRequest) {
         city: city || null,
         guests: guests || null,
         message: message || null,
-        total_amount: amount,
+        // total_amount = lo que pagó el cliente (base + comisión)
+        total_amount: commission.clientPays,
         selected_addons: Array.isArray(selected_addons) ? selected_addons : [],
         coupon_code:    appliedCoupon?.code || null,
         coupon_percent: appliedCoupon?.percent || null,
