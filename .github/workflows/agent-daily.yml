@@ -13,34 +13,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Ejecutar agente en 7 combos rotados (~20 emails/día)
+      - name: Ejecutar agente en 8 combos rotados (~10-15 emails/día)
         env:
           SITE_URL:     ${{ secrets.SITE_URL }}
           CRON_SECRET:  ${{ secrets.CRON_SECRET }}
         run: |
           set -e
 
-          # Lista de combos (categoría × ciudad). El día del año decide
-          # cuáles tocan hoy para rotar de forma determinista. Cada
-          # ejecución busca 3 proveedores en ese combo, así que 7 combos
-          # × 3 = 21 proveedores potenciales por día. Quitando los que
-          # no tienen email = ~12-15 emails reales/día.
+          # Lista de combos (categoría × ciudad). Por ahora restringido
+          # a Valencia. Para expandir a otras ciudades, añade más
+          # entradas a CITIES (ej. CITIES=(Valencia Madrid Barcelona)).
           CATEGORIES=(foto espacios musica flores pastel belleza animacion transporte papeleria planner joyeria catering)
-          CITIES=(Madrid Barcelona Valencia Sevilla Bilbao Málaga Zaragoza Murcia Alicante Granada Córdoba Valladolid Palma "Las Palmas" Santander)
+          CITIES=(Valencia)
 
-          # Día del año (1-366) como semilla
+          # Día del año (1-366) como semilla para que la rotación sea
+          # determinista pero no repita siempre la misma categoría.
           DAY=$(date +%j)
           NUM_COMBOS=$((${#CATEGORIES[@]} * ${#CITIES[@]}))
 
-          for i in 0 1 2 3 4 5 6; do
-            IDX=$(( (DAY * 7 + i) % NUM_COMBOS ))
+          # 8 lotes × 3 proveedores = ~24 búsquedas. Tras filtrar
+          # (sin email ni IG) y dedupe, esperamos 12-18 guardados,
+          # de los cuales 7-12 reciben email automático.
+          BATCHES=8
+
+          for i in $(seq 0 $((BATCHES - 1))); do
+            IDX=$(( (DAY * BATCHES + i) % NUM_COMBOS ))
             CAT_IDX=$(( IDX % ${#CATEGORIES[@]} ))
             CITY_IDX=$(( IDX % ${#CITIES[@]} ))
             CAT="${CATEGORIES[$CAT_IDX]}"
             CITY="${CITIES[$CITY_IDX]}"
 
             echo "────────────────────────────────────────"
-            echo "Lote $((i+1))/7 · $CAT en $CITY"
+            echo "Lote $((i+1))/$BATCHES · $CAT en $CITY"
             echo "────────────────────────────────────────"
 
             RESPONSE=$(curl -sS -X POST "$SITE_URL/api/admin/agent/auto-run" \
@@ -55,7 +59,7 @@ jobs:
             echo "HTTP $HTTP_CODE"
 
             # Pausa 30s entre lotes para no exceder rate limit Anthropic
-            if [ $i -lt 6 ]; then
+            if [ $i -lt $((BATCHES - 1)) ]; then
               echo "⏸ Esperando 30s..."
               sleep 30
             fi
