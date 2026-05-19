@@ -111,9 +111,15 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-white/45 mt-10 leading-relaxed max-w-xl mx-auto">
-            La Garantía aplica a reservas realizadas y pagadas íntegramente dentro de FiestaGo. Condiciones detalladas en la página de Garantía.
-          </p>
+          <div className="text-center mt-10">
+            <Link href="/garantia"
+              className="inline-block text-sm font-semibold border border-white/30 text-white px-6 py-3 rounded-xl hover:bg-white hover:text-ink transition-colors">
+              Ver cómo funciona la Garantía →
+            </Link>
+            <p className="text-xs text-white/45 mt-4 max-w-xl mx-auto leading-relaxed">
+              Aplica a reservas realizadas y pagadas íntegramente dentro de FiestaGo.
+            </p>
+          </div>
         </div>
       </section>
 

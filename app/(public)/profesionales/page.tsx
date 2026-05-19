@@ -201,11 +201,15 @@ export default function ProfesionalesPage() {
             Y por eso el cliente paga por reservar con confianza, no solo
             por encontrar tu nombre.
           </p>
-          <p className="text-white/70 leading-relaxed max-w-2xl">
+          <p className="text-white/70 leading-relaxed max-w-2xl mb-6">
             Para ti significa: clientes que vienen con intención real
             de reservar, no comparando 30 presupuestos sin saber a quién
             elegir.
           </p>
+          <Link href="/garantia"
+            className="inline-block text-sm font-semibold border border-white/30 text-white px-6 py-3 rounded-xl hover:bg-white hover:text-ink transition-colors">
+            Ver cómo funciona la Garantía →
+          </Link>
         </div>
       </section>
 
