@@ -62,8 +62,8 @@ export default async function HomePage() {
               🛡 Garantía de Éxito
             </p>
             <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.02] tracking-tight mb-6">
-              Tu celebración,{' '}
-              <span className="italic font-light text-coral">garantizada.</span>
+              Tu celebración en 2 minutos.{' '}
+              <span className="italic font-light text-coral">Y garantizada.</span>
             </h1>
             <p className="text-lg md:text-2xl text-white/95 max-w-xl leading-relaxed mb-4">
               Si tu proveedor te falla, te devolvemos el dinero.
