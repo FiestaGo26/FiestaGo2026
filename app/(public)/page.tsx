@@ -295,9 +295,9 @@ export default async function HomePage() {
               Llega a miles de clientes en toda España. 1ª transacción sin comisión, sin permanencia, sin cuotas mensuales.
             </p>
           </div>
-          <Link href="/registro-proveedor"
+          <Link href="/profesionales"
             className="inline-flex items-center gap-2 bg-coral text-white font-semibold px-7 py-4 rounded-2xl hover:bg-coral-dark transition-colors whitespace-nowrap">
-            Darme de alta gratis →
+            Saber más para profesionales →
           </Link>
         </div>
       </section>

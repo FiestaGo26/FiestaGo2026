@@ -34,7 +34,7 @@ Además, al entrar antes del lanzamiento te llevas:
 - Si invitas a otro profesional y se registra, los dos subís a los primeros puestos de vuestra categoría sin coste extra.
 
 Inscríbete en menos de 60 segundos:
-https://fiestago.es/registro-proveedor
+https://fiestago.es/profesionales
 
 Cualquier duda, simplemente responde a este email o escribe a contacto@fiestago.es.
 
@@ -62,7 +62,7 @@ Lo que te puedo ofrecer es visibilidad real: una fuente nueva de clientes sin qu
 Solo nos quedamos un 8% cuando hay reserva — y la primera te la regalamos al 0% para que pruebes sin riesgo. Sin cuotas, sin permanencia, te vas cuando quieras.
 
 Inscríbete en menos de 60 segundos:
-👉 https://fiestago.es/registro-proveedor
+👉 https://fiestago.es/profesionales
 
 Si tienes cualquier duda, respóndeme por aquí mismo. Hablamos cuando quieras.
 
@@ -82,7 +82,7 @@ export function buildDmFollowup(p: ProviderLike, attempt: number = 1): string {
 No quiero saturarte, así que este es el último. Si no te encaja FiestaGo, sin problema — borro la nota y dejamos aquí.
 
 Pero si te interesa probar el lanzamiento del 10 de junio con los primeros profesionales de ${p.city}, inscríbete en 60 segundos:
-👉 https://fiestago.es/registro-proveedor
+👉 https://fiestago.es/profesionales
 
 Un abrazo,
 Mariano`
@@ -94,7 +94,7 @@ Te escribí hace unos días sobre FiestaGo y no he tenido respuesta — imagino 
 Te dejo el resumen rapidito: estamos eligiendo los primeros profesionales en ${p.city} antes del lanzamiento del 10 de junio. Sin cuotas, sin permanencia, primera reserva al 0% y luego solo 8%. Lo único que tienes que hacer es decir sí cuando te llegue una solicitud.
 
 Si te encaja, regístrate aquí en menos de 60 segundos:
-👉 https://fiestago.es/registro-proveedor
+👉 https://fiestago.es/profesionales
 
 Y si no te interesa, también dímelo — sin problema, dejo de insistir 🙏
 
@@ -110,7 +110,7 @@ Soy Mariano de FiestaGo. Te he escrito un par de veces y este es el último mens
 
 Si no te encaja FiestaGo, sin problema. Si sí, el lanzamiento es el 10 de junio y todavía estamos a tiempo de meterte en el catálogo inicial:
 
-https://fiestago.es/registro-proveedor
+https://fiestago.es/profesionales
 
 Un abrazo,
 Mariano`
@@ -121,7 +121,7 @@ Soy Mariano, fundador de FiestaGo. Te escribí hace unos días y no recibí resp
 Te dejo el resumen rapidito: estamos seleccionando los primeros profesionales en ${p.city} antes del lanzamiento del 10 de junio. Sin cuotas, sin permanencia, tu primera reserva al 0% y solo 8% después. Recibes solicitudes, las aceptas si te encajan y trabajas como siempre.
 
 Si te interesa, te puedes inscribir en menos de 60 segundos:
-https://fiestago.es/registro-proveedor
+https://fiestago.es/profesionales
 
 Y si no, dímelo y te quito de la lista — sin problema.
 
