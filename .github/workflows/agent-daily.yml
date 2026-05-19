@@ -1,0 +1,65 @@
+name: Captación diaria de proveedores
+
+# Cron diario a las 8:00 UTC (= 9:00 Madrid en verano, 9:00 invierno).
+# Si quieres cambiarlo: https://crontab.guru
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  # Permite lanzarlo a mano desde la pestaña Actions de GitHub
+  workflow_dispatch:
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Ejecutar agente en 7 combos rotados (~20 emails/día)
+        env:
+          SITE_URL:     ${{ secrets.SITE_URL }}
+          CRON_SECRET:  ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+
+          # Lista de combos (categoría × ciudad). El día del año decide
+          # cuáles tocan hoy para rotar de forma determinista. Cada
+          # ejecución busca 3 proveedores en ese combo, así que 7 combos
+          # × 3 = 21 proveedores potenciales por día. Quitando los que
+          # no tienen email = ~12-15 emails reales/día.
+          CATEGORIES=(foto espacios musica flores pastel belleza animacion transporte papeleria planner joyeria catering)
+          CITIES=(Madrid Barcelona Valencia Sevilla Bilbao Málaga Zaragoza Murcia Alicante Granada Córdoba Valladolid Palma "Las Palmas" Santander)
+
+          # Día del año (1-366) como semilla
+          DAY=$(date +%j)
+          NUM_COMBOS=$((${#CATEGORIES[@]} * ${#CITIES[@]}))
+
+          for i in 0 1 2 3 4 5 6; do
+            IDX=$(( (DAY * 7 + i) % NUM_COMBOS ))
+            CAT_IDX=$(( IDX % ${#CATEGORIES[@]} ))
+            CITY_IDX=$(( IDX % ${#CITIES[@]} ))
+            CAT="${CATEGORIES[$CAT_IDX]}"
+            CITY="${CITIES[$CITY_IDX]}"
+
+            echo "────────────────────────────────────────"
+            echo "Lote $((i+1))/7 · $CAT en $CITY"
+            echo "────────────────────────────────────────"
+
+            RESPONSE=$(curl -sS -X POST "$SITE_URL/api/admin/agent/auto-run" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              -d "{\"category\":\"$CAT\",\"city\":\"$CITY\",\"count\":3}" \
+              -w "\nHTTP_CODE:%{http_code}" || true)
+
+            HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+            BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+            echo "$BODY"
+            echo "HTTP $HTTP_CODE"
+
+            # Pausa 30s entre lotes para no exceder rate limit Anthropic
+            if [ $i -lt 6 ]; then
+              echo "⏸ Esperando 30s..."
+              sleep 30
+            fi
+          done
+
+          echo ""
+          echo "✅ Captación diaria completada"
