@@ -126,6 +126,12 @@ export default function AdminPage() {
   const [customersStats,    setCustomersStats]    = useState<{total:number,marketing:number,confirmed:number}>({total:0,marketing:0,confirmed:0})
   const [customersLoading,  setCustomersLoading]  = useState(false)
   const [customersSearch,   setCustomersSearch]   = useState('')
+
+  const [incidents,         setIncidents]         = useState<any[]>([])
+  const [incidentsStats,    setIncidentsStats]    = useState<{open:number,investigating:number,resolved:number,rejected:number}>({open:0,investigating:0,resolved:0,rejected:0})
+  const [incidentsFilter,   setIncidentsFilter]   = useState<'open'|'investigating'|'resolved'|'rejected'|'all'>('open')
+  const [incidentsLoading,  setIncidentsLoading]  = useState(false)
+  const [openIncident,      setOpenIncident]      = useState<any | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
@@ -452,6 +458,39 @@ export default function AdminPage() {
     fetchCustomers()
   }, [authed, section, fetchCustomers])
 
+  // ── INCIDENCIAS ───────────────────────────────────────────────────────────
+  const fetchIncidents = useCallback(async () => {
+    setIncidentsLoading(true)
+    const params = new URLSearchParams()
+    if (incidentsFilter !== 'all') params.set('status', incidentsFilter)
+    const res = await fetch(`/api/incidents?${params}`, { headers: adminHeaders() })
+    const data = await res.json()
+    setIncidents(data.incidents || [])
+    setIncidentsStats(data.stats || { open:0, investigating:0, resolved:0, rejected:0 })
+    setIncidentsLoading(false)
+  }, [incidentsFilter])
+
+  useEffect(() => {
+    if (!authed) return
+    if (section === 'incidents' || section === 'dashboard') fetchIncidents()
+  }, [authed, section, fetchIncidents])
+
+  async function updateIncident(id: string, updates: any) {
+    const res = await fetch(`/api/incidents/${id}`, {
+      method: 'PATCH',
+      headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    })
+    const data = await res.json()
+    if (!res.ok || data.error) {
+      toast.error(data.error || 'Error al actualizar')
+      return
+    }
+    setIncidents(prev => prev.map(i => i.id === id ? { ...i, ...data.incident } : i))
+    setOpenIncident((prev: any) => prev && prev.id === id ? { ...prev, ...data.incident } : prev)
+    toast.success('Incidencia actualizada ✓')
+  }
+
   function exportCustomersCSV() {
     if (!customers.length) return
     const head = ['email','nombre','telefono','ciudad','marketing','email_confirmado','creado','ultimo_acceso']
@@ -577,6 +616,7 @@ export default function AdminPage() {
     { id:'dashboard',    icon:'📊', label:'Dashboard' },
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
+    { id:'incidents',    icon:'🚨', label:'Incidencias', badge: incidentsStats.open || 0 },
     { id:'customers',    icon:'👥', label:'Socios' },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
@@ -1135,6 +1175,117 @@ export default function AdminPage() {
           )}
 
           {/* ══ SOCIOS ══ */}
+          {/* ══ INCIDENCIAS ══ */}
+          {section === 'incidents' && (
+            <div>
+              <h1 style={{ fontSize:24, fontWeight:700, marginBottom:18, color:'#F9FAFB' }}>🚨 Incidencias</h1>
+              <p style={{ fontSize:12, color:'#9CA3AF', marginBottom:18, maxWidth:640, lineHeight:1.6 }}>
+                Reclamaciones abiertas por clientes contra la Garantía de Éxito. SLA en
+                <span style={{ color:'#10B981' }}> verde</span> si la deadline es {'>'}24h, en
+                <span style={{ color:'#F59E0B' }}> ámbar</span> si {'<'}24h, en
+                <span style={{ color:'#EF4444' }}> rojo</span> si ya se ha vencido.
+              </p>
+
+              {/* Filtros */}
+              <div style={{ display:'flex', gap:8, marginBottom:18, alignItems:'center', flexWrap:'wrap' }}>
+                {(['open','investigating','resolved','rejected','all'] as const).map(f => (
+                  <button key={f} onClick={() => setIncidentsFilter(f)}
+                    style={{ padding:'6px 14px', borderRadius:20, border:'1px solid #1F2937',
+                      background: incidentsFilter === f ? '#F43F5E' : 'transparent',
+                      color: incidentsFilter === f ? '#fff' : '#9CA3AF',
+                      fontSize:11, fontWeight:600, cursor:'pointer', textTransform:'capitalize' }}>
+                    {f === 'all' ? 'Todas'
+                      : f === 'open' ? 'Abiertas'
+                      : f === 'investigating' ? 'En revisión'
+                      : f === 'resolved' ? 'Resueltas'
+                      : 'Rechazadas'}
+                    {incidentsStats[f as 'open'] != null && f !== 'all' && (
+                      <span style={{ marginLeft:6, opacity:0.7 }}>({incidentsStats[f as 'open']})</span>
+                    )}
+                  </button>
+                ))}
+                <button onClick={fetchIncidents}
+                  style={{ marginLeft:'auto', padding:'6px 12px', borderRadius:8, border:'1px solid #1F2937',
+                    background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+                  🔄 Actualizar
+                </button>
+              </div>
+
+              {incidentsLoading ? (
+                <div style={{ padding:60, textAlign:'center', color:'#374151' }}>Cargando...</div>
+              ) : incidents.length === 0 ? (
+                <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14,
+                  padding:'48px 20px', textAlign:'center', color:'#374151' }}>
+                  <div style={{ fontSize:36, marginBottom:10 }}>✨</div>
+                  <p>Sin incidencias {incidentsFilter !== 'all' ? `en estado "${incidentsFilter}"` : ''}.</p>
+                </div>
+              ) : (
+                <div style={{ display:'grid', gap:10 }}>
+                  {incidents.map(inc => {
+                    const slaMs = inc.sla_target_at ? new Date(inc.sla_target_at).getTime() - Date.now() : 0
+                    const slaHours = Math.round(slaMs / (1000 * 60 * 60))
+                    const slaColor = slaMs < 0 ? '#EF4444' : slaHours < 24 ? '#F59E0B' : '#10B981'
+                    const slaLabel = slaMs < 0
+                      ? `⚠ Vencido hace ${Math.abs(slaHours)}h`
+                      : slaHours < 24
+                        ? `⏰ Vence en ${slaHours}h`
+                        : `✓ ${slaHours}h margen`
+
+                    const typeLabel: Record<string,string> = {
+                      cancelled_by_provider: 'Proveedor canceló',
+                      no_show:               'No-show',
+                      quality:               'Calidad',
+                      wrong_service:         'Servicio incorrecto',
+                      payment:               'Pago',
+                      other:                 'Otro',
+                    }
+                    const statusColor = inc.status === 'open' ? '#F59E0B'
+                                      : inc.status === 'investigating' ? '#3B82F6'
+                                      : inc.status === 'resolved' ? '#10B981'
+                                      : '#6B7280'
+
+                    return (
+                      <button key={inc.id} onClick={() => setOpenIncident(inc)}
+                        style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14,
+                          padding:14, cursor:'pointer', textAlign:'left', color:'#F9FAFB' }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, marginBottom:6 }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:4, flexWrap:'wrap' }}>
+                              <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:10,
+                                background:`${statusColor}22`, color:statusColor, textTransform:'uppercase', letterSpacing:'0.08em' }}>
+                                {inc.status}
+                              </span>
+                              <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:10,
+                                background:'#1F2937', color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                                {typeLabel[inc.type] || inc.type}
+                              </span>
+                              <span style={{ fontSize:10, fontWeight:700, color:slaColor }}>
+                                {slaLabel}
+                              </span>
+                            </div>
+                            <div style={{ fontSize:13, fontWeight:600, marginBottom:3 }}>
+                              {inc.bookings?.client_name || inc.reporter_email}
+                              {' '}
+                              <span style={{ color:'#6B7280', fontWeight:400 }}>
+                                vs {inc.bookings?.providers?.name || 'proveedor'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize:11, color:'#9CA3AF', lineHeight:1.4 }}>
+                              {(inc.description || '').slice(0, 180)}{(inc.description || '').length > 180 ? '…' : ''}
+                            </div>
+                          </div>
+                          <span style={{ fontSize:11, color:'#6B7280', whiteSpace:'nowrap' }}>
+                            {new Date(inc.created_at).toLocaleDateString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {section === 'customers' && (
             <div>
               <h1 style={{ fontSize:24, fontWeight:700, marginBottom:18, color:'#F9FAFB' }}>👥 Socios</h1>
@@ -1533,6 +1684,15 @@ export default function AdminPage() {
         </div>
       </main>
 
+      {/* INCIDENT MODAL */}
+      {openIncident && (
+        <IncidentAdminModal
+          incident={openIncident}
+          onClose={() => setOpenIncident(null)}
+          onUpdate={updateIncident}
+        />
+      )}
+
       {/* EDIT MODAL */}
       {editProv && (
         <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -1909,6 +2069,157 @@ function DMBlock({ provider, updateProvider, setEditProv }: any) {
           ② Click <strong style={{color:'#fff'}}>"📸 Abrir IG + copiar"</strong> → te abre instagram.com/{(provider.instagram||'').replace(/^@/,'')} → ahí Ctrl+V en el chat.
         </div>
       )}
+    </div>
+  )
+}
+
+function IncidentAdminModal({ incident, onClose, onUpdate }: {
+  incident: any
+  onClose: () => void
+  onUpdate: (id: string, updates: any) => void | Promise<void>
+}) {
+  const [resolution,    setResolution]    = useState(incident.resolution || '')
+  const [compensation,  setCompensation]  = useState<string>(incident.compensation_amount?.toString() || '')
+  const [rejectedReason, setRejectedReason] = useState(incident.rejected_reason || '')
+
+  const typeLabel: Record<string,string> = {
+    cancelled_by_provider: 'Proveedor canceló la reserva',
+    no_show:               'Proveedor no apareció',
+    quality:               'Calidad inferior a la prometida',
+    wrong_service:         'Servicio distinto al reservado',
+    payment:               'Problema con el pago',
+    other:                 'Otro',
+  }
+
+  const booking = incident.bookings || {}
+  const eventDate = booking.event_date
+    ? new Date(booking.event_date).toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })
+    : '—'
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(6px)' }}
+        onClick={onClose}/>
+      <div style={{ position:'relative', background:'#111827', borderRadius:20, width:'100%', maxWidth:640,
+        maxHeight:'92vh', overflowY:'auto', margin:'0 20px', border:'1px solid #1F2937',
+        boxShadow:'0 40px 100px rgba(0,0,0,0.8)', padding:24, color:'#F0F4FF' }}>
+
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, marginBottom:18 }}>
+          <div>
+            <div style={{ fontSize:11, fontWeight:700, color:'#F43F5E', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:4 }}>
+              🚨 Incidencia #{incident.id.slice(0,8)}
+            </div>
+            <div style={{ fontSize:16, fontWeight:700 }}>{typeLabel[incident.type] || incident.type}</div>
+            <div style={{ fontSize:12, color:'#9CA3AF', marginTop:2 }}>
+              {booking.client_name} ({booking.client_email}) · evento {eventDate}
+              {booking.providers?.name && ` · proveedor ${booking.providers.name}`}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ fontSize:24, color:'#6B7280', background:'transparent', border:'none', cursor:'pointer' }}>×</button>
+        </div>
+
+        {/* Descripción del cliente */}
+        <div style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:12, padding:14, marginBottom:18 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
+            Lo que cuenta el cliente
+          </div>
+          <div style={{ fontSize:13, color:'#E5E7EB', lineHeight:1.6, whiteSpace:'pre-wrap' }}>
+            {incident.description}
+          </div>
+        </div>
+
+        {/* Importe de la reserva (para calcular compensación) */}
+        {booking.total_amount != null && (
+          <div style={{ fontSize:12, color:'#9CA3AF', marginBottom:18 }}>
+            Importe pagado por el cliente: <strong style={{ color:'#F9FAFB' }}>{Number(booking.total_amount).toLocaleString()}€</strong>
+          </div>
+        )}
+
+        {/* Acciones según estado */}
+        {incident.status === 'open' && (
+          <div style={{ display:'flex', gap:8, marginBottom:18 }}>
+            <button onClick={() => onUpdate(incident.id, { status: 'investigating' })}
+              style={{ flex:1, background:'#3B82F6', color:'#fff', border:'none', padding:'10px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+              ▶ Empezar a investigar
+            </button>
+          </div>
+        )}
+
+        {(incident.status === 'open' || incident.status === 'investigating') && (
+          <>
+            {/* Resolver */}
+            <div style={{ background:'#0D1117', border:'1px solid #10B98144', borderRadius:12, padding:14, marginBottom:14 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#10B981', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+                ✓ Resolver con compensación
+              </div>
+              <textarea value={resolution} onChange={e => setResolution(e.target.value)} rows={2}
+                placeholder="Qué hemos hecho: sustituto X, reembolso Y, etc."
+                style={{ width:'100%', background:'#111827', border:'1px solid #1F2937', borderRadius:8,
+                  padding:'8px 10px', color:'#F9FAFB', fontSize:12, marginBottom:8, fontFamily:'inherit', resize:'none' }}/>
+              <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+                <input type="number" value={compensation} onChange={e => setCompensation(e.target.value)}
+                  placeholder="Importe a devolver (€)"
+                  style={{ flex:1, background:'#111827', border:'1px solid #1F2937', borderRadius:8,
+                    padding:'8px 10px', color:'#F9FAFB', fontSize:12 }}/>
+                <span style={{ fontSize:11, color:'#6B7280' }}>€</span>
+              </div>
+              <button onClick={() => onUpdate(incident.id, {
+                  status: 'resolved',
+                  resolution,
+                  compensation_amount: compensation ? parseFloat(compensation) : null,
+                })}
+                disabled={resolution.length < 5}
+                style={{ width:'100%', background:'#10B981', color:'#fff', border:'none',
+                  padding:'10px', borderRadius:8, fontSize:12, fontWeight:700, cursor: resolution.length < 5 ? 'not-allowed' : 'pointer', opacity: resolution.length < 5 ? 0.5 : 1 }}>
+                Marcar como resuelta
+              </button>
+            </div>
+
+            {/* Rechazar */}
+            <div style={{ background:'#0D1117', border:'1px solid #EF444444', borderRadius:12, padding:14, marginBottom:8 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#EF4444', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+                ✕ Rechazar (no procede)
+              </div>
+              <textarea value={rejectedReason} onChange={e => setRejectedReason(e.target.value)} rows={2}
+                placeholder="Por qué no procede según los términos de la Garantía. Lo verá el cliente."
+                style={{ width:'100%', background:'#111827', border:'1px solid #1F2937', borderRadius:8,
+                  padding:'8px 10px', color:'#F9FAFB', fontSize:12, marginBottom:8, fontFamily:'inherit', resize:'none' }}/>
+              <button onClick={() => onUpdate(incident.id, {
+                  status: 'rejected',
+                  rejected_reason: rejectedReason,
+                })}
+                disabled={rejectedReason.length < 10}
+                style={{ width:'100%', background:'#EF4444', color:'#fff', border:'none',
+                  padding:'10px', borderRadius:8, fontSize:12, fontWeight:700, cursor: rejectedReason.length < 10 ? 'not-allowed' : 'pointer', opacity: rejectedReason.length < 10 ? 0.5 : 1 }}>
+                Rechazar incidencia
+              </button>
+            </div>
+          </>
+        )}
+
+        {incident.status === 'resolved' && (
+          <div style={{ background:'#10B98122', border:'1px solid #10B98166', borderRadius:12, padding:14 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#10B981', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
+              ✓ Resuelta el {new Date(incident.resolved_at).toLocaleDateString('es-ES')}
+            </div>
+            <div style={{ fontSize:13, color:'#D1D5DB', whiteSpace:'pre-wrap', marginBottom:6 }}>{incident.resolution}</div>
+            {incident.compensation_amount != null && (
+              <div style={{ fontSize:13, color:'#10B981', fontWeight:700 }}>
+                Compensación: {Number(incident.compensation_amount).toLocaleString()}€
+              </div>
+            )}
+          </div>
+        )}
+
+        {incident.status === 'rejected' && (
+          <div style={{ background:'#EF444422', border:'1px solid #EF444466', borderRadius:12, padding:14 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#EF4444', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:6 }}>
+              ✕ Rechazada el {new Date(incident.resolved_at).toLocaleDateString('es-ES')}
+            </div>
+            <div style={{ fontSize:13, color:'#D1D5DB', whiteSpace:'pre-wrap' }}>{incident.rejected_reason}</div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -302,8 +302,13 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
     && ['confirmed', 'completed'].includes(booking.status)
     && booking.review_rating == null
   const hasReview     = booking.review_rating != null
+  // Puede reportar incidencia en cualquier reserva no cancelada que tenga
+  // proveedor. Después la gestionamos en /admin contra la Garantía.
+  const canReportIncident = !!booking.provider_id
+    && booking.status !== 'cancelled'
 
-  const [showChat,   setShowChat]   = useState(false)
+  const [showChat,     setShowChat]     = useState(false)
+  const [showIncident, setShowIncident] = useState(false)
   const [showForm,   setShowForm]   = useState(false)
   const [hover,      setHover]      = useState(0)
   const [rating,     setRating]     = useState(0)
@@ -390,6 +395,12 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
               ★ Dejar reseña
             </button>
           )}
+          {canReportIncident && (
+            <button onClick={() => setShowIncident(true)}
+              className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors flex items-center gap-1">
+              🚨 Reportar problema
+            </button>
+          )}
         </div>
 
         {/* Formulario de reseña */}
@@ -426,6 +437,7 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
         )}
       </div>
       {showChat && <ChatModal booking={booking} onClose={() => setShowChat(false)} />}
+      {showIncident && <IncidentModal booking={booking} onClose={() => setShowIncident(false)} />}
     </div>
   )
 }
@@ -526,6 +538,116 @@ function ChatModal({ booking, onClose }: { booking: Booking; onClose: () => void
             {sending ? '...' : 'Enviar'}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function IncidentModal({ booking, onClose }: { booking: Booking; onClose: () => void }) {
+  const [type,        setType]        = useState<string>('quality')
+  const [description, setDescription] = useState('')
+  const [sending,     setSending]     = useState(false)
+  const [done,        setDone]        = useState(false)
+  const [error,       setError]       = useState<string | null>(null)
+
+  const TYPES = [
+    { id:'cancelled_by_provider', label:'El proveedor canceló la reserva' },
+    { id:'no_show',               label:'El proveedor no se presentó' },
+    { id:'quality',               label:'El servicio no fue lo prometido' },
+    { id:'wrong_service',         label:'Recibí algo distinto a lo reservado' },
+    { id:'payment',               label:'Problema con el pago o el cobro' },
+    { id:'other',                 label:'Otro problema' },
+  ]
+
+  async function submit() {
+    setError(null)
+    if (description.trim().length < 20) {
+      setError('Cuéntanos al menos 20 caracteres para entender qué pasó.')
+      return
+    }
+    setSending(true)
+    try {
+      const res = await fetch('/api/incidents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id:  booking.id,
+          type,
+          description: description.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setDone(true)
+    } catch (err: any) {
+      setError(err.message || 'No se pudo enviar la incidencia')
+    }
+    setSending(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose}/>
+      <div className="relative w-full sm:max-w-lg bg-white sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold text-ink flex items-center gap-2">🚨 Reportar problema</div>
+            <div className="text-[11px] text-ink/50">Reserva con {booking.providers?.name || 'el proveedor'} · {new Date(booking.event_date).toLocaleDateString('es-ES')}</div>
+          </div>
+          <button onClick={onClose} className="text-2xl text-ink/40 hover:text-ink leading-none px-2">×</button>
+        </div>
+
+        {done ? (
+          <div className="p-8 text-center">
+            <div className="text-5xl mb-3">📩</div>
+            <h3 className="font-serif text-xl font-black text-ink mb-2">Incidencia recibida</h3>
+            <p className="text-sm text-ink/65 leading-relaxed mb-5">
+              Nuestro equipo la revisará en menos de 24h ({''}4h si la fecha del evento está cerca). Te avisaremos por email en cuanto tengamos una respuesta o necesitemos más información.
+            </p>
+            <button onClick={onClose}
+              className="bg-ink text-white text-sm font-bold px-6 py-2.5 rounded-xl hover:bg-ink/85 transition-colors">
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <div className="p-5 space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 leading-relaxed">
+              ⚠ Antes de reportar, intenta contactar al proveedor por el <strong>chat de FiestaGo</strong> si la situación se puede resolver hablando. Las incidencias formales activan la Garantía de Éxito y suspenden el pago al proveedor mientras investigamos.
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-2">Tipo de problema</label>
+              <select value={type} onChange={e => setType(e.target.value)}
+                className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral">
+                {TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-2">
+                Cuéntanos qué pasó
+              </label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)}
+                rows={6} maxLength={5000}
+                placeholder="Sé concreto: qué se prometió, qué ocurrió, qué te dijo el proveedor, en qué momento. Si tienes capturas o emails, guárdalos para enviárnoslos si te los pedimos."
+                className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none leading-relaxed"/>
+              <div className="text-[10px] text-ink/40 text-right mt-1">{description.length}/5000 · mín 20</div>
+            </div>
+
+            {error && <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</div>}
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={submit} disabled={sending || description.trim().length < 20}
+                className="flex-1 bg-coral text-white font-bold py-3 rounded-xl text-sm hover:bg-coral-dark transition-colors disabled:opacity-50">
+                {sending ? 'Enviando...' : 'Enviar incidencia'}
+              </button>
+              <button onClick={onClose}
+                className="px-5 border border-stone-200 rounded-xl text-sm text-ink/60 hover:bg-stone-50">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
