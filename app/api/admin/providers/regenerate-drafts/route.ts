@@ -1,75 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { buildEmailDraft, buildDmDraft } from '@/lib/outreach'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 function checkAdminAuth(req: NextRequest) {
   return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
-}
-
-// Cuerpo base del mensaje (igual para email y DM)
-function buildBaseMessage(p: any): string {
-  const sourceLabel = p.source === 'instagram' ? ' en Instagram'
-                    : p.source === 'tiktok'    ? ' en TikTok'
-                    : ''
-  return `Hola ${p.name},
-
-Somos FiestaGo, un nuevo marketplace de celebraciones en España (bodas, cumpleaños, eventos privados y familiares). Lanzamos oficialmente el 10 de junio de 2026 y estamos seleccionando los primeros profesionales en ${p.city} para tener un catálogo de calidad desde el día uno.
-
-Vimos tu trabajo${sourceLabel} y encajas con lo que buscan nuestros clientes.
-
-Ventajas de entrar antes del lanzamiento:
-
-- Mejor posición en los resultados (catálogo en construcción)
-- Tu primera reserva sin comisión
-- Solo 8% desde la segunda venta
-- Sin permanencia ni cuotas mensuales
-- Promoción gratuita en nuestras redes (@fiestagospain)
-
-🏆 SELLO FIESTAGO DE CALIDAD
-Te lo regalamos al entrar. Lo mantienes mientras conserves una nota mínima de 4,5/5 en tus reseñas. Es un sello visible junto a tu perfil que da confianza a los clientes y aumenta las reservas.
-
-🤝 TRAE A UN COMPAÑERO Y SUBE
-Si invitas a otro profesional de eventos y se registra en FiestaGo, los dos apareceréis automáticamente en los primeros puestos de vuestra categoría sin coste extra. Cuantos más traigas, más arriba.
-
-Si quieres formar parte:
-https://fiestago.es/registro-proveedor
-
-Si tienes dudas, simplemente responde a este mensaje o escribe a contacto@fiestago.es.
-
-Un saludo,
-El equipo de FiestaGo`
-}
-
-// El email lleva una línea ASUNTO: arriba; el DM no.
-function buildEmailDraft(p: any): string {
-  return `ASUNTO: Tu negocio en FiestaGo · ${p.city}\n\n${buildBaseMessage(p)}`
-}
-
-// DM compacto (~750 chars) porque Instagram limita los mensajes a ~1000 chars.
-// Mantiene todas las ventajas clave + sello + referidos + link.
-function buildDmDraft(p: any): string {
-  return `Hola ${p.name},
-
-Soy del equipo de FiestaGo, el nuevo marketplace de celebraciones en España. Lanzamos el 10 de junio y estamos seleccionando los primeros profesionales en ${p.city}.
-
-Tu trabajo encaja con lo que buscan nuestros clientes ✨
-
-Ventajas de entrar antes del lanzamiento:
-- Mejor posición en los resultados
-- 0% comisión en tu primera reserva
-- Solo 8% después · sin permanencia
-- Promoción gratuita en @fiestagospain
-
-🏆 SELLO FIESTAGO DE CALIDAD GRATIS — si mantienes 4,5/5 en reseñas
-
-🤝 Trae a un compañero y los dos subís al top de la categoría
-
-Regístrate en 5 minutos:
-👉 https://fiestago.es/registro-proveedor
-
-Cualquier duda, respóndeme por aquí 💌`
 }
 
 // POST /api/admin/providers/regenerate-drafts
@@ -95,7 +32,6 @@ export async function POST(req: NextRequest) {
   let emailCount = 0
   let dmCount = 0
 
-  // Actualizar en lotes de 50 para no saturar
   for (const p of candidates as any[]) {
     const updates: any = {}
     if (p.email) {
