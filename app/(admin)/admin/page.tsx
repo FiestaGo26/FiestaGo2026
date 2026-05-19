@@ -304,41 +304,69 @@ export default function AdminPage() {
 
   async function runAgent() {
     setAgentRunning(true)
+    const totalTarget = agentCfg.count
+    // El backend solo admite 3 proveedores por request (timeout 30s).
+    // Si pides más, partimos en lotes y los lanzamos secuencialmente.
+    const BATCH_MAX  = 3
+    const batches    = Math.ceil(totalTarget / BATCH_MAX)
     setAgentLogs([
       `🤖 Iniciando agente — ${agentCfg.category} en ${agentCfg.city}...`,
-      `⏱ Esto puede tardar 10-25 segundos (búsqueda web + análisis). Por favor espera.`,
+      batches === 1
+        ? `⏱ Esto tarda 10-25 segundos (búsqueda web + análisis). Por favor espera.`
+        : `⏱ Búsqueda en ${batches} lotes (${totalTarget} proveedores). Tardará ~${batches * 20} segundos.`,
     ])
     setAgentResults([])
-    try {
-      const res  = await fetch('/api/admin/agent', {
-        method:'POST', headers: adminHeaders(),
-        body: JSON.stringify(agentCfg),
-      })
-      // Leer texto primero para detectar HTML (timeouts de Netlify devuelven HTML 504)
-      const raw = await res.text()
-      let data: any = {}
-      try { data = JSON.parse(raw) } catch {
-        const lookHtml = /^\s*<(\!doctype|html|head|body)/i.test(raw)
-        if (!res.ok && lookHtml) {
-          setAgentLogs(l => [...l,
-            `❌ Netlify cortó la función por timeout (>26s).`,
-            `💡 Prueba con menos proveedores (3) o ejecuta el script local "node tools/fiegago-agent/fiegago-agent.mjs" para captación masiva.`,
-          ])
-        } else {
-          setAgentLogs(l => [...l, `❌ Respuesta no-JSON del servidor: ${raw.slice(0, 120)}...`])
+
+    let accumulated: any[] = []
+    let consecutiveZero = 0  // si dos lotes seguidos no devuelven nada, paramos
+
+    for (let i = 0; i < batches; i++) {
+      const remaining = totalTarget - accumulated.length
+      if (remaining <= 0) break
+      const batchSize = Math.min(BATCH_MAX, remaining)
+
+      if (batches > 1) {
+        setAgentLogs(l => [...l, `── Lote ${i+1}/${batches} · ${batchSize} proveedor${batchSize===1?'':'es'} ──`])
+      }
+
+      try {
+        const res = await fetch('/api/admin/agent', {
+          method: 'POST', headers: adminHeaders(),
+          body: JSON.stringify({ ...agentCfg, count: batchSize }),
+        })
+        const raw = await res.text()
+        let data: any = {}
+        try { data = JSON.parse(raw) } catch {
+          const lookHtml = /^\s*<(\!doctype|html|head|body)/i.test(raw)
+          setAgentLogs(l => [...l, lookHtml
+            ? `❌ Netlify cortó la función por timeout (>30s) en el lote ${i+1}.`
+            : `❌ Respuesta no-JSON: ${raw.slice(0, 120)}…`])
+          break
         }
-        setAgentRunning(false)
-        return
+        if (data.logs) setAgentLogs(l => [...l, ...data.logs])
+        if (data.error && !(data.logs || []).some((x: string) => x.includes(data.error))) {
+          setAgentLogs(l => [...l, `❌ Error: ${data.error}`])
+        }
+        const got: any[] = data.providers || []
+        accumulated = [...accumulated, ...got]
+        setAgentResults(accumulated)
+        if (got.length === 0) {
+          consecutiveZero++
+          if (consecutiveZero >= 2) {
+            setAgentLogs(l => [...l, `⏹ Dos lotes seguidos sin resultados. Paramos para no quemar API.`])
+            break
+          }
+        } else {
+          consecutiveZero = 0
+        }
+      } catch (e: any) {
+        setAgentLogs(l => [...l, `❌ Error de red en lote ${i+1}: ${e.message}`])
+        break
       }
-      if (data.logs)      setAgentLogs(data.logs)
-      if (data.providers) setAgentResults(data.providers)
-      // El server ya mete el "❌ Error" en data.logs cuando falla, no
-      // lo duplicamos. Solo lo añadimos si no estaba ya en los logs.
-      if (data.error && !(data.logs || []).some((l: string) => l.includes(data.error))) {
-        setAgentLogs(l => [...l, `❌ Error: ${data.error}`])
-      }
-    } catch(e: any) {
-      setAgentLogs(l => [...l, `❌ Error de red: ${e.message}`])
+    }
+
+    if (batches > 1) {
+      setAgentLogs(l => [...l, `✅ Búsqueda completa: ${accumulated.length}/${totalTarget} proveedores`])
     }
     setAgentRunning(false)
   }
@@ -905,7 +933,7 @@ export default function AdminPage() {
                   <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
                     marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Nº de proveedores</label>
                   <div style={{ display:'flex', gap:5 }}>
-                    {[1,2,3].map(n=>(
+                    {[2,3,5,10].map(n=>(
                       <button key={n} onClick={()=>setAgentCfg(c=>({...c,count:n}))} disabled={agentRunning}
                         style={{ flex:1, padding:'7px', borderRadius:7, fontSize:13, fontWeight:700,
                           border:`1px solid ${agentCfg.count===n?'#06B6D4':'#1F2937'}`,

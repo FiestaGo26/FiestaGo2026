@@ -130,6 +130,7 @@ Devuelve SOLO este JSON, sin texto extra:
 
     const supabase = createAdminClient()
     const saved: any[] = []
+    let skippedDup = 0
     for (const p of providers) {
       const email = p.email || null
       const phone = p.phone || null
@@ -138,6 +139,23 @@ Devuelve SOLO este JSON, sin texto extra:
       const website = (websiteRaw && !isSocial) ? websiteRaw : null
       const instagram = p.instagram || null
       const contactable = !!(email || phone || website || instagram)
+
+      // Dedupe: si el email o Instagram ya existe en providers, lo saltamos
+      // para no insertar el mismo proveedor dos veces (cuando el panel
+      // hace búsquedas en lotes seguidos sobre la misma ciudad/categoría).
+      if (email || instagram) {
+        const orParts: string[] = []
+        if (email)     orParts.push(`email.eq.${email}`)
+        if (instagram) orParts.push(`instagram.eq.${instagram}`)
+        const { count: existingCount } = await supabase
+          .from('providers')
+          .select('id', { count: 'exact', head: true })
+          .or(orParts.join(','))
+        if ((existingCount || 0) > 0) {
+          skippedDup++
+          continue
+        }
+      }
 
       // Drafts de outreach (email + DM) — plantillas en lib/outreach.ts
       const provLike = { name: p.name, city, source: 'web' }
@@ -174,6 +192,7 @@ Devuelve SOLO este JSON, sin texto extra:
     }
 
     log(``)
+    if (skippedDup > 0) log(`♻️  ${skippedDup} duplicados saltados (ya estaban)`)
     log(`🎉 ${saved.length} proveedores guardados como pendientes`)
     log(`📋 Apruébalos desde el panel para enviar el outreach`)
 
@@ -181,8 +200,9 @@ Devuelve SOLO este JSON, sin texto extra:
       success: true,
       providers: saved,
       stats: {
-        found: providers.length,
-        saved: saved.length,
+        found:    providers.length,
+        saved:    saved.length,
+        skippedDup,
         withEmail:     saved.filter((p: any) => p.email).length,
         withInstagram: saved.filter((p: any) => p.instagram).length,
         web: saved.length,
