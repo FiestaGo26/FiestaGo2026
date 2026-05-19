@@ -305,20 +305,27 @@ export default function AdminPage() {
   async function runAgent() {
     setAgentRunning(true)
     const totalTarget = agentCfg.count
-    // El backend solo admite 3 proveedores por request (timeout 30s).
-    // Si pides más, partimos en lotes y los lanzamos secuencialmente.
+    // Backend máx 3 por request (timeout 30s). Para más, lotes.
     const BATCH_MAX  = 3
+    // Pausa entre lotes para no exceder el rate limit de Anthropic
+    // (30k tokens input/min en tier gratuito; cada lote ~10-15k).
+    const DELAY_MS   = 30_000
     const batches    = Math.ceil(totalTarget / BATCH_MAX)
+    const estSeconds = batches * 20 + Math.max(0, batches - 1) * (DELAY_MS / 1000)
+
     setAgentLogs([
       `🤖 Iniciando agente — ${agentCfg.category} en ${agentCfg.city}...`,
       batches === 1
         ? `⏱ Esto tarda 10-25 segundos (búsqueda web + análisis). Por favor espera.`
-        : `⏱ Búsqueda en ${batches} lotes (${totalTarget} proveedores). Tardará ~${batches * 20} segundos.`,
+        : `⏱ Búsqueda en ${batches} lotes (${totalTarget} proveedores). Pausas de 30s entre lotes para no saturar API. Tiempo total estimado: ~${Math.round(estSeconds)}s.`,
     ])
     setAgentResults([])
 
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+    const isRateLimitMsg = (msg: string) => /rate.?limit|exceed.*tokens|429/i.test(msg || '')
+
     let accumulated: any[] = []
-    let consecutiveZero = 0  // si dos lotes seguidos no devuelven nada, paramos
+    let consecutiveZero = 0
 
     for (let i = 0; i < batches; i++) {
       const remaining = totalTarget - accumulated.length
@@ -329,7 +336,9 @@ export default function AdminPage() {
         setAgentLogs(l => [...l, `── Lote ${i+1}/${batches} · ${batchSize} proveedor${batchSize===1?'':'es'} ──`])
       }
 
-      try {
+      // Función interna para llamar al endpoint con un retry en caso
+      // de rate limit (esperamos 65s y volvemos a intentar una vez).
+      const callBatch = async (attempt: number): Promise<any> => {
         const res = await fetch('/api/admin/agent', {
           method: 'POST', headers: adminHeaders(),
           body: JSON.stringify({ ...agentCfg, count: batchSize }),
@@ -338,11 +347,22 @@ export default function AdminPage() {
         let data: any = {}
         try { data = JSON.parse(raw) } catch {
           const lookHtml = /^\s*<(\!doctype|html|head|body)/i.test(raw)
-          setAgentLogs(l => [...l, lookHtml
+          return { _fatal: lookHtml
             ? `❌ Netlify cortó la función por timeout (>30s) en el lote ${i+1}.`
-            : `❌ Respuesta no-JSON: ${raw.slice(0, 120)}…`])
-          break
+            : `❌ Respuesta no-JSON: ${raw.slice(0, 120)}…` }
         }
+        if (data.error && isRateLimitMsg(data.error) && attempt === 0) {
+          setAgentLogs(l => [...l, `⏸ Rate limit alcanzado. Esperando 65s y reintentando...`])
+          await sleep(65_000)
+          return callBatch(1)
+        }
+        return data
+      }
+
+      try {
+        const data = await callBatch(0)
+        if (data._fatal) { setAgentLogs(l => [...l, data._fatal]); break }
+
         if (data.logs) setAgentLogs(l => [...l, ...data.logs])
         if (data.error && !(data.logs || []).some((x: string) => x.includes(data.error))) {
           setAgentLogs(l => [...l, `❌ Error: ${data.error}`])
@@ -362,6 +382,13 @@ export default function AdminPage() {
       } catch (e: any) {
         setAgentLogs(l => [...l, `❌ Error de red en lote ${i+1}: ${e.message}`])
         break
+      }
+
+      // Pausa entre lotes (no después del último)
+      const stillHaveBatches = (i + 1) < batches && accumulated.length < totalTarget
+      if (stillHaveBatches) {
+        setAgentLogs(l => [...l, `⏸ Esperando 30s antes del siguiente lote (rate limit Anthropic)...`])
+        await sleep(DELAY_MS)
       }
     }
 
