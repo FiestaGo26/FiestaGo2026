@@ -34,10 +34,24 @@ Cambios sobre lo reservado solo se admiten **con acuerdo explícito por escrito 
 
 Te comprometes a **presentarte al evento confirmado en la fecha y hora acordadas**. Si surge una urgencia legítima (enfermedad, accidente, fuerza mayor), avisas con la máxima antelación posible y FiestaGo busca sustituto.
 
-**Consecuencia si incumples sin causa justificada (no-show)**:
-- Reembolso del 100% al cliente, asumido por ti.
-- Compensación extra al cliente (escalonada según ticket, ver Garantía de Éxito), asumida 50/50 entre tú y FiestaGo.
-- Baja permanente del marketplace tras una segunda incidencia.
+**Consecuencia si incumples sin causa justificada (no-show o cancelación con <7 días)**:
+
+| Ticket de la reserva | Compensación al cliente que asumes |
+|---|---|
+| Hasta 500 €    | 300 € |
+| 500–2 000 €    | 500 € |
+| 2 000–5 000 €  | 1 000 € |
+| 5 000–15 000 € | 2 000 € |
+| Más de 15 000 € | 3 000 € |
+
+A esto se suma el **reembolso del 100% del importe pagado por el cliente** (que tampoco cobras). Ejemplo: reserva de 1 000 € → cliente recibe 1 580 € en total (1 080 € reembolso + 500 € compensación), todo asumido por ti.
+
+El cargo se descuenta de tu próximo payout o se factura directamente si no tienes payouts suficientes. Si no atiendes la factura, baja del marketplace y reclamación legal.
+
+**Otras sanciones operativas**:
+- Pierdes el sello "Verificado" durante 6 meses.
+- Visibilidad reducida en búsquedas durante 90 días.
+- Tras una **segunda incidencia grave**, baja permanente sin posibilidad de re-registro.
 
 ---
 

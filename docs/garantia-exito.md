@@ -1,216 +1,163 @@
-# Garantía de Éxito FiestaGo — Borrador v0.2
+# Garantía de Éxito FiestaGo — Borrador v0.3
 
-> Este documento es el contrato emocional con el cliente. Define qué prometemos, qué no prometemos, y cómo lo cumplimos sin arruinarnos. Lo retomamos antes de programar nada.
+> Este documento es el contrato emocional con el cliente. Define qué prometemos, qué no prometemos, y cómo lo cumplimos de forma económicamente sostenible.
 >
-> **Alcance del producto**: FiestaGo no es solo bodas. Cubre cualquier celebración o evento privado — bodas, bautizos, comuniones, cumpleaños (infantiles y adultos), aniversarios, despedidas, eventos corporativos privados, fiestas temáticas, baby showers, etc. La garantía aplica igual a todos los tipos, ajustando importes según el ticket de la reserva.
+> **Cambio clave v0.3**: el dinero de la compensación lo paga el proveedor que falla, no FiestaGo. FiestaGo solo media, adelanta al cliente y descuenta del payout del proveedor. Antes asumíamos demasiado de nuestro bolsillo y era insostenible.
+>
+> **Alcance del producto**: FiestaGo cubre cualquier celebración o evento privado — bodas, bautizos, comuniones, cumpleaños, aniversarios, despedidas, eventos corporativos privados, fiestas temáticas, baby showers, etc.
 
 ---
 
-## Por qué existe esta garantía
+## Principio rector
 
-Bodas.net y las grandes plataformas compiten por **catálogo y precio**, y solo cubren el segmento boda. Nosotros no podemos ganarles a precio en menos de 5 años, pero podemos ofrecer:
+**Paga el que falla**. Si el proveedor incumple, el proveedor asume el coste de reparar al cliente. FiestaGo adelanta el dinero al cliente para que no espere, y luego descuenta del payout del proveedor (o cobra directamente si no tiene payouts suficientes). Esto es lo que hace Airbnb con sus hosts, Booking con sus hoteles y Uber con sus drivers — es el único modelo que escala.
 
-1. **Cobertura de todo tipo de eventos**, no solo bodas (los grandes están especializados y los clientes no saben dónde reservar un mago para un cumple).
-2. **Respaldo económico real** si algo sale mal, que ellos no se atreven a dar.
-
-La promesa pública es:
-
-> **Garantía de Éxito FiestaGo**
-> Sea cual sea tu celebración, si tu proveedor te falla, lo arreglamos nosotros o te devolvemos el dinero. Sin letra pequeña abusiva, sin esperas en teléfonos de soporte.
+FiestaGo solo asume pérdida en dos casos:
+1. **Proveedor desaparece o se niega a pagar**. Entonces adelantamos al cliente para preservar la marca y perseguimos al proveedor por vía legal.
+2. **Coste operativo** de mediación, búsqueda de sustituto, etc. (no incluye compensaciones económicas).
 
 ---
 
-## Qué cubre — Fase 1 (lanzamiento, mes 1-3)
+## Cobertura — Fase 1 (lanzamiento, mes 1-3)
 
-Empezamos **acotado** para poder cumplir 100% de las veces. Crecemos cuando tengamos datos.
+| Escenario | Cliente recibe | Proveedor paga | FiestaGo pone |
+|---|---|---|---|
+| Proveedor cancela con **+7 días** y encontramos sustituto | Su evento gestionado | El no cobra (no devengado) | 0 € + gestión |
+| Proveedor cancela con **+7 días** y NO encontramos sustituto | Reembolso 100% del importe pagado | El no cobra | 0 € + gestión |
+| Proveedor cancela con **<7 días** | Reembolso 100% + compensación fija (ver tabla) | 100% + compensación entera | 0 € + gestión |
+| Proveedor **no se presenta** el día del evento | Reembolso 100% + compensación fija (ver tabla) | 100% + compensación entera | 0 € + gestión |
+| Fuerza mayor del cliente (fallecimiento familiar 1er grado, hospitalización) | Aplazar evento sin coste 12 meses | Acuerdo de fechas con el proveedor | 0 € |
 
-| Escenario | Acción FiestaGo | Coste para FiestaGo |
-|---|---|---|
-| Proveedor cancela con **+7 días** del evento | Sustituto equivalente en 48h **o** devolución del 110% del importe pagado | Hasta 10% del booking |
-| Proveedor **no aparece** el día del evento | Reembolso del 100% + compensación fija (escalonada según ticket, ver tabla abajo) | 100% + extra fijo |
-| Fuerza mayor del cliente (fallecimiento familiar 1er grado, hospitalización) | Aplazar el evento sin coste hasta 12 meses | 0€ (acuerdo con proveedor) |
+### Tabla de compensación fija (no-show o cancelación <7d)
 
-### Compensación fija por no-show escalonada según ticket
+La paga íntegramente el proveedor. El cliente la recibe encima del reembolso del 100%.
 
-Para que la compensación sea proporcional al estrés y al tipo de evento:
-
-| Ticket de la reserva | Compensación extra por no-show |
+| Ticket de la reserva | Compensación al cliente |
 |---|---|
-| < 300 €  | 50 € |
-| 300–1 500 € | 150 € |
-| 1 500–5 000 € | 300 € |
-| > 5 000 € (típico bodas) | 500 € |
+| Hasta 500 €    | **300 €** |
+| 500–2 000 €    | **500 €** |
+| 2 000–5 000 €  | **1 000 €** |
+| 5 000–15 000 € | **2 000 €** |
+| Más de 15 000 € | **3 000 €** |
+
+### Ejemplo numérico (reserva de 1 000 €)
+
+- Cliente paga al reservar: 1 080 € (precio 1 000 € + comisión FiestaGo 80 €).
+- Si proveedor no se presenta:
+  - Cliente recibe: **1 080 € (reembolso) + 500 € (compensación) = 1 580 €**.
+  - Proveedor paga: **1 580 €**. No cobra los 1 000 € teóricos y encima paga 1 580 €.
+  - FiestaGo pone: 0 € (solo gestión + adelanto temporal hasta cobrar).
 
 ### Lo que NO cubre (explícito, en home y emails)
 
-- ❌ Lluvia, viento o clima en eventos al aire libre
-- ❌ Insatisfacción subjetiva del cliente ("no me gustó cómo bailó el DJ", "el mago no era gracioso")
-- ❌ Cambios pedidos por el cliente fuera del alcance contratado
-- ❌ Daños causados por invitados
-- ❌ Reclamaciones posteriores a 14 días del evento
-- ❌ Eventos sin reserva confirmada y pagada por FiestaGo
+- ❌ Lluvia, viento o clima en eventos al aire libre.
+- ❌ Insatisfacción subjetiva del cliente ("no me gustó cómo bailó el DJ").
+- ❌ Cambios pedidos por el cliente fuera del alcance contratado.
+- ❌ Daños causados por invitados.
+- ❌ Reclamaciones posteriores a 14 días del evento.
+- ❌ Eventos sin reserva confirmada y pagada por FiestaGo.
 
 ---
 
-## Qué cubre — Fase 2 (mes 4-6, si todo va bien)
+## Cómo financiamos los adelantos al cliente
 
-Añadimos cuando tengamos al menos 50 eventos completados sin incidencias mal gestionadas:
+Aunque el coste es del proveedor, FiestaGo adelanta al cliente para que no espere. Eso requiere tener caja para esos adelantos hasta cobrar al proveedor.
 
-| Escenario nuevo | Acción FiestaGo |
+**Mecanismos en orden de uso**:
+
+1. **Escrow (cuando llegue Stripe Connect)**. El dinero del cliente está retenido por FiestaGo hasta `event_date + N días`. Si hay no-show, lo devolvemos al cliente desde ese mismo escrow, sin sacarlo de caja propia. La compensación se descuenta de futuros payouts del proveedor.
+
+2. **Descuento del payout del proveedor**. Cuando el proveedor tenga reservas pendientes de cobro, le descontamos automáticamente la deuda.
+
+3. **Factura directa al proveedor**. Si no tiene payouts suficientes en 30 días, factura electrónica. Plazo 15 días. Si no paga, baja del marketplace + reclamación legal.
+
+4. **Adelanto de FiestaGo + persecución**. Solo si el proveedor desaparece o se niega: adelantamos al cliente para preservar la marca y demandamos al proveedor.
+
+**Cap mensual de pérdidas asumidas por FiestaGo**: 3 000 €/mes durante los primeros 6 meses. Si se rebasa, paramos las garantías nuevas hasta investigar el patrón.
+
+---
+
+## Cobertura — Fase 2 (mes 4-6)
+
+Añadimos cuando tengamos al menos 50 eventos completados y datos suficientes:
+
+| Escenario nuevo | Acción |
 |---|---|
-| Proveedor cancela con **<7 días** del evento | Sustituto urgente + 50% extra de compensación al cliente |
-| Calidad **objetivamente inferior** a lo prometido (no entrega producto, llega tarde >2h, no tiene los items contratados) | Compensación calculada según el incumplimiento, con prueba documental |
+| Calidad **objetivamente inferior** a lo prometido | Compensación parcial al cliente, descontada del payout del proveedor según el % de incumplimiento (10-50%). |
 
 ---
 
-## Qué cubre — Fase 3 (mes 7+)
+## Cobertura — Fase 3 (mes 7+)
 
-Cuando estemos generando ~50k€/mes de comisión:
+Cuando estemos generando ~50 k€/mes de comisión:
 
-- Cobertura completa con seguro de responsabilidad civil contratado con broker (Hiscox / Caser).
-- Garantía aumentada a 150-200% para casos extremos.
-- Concierge de evento opcional (persona humana asignada a celebraciones de >3 000€).
+- Cobertura adicional con seguro de responsabilidad civil contratado con broker (Hiscox / Caser).
+- Concierge de evento opcional (persona humana asignada a celebraciones de >3 000 €).
+
+---
+
+## Sanciones operativas al proveedor (más allá del cargo económico)
+
+Para que el incentivo sea real, además del pago:
+
+- **1ª incidencia grave** (no-show o cancelación <7d): aviso formal + cobro + pierde sello "Verificado" durante 6 meses + visibilidad reducida en búsquedas 90 días.
+- **2ª incidencia grave**: baja permanente del marketplace, sin posibilidad de re-registro.
+- **Falsedad documental**: baja inmediata + reporte a Agencia Tributaria.
 
 ---
 
 ## Cómo se ejecuta — operativa
 
 ### Lo que el cliente hace
-1. Reporta la incidencia en su panel `/mi-cuenta` → botón **"Reportar incidencia"** en la reserva.
-2. Sube prueba si aplica (foto, mensajes del proveedor, factura externa).
-3. FiestaGo revisa en **24h** (4h si es la semana del evento).
+1. Reporta la incidencia en su panel `/mi-cuenta` → botón "Reportar incidencia".
+2. Sube prueba si aplica.
+3. FiestaGo revisa en **24 h** (4 h si es la semana del evento).
 
 ### Lo que FiestaGo hace
 1. Verifica la incidencia contra los criterios objetivos.
-2. Comunica con el proveedor implicado (chat in-app + email + llamada si toca).
-3. **Si aplica garantía**: ejecuta la acción automáticamente (Stripe refund, búsqueda de sustituto en el pool de emergencia, transferencia compensatoria).
-4. Cierra el caso con email final al cliente y al proveedor.
+2. Avisa al proveedor por email para que aporte su versión.
+3. Si procede, ejecuta la garantía: reembolso al cliente + compensación según tabla.
+4. Carga el importe al proveedor (descuento de payout o factura directa).
+5. Cierra el caso con email final a las dos partes.
 
 ### Pool de proveedores de emergencia
-- **Por cada categoría × ciudad principal** (Madrid, Barcelona, Valencia, Sevilla, Bilbao, Málaga) — y por cada tipo de evento principal — mínimo **3 proveedores marcados como `emergency_backup`**.
-- Categorías más críticas por tipo de evento:
-  - **Bodas**: fotografía, catering, espacios, música.
-  - **Comuniones / bautizos**: catering, fotografía, espacios, animación.
-  - **Cumpleaños infantil**: animación, catering, decoración, magos.
-  - **Cumpleaños adulto / despedidas**: música, catering, cocteleros.
-  - **Eventos corporativos privados**: catering, espacios, técnico de audio.
-  - **Fiestas en casa**: catering pequeño, DJ, decoración, fotomatón.
-- Estos proveedores aceptan tarifa premium (+30%) por encargo last-minute, asumida por FiestaGo.
-- Verificación reforzada antes de incluir uno (DNI + CIF + RC + 5 eventos previos sin incidencia).
+Cada categoría × ciudad principal tiene mínimo **3 proveedores marcados como `emergency_backup`**, con verificación reforzada y compromiso de aceptar encargos last-minute con +30% sobre tarifa estándar (que asume el proveedor incumplidor, no FiestaGo).
 
 ---
 
-## Coste financiero estimado
+## Roadmap técnico (orden de implementación)
 
-**Asunciones iniciales** (mes 1-3) con mix realista de tipos de evento:
+### Hecho ✓
+- Tabla `incidents` con workflow open → investigating → resolved/rejected.
+- API + UI cliente para reportar.
+- UI admin para gestionar con SLA visible.
+- Emails a cliente y proveedor al abrir y cerrar.
+- Página pública `/garantia` y `/proveedor/compromisos`.
 
-| Tipo evento | % del volumen | Ticket medio | Tasa incidencia | Indemniz. media |
-|---|---|---|---|---|
-| Bodas              | 25% | 15 000 € | 2% | 3 000 € |
-| Comuniones/bautizos| 20% | 3 500 €  | 2% | 700 € |
-| Cumpleaños adulto  | 25% | 800 €    | 3% | 200 € |
-| Cumpleaños infantil| 15% | 400 €    | 3% | 100 € |
-| Despedidas/corp/otros | 15% | 1 200 € | 2% | 300 € |
-
-- **Ticket medio ponderado**: ~4 200 €
-- **Tasa media de incidencia**: ~2.4%
-- **Indemnización media ponderada**: ~1 000 €
-
-**Si hacemos 100 reservas/mes**:
-- Volumen procesado: ~420 000 €/mes
-- Coste medio en garantías: ~2 400 €/mes (~0.6% del volumen)
-- Comisión bruta: 420k × 8% = 33 600 €/mes
-- Margen neto antes de operativa: ~31 000 €/mes (93% sostenible)
-
-> Nota: el ticket medio ponderado puede ser más bajo que estos 4 200 € si el mix se inclina a fiestas pequeñas. Las cifras se revisan trimestralmente con datos reales.
-
-**Reserva de capital recomendada**: **10-12% del volumen procesado** en escrow durante los primeros 6 meses (más bajo que la estimación inicial porque la tasa de coste medio es ~0.6% del volumen).
-
-**Plan B** desde el día 1: contratar **seguro de cancelación** con un broker. Coste fijo (~500-1000€/mes para arrancar) que cubre los casos catastróficos (no-show en evento de 25k€).
-
----
-
-## Roadmap técnico (lo que programamos)
-
-### Bloque A — Cobros y escrow (~3 días)
-- [ ] Integrar Stripe Connect Express para que cada proveedor tenga su cuenta conectada
-- [ ] Configurar `application_fee_amount` con la comisión FiestaGo
-- [ ] Retención del payout al proveedor hasta `event_date + 7 días` (delayed transfer)
-- [ ] Endpoint para emitir refund desde admin con un click
-
-### Bloque B — Sistema de incidencias (~1.5 días)
-- [ ] Tabla `incidents` con `booking_id`, `type`, `status`, `reported_at`, `evidence_urls`, `resolution`, `compensation_amount`
-- [ ] UI en `/mi-cuenta` → botón **"Reportar incidencia"** por reserva
-- [ ] UI en admin → tab **"Incidencias"** con SLA visible (verde <4h, ámbar <24h, rojo +24h)
-- [ ] Email al admin al abrir incidencia + recordatorio cada 4h hasta resolver
-
-### Bloque C — Pool de emergencia (~0.5 días)
-- [ ] Columna `emergency_backup boolean` en `providers`
-- [ ] UI en admin para marcar/desmarcar y filtrar por (categoría × ciudad × tipo de evento)
-- [ ] Endpoint que devuelve los backups disponibles para `(category, city, date, event_type)`
-
-### Bloque D — Comunicación de la promesa (~0.5 días)
-- [ ] Sección destacada en home: hero secundario con la promesa
-- [ ] Badge "🛡 Garantía de Éxito" en cada ficha de proveedor
-- [ ] Línea en email de confirmación de reserva: *"Esta reserva está cubierta por la Garantía de Éxito"*
-- [ ] Página dedicada `/garantia-exito` con detalles completos
-
----
-
-## Copy de marketing
-
-### Home (hero secundario)
-
-```
-🛡  Garantía de Éxito
-
-Para tu boda, comunión, cumpleaños o cualquier celebración.
-Si tu proveedor te falla, te encontramos otro o te devolvemos
-el 110% del importe.
-
-Sin letra pequeña. Sin esperas en soporte.
-
-[Ver detalles] [Buscar proveedor]
-```
-
-### Badge en ficha (junto al sello "Verificado")
-
-```
-🛡 Cubierto por Garantía de Éxito FiestaGo
-```
-
-### Email de confirmación
-
-```
-✓ Tu reserva está cubierta por la Garantía de Éxito.
-Si [Proveedor] cancela o no aparece, lo arreglamos
-en 48h o te devolvemos el 110%.
-```
+### Pendiente
+- [ ] Columna `provider_charge` en incidents, separada de `compensation_amount`.
+- [ ] Cálculo automático sugerido en el modal de admin según el ticket.
+- [ ] Stripe Connect con escrow real (mientras no, los descuentos se gestionan a mano).
+- [ ] Pool de proveedores de emergencia (`emergency_backup boolean` en providers).
+- [ ] Comunicación de la promesa en home y fichas (✓ ya hecho con la sección negra).
 
 ---
 
 ## Letra pequeña a redactar (consulta con abogado antes del launch)
 
 - Definir "incidencia cubierta" con criterios objetivos.
-- Definir el plazo de reclamación (sugerencia: 14 días tras evento).
-- Definir el procedimiento de prueba (testigos, fotografías, etc).
-- Limitación de responsabilidad por evento (sugerencia: cap del 200% del importe).
+- Plazo de reclamación: 14 días tras el evento.
+- Procedimiento de prueba (testigos, fotografías, etc.).
+- Limitación de responsabilidad por evento: cap del 200% del importe pagado por el cliente.
 - Resolución de disputas (mediación → arbitraje → tribunales).
-- Cláusula de fuerza mayor (eventos imprevisibles).
+- Cláusula de fuerza mayor.
+- **Cláusula de cargo al proveedor**: el proveedor acepta que FiestaGo le descuente del payout o le facture cualquier incidencia atribuible a él.
 
-**Importante**: la garantía solo aplica si la reserva se ha hecho **íntegramente a través de FiestaGo** (canal, pago, comunicación). Si hay pagos por fuera, salta. Esto es lo que protege el modelo.
-
----
-
-## Preguntas abiertas para retomar mañana
-
-1. ¿Empezamos con escrow vía Stripe Connect, o con cobro directo + reserva del 10-12% en cuenta separada de FiestaGo?
-2. ¿Contratamos seguro desde el día 1 (~500€/mes fijos) o asumimos los primeros meses contra el balance?
-3. ¿Tenemos abogado para revisar la letra pequeña antes del launch?
-4. ¿Quién atiende las incidencias críticas la noche del sábado en el lanzamiento? (Sin alguien humano disponible, la garantía no es real.)
-5. **Mix esperado de tipos de evento** en el lanzamiento: ¿el reparto que asumo (25% bodas, 20% comuniones, 25% cumple adulto, etc.) es realista, o el plan de captación se enfoca más a un nicho concreto al principio?
+**Importante**: la garantía solo aplica si la reserva se ha hecho íntegramente a través de FiestaGo (canal, pago, comunicación). Si hay pagos por fuera, salta.
 
 ---
 
-**Estado del documento**: borrador v0.2 — ampliado a todos los tipos de evento, no solo bodas. Para editar y consensuar antes de empezar a programar.
-**Última revisión**: por confirmar.
+**Estado del documento**: borrador v0.3 — modelo financiero corregido para que FiestaGo sea sostenible desde día 1.
+**Cambios respecto a v0.2**: el coste de la compensación pasa de FiestaGo al proveedor que incumple. Cap mensual de pérdidas asumidas reducido. Tabla de compensación más agresiva pero proporcional.
+
+---

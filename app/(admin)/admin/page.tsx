@@ -2078,8 +2078,31 @@ function IncidentAdminModal({ incident, onClose, onUpdate }: {
   onClose: () => void
   onUpdate: (id: string, updates: any) => void | Promise<void>
 }) {
+  const booking   = incident.bookings || {}
+  const clientPaid = Number(booking.total_amount || 0)
+  // Estimación del precio neto del proveedor: total / 1.08. Si la reserva
+  // viejas o sin commission_rate guardada, fallback al total.
+  const ticket = clientPaid > 0 ? Math.round((clientPaid / 1.08) * 100) / 100 : 0
+
+  // Compensación sugerida (tabla de la Garantía). Solo aplica a no-show
+  // o cancelación con <7d. El admin la puede ajustar a mano.
+  const isNoShowLike = ['no_show', 'cancelled_by_provider'].includes(incident.type)
+  const suggestedComp = !isNoShowLike ? 0
+                      : ticket <= 500    ? 300
+                      : ticket <= 2000   ? 500
+                      : ticket <= 5000   ? 1000
+                      : ticket <= 15000  ? 2000
+                      :                    3000
+  const suggestedClient = isNoShowLike ? Math.round((clientPaid + suggestedComp) * 100) / 100 : clientPaid
+  const suggestedProviderCharge = suggestedClient  // proveedor paga lo mismo que recibe el cliente
+
   const [resolution,    setResolution]    = useState(incident.resolution || '')
-  const [compensation,  setCompensation]  = useState<string>(incident.compensation_amount?.toString() || '')
+  const [compensation,  setCompensation]  = useState<string>(
+    incident.compensation_amount?.toString() || (isNoShowLike ? suggestedClient.toString() : '')
+  )
+  const [providerCharge, setProviderCharge] = useState<string>(
+    incident.provider_charge?.toString() || (isNoShowLike ? suggestedProviderCharge.toString() : '')
+  )
   const [rejectedReason, setRejectedReason] = useState(incident.rejected_reason || '')
 
   const typeLabel: Record<string,string> = {
@@ -2091,7 +2114,6 @@ function IncidentAdminModal({ incident, onClose, onUpdate }: {
     other:                 'Otro',
   }
 
-  const booking = incident.bookings || {}
   const eventDate = booking.event_date
     ? new Date(booking.event_date).toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric' })
     : '—'
@@ -2152,21 +2174,46 @@ function IncidentAdminModal({ incident, onClose, onUpdate }: {
               <div style={{ fontSize:11, fontWeight:700, color:'#10B981', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
                 ✓ Resolver con compensación
               </div>
+
+              {isNoShowLike && (
+                <div style={{ background:'#10B98114', border:'1px solid #10B98133', borderRadius:8, padding:'8px 10px', marginBottom:10, fontSize:11, color:'#10B981', lineHeight:1.5 }}>
+                  💡 Sugerencia para {incident.type === 'no_show' ? 'no-show' : 'cancelación tardía'}:
+                  cliente recibe <strong>{suggestedClient.toLocaleString('es-ES')}€</strong>
+                  ({clientPaid.toLocaleString('es-ES')}€ reembolso + {suggestedComp.toLocaleString('es-ES')}€ compensación).
+                  Proveedor paga <strong>{suggestedProviderCharge.toLocaleString('es-ES')}€</strong>.
+                </div>
+              )}
+
               <textarea value={resolution} onChange={e => setResolution(e.target.value)} rows={2}
                 placeholder="Qué hemos hecho: sustituto X, reembolso Y, etc."
                 style={{ width:'100%', background:'#111827', border:'1px solid #1F2937', borderRadius:8,
                   padding:'8px 10px', color:'#F9FAFB', fontSize:12, marginBottom:8, fontFamily:'inherit', resize:'none' }}/>
-              <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+
+              <div style={{ marginBottom:6 }}>
+                <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:4 }}>
+                  Cliente recibe (€)
+                </label>
                 <input type="number" value={compensation} onChange={e => setCompensation(e.target.value)}
-                  placeholder="Importe a devolver (€)"
-                  style={{ flex:1, background:'#111827', border:'1px solid #1F2937', borderRadius:8,
+                  placeholder="0"
+                  style={{ width:'100%', background:'#111827', border:'1px solid #1F2937', borderRadius:8,
                     padding:'8px 10px', color:'#F9FAFB', fontSize:12 }}/>
-                <span style={{ fontSize:11, color:'#6B7280' }}>€</span>
               </div>
+
+              <div style={{ marginBottom:10 }}>
+                <label style={{ fontSize:10, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:4 }}>
+                  Proveedor paga (€) — se descuenta del payout
+                </label>
+                <input type="number" value={providerCharge} onChange={e => setProviderCharge(e.target.value)}
+                  placeholder="0"
+                  style={{ width:'100%', background:'#111827', border:'1px solid #1F2937', borderRadius:8,
+                    padding:'8px 10px', color:'#F9FAFB', fontSize:12 }}/>
+              </div>
+
               <button onClick={() => onUpdate(incident.id, {
                   status: 'resolved',
                   resolution,
                   compensation_amount: compensation ? parseFloat(compensation) : null,
+                  provider_charge:     providerCharge ? parseFloat(providerCharge) : null,
                 })}
                 disabled={resolution.length < 5}
                 style={{ width:'100%', background:'#10B981', color:'#fff', border:'none',
@@ -2204,8 +2251,16 @@ function IncidentAdminModal({ incident, onClose, onUpdate }: {
             </div>
             <div style={{ fontSize:13, color:'#D1D5DB', whiteSpace:'pre-wrap', marginBottom:6 }}>{incident.resolution}</div>
             {incident.compensation_amount != null && (
-              <div style={{ fontSize:13, color:'#10B981', fontWeight:700 }}>
-                Compensación: {Number(incident.compensation_amount).toLocaleString()}€
+              <div style={{ fontSize:13, color:'#10B981', fontWeight:700, marginBottom:2 }}>
+                Cliente recibe: {Number(incident.compensation_amount).toLocaleString()}€
+              </div>
+            )}
+            {incident.provider_charge != null && (
+              <div style={{ fontSize:12, color:'#F59E0B' }}>
+                Cargo al proveedor: <strong>{Number(incident.provider_charge).toLocaleString()}€</strong>
+                {incident.provider_charge_paid
+                  ? <span style={{ marginLeft:6, color:'#10B981' }}>✓ cobrado</span>
+                  : <span style={{ marginLeft:6, color:'#9CA3AF' }}>· pendiente de descontar del payout</span>}
               </div>
             )}
           </div>

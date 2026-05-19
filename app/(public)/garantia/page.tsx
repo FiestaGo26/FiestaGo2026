@@ -67,8 +67,8 @@ export default function GarantiaPage() {
               tagColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
             },
             {
-              title: 'El proveedor no se presenta el día del evento',
-              action: 'Reembolso del 100% del importe pagado + compensación adicional según el ticket de la reserva (50€ a 500€).',
+              title: 'El proveedor no se presenta o cancela con menos de 7 días',
+              action: 'Reembolso del 100% del importe pagado + compensación adicional escalonada según el ticket de la reserva (300€ a 3.000€).',
               tag: 'Cubierto',
               tagColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
             },
@@ -90,6 +90,43 @@ export default function GarantiaPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* TABLA DE COMPENSACIÓN */}
+      <section className="max-w-4xl mx-auto px-6 py-12">
+        <h2 className="font-serif text-3xl md:text-4xl font-black text-ink mb-3">
+          Cuánto recibes si tu proveedor falla
+        </h2>
+        <p className="text-ink/55 mb-8 leading-relaxed">
+          Si tu proveedor no aparece o cancela con menos de 7 días, recibes el reembolso del 100% del importe pagado <strong>más</strong> esta compensación adicional. Escalonada según el precio de la reserva.
+        </p>
+        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-card">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-stone-50 border-b border-stone-200">
+                <th className="text-left p-4 text-xs font-bold text-ink/55 uppercase tracking-widest">Importe de tu reserva</th>
+                <th className="text-right p-4 text-xs font-bold text-coral uppercase tracking-widest">Compensación adicional</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Hasta 500 €',    '300 €'],
+                ['500 – 2.000 €',  '500 €'],
+                ['2.000 – 5.000 €','1.000 €'],
+                ['5.000 – 15.000 €','2.000 €'],
+                ['Más de 15.000 €','3.000 €'],
+              ].map(([t,c]) => (
+                <tr key={t} className="border-b border-stone-100 last:border-0">
+                  <td className="p-4 text-sm text-ink/80">{t}</td>
+                  <td className="p-4 text-sm text-right font-bold text-coral">{c}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-ink/45 mt-4 leading-relaxed">
+          Ejemplo: si reservaste un proveedor por 1.000 € y no se presenta, recibes 1.080 € (reembolso) + 500 € (compensación) = <strong className="text-ink">1.580 €</strong>. La compensación la asume el proveedor que falla, no se carga al resto de la comunidad.
+        </p>
       </section>
 
       {/* QUÉ NO CUBRE */}

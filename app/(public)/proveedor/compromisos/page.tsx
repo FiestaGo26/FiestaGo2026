@@ -36,9 +36,31 @@ export default function CompromisosPage() {
           <p className="mt-2 text-xs text-ink/55">Cambios solo con acuerdo explícito por escrito en el chat de FiestaGo. Si incumples, cubrimos la diferencia al cliente y te la facturamos del siguiente pago.</p>
         </Section>
 
-        <Section title="3. Comparecer al evento" badge="No-show: 50/50 + baja">
+        <Section title="3. Comparecer al evento" badge="No-show: cargo entero + baja">
           Te presentas en la fecha y hora acordadas. Si surge una urgencia legítima, avisas con la máxima antelación posible y FiestaGo busca sustituto.
-          <p className="mt-2 text-xs text-ink/55">Si no apareces sin causa justificada: reembolso 100% al cliente (lo asumes tú) + compensación extra (50/50 entre tú y FiestaGo). Tras una segunda incidencia, baja permanente.</p>
+          <div className="mt-3">
+            <p className="text-xs text-ink/55 mb-2">Si no apareces o cancelas con menos de 7 días, el cliente recibe reembolso del 100% más la siguiente compensación, todo descontado de tu próximo payout o facturado directamente:</p>
+            <table className="text-xs w-full border border-stone-200 rounded-lg overflow-hidden mt-1">
+              <thead className="bg-stone-50 text-ink/55">
+                <tr><th className="text-left p-2 font-semibold">Ticket reserva</th><th className="text-right p-2 font-semibold">Compensación que asumes</th></tr>
+              </thead>
+              <tbody className="text-ink/75">
+                {[
+                  ['Hasta 500 €',    '300 €'],
+                  ['500–2 000 €',    '500 €'],
+                  ['2 000–5 000 €',  '1 000 €'],
+                  ['5 000–15 000 €', '2 000 €'],
+                  ['Más de 15 000 €','3 000 €'],
+                ].map(([t,c]) => (
+                  <tr key={t} className="border-t border-stone-100">
+                    <td className="p-2">{t}</td>
+                    <td className="p-2 text-right font-semibold text-coral">{c}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[11px] text-ink/55 mt-2">Tras una segunda incidencia grave, baja permanente del marketplace.</p>
+          </div>
         </Section>
 
         <Section title="4. Documentos en regla" badge="Pierdes el sello">

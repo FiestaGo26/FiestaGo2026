@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const supabase = createAdminClient()
   const body = await req.json().catch(() => ({}))
-  const { status, resolution, compensation_amount, rejected_reason } = body || {}
+  const { status, resolution, compensation_amount, provider_charge, rejected_reason } = body || {}
 
   const updates: any = {}
   if (status) {
@@ -28,6 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
   if (resolution !== undefined)          updates.resolution = resolution
   if (compensation_amount !== undefined) updates.compensation_amount = Number(compensation_amount) || null
+  if (provider_charge !== undefined)     updates.provider_charge = Number(provider_charge) || null
   if (rejected_reason !== undefined)     updates.rejected_reason = rejected_reason
 
   if (Object.keys(updates).length === 0) {
