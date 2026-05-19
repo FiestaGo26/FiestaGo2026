@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { isAdminRequest } from '@/lib/auth'
-import { emailClientIncidentResolved, emailClientIncidentRejected } from '@/lib/resend'
+import { emailClientIncidentResolved, emailClientIncidentRejected, emailProviderIncidentClosed } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -40,21 +40,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Notificar al cliente por email si la incidencia se ha resuelto o
-  // rechazado en esta operación. No bloquea la respuesta.
+  // Notificar a cliente Y proveedor por email si la incidencia se ha
+  // resuelto o rechazado en esta operación. No bloquea la respuesta.
   if (status === 'resolved' || status === 'rejected') {
     try {
       const { data: full } = await supabase
         .from('bookings')
-        .select('client_email, client_name, event_date, providers(name)')
+        .select('client_email, client_name, event_date, providers(name, email)')
         .eq('id', data.booking_id).single()
-      const providerName = (full as any)?.providers?.name || 'tu proveedor'
+      const provName = (full as any)?.providers?.name || 'tu proveedor'
+      const provEmail = (full as any)?.providers?.email
       if (full?.client_email) {
         if (status === 'resolved') {
           emailClientIncidentResolved({
             clientEmail:        full.client_email,
             clientName:         full.client_name,
-            providerName,
+            providerName:       provName,
             eventDate:          full.event_date,
             resolution:         data.resolution || '',
             compensationAmount: data.compensation_amount,
@@ -63,11 +64,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           emailClientIncidentRejected({
             clientEmail:    full.client_email,
             clientName:     full.client_name,
-            providerName,
+            providerName:   provName,
             eventDate:      full.event_date,
             rejectedReason: data.rejected_reason || '',
           }).catch(err => console.error('emailClientIncidentRejected:', err?.message))
         }
+      }
+      if (provEmail) {
+        emailProviderIncidentClosed({
+          providerEmail: provEmail,
+          providerName:  provName,
+          clientName:    full?.client_name || 'el cliente',
+          eventDate:     full?.event_date || '',
+          status,
+          resolution:         data.resolution || '',
+          rejectedReason:     data.rejected_reason || '',
+          compensationAmount: data.compensation_amount,
+        }).catch(err => console.error('emailProviderIncidentClosed:', err?.message))
       }
     } catch (err) {
       console.error('incident email lookup failed:', (err as any)?.message)

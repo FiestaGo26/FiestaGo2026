@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireClientAuth, isAdminRequest } from '@/lib/auth'
+import { emailProviderIncidentOpened } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -89,6 +90,27 @@ export async function POST(req: NextRequest) {
     data:    { incident_id: data.id, booking_id, type },
     action_url: `/admin?incident=${data.id}`,
   }).then(() => {})
+
+  // Email al proveedor implicado para que sepa que hay una incidencia y
+  // pueda aportar su versión. No bloquea la respuesta.
+  if (booking.provider_id) {
+    const { data: prov } = await supabase
+      .from('providers').select('email, name')
+      .eq('id', booking.provider_id).maybeSingle()
+    const { data: bookingFull } = await supabase
+      .from('bookings').select('client_name')
+      .eq('id', booking_id).maybeSingle()
+    if (prov?.email) {
+      emailProviderIncidentOpened({
+        providerEmail: prov.email,
+        providerName:  prov.name,
+        clientName:    bookingFull?.client_name || 'el cliente',
+        eventDate:     booking.event_date,
+        type,
+        description:   description.trim(),
+      }).catch(err => console.error('emailProviderIncidentOpened:', err?.message))
+    }
+  }
 
   return NextResponse.json({ incident: data }, { status: 201 })
 }

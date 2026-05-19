@@ -796,6 +796,182 @@ function bodyToOutreachHtml(parsedBody: string): string {
 
 // El admin ha resuelto la incidencia. Le contamos al cliente qué se hizo
 // y el importe de compensación si aplica.
+// Aviso al proveedor de que se ha abierto una incidencia contra una de
+// sus reservas. Le decimos tipo, descripción del cliente y CTA al panel.
+// Es importante que no suene a "estás culpable", sino a "ha pasado X,
+// danos tu versión si crees que hace falta".
+export async function emailProviderIncidentOpened(opts: {
+  providerEmail: string
+  providerName:  string
+  clientName:    string
+  eventDate:     string
+  type:          string
+  description:   string
+}) {
+  const { providerEmail, providerName, clientName, eventDate, type, description } = opts
+  if (!providerEmail) return { ok: false, error: 'Sin email del proveedor' }
+
+  const typeLabel: Record<string,string> = {
+    cancelled_by_provider: 'cancelación atribuida al proveedor',
+    no_show:               'no-show',
+    quality:               'queja por calidad del servicio',
+    wrong_service:         'servicio distinto al reservado',
+    payment:               'problema con el pago',
+    other:                 'otro problema',
+  }
+  const subject = `🚨 Incidencia abierta — reserva del ${bookingDateF(eventDate)}`
+
+  const text = `Hola ${providerName},
+
+${clientName} ha abierto una incidencia sobre la reserva del ${bookingDateF(eventDate)}.
+
+Motivo reportado: ${typeLabel[type] || type}
+
+Lo que cuenta el cliente:
+"${description}"
+
+Estamos revisando el caso desde el equipo de FiestaGo. Mientras lo investigamos, el pago de esa reserva queda en suspenso. Si quieres darnos tu versión o aportar pruebas (chats, fotos, etc.), responde a este email cuanto antes — es lo que más ayuda a resolverlo rápido y de forma justa.
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:32px 36px 20px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#F59E0B;margin-bottom:12px;">🚨 Incidencia abierta</div>
+          <h1 style="margin:0 0 10px;font-family:Georgia,serif;font-size:22px;color:#1A1612;line-height:1.3;">
+            Hola ${safe(providerName)}, hemos recibido una incidencia.
+          </h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#8A7968;">Reserva de ${safe(clientName)} · ${bookingDateF(eventDate)}</p>
+        </td></tr>
+        <tr><td style="padding:18px 36px 4px;">
+          <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#8A7968;margin-bottom:4px;">Motivo</div>
+          <div style="font-size:14px;font-weight:bold;color:#1A1612;">${safe(typeLabel[type] || type)}</div>
+        </td></tr>
+        <tr><td style="padding:14px 36px 4px;">
+          <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#8A7968;margin-bottom:6px;">Lo que cuenta el cliente</div>
+          <div style="background:#FBF9F4;border-left:3px solid #E8553E;padding:12px 16px;font-size:14px;color:#1A1612;line-height:1.55;white-space:pre-wrap;font-style:italic;">${safe(description)}</div>
+        </td></tr>
+        <tr><td style="padding:18px 36px;">
+          <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
+            ⏸ <strong>Pago suspendido temporalmente</strong> mientras el equipo investiga. La suspensión se levanta automáticamente al cerrar la incidencia.
+          </div>
+        </td></tr>
+        <tr><td style="padding:6px 36px 28px;">
+          <p style="margin:0 0 14px;font-size:13px;color:#5C534A;line-height:1.55;">
+            Si quieres darnos tu versión o aportar pruebas (chats, fotos, recibos…), <strong>responde a este email cuanto antes</strong>. Tu testimonio es lo que más ayuda a resolverlo rápido y de forma justa.
+          </p>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · contacto@fiestago.es
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: providerEmail, subject, text, html })
+}
+
+// Aviso al proveedor del resultado de la incidencia. Si fue resuelta con
+// compensación que sale parcialmente de su bolsillo (descuento al payout),
+// se lo decimos claro.
+export async function emailProviderIncidentClosed(opts: {
+  providerEmail: string
+  providerName:  string
+  clientName:    string
+  eventDate:     string
+  status:        'resolved' | 'rejected'
+  resolution?:   string
+  rejectedReason?: string
+  compensationAmount?: number | null
+}) {
+  const { providerEmail, providerName, clientName, eventDate, status, resolution, rejectedReason, compensationAmount } = opts
+  if (!providerEmail) return { ok: false, error: 'Sin email del proveedor' }
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const isResolved = status === 'resolved'
+  const subject   = isResolved
+    ? `Incidencia cerrada — reserva del ${bookingDateF(eventDate)}`
+    : `Incidencia desestimada — reserva del ${bookingDateF(eventDate)}`
+
+  const compNote = isResolved && compensationAmount && compensationAmount > 0
+    ? `\n\nCompensación al cliente: ${compensationAmount.toLocaleString('es-ES')}€. Parte de este importe puede descontarse de tu próximo payout — te avisaremos por separado del desglose exacto.`
+    : ''
+
+  const text = isResolved
+    ? `Hola ${providerName},
+
+Hemos cerrado la incidencia que ${clientName} abrió sobre la reserva del ${bookingDateF(eventDate)}.
+
+Resolución:
+${resolution || ''}${compNote}
+
+Si tienes cualquier duda, responde a este email.
+
+Un saludo,
+El equipo de FiestaGo`
+    : `Hola ${providerName},
+
+Hemos revisado la incidencia que ${clientName} abrió sobre la reserva del ${bookingDateF(eventDate)} y la hemos desestimado. La suspensión del pago queda levantada.
+
+Motivo de la desestimación:
+${rejectedReason || ''}
+
+Gracias por tu trabajo. Un saludo,
+El equipo de FiestaGo`
+
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:32px 36px 20px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:${isResolved ? '#10B981' : '#8A7968'};margin-bottom:12px;">
+            ${isResolved ? '✓ Incidencia cerrada' : '✓ Incidencia desestimada'}
+          </div>
+          <h1 style="margin:0 0 10px;font-family:Georgia,serif;font-size:22px;color:#1A1612;line-height:1.3;">
+            Hola ${safe(providerName)},${isResolved ? ' caso resuelto.' : ' tu trabajo queda confirmado.'}
+          </h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#8A7968;">Reserva de ${safe(clientName)} · ${bookingDateF(eventDate)}</p>
+        </td></tr>
+        <tr><td style="padding:18px 36px;">
+          <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#8A7968;margin-bottom:6px;">
+            ${isResolved ? 'Resolución' : 'Motivo de la desestimación'}
+          </div>
+          <div style="background:#FBF9F4;border-left:3px solid ${isResolved ? '#10B981' : '#8A7968'};padding:12px 16px;font-size:14px;color:#1A1612;line-height:1.55;white-space:pre-wrap;">${safe(isResolved ? (resolution || '') : (rejectedReason || ''))}</div>
+        </td></tr>
+        ${isResolved && compensationAmount && compensationAmount > 0 ? `
+        <tr><td style="padding:0 36px 14px;">
+          <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
+            💸 <strong>Compensación al cliente: ${compensationAmount.toLocaleString('es-ES')}€.</strong>
+            <div style="margin-top:4px;">Parte de este importe puede descontarse de tu próximo payout. Te enviaremos el desglose exacto por separado.</div>
+          </div>
+        </td></tr>` : ''}
+        ${!isResolved ? `
+        <tr><td style="padding:0 36px 14px;">
+          <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;">
+            ✓ <strong>La suspensión del pago queda levantada.</strong> Tu próximo payout se procesa con normalidad.
+          </div>
+        </td></tr>` : ''}
+        <tr><td style="padding:0 36px 28px;">
+          <p style="margin:0;font-size:13px;color:#5C534A;line-height:1.55;">
+            Si tienes cualquier duda sobre esta resolución, responde a este email.
+          </p>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · contacto@fiestago.es
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: providerEmail, subject, text, html })
+}
+
 export async function emailClientIncidentResolved(opts: {
   clientEmail:   string
   clientName:    string
