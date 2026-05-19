@@ -807,8 +807,9 @@ export async function emailProviderIncidentOpened(opts: {
   eventDate:     string
   type:          string
   description:   string
+  estimatedCharge?: { clientReceives: number; providerCharge: number } | null
 }) {
-  const { providerEmail, providerName, clientName, eventDate, type, description } = opts
+  const { providerEmail, providerName, clientName, eventDate, type, description, estimatedCharge } = opts
   if (!providerEmail) return { ok: false, error: 'Sin email del proveedor' }
 
   const typeLabel: Record<string,string> = {
@@ -821,6 +822,14 @@ export async function emailProviderIncidentOpened(opts: {
   }
   const subject = `🚨 Incidencia abierta — reserva del ${bookingDateF(eventDate)}`
 
+  const chargeBlockText = estimatedCharge
+    ? `\n⚠ Cargo estimado si la incidencia se confirma:
+   - Cliente recibirá: ${estimatedCharge.clientReceives.toLocaleString('es-ES')}€
+   - Se te cobrará a ti: ${estimatedCharge.providerCharge.toLocaleString('es-ES')}€
+   (se descontará del próximo payout o se facturará directamente)
+`
+    : ''
+
   const text = `Hola ${providerName},
 
 ${clientName} ha abierto una incidencia sobre la reserva del ${bookingDateF(eventDate)}.
@@ -829,13 +838,25 @@ Motivo reportado: ${typeLabel[type] || type}
 
 Lo que cuenta el cliente:
 "${description}"
-
+${chargeBlockText}
 Estamos revisando el caso desde el equipo de FiestaGo. Mientras lo investigamos, el pago de esa reserva queda en suspenso. Si quieres darnos tu versión o aportar pruebas (chats, fotos, etc.), responde a este email cuanto antes — es lo que más ayuda a resolverlo rápido y de forma justa.
 
 Un saludo,
 El equipo de FiestaGo`
 
   const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const chargeBlockHtml = estimatedCharge ? `
+        <tr><td style="padding:0 36px 14px;">
+          <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.6;">
+            <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#EF4444;margin-bottom:8px;">⚠ Cargo estimado si se confirma</div>
+            <table width="100%" style="font-size:13px;color:#1A1612;">
+              <tr><td style="padding:4px 0;color:#5C534A;width:60%;">El cliente recibirá</td><td style="padding:4px 0;font-weight:bold;text-align:right;">${estimatedCharge.clientReceives.toLocaleString('es-ES')}€</td></tr>
+              <tr><td style="padding:4px 0;color:#5C534A;">Se te cobrará a ti</td><td style="padding:4px 0;font-weight:bold;text-align:right;color:#EF4444;">${estimatedCharge.providerCharge.toLocaleString('es-ES')}€</td></tr>
+            </table>
+            <div style="font-size:11px;color:#8A7968;margin-top:8px;">Se descontará del próximo payout o se facturará directamente. Tu testimonio puede cambiar esta cifra.</div>
+          </div>
+        </td></tr>` : ''
+
   const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
     <tr><td align="center">
@@ -855,8 +876,9 @@ El equipo de FiestaGo`
           <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#8A7968;margin-bottom:6px;">Lo que cuenta el cliente</div>
           <div style="background:#FBF9F4;border-left:3px solid #E8553E;padding:12px 16px;font-size:14px;color:#1A1612;line-height:1.55;white-space:pre-wrap;font-style:italic;">${safe(description)}</div>
         </td></tr>
+        ${chargeBlockHtml}
         <tr><td style="padding:18px 36px;">
-          <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
+          <div style="background:#FFF7ED;border:1px solid #FFE1CC;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
             ⏸ <strong>Pago suspendido temporalmente</strong> mientras el equipo investiga. La suspensión se levanta automáticamente al cerrar la incidencia.
           </div>
         </td></tr>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireClientAuth, isAdminRequest } from '@/lib/auth'
 import { emailProviderIncidentOpened } from '@/lib/resend'
+import { calcCompensation } from '@/lib/garantia'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -98,8 +99,20 @@ export async function POST(req: NextRequest) {
       .from('providers').select('email, name')
       .eq('id', booking.provider_id).maybeSingle()
     const { data: bookingFull } = await supabase
-      .from('bookings').select('client_name')
+      .from('bookings').select('client_name, total_amount')
       .eq('id', booking_id).maybeSingle()
+
+    // Si el tipo es no-show o cancelación, calculamos cargo estimado
+    // según la Garantía para que el proveedor sepa lo que se juega.
+    let estimatedCharge: { clientReceives: number; providerCharge: number } | null = null
+    if (['no_show', 'cancelled_by_provider'].includes(type) && bookingFull?.total_amount) {
+      const clientPaid = Number(bookingFull.total_amount)
+      const ticket     = clientPaid > 0 ? Math.round((clientPaid / 1.08) * 100) / 100 : 0
+      const comp       = calcCompensation(ticket)
+      const total      = Math.round((clientPaid + comp) * 100) / 100
+      estimatedCharge  = { clientReceives: total, providerCharge: total }
+    }
+
     if (prov?.email) {
       emailProviderIncidentOpened({
         providerEmail: prov.email,
@@ -108,6 +121,7 @@ export async function POST(req: NextRequest) {
         eventDate:     booking.event_date,
         type,
         description:   description.trim(),
+        estimatedCharge,
       }).catch(err => console.error('emailProviderIncidentOpened:', err?.message))
     }
   }
