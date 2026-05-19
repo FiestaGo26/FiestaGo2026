@@ -790,6 +790,163 @@ function bodyToOutreachHtml(parsedBody: string): string {
     }).join('')
 }
 
+// ════════════════════════════════════════════════════════════════
+//  INCIDENCIAS — resolución / rechazo
+// ════════════════════════════════════════════════════════════════
+
+// El admin ha resuelto la incidencia. Le contamos al cliente qué se hizo
+// y el importe de compensación si aplica.
+export async function emailClientIncidentResolved(opts: {
+  clientEmail:   string
+  clientName:    string
+  providerName:  string
+  eventDate:     string
+  resolution:    string
+  compensationAmount?: number | null
+}) {
+  const { clientEmail, clientName, providerName, eventDate, resolution, compensationAmount } = opts
+  if (!clientEmail) return { ok: false, error: 'Sin email del cliente' }
+
+  const firstName = (clientName || '').split(' ')[0] || ''
+  const subject   = `✓ Incidencia resuelta — reserva del ${bookingDateF(eventDate)}`
+  const compLine  = compensationAmount && compensationAmount > 0
+    ? `Compensación: ${compensationAmount.toLocaleString('es-ES')}€. Te lo transferimos al método de pago original en 5 días hábiles.`
+    : 'No procede compensación económica en este caso, pero se ha gestionado.'
+
+  const text = `Hola ${firstName},
+
+Hemos resuelto la incidencia que abriste sobre tu reserva con ${providerName} del ${bookingDateF(eventDate)}.
+
+Qué hemos hecho:
+${resolution}
+
+${compLine}
+
+Si tienes alguna duda sobre la resolución, responde a este email y te respondemos en menos de 24h.
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:32px 36px 20px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#10B981;margin-bottom:12px;">✓ Incidencia resuelta</div>
+          <h1 style="margin:0 0 10px;font-family:Georgia,serif;font-size:24px;color:#1A1612;line-height:1.25;">
+            ${safe(firstName)}, ya lo tenemos arreglado.
+          </h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#8A7968;">Reserva con ${safe(providerName)} · ${bookingDateF(eventDate)}</p>
+        </td></tr>
+        <tr><td style="padding:20px 36px;">
+          <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#8A7968;margin-bottom:6px;">Qué hemos hecho</div>
+          <div style="font-size:14px;color:#1A1612;line-height:1.6;white-space:pre-wrap;">${safe(resolution)}</div>
+        </td></tr>
+        ${compensationAmount && compensationAmount > 0 ? `
+        <tr><td style="padding:0 36px 8px;">
+          <div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:14px 16px;font-size:14px;color:#1A1612;">
+            💸 <strong>Compensación: ${compensationAmount.toLocaleString('es-ES')}€</strong>
+            <div style="font-size:12px;color:#5C534A;margin-top:4px;">Te lo transferimos al método de pago original en 5 días hábiles.</div>
+          </div>
+        </td></tr>` : `
+        <tr><td style="padding:0 36px 8px;">
+          <div style="background:#FBF9F4;border:1px solid #ECE3D2;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;">
+            No procede compensación económica en este caso, pero la incidencia se ha gestionado.
+          </div>
+        </td></tr>`}
+        <tr><td style="padding:14px 36px 28px;">
+          <p style="margin:0;font-size:13px;color:#5C534A;line-height:1.55;">
+            Si tienes alguna duda sobre la resolución, responde a este email y te contestamos en menos de 24h.
+          </p>
+          <div style="margin-top:18px;text-align:center;">
+            <a href="https://fiestago.es/mi-cuenta" style="display:inline-block;background:#1A1612;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:13px;">
+              Ver mi cuenta →
+            </a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · Garantía de Éxito · contacto@fiestago.es
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: clientEmail, subject, text, html })
+}
+
+// La incidencia se ha rechazado (no procede según los términos de la
+// Garantía). Le explicamos al cliente el motivo y abrimos la puerta a
+// reabrirlo con más info.
+export async function emailClientIncidentRejected(opts: {
+  clientEmail:    string
+  clientName:     string
+  providerName:   string
+  eventDate:      string
+  rejectedReason: string
+}) {
+  const { clientEmail, clientName, providerName, eventDate, rejectedReason } = opts
+  if (!clientEmail) return { ok: false, error: 'Sin email del cliente' }
+
+  const firstName = (clientName || '').split(' ')[0] || ''
+  const subject   = `Sobre tu incidencia — reserva del ${bookingDateF(eventDate)}`
+
+  const text = `Hola ${firstName},
+
+Hemos revisado la incidencia que abriste sobre tu reserva con ${providerName} del ${bookingDateF(eventDate)}.
+
+Tras analizarla, no podemos cubrirla con la Garantía de Éxito por el siguiente motivo:
+
+${rejectedReason}
+
+Si no estás de acuerdo con esta decisión o crees que faltó información importante, responde a este email con los detalles adicionales y reabriremos el caso.
+
+También puedes leer en detalle qué cubre la garantía aquí:
+https://fiestago.es/garantia
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:32px 36px 20px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#8A7968;margin-bottom:12px;">Sobre tu incidencia</div>
+          <h1 style="margin:0 0 10px;font-family:Georgia,serif;font-size:24px;color:#1A1612;line-height:1.25;">
+            Hola ${safe(firstName)}, hemos revisado tu caso.
+          </h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#8A7968;">Reserva con ${safe(providerName)} · ${bookingDateF(eventDate)}</p>
+        </td></tr>
+        <tr><td style="padding:20px 36px;">
+          <p style="margin:0 0 12px;font-size:14px;color:#1A1612;line-height:1.6;">
+            Tras analizarla, no podemos cubrirla con la Garantía de Éxito por el siguiente motivo:
+          </p>
+          <div style="background:#FEF3F2;border-left:3px solid #EF4444;padding:12px 16px;font-size:14px;color:#1A1612;line-height:1.55;white-space:pre-wrap;">${safe(rejectedReason)}</div>
+        </td></tr>
+        <tr><td style="padding:14px 36px 28px;">
+          <p style="margin:0 0 14px;font-size:13px;color:#5C534A;line-height:1.55;">
+            Si no estás de acuerdo con esta decisión o crees que faltó información importante, responde a este email con los detalles adicionales y reabriremos el caso.
+          </p>
+          <div style="text-align:center;">
+            <a href="https://fiestago.es/garantia" style="display:inline-block;background:#1A1612;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:13px;">
+              Qué cubre la Garantía →
+            </a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · contacto@fiestago.es
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: clientEmail, subject, text, html })
+}
+
 /**
  * Envía el email outreach (captación) a un provider.
  * Aplica diseño HTML completo + List-Unsubscribe (RFC 8058) + sello calidad + banner lanzamiento.

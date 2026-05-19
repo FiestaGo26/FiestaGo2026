@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { isAdminRequest } from '@/lib/auth'
+import { emailClientIncidentResolved, emailClientIncidentRejected } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -38,5 +39,40 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .eq('id', params.id).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Notificar al cliente por email si la incidencia se ha resuelto o
+  // rechazado en esta operación. No bloquea la respuesta.
+  if (status === 'resolved' || status === 'rejected') {
+    try {
+      const { data: full } = await supabase
+        .from('bookings')
+        .select('client_email, client_name, event_date, providers(name)')
+        .eq('id', data.booking_id).single()
+      const providerName = (full as any)?.providers?.name || 'tu proveedor'
+      if (full?.client_email) {
+        if (status === 'resolved') {
+          emailClientIncidentResolved({
+            clientEmail:        full.client_email,
+            clientName:         full.client_name,
+            providerName,
+            eventDate:          full.event_date,
+            resolution:         data.resolution || '',
+            compensationAmount: data.compensation_amount,
+          }).catch(err => console.error('emailClientIncidentResolved:', err?.message))
+        } else {
+          emailClientIncidentRejected({
+            clientEmail:    full.client_email,
+            clientName:     full.client_name,
+            providerName,
+            eventDate:      full.event_date,
+            rejectedReason: data.rejected_reason || '',
+          }).catch(err => console.error('emailClientIncidentRejected:', err?.message))
+        }
+      }
+    } catch (err) {
+      console.error('incident email lookup failed:', (err as any)?.message)
+    }
+  }
+
   return NextResponse.json({ incident: data })
 }
