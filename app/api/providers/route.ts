@@ -60,10 +60,24 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
 
   const { name, category, city, email, phone, website, instagram,
-          description, price_base, price_unit, specialties, referred_by } = body
+          description, price_base, price_unit, specialties, referred_by,
+          accept_terms } = body
 
   if (!name || !category || !city || !email) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
+  }
+  if (!accept_terms) {
+    return NextResponse.json({ error: 'Tienes que aceptar los Compromisos del Proveedor' }, { status: 400 })
+  }
+
+  const { TERMS_VERSION_CURRENT } = await import('@/lib/terms')
+  const acceptIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+              || req.headers.get('x-real-ip')
+              || null
+  const termsMeta = {
+    terms_accepted_at:  new Date().toISOString(),
+    terms_version:      TERMS_VERSION_CURRENT,
+    terms_accepted_ip:  acceptIp,
   }
 
   // Idempotencia: si ya existe un proveedor con este email, MEZCLAR los datos
@@ -78,6 +92,7 @@ export async function POST(req: NextRequest) {
       const merged: any = {
         self_registered:    true,
         self_registered_at: new Date().toISOString(),
+        ...termsMeta,
       }
       // Solo escribir si el formulario aporta valor y la fila estaba vacía o el
       // valor nuevo es distinto y más completo. NO sobrescribimos status ni tag
@@ -128,6 +143,7 @@ export async function POST(req: NextRequest) {
       referred_by:  referred_by || null,
       self_registered:    true,
       self_registered_at: new Date().toISOString(),
+      ...termsMeta,
     })
     .select()
     .single()

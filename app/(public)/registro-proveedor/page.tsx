@@ -20,6 +20,7 @@ function RegistroProveedorInner() {
     phone:'', website:'', instagram:'',
     description:'', price_base:'', price_unit:'por evento',
     specialties:[] as string[],
+    acceptTerms: false,
   })
 
   // Si llega con ?ref=ID, mostrar quién le invitó
@@ -44,6 +45,10 @@ function RegistroProveedorInner() {
     }
     if (form.password.length < 8) {
       toast.error('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+    if (!form.acceptTerms) {
+      toast.error('Debes aceptar los Compromisos del Proveedor para inscribirte')
       return
     }
 
@@ -95,6 +100,7 @@ function RegistroProveedorInner() {
           specialties: [],
           source:      'web',
           referred_by: refParam,
+          accept_terms: true,
         }),
       })
 
@@ -262,6 +268,19 @@ function RegistroProveedorInner() {
                 className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
             </div>
           </div>
+
+          {/* Compromisos del proveedor — checkbox obligatorio */}
+          <label className="flex items-start gap-3 mt-5 cursor-pointer p-3 bg-cream-dark/40 border border-stone-200 rounded-xl">
+            <input type="checkbox" checked={form.acceptTerms}
+              onChange={e => set('acceptTerms', e.target.checked)}
+              className="mt-0.5 accent-coral w-4 h-4 flex-shrink-0"/>
+            <span className="text-xs text-ink/75 leading-relaxed">
+              He leído y acepto los{' '}
+              <a href="/proveedor/compromisos" target="_blank" rel="noreferrer" className="text-coral underline font-semibold">
+                Compromisos del Proveedor
+              </a>: responder en plazo, cumplir el servicio reservado, comparecer al evento, tener documentos en regla, no saltarme FiestaGo en la primera reserva y mantener disponibilidad real.
+            </span>
+          </label>
 
           <button type="submit" disabled={loading}
             className="w-full mt-5 bg-coral text-white font-bold py-3.5 rounded-xl text-base hover:bg-coral-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
