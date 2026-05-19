@@ -1,14 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { TERMS_VERSION_CURRENT } from '@/lib/terms'
 
 export const metadata: Metadata = {
   title: 'Compromisos del Proveedor · FiestaGo',
   description: 'Lo que aceptas al inscribirte como proveedor en FiestaGo. Seis compromisos prácticos que respaldan nuestra Garantía de Éxito.',
 }
-
-// Si cambias el contenido, sube la versión.
-// Tiene que coincidir con TERMS_VERSION_CURRENT en lib/terms.ts.
-export const TERMS_VERSION = 'v0.1'
 
 export default function CompromisosPage() {
   return (
@@ -16,7 +13,7 @@ export default function CompromisosPage() {
       <article className="max-w-2xl mx-auto bg-white border border-stone-200 rounded-3xl p-8 md:p-12 shadow-card">
         <Link href="/profesionales" className="text-xs text-coral hover:underline mb-6 inline-block">← Volver</Link>
         <div className="text-[10px] font-bold tracking-widest uppercase text-coral mb-3">
-          Versión {TERMS_VERSION} · Borrador interno
+          Versión {TERMS_VERSION_CURRENT} · Borrador interno
         </div>
         <h1 className="font-serif text-3xl md:text-4xl font-black text-ink mb-3 leading-tight">
           Compromisos del Proveedor en FiestaGo
