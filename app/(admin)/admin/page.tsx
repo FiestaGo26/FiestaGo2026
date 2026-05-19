@@ -95,7 +95,7 @@ export default function AdminPage() {
   const [filterCat,    setFilterCat]    = useState('')
   const [search,       setSearch]       = useState('')
   // Agent state
-  const [agentCfg,  setAgentCfg]  = useState({ category:'foto', city:'Madrid', count:3, tone:'profesional y cercano', sources:['web'] })
+  const [agentCfg,  setAgentCfg]  = useState({ category:'foto', city:'Madrid', count:2, tone:'profesional y cercano', sources:['web'] })
   const [agentRunning, setAgentRunning] = useState(false)
   const [agentLogs,    setAgentLogs]    = useState<string[]>([])
   const [agentResults, setAgentResults] = useState<any[]>([])
@@ -332,7 +332,11 @@ export default function AdminPage() {
       }
       if (data.logs)      setAgentLogs(data.logs)
       if (data.providers) setAgentResults(data.providers)
-      if (data.error)     setAgentLogs(l => [...l, `❌ Error: ${data.error}`])
+      // El server ya mete el "❌ Error" en data.logs cuando falla, no
+      // lo duplicamos. Solo lo añadimos si no estaba ya en los logs.
+      if (data.error && !(data.logs || []).some((l: string) => l.includes(data.error))) {
+        setAgentLogs(l => [...l, `❌ Error: ${data.error}`])
+      }
     } catch(e: any) {
       setAgentLogs(l => [...l, `❌ Error de red: ${e.message}`])
     }
@@ -901,7 +905,7 @@ export default function AdminPage() {
                   <label style={{ fontSize:10, fontWeight:700, color:'#4B5563', display:'block',
                     marginBottom:5, textTransform:'uppercase', letterSpacing:'0.07em' }}>Nº de proveedores</label>
                   <div style={{ display:'flex', gap:5 }}>
-                    {[2,3,4].map(n=>(
+                    {[1,2,3].map(n=>(
                       <button key={n} onClick={()=>setAgentCfg(c=>({...c,count:n}))} disabled={agentRunning}
                         style={{ flex:1, padding:'7px', borderRadius:7, fontSize:13, fontWeight:700,
                           border:`1px solid ${agentCfg.count===n?'#06B6D4':'#1F2937'}`,

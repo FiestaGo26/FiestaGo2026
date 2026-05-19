@@ -19,9 +19,10 @@ function checkAdminAuth(req: NextRequest) {
 // `fiegago-agent.mjs` que NO tiene limite de tiempo.
 
 async function claudeWebSearch(prompt: string): Promise<string> {
-  // AbortController para no esperar más de 22s (Netlify max 26s)
+  // Margen ajustado: maxDuration de la function es 30s, dejamos 27s
+  // para Claude + 3s de slack para enviar la respuesta.
   const controller = new AbortController()
-  const tick = setTimeout(() => controller.abort(), 22_000)
+  const tick = setTimeout(() => controller.abort(), 27_000)
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -33,7 +34,9 @@ async function claudeWebSearch(prompt: string): Promise<string> {
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
         max_tokens: 2200,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
+        // max_uses bajado de 4 → 2 para acotar latencia. Con 2 búsquedas
+        // Claude tiene suficiente para encontrar 1-3 proveedores reales.
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages: [{ role: 'user', content: prompt }],
       }),
       signal: controller.signal,
@@ -44,6 +47,11 @@ async function claudeWebSearch(prompt: string): Promise<string> {
       .filter((b: any) => b.type === 'text')
       .map((b: any) => b.text)
       .join('')
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Búsqueda demasiado lenta. Prueba con menos proveedores (1-2) o reintenta — a veces Google tarda.')
+    }
+    throw err
   } finally {
     clearTimeout(tick)
   }
@@ -59,9 +67,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}))
-    let { category = 'foto', city = 'Madrid', count = 3 } = body
-    // Capear a 4 para que entre en el timeout de Netlify (26s)
-    count = Math.min(Math.max(parseInt(String(count)) || 3, 1), 4)
+    let { category = 'foto', city = 'Madrid', count = 2 } = body
+    // Capear a 3 para que entre con margen en el timeout (30s).
+    // Si quieres 10 proveedores, lanza la búsqueda 4-5 veces — es más
+    // fiable que pedirle muchos a la vez.
+    count = Math.min(Math.max(parseInt(String(count)) || 2, 1), 3)
     const cat = CATEGORIES.find(c => c.id === category)
     if (!cat) {
       return NextResponse.json({ error: 'Categoría inválida', logs }, { status: 400 })

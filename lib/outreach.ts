@@ -69,3 +69,64 @@ Si tienes cualquier duda, respóndeme por aquí mismo. Hablamos cuando quieras.
 Un abrazo,
 Mariano`
 }
+
+// ── Follow-ups ────────────────────────────────────────────────────────
+// Segundo (y tercer) toque cuando el primer mensaje no obtuvo respuesta.
+// Tono más corto, asume que se traspapeló, da salida fácil ("dímelo y
+// dejo de insistir") para no quemar la marca.
+
+export function buildDmFollowup(p: ProviderLike, attempt: number = 1): string {
+  if (attempt >= 2) {
+    return `Hola ${p.name}, último mensaje 🙏
+
+No quiero saturarte, así que este es el último. Si no te encaja FiestaGo, sin problema — borro la nota y dejamos aquí.
+
+Pero si te interesa probar el lanzamiento del 10 de junio con los primeros profesionales de ${p.city}, inscríbete en 60 segundos:
+👉 https://fiestago.es/registro-proveedor
+
+Un abrazo,
+Mariano`
+  }
+  return `Hola ${p.name}, soy Mariano otra vez 👋
+
+Te escribí hace unos días sobre FiestaGo y no he tenido respuesta — imagino que se te traspapeló entre tantos mensajes (a mí me pasa todo el rato).
+
+Te dejo el resumen rapidito: estamos eligiendo los primeros profesionales en ${p.city} antes del lanzamiento del 10 de junio. Sin cuotas, sin permanencia, primera reserva al 0% y luego solo 8%. Lo único que tienes que hacer es decir sí cuando te llegue una solicitud.
+
+Si te encaja, regístrate aquí en menos de 60 segundos:
+👉 https://fiestago.es/registro-proveedor
+
+Y si no te interesa, también dímelo — sin problema, dejo de insistir 🙏
+
+Un abrazo,
+Mariano`
+}
+
+export function buildEmailFollowup(p: ProviderLike, attempt: number = 1): string {
+  const body = attempt >= 2
+    ? `Hola ${p.name},
+
+Soy Mariano de FiestaGo. Te he escrito un par de veces y este es el último mensaje — no quiero ser pesado.
+
+Si no te encaja FiestaGo, sin problema. Si sí, el lanzamiento es el 10 de junio y todavía estamos a tiempo de meterte en el catálogo inicial:
+
+https://fiestago.es/registro-proveedor
+
+Un abrazo,
+Mariano`
+    : `Hola ${p.name},
+
+Soy Mariano, fundador de FiestaGo. Te escribí hace unos días y no recibí respuesta — imagino que se traspapeló entre tantos correos (a mí me pasa todo el rato).
+
+Te dejo el resumen rapidito: estamos seleccionando los primeros profesionales en ${p.city} antes del lanzamiento del 10 de junio. Sin cuotas, sin permanencia, tu primera reserva al 0% y solo 8% después. Recibes solicitudes, las aceptas si te encajan y trabajas como siempre.
+
+Si te interesa, te puedes inscribir en menos de 60 segundos:
+https://fiestago.es/registro-proveedor
+
+Y si no, dímelo y te quito de la lista — sin problema.
+
+Un abrazo,
+Mariano`
+
+  return `ASUNTO: ¿Te interesa FiestaGo? (mensaje breve) · ${p.city}\n\n${body}`
+}
