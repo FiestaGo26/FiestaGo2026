@@ -97,12 +97,14 @@ export default async function HomePage() {
               Mientras otras plataformas se desentienden cuando hay un problema, en FiestaGo respaldamos cada reserva con nuestro dinero. Esto cambia cómo se reserva.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               { icon:'💸', title:'Te devolvemos hasta el 110%', body:'Si tu proveedor cancela o no aparece, te conseguimos un sustituto en 48h o te reembolsamos el 110% del importe pagado.' },
               { icon:'🔒', title:'Pago retenido hasta el evento', body:'El dinero queda en FiestaGo, no en el proveedor, hasta que tu celebración termina. Si algo falla, podemos actuar de verdad.' },
               { icon:'✅', title:'Profesionales verificados', body:'DNI/CIF y seguro de responsabilidad civil contrastados. Solo aparece en la web quien puede demostrar que es de fiar.' },
               { icon:'🎉', title:'Cualquier celebración', body:'Bodas, comuniones, cumpleaños, despedidas, eventos privados o corporativos. La misma garantía da igual lo que organices.' },
+              { icon:'💰', title:'Precio cerrado, sin presupuestos', body:'Ves el precio, eliges fecha y reservas. Como un hotel. Nada de pedir 10 presupuestos a 10 sitios distintos para que nadie te conteste claro.' },
+              { icon:'💬', title:'Soporte humano de verdad', body:'Hablas con una persona cuando lo necesitas — no con un chatbot. Especialmente la semana del evento, cuando entra el pánico.' },
             ].map(b => (
               <div key={b.title} className="bg-white/5 border border-white/10 rounded-2xl p-6">
                 <div className="text-3xl mb-4">{b.icon}</div>
