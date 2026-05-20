@@ -1,11 +1,17 @@
 name: Captación diaria de proveedores
 
-# Cron diario a las 8:00 UTC (= 9:00 Madrid en verano, 9:00 invierno).
-# Si quieres cambiarlo: https://crontab.guru
+# 3 horarios al día para resistir los saltos de schedule de GitHub Actions
+# (que silenciosamente omite ejecuciones a veces — issue conocido).
+# Los lotes que repitan combo ya están deduplicados en el server.
+#  · 08:00 UTC = 10:00 Madrid (verano) / 09:00 (invierno)
+#  · 13:00 UTC = 15:00 Madrid (verano) / 14:00 (invierno)
+#  · 18:00 UTC = 20:00 Madrid (verano) / 19:00 (invierno)
 on:
   schedule:
     - cron: '0 8 * * *'
-  # Permite lanzarlo a mano desde la pestaña Actions de GitHub
+    - cron: '0 13 * * *'
+    - cron: '0 18 * * *'
+  # Permite lanzarlo a mano desde la pestaña Actions
   workflow_dispatch:
 
 jobs:
