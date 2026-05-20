@@ -128,22 +128,24 @@ export async function POST(req: NextRequest) {
       ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca DISTINTOS):\n${shuffled.slice(0, 20).join(', ')}`
       : ''
 
-    const prompt = `Eres un investigador buscando negocios profesionales de eventos en España. NO uses los nombres más conocidos ni los top resultados de Google. Tu trabajo es encontrar el LONG-TAIL: negocios reales pero menos visibles.
+    const prompt = `Eres un investigador buscando negocios profesionales de eventos en España. Tu objetivo es ENCONTRAR ${overprovision} negocios REALES — no te pongas exigente. PREFERIBLEMENTE long-tail (no los top conocidos), pero si tienes que incluir alguno conocido para llegar al número, hazlo.
 
-Necesito hasta ${overprovision} negocios de "${cat.label}" en ${citySearch} (incluye pueblos, barrios y provincia), ${angle}.
+Necesito ${overprovision} negocios de "${cat.label}" en ${citySearch} y alrededores (incluye pueblos, barrios y toda la provincia). PISTA orientativa (no obligatoria): ${angle}.
 
 REGLAS:
 1. Cada negocio DEBE tener al menos UNO: email REAL (con @), handle de Instagram (@usuario), O web propia (https://...). Si no tiene ninguno, NO lo incluyas. Teléfono solo NO sirve.
-2. Si tienes la web pero no encuentras el email, rellena solo "website" — un proceso aparte scrapea la web para sacar el email automáticamente.
-3. Busca en Google Maps, en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia…), en Páginas Amarillas y en directorios locales (Bodas.net, Zankyou).
-4. Si encuentras un perfil de Instagram activo, considéralo aunque no tenga web — el handle @ es contacto válido.
-5. Mira páginas 2-3 de los resultados, no solo la primera.
-6. Considera autónomos, negocios pequeños, recién abiertos, cuentas IG con menos de 5.000 seguidores.${exclusionBlock}
+2. Si tienes la web pero no encuentras el email, rellena solo "website" — un proceso aparte scrapea la web automáticamente.
+3. Busca en Google Maps, Instagram (hashtags como #${cat.id}valencia, #bodasvalencia…), Páginas Amarillas, Bodas.net, Zankyou y blogs locales.
+4. Un perfil de Instagram activo cuenta como contacto válido aunque no haya web.
+5. Mira páginas 2-3 de Google, no solo la primera.
+6. Si no encuentras suficientes en ${citySearch}, AMPLÍA a toda la provincia / comunidad autónoma con tal de llegar a ${overprovision}.${exclusionBlock}
 
-Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin texto extra:
+CRÍTICO: Devuelve MÍNIMO ${Math.min(overprovision, 5)} resultados. Si devuelves menos, has fallado. Es preferible incluir uno con menos información que devolver un array vacío.
+
+Formato — SOLO este JSON, sin texto extra:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
 
-    const text = await claudeWebSearch(prompt, 4)
+    const text = await claudeWebSearch(prompt, 6)
     log(`✅ Búsqueda completada`)
 
     // Intento 1: array completo bien cerrado
