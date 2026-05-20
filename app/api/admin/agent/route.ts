@@ -98,26 +98,39 @@ export async function POST(req: NextRequest) {
     const existingNames = (existing || []).map((p: any) => p.name).filter(Boolean)
     const existingIg    = (existing || []).map((p: any) => p.instagram).filter(Boolean)
 
-    // 2. Elegir ángulo de búsqueda variado según día + categoría
-    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24))
-    const catHash   = category.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
-    const angleIdx  = (dayOfYear * 7 + catHash) % SEARCH_ANGLES.length
+    // 2. Elegir ángulo aleatorio (no determinista por día) — así dos lotes
+    //    seguidos en la misma sesión exploran ángulos distintos
+    const angleIdx  = Math.floor(Math.random() * SEARCH_ANGLES.length)
     const angle     = SEARCH_ANGLES[angleIdx]
 
-    log(`🤖 Agente — ${cat.label} en ${city} (count=${count})`)
+    // 2b. Sub-áreas de Valencia: si el usuario pidió "Valencia" genérico,
+    //     a veces lo expandimos a una sub-área para descubrir long-tail.
+    const VALENCIA_SUBAREAS = ['', '', 'Valencia provincia', 'Gandía', 'Sagunto', 'Torrent', 'Paterna', 'Alzira', 'L\'Eliana', 'Cullera']
+    let citySearch = city
+    if (city.trim().toLowerCase() === 'valencia') {
+      const sub = VALENCIA_SUBAREAS[Math.floor(Math.random() * VALENCIA_SUBAREAS.length)]
+      if (sub) citySearch = sub
+    }
+
+    log(`🤖 Agente — ${cat.label} en ${city}${citySearch !== city ? ` (zona: ${citySearch})` : ''} (count=${count})`)
     log(`🎯 Ángulo: ${angle}`)
     log(`🚫 Excluyendo ${existingNames.length} ya conocidos del prompt`)
 
     // 3. Overprovision: pedimos 3× para que tras filtrar sobrevivan
     const overprovision = Math.min(count * 3, 9)
 
-    const exclusionBlock = existingNames.length > 0
-      ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca DISTINTOS):\n${existingNames.slice(0, 20).join(', ')}`
+    // Rotar QUÉ 20 nombres metemos en el prompt: shuffle y slice. Si la
+    // BD tiene 80 nombres y siempre mostramos los 20 primeros, Claude
+    // puede repetir nombres del bloque 21-80. Variar la selección hace
+    // que con el tiempo cubramos toda la exclusión.
+    const shuffled = [...existingNames].sort(() => Math.random() - 0.5)
+    const exclusionBlock = shuffled.length > 0
+      ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca DISTINTOS):\n${shuffled.slice(0, 20).join(', ')}`
       : ''
 
     const prompt = `Eres un investigador buscando negocios profesionales de eventos en España. NO uses los nombres más conocidos ni los top resultados de Google. Tu trabajo es encontrar el LONG-TAIL: negocios reales pero menos visibles.
 
-Necesito hasta ${overprovision} negocios de "${cat.label}" en ${city} (incluye pueblos, barrios y provincia), ${angle}.
+Necesito hasta ${overprovision} negocios de "${cat.label}" en ${citySearch} (incluye pueblos, barrios y provincia), ${angle}.
 
 REGLAS:
 1. Cada negocio DEBE tener email REAL (con @) O handle de Instagram (@usuario). Si no tiene ninguno, NO lo incluyas.
