@@ -67,10 +67,12 @@ jobs:
             echo "$BODY"
             echo "HTTP $HTTP_CODE"
 
-            # Pausa 30s entre lotes para no exceder rate limit Anthropic
+            # Pausa 60s entre lotes para no exceder rate limit Anthropic
+            # (Tier 1 = 30k tokens/min input; con web_search un lote puede
+            # consumir 10-20k tokens fácilmente).
             if [ $i -lt $((BATCHES - 1)) ]; then
-              echo "⏸ Esperando 30s..."
-              sleep 30
+              echo "⏸ Esperando 60s..."
+              sleep 60
             fi
           done
 

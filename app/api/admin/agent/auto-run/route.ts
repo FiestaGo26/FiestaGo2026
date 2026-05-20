@@ -44,7 +44,7 @@ async function claudeWebSearch(prompt: string, maxUses: number = 4): Promise<str
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 2500,
+        max_tokens: 1800,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxUses }],
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -105,8 +105,11 @@ export async function POST(req: NextRequest) {
 
     // 3. Prompt mejorado: ángulo específico + lista de exclusión + instrucciones
     //    más exigentes para que Claude busque long-tail, no los top.
+    // Acotamos la lista de exclusión a 20 nombres para no inflar el prompt
+    // (cada token suma al consumo). Los duplicados se siguen filtrando
+    // server-side incluso si Claude no los conoce todos.
     const exclusionBlock = existingNames.length > 0
-      ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca proveedores DISTINTOS):\n${existingNames.slice(0, 40).join(', ')}`
+      ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca DISTINTOS):\n${existingNames.slice(0, 20).join(', ')}`
       : ''
 
     const prompt = `Eres un investigador buscando negocios profesionales de eventos en España. NO uses los nombres más conocidos ni los top resultados de Google. Tu trabajo es encontrar el LONG-TAIL: negocios reales pero menos visibles.
@@ -122,7 +125,8 @@ REGLAS:
 Devuelve SOLO este JSON, sin texto extra antes ni después:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
 
-    const text = await claudeWebSearch(prompt, 4)
+    // max_uses 3 (no 4) para acotar tokens y respetar rate limit Anthropic Tier 1
+    const text = await claudeWebSearch(prompt, 3)
     const match = text.match(/\[[\s\S]*\]/)
     if (!match) {
       log(`⚠️ Sin JSON extraíble`)
