@@ -11,16 +11,21 @@ function checkAdminAuth(req: NextRequest) {
   return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
 }
 
-// Versión RÁPIDA del agente que cabe en el timeout de Netlify (10-26s).
-// Hace una sola llamada a Claude Sonnet con la herramienta web_search,
-// le pide que devuelva JSON con los proveedores encontrados, y los guarda.
-//
-// Para captación masiva (10×12 combinaciones) sigue usando el script local
-// `fiegago-agent.mjs` que NO tiene limite de tiempo.
+// Ángulos de búsqueda — rota para descubrir long-tail.
+const SEARCH_ANGLES = [
+  'recién abiertos en los últimos 2 años',
+  'pequeños y boutique con menos de 10 trabajadores',
+  'con presencia activa en Instagram (cuentas con >1.000 seguidores)',
+  'especializados en bodas íntimas o pequeños eventos',
+  'enfocados en cumpleaños infantiles o comuniones',
+  'especializados en eventos corporativos o despedidas',
+  'que aparecen en blogs o medios locales del sector eventos',
+  'con buen ratio calidad-precio (no los más caros del mercado)',
+  'recomendados en grupos de Facebook de novias o foros de bodas',
+  'que trabajan también en pueblos y áreas alrededor de la ciudad',
+]
 
-async function claudeWebSearch(prompt: string): Promise<string> {
-  // Margen ajustado: maxDuration de la function es 30s, dejamos 27s
-  // para Claude + 3s de slack para enviar la respuesta.
+async function claudeWebSearch(prompt: string, maxUses: number = 4, attempt: number = 0): Promise<string> {
   const controller = new AbortController()
   const tick = setTimeout(() => controller.abort(), 27_000)
   try {
@@ -32,24 +37,31 @@ async function claudeWebSearch(prompt: string): Promise<string> {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 2200,
-        // max_uses bajado de 4 → 2 para acotar latencia. Con 2 búsquedas
-        // Claude tiene suficiente para encontrar 1-3 proveedores reales.
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+        model: 'claude-haiku-4-5',
+        max_tokens: 1800,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxUses }],
         messages: [{ role: 'user', content: prompt }],
       }),
       signal: controller.signal,
     })
     const data = await res.json()
-    if (data.error) throw new Error(data.error.message || 'Claude error')
+    if (data.error) {
+      const msg = data.error.message || ''
+      const isRateLimit = /rate.?limit|exceed.*tokens|429/i.test(msg)
+      if (isRateLimit && attempt === 0) {
+        clearTimeout(tick)
+        await new Promise(r => setTimeout(r, 35_000))
+        return claudeWebSearch(prompt, maxUses, 1)
+      }
+      throw new Error(msg || 'Claude error')
+    }
     return (data.content || [])
       .filter((b: any) => b.type === 'text')
       .map((b: any) => b.text)
       .join('')
   } catch (err: any) {
     if (err?.name === 'AbortError') {
-      throw new Error('Búsqueda demasiado lenta. Prueba con menos proveedores (1-2) o reintenta — a veces Google tarda.')
+      throw new Error('Búsqueda demasiado lenta. Prueba con menos proveedores o reintenta.')
     }
     throw err
   } finally {
@@ -68,26 +80,56 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}))
     let { category = 'foto', city = 'Madrid', count = 2 } = body
-    // Capear a 3 para que entre con margen en el timeout (30s).
-    // Si quieres 10 proveedores, lanza la búsqueda 4-5 veces — es más
-    // fiable que pedirle muchos a la vez.
     count = Math.min(Math.max(parseInt(String(count)) || 2, 1), 3)
     const cat = CATEGORIES.find(c => c.id === category)
-    if (!cat) {
-      return NextResponse.json({ error: 'Categoría inválida', logs }, { status: 400 })
-    }
+    if (!cat) return NextResponse.json({ error: 'Categoría inválida', logs }, { status: 400 })
 
-    log(`🤖 Agente rápido — ${cat.label} en ${city}`)
-    log(`🌐 Buscando ${count} proveedores reales en Google...`)
+    const supabase = createAdminClient()
 
-    const prompt = `Busca ${count} negocios profesionales reales de "${cat.label}" en ${city}, España.
+    // 1. Pre-cargar exclusión: hasta 80 nombres + IG ya existentes en
+    //    (categoría, ciudad). Le pasamos a Claude los primeros 20 en el
+    //    prompt para que sepa que NO los repita.
+    const { data: existing } = await supabase
+      .from('providers')
+      .select('name, instagram')
+      .eq('category', category)
+      .ilike('city', `%${city.split(' ')[0]}%`)
+      .limit(80)
+    const existingNames = (existing || []).map((p: any) => p.name).filter(Boolean)
+    const existingIg    = (existing || []).map((p: any) => p.instagram).filter(Boolean)
 
-REGLA INNEGOCIABLE: cada negocio DEBE tener email REAL (con @) o handle de Instagram (@usuario). Si no tiene ninguno, NO lo incluyas. Mejor menos que sin contacto.
+    // 2. Elegir ángulo de búsqueda variado según día + categoría
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24))
+    const catHash   = category.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
+    const angleIdx  = (dayOfYear * 7 + catHash) % SEARCH_ANGLES.length
+    const angle     = SEARCH_ANGLES[angleIdx]
 
-Devuelve SOLO este JSON, sin texto extra:
+    log(`🤖 Agente — ${cat.label} en ${city} (count=${count})`)
+    log(`🎯 Ángulo: ${angle}`)
+    log(`🚫 Excluyendo ${existingNames.length} ya conocidos del prompt`)
+
+    // 3. Overprovision: pedimos 3× para que tras filtrar sobrevivan
+    const overprovision = Math.min(count * 3, 9)
+
+    const exclusionBlock = existingNames.length > 0
+      ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca DISTINTOS):\n${existingNames.slice(0, 20).join(', ')}`
+      : ''
+
+    const prompt = `Eres un investigador buscando negocios profesionales de eventos en España. NO uses los nombres más conocidos ni los top resultados de Google. Tu trabajo es encontrar el LONG-TAIL: negocios reales pero menos visibles.
+
+Necesito hasta ${overprovision} negocios de "${cat.label}" en ${city} (incluye pueblos, barrios y provincia), ${angle}.
+
+REGLAS:
+1. Cada negocio DEBE tener email REAL (con @) O handle de Instagram (@usuario). Si no tiene ninguno, NO lo incluyas.
+2. Busca en Google Maps, en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia…), en Páginas Amarillas y en directorios locales (Bodas.net, Zankyou).
+3. Si encuentras un perfil de Instagram activo, considéralo aunque no tenga web — el handle @ es contacto válido.
+4. Mira páginas 2-3 de los resultados, no solo la primera.
+5. Considera autónomos, negocios pequeños, recién abiertos, cuentas IG con menos de 5.000 seguidores.${exclusionBlock}
+
+Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin texto extra:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
 
-    const text = await claudeWebSearch(prompt)
+    const text = await claudeWebSearch(prompt, 4)
     log(`✅ Búsqueda completada`)
 
     const match = text.match(/\[[\s\S]*\]/)
@@ -97,38 +139,45 @@ Devuelve SOLO este JSON, sin texto extra:
     }
 
     let providers: any[] = []
-    try {
-      providers = JSON.parse(match[0])
-    } catch (e) {
-      log(`⚠️ JSON inválido en respuesta`)
-      return NextResponse.json({ error: 'Formato JSON inválido', logs }, { status: 200 })
-    }
+    try { providers = JSON.parse(match[0]) }
+    catch { log(`⚠️ JSON inválido`); return NextResponse.json({ error: 'Formato JSON inválido', logs }, { status: 200 }) }
+
+    log(`📦 Claude devolvió ${providers.length}`)
 
     if (!providers.length) {
-      log(`❌ Sin resultados`)
       return NextResponse.json({ providers: [], logs, stats: { found: 0, saved: 0 } })
     }
 
-    // Filtro DURO: solo proveedores con email o Instagram. Sin canal de contacto
-    // no podemos hacer outreach automatizado.
+    // Filtro: email/IG válido + no presente en exclusión local
     const beforeFilter = providers.length
     providers = providers.filter((p: any) => {
       const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
       const ig       = (p.instagram || '').toString().trim()
       const hasIg    = ig.length > 1 && ig !== '@'
-      return hasEmail || hasIg
+      if (!hasEmail && !hasIg) return false
+
+      const nameLow = (p.name || '').toLowerCase().trim()
+      if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) return false
+      if (hasIg && existingIg.some((n: string) => n === ig)) return false
+      return true
     })
-    const rejected = beforeFilter - providers.length
-    if (rejected > 0) log(`🚫 ${rejected} descartados (sin email ni Instagram)`)
+    log(`✂️  Tras filtrar contacto + exclusión local: ${providers.length}`)
 
     if (!providers.length) {
-      log(`❌ Ningún proveedor con contacto válido`)
-      return NextResponse.json({ providers: [], logs, stats: { found: beforeFilter, saved: 0, rejected } })
+      log(`❌ Sin proveedores nuevos. Esta categoría/ciudad puede estar saturada.`)
+      return NextResponse.json({ providers: [], logs, stats: { found: beforeFilter, saved: 0 } })
     }
+
+    // Sortear por calidad: email > IG, y limitar al count solicitado
+    providers.sort((a: any, b: any) => {
+      const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0)
+      const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0)
+      return bScore - aScore
+    })
+    providers = providers.slice(0, count)
 
     log(`📊 ${providers.length} proveedores válidos. Guardando en Supabase...`)
 
-    const supabase = createAdminClient()
     const saved: any[] = []
     let skippedDup = 0
     for (const p of providers) {
@@ -140,9 +189,7 @@ Devuelve SOLO este JSON, sin texto extra:
       const instagram = p.instagram || null
       const contactable = !!(email || phone || website || instagram)
 
-      // Dedupe: si el email o Instagram ya existe en providers, lo saltamos
-      // para no insertar el mismo proveedor dos veces (cuando el panel
-      // hace búsquedas en lotes seguidos sobre la misma ciudad/categoría).
+      // Dedupe final contra BD (por si entró entre nuestra carga local y ahora)
       if (email || instagram) {
         const orParts: string[] = []
         if (email)     orParts.push(`email.eq.${email}`)
@@ -151,13 +198,9 @@ Devuelve SOLO este JSON, sin texto extra:
           .from('providers')
           .select('id', { count: 'exact', head: true })
           .or(orParts.join(','))
-        if ((existingCount || 0) > 0) {
-          skippedDup++
-          continue
-        }
+        if ((existingCount || 0) > 0) { skippedDup++; continue }
       }
 
-      // Drafts de outreach (email + DM) — plantillas en lib/outreach.ts
       const provLike = { name: p.name, city, source: 'web' }
       const emailDraft = email     ? buildEmailDraft(provLike) : ''
       const dmDraft    = instagram ? buildDmDraft(provLike)    : ''
@@ -168,10 +211,7 @@ Devuelve SOLO este JSON, sin texto extra:
           name:            p.name,
           category:        category,
           city:            p.city || city,
-          email,
-          phone,
-          website,
-          instagram,
+          email, phone, website, instagram,
           description:     p.description || '',
           price_base:      p.avgPrice || null,
           price_unit:      'por evento',
@@ -184,8 +224,7 @@ Devuelve SOLO este JSON, sin texto extra:
           outreach_email:  emailDraft,
           outreach_dm:     dmDraft,
         })
-        .select()
-        .single()
+        .select().single()
 
       saved.push({ ...p, id: row?.id, savedToDb: !!row, score: 'A', emailDraft })
       log(`   ✓ ${p.name} | ${email || instagram || 'sin contacto directo'}`)
