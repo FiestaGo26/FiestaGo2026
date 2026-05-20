@@ -31,7 +31,7 @@ const SEARCH_ANGLES = [
   'que trabajan también en pueblos y áreas alrededor de la ciudad',
 ]
 
-async function claudeWebSearch(prompt: string, maxUses: number = 4): Promise<string> {
+async function claudeWebSearch(prompt: string, maxUses: number = 4, attempt: number = 0): Promise<string> {
   const controller = new AbortController()
   const tick = setTimeout(() => controller.abort(), 27_000)
   try {
@@ -43,7 +43,10 @@ async function claudeWebSearch(prompt: string, maxUses: number = 4): Promise<str
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+        // Haiku 4.5: rate limit más alto (50k/min Tier 1 vs 30k de Sonnet),
+        // 3× más rápido, suficiente para extraer JSON de resultados de
+        // búsqueda. La calidad de reasoning de Sonnet no aporta aquí.
+        model: 'claude-haiku-4-5',
         max_tokens: 1800,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxUses }],
         messages: [{ role: 'user', content: prompt }],
@@ -51,7 +54,18 @@ async function claudeWebSearch(prompt: string, maxUses: number = 4): Promise<str
       signal: controller.signal,
     })
     const data = await res.json()
-    if (data.error) throw new Error(data.error.message || 'Claude error')
+    if (data.error) {
+      const msg = data.error.message || ''
+      const isRateLimit = /rate.?limit|exceed.*tokens|429/i.test(msg)
+      // Retry automático en rate limit: esperamos 35s y volvemos a probar
+      // una sola vez. Si vuelve a fallar, devolvemos el error.
+      if (isRateLimit && attempt === 0) {
+        clearTimeout(tick)
+        await new Promise(r => setTimeout(r, 35_000))
+        return claudeWebSearch(prompt, maxUses, 1)
+      }
+      throw new Error(msg || 'Claude error')
+    }
     return (data.content || [])
       .filter((b: any) => b.type === 'text')
       .map((b: any) => b.text)
@@ -130,8 +144,8 @@ REGLAS:
 Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin texto extra:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
 
-    // max_uses 3 (no 4) para acotar tokens y respetar rate limit Anthropic Tier 1
-    const text = await claudeWebSearch(prompt, 3)
+    // max_uses 4 (Haiku tiene más headroom de tokens/min que Sonnet)
+    const text = await claudeWebSearch(prompt, 4)
     const match = text.match(/\[[\s\S]*\]/)
     if (!match) {
       log(`⚠️ Sin JSON extraíble`)
