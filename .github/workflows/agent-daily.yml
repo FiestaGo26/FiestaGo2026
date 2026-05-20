@@ -30,7 +30,10 @@ jobs:
           # a Valencia. Para expandir a otras ciudades, añade más
           # entradas a CITIES (ej. CITIES=(Valencia Madrid Barcelona)).
           CATEGORIES=(foto espacios musica flores pastel belleza animacion transporte papeleria planner joyeria catering)
-          CITIES=(Valencia)
+          # Áreas de Valencia para multiplicar el universo de búsqueda.
+          # El endpoint hace match flexible: "Valencia centro" matcha
+          # también proveedores con city="Valencia" en la BD.
+          CITIES=("Valencia" "Valencia centro" "Valencia provincia" "Gandía" "Sagunto" "Torrent" "Paterna" "Alzira")
 
           # Día del año (1-366) como semilla para que la rotación sea
           # determinista pero no repita siempre la misma categoría.

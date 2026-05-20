@@ -8,9 +8,6 @@ export const runtime = 'nodejs'
 export const maxDuration = 30
 export const dynamic = 'force-dynamic'
 
-// Auth para invocación por cron (GitHub Actions). El header X-Cron-Secret
-// debe coincidir con la env var CRON_SECRET. Admin también puede llamar
-// con su password habitual (para pruebas desde /admin si quieres).
 function checkCronAuth(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) return true
@@ -18,7 +15,23 @@ function checkCronAuth(req: NextRequest) {
   return false
 }
 
-async function claudeWebSearch(prompt: string): Promise<string> {
+// Ángulos de búsqueda — rota para descubrir long-tail.
+// Cada llamada usa uno distinto según día + hash de categoría para no
+// repetir siempre el mismo prompt y exprimir lo que Google indexa.
+const SEARCH_ANGLES = [
+  'recién abiertos en los últimos 2 años',
+  'pequeños y boutique con menos de 10 trabajadores',
+  'con presencia activa en Instagram (cuentas con >1.000 seguidores)',
+  'especializados en bodas íntimas o pequeños eventos',
+  'enfocados en cumpleaños infantiles o comuniones',
+  'especializados en eventos corporativos o despedidas',
+  'que aparecen en blogs o medios locales del sector eventos',
+  'con buen ratio calidad-precio (no los más caros del mercado)',
+  'recomendados en grupos de Facebook de novias o foros de bodas',
+  'que trabajan también en pueblos y áreas alrededor de la ciudad',
+]
+
+async function claudeWebSearch(prompt: string, maxUses: number = 4): Promise<string> {
   const controller = new AbortController()
   const tick = setTimeout(() => controller.abort(), 27_000)
   try {
@@ -31,8 +44,8 @@ async function claudeWebSearch(prompt: string): Promise<string> {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 2200,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+        max_tokens: 2500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxUses }],
         messages: [{ role: 'user', content: prompt }],
       }),
       signal: controller.signal,
@@ -50,8 +63,6 @@ async function claudeWebSearch(prompt: string): Promise<string> {
 
 // POST /api/admin/agent/auto-run
 // body: { category, city, count }
-// Hace ciclo completo: busca → guarda → envía email a los que tienen email.
-// Pensado para invocación por cron (GitHub Actions diario).
 export async function POST(req: NextRequest) {
   if (!checkCronAuth(req)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -67,16 +78,51 @@ export async function POST(req: NextRequest) {
     const cat = CATEGORIES.find(c => c.id === category)
     if (!cat) return NextResponse.json({ error: 'Categoría inválida', logs }, { status: 400 })
 
+    const supabase = createAdminClient()
+
+    // 1. Cargar la lista de proveedores que YA tenemos en esta categoría
+    //    y ciudad/provincia, para pasarle a Claude como exclusión.
+    //    Limitamos a 80 para no saturar el prompt.
+    const { data: existing } = await supabase
+      .from('providers')
+      .select('name, instagram, email')
+      .eq('category', category)
+      .ilike('city', `%${city.split(' ')[0]}%`)  // match flexible: "Valencia" hits "Valencia centro" etc.
+      .limit(80)
+
+    const existingNames = (existing || []).map((p: any) => p.name).filter(Boolean)
+    const existingIg    = (existing || []).map((p: any) => p.instagram).filter(Boolean)
+
+    // 2. Elegir un ángulo de búsqueda variado según día + categoría
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24))
+    const catHash   = category.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0)
+    const angleIdx  = (dayOfYear * 7 + catHash) % SEARCH_ANGLES.length
+    const angle     = SEARCH_ANGLES[angleIdx]
+
     log(`🤖 Cron — ${cat.label} en ${city} (count=${count})`)
+    log(`🎯 Ángulo: ${angle}`)
+    log(`🚫 Excluyendo ${existingNames.length} ya conocidos`)
 
-    const prompt = `Busca ${count} negocios profesionales reales de "${cat.label}" en ${city}, España.
+    // 3. Prompt mejorado: ángulo específico + lista de exclusión + instrucciones
+    //    más exigentes para que Claude busque long-tail, no los top.
+    const exclusionBlock = existingNames.length > 0
+      ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca proveedores DISTINTOS):\n${existingNames.slice(0, 40).join(', ')}`
+      : ''
 
-REGLA INNEGOCIABLE: cada negocio DEBE tener email REAL (con @) o handle de Instagram (@usuario). Si no tiene ninguno, NO lo incluyas. Mejor menos que sin contacto.
+    const prompt = `Eres un investigador buscando negocios profesionales de eventos en España. NO uses los nombres más conocidos ni los top resultados de Google. Tu trabajo es encontrar el LONG-TAIL: negocios reales pero menos visibles.
 
-Devuelve SOLO este JSON, sin texto extra:
+Necesito ${count} negocios de "${cat.label}" en ${city} (incluye pueblos y provincia), ${angle}.
+
+REGLAS:
+1. Cada negocio DEBE tener email REAL (con @) o handle de Instagram (@usuario). Mejor menos resultados que sin contacto válido.
+2. Busca en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia, etc.) además de Google.
+3. Mira páginas 2-3 de los resultados, no solo la primera.
+4. Considera negocios pequeños, autónomos, recién abiertos — no solo grandes empresas.${exclusionBlock}
+
+Devuelve SOLO este JSON, sin texto extra antes ni después:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
 
-    const text = await claudeWebSearch(prompt)
+    const text = await claudeWebSearch(prompt, 4)
     const match = text.match(/\[[\s\S]*\]/)
     if (!match) {
       log(`⚠️ Sin JSON extraíble`)
@@ -89,14 +135,24 @@ Devuelve SOLO este JSON, sin texto extra:
       return NextResponse.json({ saved: 0, emailsSent: 0, logs })
     }
 
+    log(`📦 Claude devolvió ${providers.length}`)
+
+    // Filtrar por contacto + por nombre/IG no presente en la exclusión
+    // (Claude a veces se salta la regla — segundo filtro client-side)
     providers = providers.filter((p: any) => {
       const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
       const ig       = (p.instagram || '').toString().trim()
       const hasIg    = ig.length > 1 && ig !== '@'
-      return hasEmail || hasIg
+      if (!hasEmail && !hasIg) return false
+
+      const nameLow = (p.name || '').toLowerCase().trim()
+      if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) return false
+      if (hasIg && existingIg.some((n: string) => n === ig)) return false
+      return true
     })
 
-    const supabase = createAdminClient()
+    log(`✂️  Tras filtrar contacto + exclusión local: ${providers.length}`)
+
     let saved = 0
     let emailsSent = 0
     let skippedDup = 0
@@ -110,16 +166,16 @@ Devuelve SOLO este JSON, sin texto extra:
       const phone = p.phone || null
       const contactable = !!(email || phone || website || instagram)
 
-      // Dedupe por email o instagram
+      // Dedupe de BD por si justo se metió en otra ejecución paralela
       if (email || instagram) {
         const orParts: string[] = []
         if (email)     orParts.push(`email.eq.${email}`)
         if (instagram) orParts.push(`instagram.eq.${instagram}`)
-        const { count: existing } = await supabase
+        const { count: dbExisting } = await supabase
           .from('providers')
           .select('id', { count: 'exact', head: true })
           .or(orParts.join(','))
-        if ((existing || 0) > 0) { skippedDup++; continue }
+        if ((dbExisting || 0) > 0) { skippedDup++; continue }
       }
 
       const provLike = { name: p.name, city, source: 'web' }
@@ -146,9 +202,6 @@ Devuelve SOLO este JSON, sin texto extra:
       if (!row) continue
       saved++
 
-      // Envío automático del email si tiene email. Los que solo tienen IG
-      // quedan en cola para envío manual desde /admin (no se puede
-      // automatizar DMs sin que IG banee la cuenta).
       if (email && emailDraft) {
         const send = await emailProviderOutreach(row)
         if (send.ok) {
