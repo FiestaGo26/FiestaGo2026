@@ -8,8 +8,11 @@ export const runtime = 'nodejs'
 export const maxDuration = 30
 export const dynamic = 'force-dynamic'
 
-function checkAdminAuth(req: NextRequest) {
-  return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
+function checkAuth(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) return true
+  if (req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD) return true
+  return false
 }
 
 // POST /api/admin/agent/extract-email
@@ -21,7 +24,7 @@ function checkAdminAuth(req: NextRequest) {
 // draft de outreach, lo manda automáticamente y cambia tag a
 // "Contactado por email".
 export async function POST(req: NextRequest) {
-  if (!checkAdminAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!checkAuth(req)) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
   const supabase = createAdminClient()

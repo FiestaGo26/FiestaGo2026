@@ -78,3 +78,45 @@ jobs:
 
           echo ""
           echo "✅ Captación diaria completada"
+
+          # ────────────────────────────────────────
+          # Pasada de extracción de email para los
+          # proveedores recién guardados con tag
+          # "Investigar web" (solo tienen web, sin
+          # email ni IG). Scrapea la web y dispara
+          # outreach automático si lo encuentra.
+          # ────────────────────────────────────────
+          # 3 pasadas × 8 proveedores = hasta 24 webs procesadas por
+          # ejecución. Cada llamada tarda ~6s × 8 = ~48s + retries.
+          for j in 1 2 3; do
+            echo "────────────────────────────────────────"
+            echo "Extracción de email pasada $j/3"
+            echo "────────────────────────────────────────"
+
+            RESPONSE=$(curl -sS -X POST "$SITE_URL/api/admin/agent/extract-email" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              -d '{"batch":true}' \
+              -w "\nHTTP_CODE:%{http_code}" || true)
+
+            HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+            BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+            echo "$BODY"
+            echo "HTTP $HTTP_CODE"
+
+            # Si la pasada ha procesado 0 candidatos, no hay más
+            # proveedores con "Investigar web" → salimos.
+            PROCESSED=$(echo "$BODY" | grep -oE '"processed":[0-9]+' | head -1 | cut -d: -f2)
+            if [ -z "$PROCESSED" ] || [ "$PROCESSED" = "0" ]; then
+              echo "Sin más proveedores con 'Investigar web'. Fin."
+              break
+            fi
+
+            if [ $j -lt 3 ]; then
+              echo "⏸ Esperando 5s..."
+              sleep 5
+            fi
+          done
+
+          echo ""
+          echo "✅ Extracción de email completada"
