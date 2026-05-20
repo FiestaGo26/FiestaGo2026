@@ -1000,6 +1000,8 @@ export default function AdminPage() {
 
           {/* ══ AGENT ══ */}
           {section === 'agent' && (
+            <>
+              <ApifyPanel />
             <div style={{ display:'grid', gridTemplateColumns:'280px 1fr', gap:20 }}>
               {/* Config */}
               <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
@@ -1105,6 +1107,7 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+            </>
           )}
 
           {/* ══ SETTINGS ══ */}
@@ -2455,6 +2458,184 @@ function MetricsPanel({ metrics, loading, onRefresh }: {
       <p style={{ fontSize:11, color:'#4B5563', marginTop:24, textAlign:'center' }}>
         Las cifras se calculan en tiempo real sobre todos los datos. Refresca para ver lo más reciente.
       </p>
+    </div>
+  )
+}
+
+function ApifyPanel() {
+  const [hashtag,   setHashtag]   = useState('')
+  const [category,  setCategory]  = useState('foto')
+  const [city,      setCity]      = useState('Valencia')
+  const [limit,     setLimit]     = useState(50)
+  const [running,   setRunning]   = useState(false)
+  const [runId,     setRunId]     = useState<string | null>(null)
+  const [status,    setStatus]    = useState<string | null>(null)
+  const [accounts,  setAccounts]  = useState<any[] | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<any | null>(null)
+
+  // Hashtags sugeridos por categoría
+  const suggestedHashtags: Record<string, string[]> = {
+    foto:       ['fotografobodavalencia', 'fotografavalencia', 'bodasvalencia'],
+    musica:     ['djbodavalencia', 'djeventosvalencia', 'musicaeventos'],
+    catering:   ['cateringvalencia', 'cateringbodavalencia'],
+    flores:     ['floristabodavalencia', 'decoracionbodavalencia'],
+    pastel:     ['tartabodavalencia', 'pasteleriavalencia'],
+    belleza:    ['maquillajenoviavalencia', 'peluqueriavalencia'],
+    animacion:  ['animacioninfantilvalencia', 'magosvalencia'],
+    espacios:   ['fincabodasvalencia', 'masíavalencia', 'saloneventosvalencia'],
+    planner:    ['weddingplannervalencia', 'organizadorabodavalencia'],
+    transporte: ['limusinavalencia', 'cocheseventosvalencia'],
+    papeleria:  ['invitacionesbodavalencia'],
+    joyeria:    ['alianzasvalencia', 'joyeriavalencia'],
+  }
+
+  const presets = suggestedHashtags[category] || []
+
+  async function startRun() {
+    if (!hashtag.trim()) { toast.error('Pon un hashtag'); return }
+    setRunning(true); setRunId(null); setStatus(null); setAccounts(null); setImportResult(null)
+    try {
+      const res = await fetch('/api/admin/agent/apify', {
+        method: 'POST',
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hashtag: hashtag.trim(), category, city, limit }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setRunId(data.runId)
+      setStatus(data.status)
+      toast.success(`Apify run iniciado: ${data.runId.slice(0,8)}`)
+      // Empezar polling
+      pollStatus(data.runId)
+    } catch (err: any) {
+      toast.error(err.message || 'Error al lanzar Apify')
+    }
+    setRunning(false)
+  }
+
+  async function pollStatus(id: string) {
+    // Hasta 5 min de poll cada 10s
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 10_000))
+      try {
+        const res = await fetch(`/api/admin/agent/apify?runId=${id}`, { headers: adminHeaders() })
+        const data = await res.json()
+        setStatus(data.status)
+        if (data.status === 'SUCCEEDED') {
+          setAccounts(data.accounts || [])
+          toast.success(`✓ ${data.accountsFound || 0} cuentas encontradas`)
+          return
+        }
+        if (['FAILED','ABORTED','TIMED-OUT'].includes(data.status)) {
+          toast.error(`Apify falló: ${data.status}`)
+          return
+        }
+      } catch {}
+    }
+    toast('Apify tarda más de 5 min — refresca el estado manualmente luego')
+  }
+
+  async function importAll() {
+    if (!runId) return
+    setImporting(true)
+    try {
+      const res = await fetch('/api/admin/agent/apify', {
+        method: 'PATCH',
+        headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId, category, city }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setImportResult(data)
+      toast.success(`Importados ${data.saved} (${data.skippedDup} duplicados)`)
+    } catch (err: any) {
+      toast.error(err.message || 'Error al importar')
+    }
+    setImporting(false)
+  }
+
+  return (
+    <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:18, marginBottom:20 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:14 }}>
+        <span style={{ fontSize:18 }}>📸</span>
+        <div>
+          <div style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:11, fontWeight:700, color:'#E1306C', letterSpacing:'0.08em', textTransform:'uppercase' }}>
+            Captación por Instagram (Apify)
+          </div>
+          <div style={{ fontSize:11, color:'#6B7280', marginTop:2 }}>
+            Scrapea hashtags para encontrar cuentas activas no indexadas por Google
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 90px', gap:8, marginBottom:10 }}>
+        <input value={hashtag} onChange={e => setHashtag(e.target.value)}
+          placeholder="hashtag (sin #)"
+          style={{ padding:'8px 10px', background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, color:'#F9FAFB', fontSize:12 }}/>
+        <select value={category} onChange={e => setCategory(e.target.value)}
+          style={{ padding:'8px 10px', background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, color:'#F9FAFB', fontSize:12 }}>
+          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
+        </select>
+        <input value={city} onChange={e => setCity(e.target.value)}
+          placeholder="Ciudad"
+          style={{ padding:'8px 10px', background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, color:'#F9FAFB', fontSize:12 }}/>
+        <input type="number" value={limit} onChange={e => setLimit(parseInt(e.target.value) || 50)}
+          min={10} max={200}
+          style={{ padding:'8px 10px', background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, color:'#F9FAFB', fontSize:12 }}/>
+      </div>
+
+      {presets.length > 0 && (
+        <div style={{ display:'flex', gap:6, marginBottom:10, flexWrap:'wrap' }}>
+          <span style={{ fontSize:10, color:'#6B7280', alignSelf:'center' }}>Sugerencias:</span>
+          {presets.map(h => (
+            <button key={h} onClick={() => setHashtag(h)}
+              style={{ fontSize:10, padding:'3px 8px', borderRadius:8, border:'1px solid #1F2937',
+                background:'transparent', color:'#9CA3AF', cursor:'pointer' }}>
+              #{h}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <button onClick={startRun} disabled={running || !!status && !['SUCCEEDED','FAILED','ABORTED','TIMED-OUT'].includes(status)}
+        style={{ width:'100%', background:'#E1306C', color:'#fff', border:'none', padding:'9px',
+          borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer',
+          opacity: (running || (status && !['SUCCEEDED','FAILED','ABORTED','TIMED-OUT'].includes(status))) ? 0.6 : 1 }}>
+        {running ? 'Lanzando...'
+          : status === 'RUNNING'    ? '⏳ Apify ejecutando (puede tardar 2-5 min)…'
+          : status === 'READY'      ? '⏳ En cola…'
+          : '🚀 Lanzar scrapeo'}
+      </button>
+
+      {status && (
+        <div style={{ marginTop:10, fontSize:11, color:'#9CA3AF' }}>
+          Run: <code style={{ color:'#F0F4FF' }}>{runId?.slice(0,12)}…</code> · Estado: <strong style={{ color: status === 'SUCCEEDED' ? '#10B981' : status === 'RUNNING' ? '#F59E0B' : '#9CA3AF' }}>{status}</strong>
+        </div>
+      )}
+
+      {accounts && accounts.length > 0 && !importResult && (
+        <div style={{ marginTop:12, padding:10, background:'#0D1117', border:'1px solid #10B98144', borderRadius:8 }}>
+          <div style={{ fontSize:11, color:'#10B981', fontWeight:700, marginBottom:6 }}>
+            ✓ {accounts.length} cuentas únicas encontradas
+          </div>
+          <div style={{ fontSize:10, color:'#9CA3AF', marginBottom:8, maxHeight:80, overflowY:'auto' }}>
+            {accounts.slice(0, 15).map((a:any) => `@${a.username}`).join(' · ')}
+            {accounts.length > 15 && ` … +${accounts.length - 15}`}
+          </div>
+          <button onClick={importAll} disabled={importing}
+            style={{ width:'100%', background:'#10B981', color:'#fff', border:'none', padding:'8px',
+              borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', opacity: importing ? 0.6 : 1 }}>
+            {importing ? 'Importando...' : `Importar las ${accounts.length} a /admin como pending`}
+          </button>
+        </div>
+      )}
+
+      {importResult && (
+        <div style={{ marginTop:12, padding:10, background:'#10B98122', border:'1px solid #10B98166', borderRadius:8, fontSize:11, color:'#10B981' }}>
+          ✓ {importResult.saved} importados · {importResult.skippedDup} duplicados saltados
+        </div>
+      )}
     </div>
   )
 }
