@@ -133,11 +133,12 @@ export async function POST(req: NextRequest) {
 Necesito hasta ${overprovision} negocios de "${cat.label}" en ${citySearch} (incluye pueblos, barrios y provincia), ${angle}.
 
 REGLAS:
-1. Cada negocio DEBE tener email REAL (con @) O handle de Instagram (@usuario). Si no tiene ninguno, NO lo incluyas.
-2. Busca en Google Maps, en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia…), en Páginas Amarillas y en directorios locales (Bodas.net, Zankyou).
-3. Si encuentras un perfil de Instagram activo, considéralo aunque no tenga web — el handle @ es contacto válido.
-4. Mira páginas 2-3 de los resultados, no solo la primera.
-5. Considera autónomos, negocios pequeños, recién abiertos, cuentas IG con menos de 5.000 seguidores.${exclusionBlock}
+1. Cada negocio DEBE tener al menos UNO: email REAL (con @), handle de Instagram (@usuario), O web propia (https://...). Si no tiene ninguno, NO lo incluyas. Teléfono solo NO sirve.
+2. Si tienes la web pero no encuentras el email, rellena solo "website" — un proceso aparte scrapea la web para sacar el email automáticamente.
+3. Busca en Google Maps, en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia…), en Páginas Amarillas y en directorios locales (Bodas.net, Zankyou).
+4. Si encuentras un perfil de Instagram activo, considéralo aunque no tenga web — el handle @ es contacto válido.
+5. Mira páginas 2-3 de los resultados, no solo la primera.
+6. Considera autónomos, negocios pequeños, recién abiertos, cuentas IG con menos de 5.000 seguidores.${exclusionBlock}
 
 Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin texto extra:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
@@ -161,13 +162,16 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
       return NextResponse.json({ providers: [], logs, stats: { found: 0, saved: 0 } })
     }
 
-    // Filtro: email/IG válido + no presente en exclusión local
+    // Filtro: email, IG o web + no presente en exclusión local.
+    // Aceptamos web aunque no tenga email porque después
+    // /api/admin/agent/extract-email scrapea la web buscando el email.
     const beforeFilter = providers.length
     providers = providers.filter((p: any) => {
       const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
       const ig       = (p.instagram || '').toString().trim()
       const hasIg    = ig.length > 1 && ig !== '@'
-      if (!hasEmail && !hasIg) return false
+      const hasWeb   = typeof p.website === 'string' && /^https?:\/\//i.test(p.website)
+      if (!hasEmail && !hasIg && !hasWeb) return false
 
       const nameLow = (p.name || '').toLowerCase().trim()
       if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) return false
@@ -181,10 +185,10 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
       return NextResponse.json({ providers: [], logs, stats: { found: beforeFilter, saved: 0 } })
     }
 
-    // Sortear por calidad: email > IG, y limitar al count solicitado
+    // Sortear por calidad: email > IG > web, y limitar al count solicitado
     providers.sort((a: any, b: any) => {
-      const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0)
-      const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0)
+      const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0) + (a.website ? 2 : 0)
+      const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0) + (b.website ? 2 : 0)
       return bScore - aScore
     })
     providers = providers.slice(0, count)
@@ -217,6 +221,10 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
       const provLike = { name: p.name, city, source: 'web' }
       const emailDraft = email     ? buildEmailDraft(provLike) : ''
       const dmDraft    = instagram ? buildDmDraft(provLike)    : ''
+      // Tag según canal disponible:
+      //   - Si tiene email o IG → 'Nuevo' (listo para outreach)
+      //   - Si solo tiene web → 'Investigar web' (extract-email lo procesará)
+      const tag = (email || instagram) ? 'Nuevo' : 'Investigar web'
 
       const { data: row } = await supabase
         .from('providers')
@@ -231,7 +239,7 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
           specialties:     p.specialties || [],
           source:          'web',
           status:          'pending',
-          tag:             'Nuevo',
+          tag,
           contactable,
           outreach_sent:   false,
           outreach_email:  emailDraft,

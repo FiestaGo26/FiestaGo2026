@@ -135,11 +135,12 @@ export async function POST(req: NextRequest) {
 Necesito hasta ${overprovision} negocios de "${cat.label}" en ${city} (incluye pueblos, barrios y provincia), ${angle}.
 
 REGLAS:
-1. Cada negocio DEBE tener email REAL (con @) O handle de Instagram (@usuario). Si no tiene ninguno de los dos, NO lo incluyas — esos no me sirven aunque tengan web o teléfono.
-2. Busca en Google Maps, en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia…), en Páginas Amarillas y en directorios locales como Bodas.net o Zankyou para identificar nombres que pueda contactar.
-3. Si encuentras un perfil de Instagram activo, considéralo aunque no tenga web — el handle @ es contacto válido.
-4. Mira páginas 2-3 de los resultados, no solo la primera.
-5. Considera autónomos, negocios pequeños, recién abiertos, cuentas IG activas con menos de 5.000 seguidores.${exclusionBlock}
+1. Cada negocio DEBE tener al menos UNO: email REAL (con @), handle de Instagram (@usuario), O web propia (https://...). Teléfono solo NO sirve.
+2. Si tienes la web pero no encuentras el email, rellena solo "website" — un proceso aparte scrapea la web para extraer el email automáticamente.
+3. Busca en Google Maps, en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia…), en Páginas Amarillas y en directorios locales como Bodas.net o Zankyou para identificar nombres que pueda contactar.
+4. Si encuentras un perfil de Instagram activo, considéralo aunque no tenga web — el handle @ es contacto válido.
+5. Mira páginas 2-3 de los resultados, no solo la primera.
+6. Considera autónomos, negocios pequeños, recién abiertos, cuentas IG activas con menos de 5.000 seguidores.${exclusionBlock}
 
 Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin texto extra:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
@@ -160,14 +161,15 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
 
     log(`📦 Claude devolvió ${providers.length}`)
 
-    // Filtro estricto: solo aceptamos proveedores con email O Instagram.
-    // Sin uno de los dos no podemos hacer outreach automatizado y no
-    // valen la pena para el funnel.
+    // Filtro: aceptamos email, Instagram o web. Si solo hay web, después
+    // un endpoint separado (extract-email) intenta scrapearla.
     providers = providers.filter((p: any) => {
       const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
       const ig       = (p.instagram || '').toString().trim()
       const hasIg    = ig.length > 1 && ig !== '@'
-      if (!hasEmail && !hasIg) return false
+      const webRaw   = (p.website || '').toString().trim()
+      const hasWeb   = /^https?:\/\//i.test(webRaw) && !/instagram\.com|tiktok\.com/i.test(webRaw)
+      if (!hasEmail && !hasIg && !hasWeb) return false
 
       const nameLow = (p.name || '').toLowerCase().trim()
       if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) return false
@@ -177,10 +179,10 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
 
     log(`✂️  Tras filtrar contacto + exclusión local: ${providers.length}`)
 
-    // Cap final al count solicitado (priorizamos los que tienen email sobre IG)
+    // Cap final al count solicitado (priorizamos email > IG > web)
     providers.sort((a: any, b: any) => {
-      const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0)
-      const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0)
+      const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0) + (a.website ? 1 : 0)
+      const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0) + (b.website ? 1 : 0)
       return bScore - aScore
     })
     providers = providers.slice(0, count)
@@ -213,6 +215,9 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
       const provLike = { name: p.name, city, source: 'web' }
       const emailDraft = email     ? buildEmailDraft(provLike) : ''
       const dmDraft    = instagram ? buildDmDraft(provLike)    : ''
+      // Si tiene email/IG → 'Nuevo' (outreach listo).
+      // Si solo tiene web → 'Investigar web' (extract-email lo procesará).
+      const tag = (email || instagram) ? 'Nuevo' : 'Investigar web'
 
       const { data: row } = await supabase
         .from('providers')
@@ -224,7 +229,7 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
           price_unit: 'por evento',
           specialties: p.specialties || [],
           source: 'web', status: 'pending',
-          tag: 'Nuevo', contactable,
+          tag, contactable,
           outreach_sent: false,
           outreach_email: emailDraft,
           outreach_dm: dmDraft,

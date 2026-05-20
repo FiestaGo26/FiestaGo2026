@@ -101,6 +101,7 @@ export default function AdminPage() {
   const [agentResults, setAgentResults] = useState<any[]>([])
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendStatus,  setSendStatus]   = useState<{ok:boolean,msg:string}|null>(null)
+  const [extractingEmails, setExtractingEmails] = useState(false)
   // Marketing / social_posts
   const [socialPosts,    setSocialPosts]    = useState<any[]>([])
   const [socialFilter,   setSocialFilter]   = useState<'pending'|'approved'|'published'|'all'>('pending')
@@ -405,6 +406,36 @@ export default function AdminPage() {
       setAgentLogs(l => [...l, `✅ Búsqueda completa: ${accumulated.length}/${totalTarget} proveedores`])
     }
     setAgentRunning(false)
+  }
+
+  // Scrapea webs de proveedores con tag "Investigar web" y extrae email.
+  // Si lo encuentra, dispara outreach automático.
+  async function extractEmailsBatch() {
+    setExtractingEmails(true)
+    setAgentLogs(l => [...l, `🔍 Extrayendo emails desde webs (hasta 8 proveedores)...`])
+    try {
+      const res = await fetch('/api/admin/agent/extract-email', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ batch: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAgentLogs(l => [...l, `❌ ${data.error || 'error'}`])
+      } else {
+        setAgentLogs(l => [...l,
+          `📦 Procesados: ${data.processed}`,
+          `✉️  Emails extraídos: ${data.extracted}`,
+          `📨 Outreach enviado: ${data.emailsSent}`,
+          ...(data.results || []).map((r: any) =>
+            `   ${r.status === 'extraido-y-contactado' ? '✅' : r.status === 'extraido' ? '🟡' : '·'} ${r.name}${r.email ? ' — ' + r.email : ''} (${r.status})`),
+        ])
+      }
+    } catch (err: any) {
+      setAgentLogs(l => [...l, `❌ ${err.message}`])
+    } finally {
+      setExtractingEmails(false)
+    }
   }
 
   // ── SOCIAL POSTS ──────────────────────────────────────────────────────────
@@ -1046,6 +1077,17 @@ export default function AdminPage() {
                     cursor:agentRunning?'not-allowed':'pointer',
                     fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
                   {agentRunning?'⏳ BUSCANDO...':'▶ EJECUTAR AGENTE'}
+                </button>
+
+                <button onClick={extractEmailsBatch} disabled={extractingEmails || agentRunning}
+                  title="Procesa proveedores con tag 'Investigar web' o 'Nuevo' que aún no tienen email: scrapea su web y dispara outreach automático si lo encuentra."
+                  style={{ width:'100%', padding:'10px', borderRadius:10,
+                    background:'transparent',
+                    border:`1px solid ${extractingEmails?'#8B5CF644':'#8B5CF6'}`,
+                    color:'#8B5CF6', fontSize:11, fontWeight:700,
+                    cursor:(extractingEmails||agentRunning)?'not-allowed':'pointer',
+                    fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
+                  {extractingEmails?'⏳ EXTRAYENDO...':'🔍 EXTRAER EMAILS DE WEBS'}
                 </button>
 
                 {agentResults.length>0&&(
