@@ -7,7 +7,12 @@ export const maxDuration = 60  // Netlify Pro permite hasta 26s sync; background
 export const dynamic = 'force-dynamic'
 
 function checkAdminAuth(req: NextRequest) {
-  return req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
+  // Admin password (uso interactivo desde /admin) o cron secret (cron
+  // semanal de GitHub Actions). Ambos generan posts pendientes en BD.
+  if (req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD) return true
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) return true
+  return false
 }
 
 // Plan del post generado por Claude (lo que esperamos como salida)

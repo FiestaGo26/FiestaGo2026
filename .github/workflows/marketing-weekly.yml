@@ -1,0 +1,66 @@
+name: Generación semanal de contenido marketing
+
+# Cada domingo a las 18:00 UTC (= 20:00 Madrid en verano).
+# Genera 7 posts variados para la semana siguiente y los deja en la cola
+# de aprobación de /admin → Marketing.
+#
+# La publicación final a Instagram/TikTok sigue siendo manual con un
+# click desde el panel — Meta no permite auto-publicar sin app review.
+on:
+  schedule:
+    - cron: '0 18 * * 0'
+  workflow_dispatch:
+
+jobs:
+  generate-batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Generar 7 posts variados para la semana
+        env:
+          SITE_URL:    ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+
+          # 7 prompts variados — uno por día. Mezcla inspiración, tips,
+          # behind-the-scenes, FOMO de lanzamiento, social proof y promo.
+          PROMPTS=(
+            "Post inspiracional para una boda íntima en verano en España. Imagen evocadora, sin texto en pantalla. Caption corto y emotivo."
+            "Tip educativo: 3 preguntas que el cliente debe hacer al fotógrafo antes de contratarlo. Formato lista, hook fuerte, caption útil."
+            "Post de behind-the-scenes: mostrando que estamos construyendo FiestaGo, cuenta atrás al lanzamiento del 10 de junio. Tono humano, cercano."
+            "Promo de la Garantía de Éxito: si tu proveedor falla, te devolvemos hasta el 110%. Visual sobrio, frase clara, posicionar contra Bodas.net sin nombrarlos."
+            "Tip para clientes: cómo reservar una comunión sin estrés en 2026. Categoría comuniones. Caption útil con CTA al marketplace."
+            "Post FOMO: faltan pocas semanas para el lanzamiento del 10 de junio. Cuenta atrás visual. Tono emocional, con energía."
+            "Inspiración para cumpleaños infantil: ideas de temática y proveedores que las hacen realidad. Imagen alegre, caption corto."
+          )
+
+          for i in "${!PROMPTS[@]}"; do
+            PROMPT="${PROMPTS[$i]}"
+            echo "────────────────────────────────────────"
+            echo "Post $((i+1))/7"
+            echo "Prompt: $PROMPT"
+            echo "────────────────────────────────────────"
+
+            RESPONSE=$(curl -sS -X POST "$SITE_URL/api/admin/marketing/custom" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              -d "$(jq -nc --arg p "$PROMPT" '{prompt:$p}')" \
+              -w "\nHTTP_CODE:%{http_code}" || true)
+
+            HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+            BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+            echo "$BODY" | head -c 500
+            echo ""
+            echo "HTTP $HTTP_CODE"
+
+            # Pausa 60s entre posts para no exceder rate limit Anthropic
+            # (cada post hace 1 llamada Claude + 1 llamada fal.ai).
+            if [ $i -lt 6 ]; then
+              echo "⏸ Esperando 60s..."
+              sleep 60
+            fi
+          done
+
+          echo ""
+          echo "✅ 7 posts generados y en cola en /admin → Marketing"
