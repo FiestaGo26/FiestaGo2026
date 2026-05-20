@@ -38,7 +38,7 @@ async function claudeWebSearch(prompt: string, maxUses: number = 4, attempt: num
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5',
-        max_tokens: 1800,
+        max_tokens: 3500,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxUses }],
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -146,15 +146,33 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
     const text = await claudeWebSearch(prompt, 4)
     log(`✅ Búsqueda completada`)
 
-    const match = text.match(/\[[\s\S]*\]/)
-    if (!match) {
-      log(`⚠️ No se pudo extraer JSON de la respuesta`)
+    // Intento 1: array completo bien cerrado
+    let jsonStr: string | null = null
+    const fullMatch = text.match(/\[[\s\S]*\]/)
+    if (fullMatch) jsonStr = fullMatch[0]
+    else {
+      // Intento 2: Haiku truncó la respuesta (max_tokens) y no cerró el ].
+      // Buscamos desde el primer '[' hasta el último objeto '}' completo
+      // y le añadimos el ']' que falta.
+      const startIdx = text.indexOf('[')
+      const lastObj  = text.lastIndexOf('}')
+      if (startIdx >= 0 && lastObj > startIdx) {
+        jsonStr = text.slice(startIdx, lastObj + 1) + ']'
+        log(`🩹 Respuesta truncada — recuperando JSON parcial`)
+      }
+    }
+
+    if (!jsonStr) {
+      log(`⚠️ No se pudo extraer JSON. Respuesta: ${text.slice(0, 200).replace(/\s+/g, ' ')}…`)
       return NextResponse.json({ error: 'No se encontraron proveedores en formato válido', logs }, { status: 200 })
     }
 
     let providers: any[] = []
-    try { providers = JSON.parse(match[0]) }
-    catch { log(`⚠️ JSON inválido`); return NextResponse.json({ error: 'Formato JSON inválido', logs }, { status: 200 }) }
+    try { providers = JSON.parse(jsonStr) }
+    catch {
+      log(`⚠️ JSON inválido. Empieza: ${jsonStr.slice(0, 200).replace(/\s+/g, ' ')}…`)
+      return NextResponse.json({ error: 'Formato JSON inválido', logs }, { status: 200 })
+    }
 
     log(`📦 Claude devolvió ${providers.length}`)
 

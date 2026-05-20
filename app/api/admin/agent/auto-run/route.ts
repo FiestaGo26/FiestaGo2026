@@ -47,7 +47,7 @@ async function claudeWebSearch(prompt: string, maxUses: number = 4, attempt: num
         // 3× más rápido, suficiente para extraer JSON de resultados de
         // búsqueda. La calidad de reasoning de Sonnet no aporta aquí.
         model: 'claude-haiku-4-5',
-        max_tokens: 1800,
+        max_tokens: 3500,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxUses }],
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -147,15 +147,29 @@ Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin te
 
     // max_uses 4 (Haiku tiene más headroom de tokens/min que Sonnet)
     const text = await claudeWebSearch(prompt, 4)
-    const match = text.match(/\[[\s\S]*\]/)
-    if (!match) {
-      log(`⚠️ Sin JSON extraíble`)
+
+    // Intento 1: array completo. Intento 2 (recovery): si Haiku trunca
+    // por max_tokens y no cierra ']', recortamos hasta el último '}' y
+    // añadimos ']' nosotros para no perder los items ya emitidos.
+    let jsonStr: string | null = null
+    const fullMatch = text.match(/\[[\s\S]*\]/)
+    if (fullMatch) jsonStr = fullMatch[0]
+    else {
+      const startIdx = text.indexOf('[')
+      const lastObj  = text.lastIndexOf('}')
+      if (startIdx >= 0 && lastObj > startIdx) {
+        jsonStr = text.slice(startIdx, lastObj + 1) + ']'
+        log(`🩹 Respuesta truncada — recuperando JSON parcial`)
+      }
+    }
+    if (!jsonStr) {
+      log(`⚠️ Sin JSON extraíble: ${text.slice(0, 200).replace(/\s+/g, ' ')}…`)
       return NextResponse.json({ saved: 0, emailsSent: 0, logs })
     }
 
     let providers: any[] = []
-    try { providers = JSON.parse(match[0]) } catch {
-      log(`⚠️ JSON inválido`)
+    try { providers = JSON.parse(jsonStr) } catch {
+      log(`⚠️ JSON inválido: ${jsonStr.slice(0, 200).replace(/\s+/g, ' ')}…`)
       return NextResponse.json({ saved: 0, emailsSent: 0, logs })
     }
 
