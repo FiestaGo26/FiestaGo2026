@@ -800,6 +800,75 @@ function bodyToOutreachHtml(parsedBody: string): string {
 // sus reservas. Le decimos tipo, descripción del cliente y CTA al panel.
 // Es importante que no suene a "estás culpable", sino a "ha pasado X,
 // danos tu versión si crees que hace falta".
+// Confirmación al proveedor de que se le ha cobrado un cargo de
+// incidencia (descontado del payout o facturado directamente). Sirve
+// como recibo formal de la operación.
+export async function emailProviderChargeCollected(opts: {
+  providerEmail: string
+  providerName:  string
+  clientName:    string
+  eventDate:     string
+  amount:        number
+  resolution?:   string
+}) {
+  const { providerEmail, providerName, clientName, eventDate, amount, resolution } = opts
+  if (!providerEmail) return { ok: false, error: 'Sin email del proveedor' }
+
+  const subject = `Cargo aplicado · ${amount.toLocaleString('es-ES')}€ · reserva del ${bookingDateF(eventDate)}`
+
+  const text = `Hola ${providerName},
+
+Te confirmamos que hemos aplicado el cargo derivado de la incidencia sobre la reserva con ${clientName} del ${bookingDateF(eventDate)}.
+
+Importe cobrado: ${amount.toLocaleString('es-ES')}€
+${resolution ? `\nResolución de la incidencia:\n${resolution}\n` : ''}
+Este importe se ha descontado de tu próximo payout (o facturado directamente si no había payouts suficientes).
+
+Si tienes cualquier duda sobre el cargo, responde a este email.
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:32px 36px 20px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#6B7280;margin-bottom:12px;">Recibo de cargo</div>
+          <h1 style="margin:0 0 10px;font-family:Georgia,serif;font-size:22px;color:#1A1612;line-height:1.3;">
+            Hola ${safe(providerName)}, cargo aplicado.
+          </h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#8A7968;">Reserva de ${safe(clientName)} · ${bookingDateF(eventDate)}</p>
+        </td></tr>
+        <tr><td style="padding:20px 36px;">
+          <div style="background:#FBF9F4;border:1px solid #ECE3D2;border-radius:10px;padding:18px 20px;">
+            <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#8A7968;margin-bottom:6px;">Importe cobrado</div>
+            <div style="font-family:Georgia,serif;font-size:28px;font-weight:bold;color:#1A1612;">${amount.toLocaleString('es-ES')}€</div>
+            <div style="font-size:12px;color:#8A7968;margin-top:6px;">Descontado del próximo payout o facturado directamente.</div>
+          </div>
+        </td></tr>
+        ${resolution ? `
+        <tr><td style="padding:6px 36px;">
+          <div style="font-size:10px;font-weight:bold;letter-spacing:0.18em;text-transform:uppercase;color:#8A7968;margin-bottom:6px;">Resolución de la incidencia</div>
+          <div style="font-size:13px;color:#5C534A;line-height:1.55;white-space:pre-wrap;">${safe(resolution)}</div>
+        </td></tr>` : ''}
+        <tr><td style="padding:18px 36px 28px;">
+          <p style="margin:0;font-size:13px;color:#5C534A;line-height:1.55;">
+            Si tienes cualquier duda sobre el cargo, responde a este email y te contestamos en menos de 24h.
+          </p>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
+          FiestaGo · contacto@fiestago.es
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({ to: providerEmail, subject, text, html })
+}
+
 export async function emailProviderIncidentOpened(opts: {
   providerEmail: string
   providerName:  string

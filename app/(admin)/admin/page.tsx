@@ -1178,7 +1178,33 @@ export default function AdminPage() {
           {/* ══ INCIDENCIAS ══ */}
           {section === 'incidents' && (
             <div>
-              <h1 style={{ fontSize:24, fontWeight:700, marginBottom:18, color:'#F9FAFB' }}>🚨 Incidencias</h1>
+              <h1 style={{ fontSize:24, fontWeight:700, marginBottom:14, color:'#F9FAFB' }}>🚨 Incidencias</h1>
+
+              {/* Stat de cargos pendientes a proveedor */}
+              {(() => {
+                const pendingCharges = incidents.filter(i =>
+                  i.status === 'resolved' &&
+                  i.provider_charge && i.provider_charge > 0 &&
+                  !i.provider_charge_paid
+                )
+                const total = pendingCharges.reduce((s, i) => s + Number(i.provider_charge), 0)
+                if (pendingCharges.length === 0) return null
+                return (
+                  <div style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 16px', marginBottom:14,
+                    background:'#F59E0B11', border:'1px solid #F59E0B44', borderRadius:12 }}>
+                    <div style={{ fontSize:22 }}>💰</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#F59E0B' }}>
+                        {total.toLocaleString('es-ES')}€ en cargos pendientes de cobrar a proveedores
+                      </div>
+                      <div style={{ fontSize:11, color:'#9CA3AF' }}>
+                        {pendingCharges.length} incidencia{pendingCharges.length !== 1 ? 's' : ''} resuelta{pendingCharges.length !== 1 ? 's' : ''} sin cargo aplicado todavía
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
               <p style={{ fontSize:12, color:'#9CA3AF', marginBottom:18, maxWidth:640, lineHeight:1.6 }}>
                 Reclamaciones abiertas por clientes contra la Garantía de Éxito. SLA en
                 <span style={{ color:'#10B981' }}> verde</span> si la deadline es {'>'}24h, en
@@ -2256,11 +2282,31 @@ function IncidentAdminModal({ incident, onClose, onUpdate }: {
               </div>
             )}
             {incident.provider_charge != null && (
-              <div style={{ fontSize:12, color:'#F59E0B' }}>
-                Cargo al proveedor: <strong>{Number(incident.provider_charge).toLocaleString()}€</strong>
-                {incident.provider_charge_paid
-                  ? <span style={{ marginLeft:6, color:'#10B981' }}>✓ cobrado</span>
-                  : <span style={{ marginLeft:6, color:'#9CA3AF' }}>· pendiente de descontar del payout</span>}
+              <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #10B98144' }}>
+                <div style={{ fontSize:11, color:'#F59E0B', marginBottom:6 }}>
+                  Cargo al proveedor: <strong>{Number(incident.provider_charge).toLocaleString()}€</strong>
+                </div>
+                {incident.provider_charge_paid ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:11, color:'#10B981', fontWeight:700 }}>
+                      ✓ Cobrado el {new Date(incident.provider_charge_paid_at).toLocaleDateString('es-ES')}
+                    </span>
+                    <button onClick={() => onUpdate(incident.id, { provider_charge_paid: false })}
+                      style={{ fontSize:10, color:'#6B7280', background:'transparent', border:'none', cursor:'pointer', textDecoration:'underline' }}>
+                      desmarcar
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => {
+                    if (confirm(`¿Marcar como cobrado ${Number(incident.provider_charge).toLocaleString()}€ al proveedor? Le enviaremos email de confirmación.`)) {
+                      onUpdate(incident.id, { provider_charge_paid: true })
+                    }
+                  }}
+                    style={{ background:'#F59E0B', color:'#fff', border:'none', padding:'8px 14px', borderRadius:8,
+                      fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                    💰 Marcar como cobrado
+                  </button>
+                )}
               </div>
             )}
           </div>

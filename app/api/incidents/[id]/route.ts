@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { isAdminRequest } from '@/lib/auth'
-import { emailClientIncidentResolved, emailClientIncidentRejected, emailProviderIncidentClosed } from '@/lib/resend'
+import { emailClientIncidentResolved, emailClientIncidentRejected, emailProviderIncidentClosed, emailProviderChargeCollected } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const supabase = createAdminClient()
   const body = await req.json().catch(() => ({}))
-  const { status, resolution, compensation_amount, provider_charge, rejected_reason } = body || {}
+  const { status, resolution, compensation_amount, provider_charge, provider_charge_paid, rejected_reason } = body || {}
 
   const updates: any = {}
   if (status) {
@@ -31,6 +31,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (provider_charge !== undefined)     updates.provider_charge = Number(provider_charge) || null
   if (rejected_reason !== undefined)     updates.rejected_reason = rejected_reason
 
+  // Marcar/desmarcar cargo al proveedor como cobrado
+  if (provider_charge_paid !== undefined) {
+    updates.provider_charge_paid = !!provider_charge_paid
+    updates.provider_charge_paid_at = provider_charge_paid ? new Date().toISOString() : null
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nada que actualizar' }, { status: 400 })
   }
@@ -40,6 +46,31 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .eq('id', params.id).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Si se acaba de marcar el cargo como cobrado (transición false → true),
+  // mandamos recibo al proveedor. Solo en la transición, no si ya estaba.
+  if (provider_charge_paid === true && data.provider_charge && data.provider_charge > 0) {
+    try {
+      const { data: full } = await supabase
+        .from('bookings')
+        .select('client_name, event_date, providers(name, email)')
+        .eq('id', data.booking_id).single()
+      const provEmail = (full as any)?.providers?.email
+      const provName  = (full as any)?.providers?.name || 'el proveedor'
+      if (provEmail) {
+        emailProviderChargeCollected({
+          providerEmail: provEmail,
+          providerName:  provName,
+          clientName:    full?.client_name || 'el cliente',
+          eventDate:     full?.event_date || '',
+          amount:        Number(data.provider_charge),
+          resolution:    data.resolution || '',
+        }).catch(err => console.error('emailProviderChargeCollected:', err?.message))
+      }
+    } catch (err) {
+      console.error('charge collected email failed:', (err as any)?.message)
+    }
+  }
 
   // Notificar a cliente Y proveedor por email si la incidencia se ha
   // resuelto o rechazado en esta operación. No bloquea la respuesta.
