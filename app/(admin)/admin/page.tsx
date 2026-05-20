@@ -127,6 +127,9 @@ export default function AdminPage() {
   const [customersLoading,  setCustomersLoading]  = useState(false)
   const [customersSearch,   setCustomersSearch]   = useState('')
 
+  const [metrics,           setMetrics]           = useState<any | null>(null)
+  const [metricsLoading,    setMetricsLoading]    = useState(false)
+
   const [incidents,         setIncidents]         = useState<any[]>([])
   const [incidentsStats,    setIncidentsStats]    = useState<{open:number,investigating:number,resolved:number,rejected:number}>({open:0,investigating:0,resolved:0,rejected:0})
   const [incidentsFilter,   setIncidentsFilter]   = useState<'open'|'investigating'|'resolved'|'rejected'|'all'>('open')
@@ -458,6 +461,23 @@ export default function AdminPage() {
     fetchCustomers()
   }, [authed, section, fetchCustomers])
 
+  // ── MÉTRICAS ─────────────────────────────────────────────────────────────
+  const fetchMetrics = useCallback(async () => {
+    setMetricsLoading(true)
+    try {
+      const res = await fetch('/api/admin/metrics', { headers: adminHeaders() })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      setMetrics(data)
+    } catch { setMetrics(null) }
+    setMetricsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (!authed) return
+    if (section === 'metrics') fetchMetrics()
+  }, [authed, section, fetchMetrics])
+
   // ── INCIDENCIAS ───────────────────────────────────────────────────────────
   const fetchIncidents = useCallback(async () => {
     setIncidentsLoading(true)
@@ -614,6 +634,7 @@ export default function AdminPage() {
   // ── NAV ───────────────────────────────────────────────────────────────────
   const NAV = [
     { id:'dashboard',    icon:'📊', label:'Dashboard' },
+    { id:'metrics',      icon:'📈', label:'Métricas' },
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
     { id:'incidents',    icon:'🚨', label:'Incidencias', badge: incidentsStats.open || 0 },
@@ -767,6 +788,11 @@ export default function AdminPage() {
           )}
 
           {/* ══ PROVIDERS TABLE ══ */}
+          {/* ══ MÉTRICAS ══ */}
+          {section === 'metrics' && (
+            <MetricsPanel metrics={metrics} loading={metricsLoading} onRefresh={fetchMetrics} />
+          )}
+
           {section === 'providers' && (
             <div>
               {/* PANEL DE STATS DEL LIFECYCLE */}
@@ -2321,6 +2347,114 @@ function IncidentAdminModal({ incident, onClose, onUpdate }: {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function MetricsPanel({ metrics, loading, onRefresh }: {
+  metrics: any
+  loading: boolean
+  onRefresh: () => void
+}) {
+  if (loading || !metrics) {
+    return <div style={{ padding:60, textAlign:'center', color:'#9CA3AF' }}>Cargando métricas...</div>
+  }
+  const p = metrics.providers
+  const b = metrics.bookings
+  const i = metrics.incidents
+
+  const card = (title: string, big: string, small?: string, color: string = '#F0F4FF') => (
+    <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
+      <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>{title}</div>
+      <div style={{ fontSize:26, fontWeight:700, color, fontFamily:'IBM Plex Mono,monospace' }}>{big}</div>
+      {small && <div style={{ fontSize:11, color:'#9CA3AF', marginTop:4 }}>{small}</div>}
+    </div>
+  )
+
+  const topCats = Object.entries(p.byCategory || {})
+    .sort((a: any, b: any) => b[1] - a[1])
+    .slice(0, 6)
+  const topCities = Object.entries(p.byCity || {})
+    .sort((a: any, b: any) => b[1] - a[1])
+    .slice(0, 6)
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+        <h1 style={{ fontSize:24, fontWeight:700, color:'#F9FAFB' }}>📈 Métricas del marketplace</h1>
+        <button onClick={onRefresh}
+          style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #1F2937',
+            background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+          🔄 Actualizar
+        </button>
+      </div>
+
+      {/* ──── FUNNEL CAPTACIÓN ──── */}
+      <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10, marginTop:6 }}>
+        Funnel de captación
+      </h2>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10, marginBottom:18 }}>
+        {card('Total captados', p.total.toString(), 'incluye scrapeados + autoregistros')}
+        {card('Contactados',    p.contacted.toString(), `${p.total > 0 ? Math.round((p.contacted / p.total) * 100) : 0}% del total`)}
+        {card('Auto-registrados', p.selfReg.toString(), `${p.conversionRate}% conversión`)}
+        {card('Aprobados',       p.approved.toString(), `${p.pending} pendientes`)}
+        {card('Verificados',     p.verified.toString(), 'con DNI/CIF/RC', '#10B981')}
+      </div>
+
+      {/* Canal de contacto */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:24 }}>
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Por canal de contacto</div>
+          <div style={{ display:'flex', gap:18 }}>
+            <div>
+              <div style={{ fontSize:11, color:'#9CA3AF' }}>📧 Email</div>
+              <div style={{ fontSize:18, fontWeight:700, color:'#3B82F6' }}>{p.byContactedVia?.email || 0}</div>
+            </div>
+            <div>
+              <div style={{ fontSize:11, color:'#9CA3AF' }}>📸 Instagram</div>
+              <div style={{ fontSize:18, fontWeight:700, color:'#E1306C' }}>{p.byContactedVia?.instagram || 0}</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>Top categorías</div>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+            {topCats.map(([cat, n]: any) => (
+              <span key={cat} style={{ background:'#1F2937', color:'#D1D5DB', padding:'3px 9px', borderRadius:10, fontSize:11 }}>
+                {cat} <span style={{ color:'#F43F5E', fontWeight:700 }}>{n}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ──── MARKETPLACE ──── */}
+      <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
+        Marketplace
+      </h2>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10, marginBottom:18 }}>
+        {card('Reservas totales',     b.total.toString(), `${b.confirmedTotal} confirmadas`)}
+        {card('GMV',                  `${b.gmv.toLocaleString('es-ES')}€`, 'volumen procesado', '#F43F5E')}
+        {card('Ticket medio',         `${b.avgTicket.toLocaleString('es-ES', { maximumFractionDigits: 0 })}€`)}
+        {card('Comisión FiestaGo',    `${b.commissions.toLocaleString('es-ES')}€`, undefined, '#10B981')}
+        {card('Tasa aceptación',      `${b.acceptanceRate}%`, 'confirmadas / gestionadas')}
+      </div>
+
+      {/* ──── GARANTÍA ──── */}
+      <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
+        Garantía de Éxito
+      </h2>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10, marginBottom:18 }}>
+        {card('Incidencias',          i.total.toString(), `${i.byStatus?.open || 0} abiertas`)}
+        {card('Resueltas',            (i.byStatus?.resolved || 0).toString(), `${i.byStatus?.rejected || 0} rechazadas`)}
+        {card('SLA cumplido',         `${i.slaRate}%`, undefined, i.slaRate >= 90 ? '#10B981' : '#F59E0B')}
+        {card('Compensado a clientes',`${i.totalCompensated.toLocaleString('es-ES')}€`)}
+        {card('Cargos pendientes',    `${i.pendingCharges.toLocaleString('es-ES')}€`, `cobrado: ${i.totalCharged.toLocaleString('es-ES')}€`, '#F59E0B')}
+      </div>
+
+      <p style={{ fontSize:11, color:'#4B5563', marginTop:24, textAlign:'center' }}>
+        Las cifras se calculan en tiempo real sobre todos los datos. Refresca para ver lo más reciente.
+      </p>
     </div>
   )
 }
