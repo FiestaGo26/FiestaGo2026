@@ -177,37 +177,61 @@ Formato — SOLO este JSON, sin texto extra:
 
     log(`📦 Claude devolvió ${providers.length}`)
 
-    // Filtro: aceptamos email, Instagram o web. Si solo hay web, después
-    // un endpoint separado (extract-email) intenta scrapearla.
+    // Normalización: protocolo en URL + handle IG si viene como URL.
+    providers = providers.map((p: any) => {
+      const w = (p.website || '').toString().trim()
+      if (w) {
+        const igMatch = w.match(/instagram\.com\/@?([A-Za-z0-9_.]{1,30})/i)
+        if (igMatch) {
+          if (!p.instagram || !p.instagram.toString().trim().startsWith('@')) {
+            p.instagram = '@' + igMatch[1]
+          }
+          p.website = ''
+        } else if (!/^https?:\/\//i.test(w) && /\.[a-z]{2,}/i.test(w)) {
+          p.website = 'https://' + w.replace(/^\/+/, '')
+        }
+      }
+      const ig = (p.instagram || '').toString().trim()
+      if (ig) {
+        const m = ig.match(/(?:instagram\.com\/)?@?([A-Za-z0-9_.]{1,30})/i)
+        if (m) p.instagram = '@' + m[1]
+      }
+      return p
+    })
+
+    // Filtro: email, IG o web + no presente en exclusión local.
+    const beforeFilter = providers.length
+    let rejNoContact = 0, rejDupName = 0, rejDupIg = 0
     providers = providers.filter((p: any) => {
       const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
       const ig       = (p.instagram || '').toString().trim()
       const hasIg    = ig.length > 1 && ig !== '@'
       const webRaw   = (p.website || '').toString().trim()
-      const hasWeb   = /^https?:\/\//i.test(webRaw) && !/instagram\.com|tiktok\.com/i.test(webRaw)
-      if (!hasEmail && !hasIg && !hasWeb) return false
+      const hasWeb   = /^https?:\/\//i.test(webRaw)
+      if (!hasEmail && !hasIg && !hasWeb) { rejNoContact++; return false }
 
       const nameLow = (p.name || '').toLowerCase().trim()
-      if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) return false
-      if (hasIg && existingIg.some((n: string) => n === ig)) return false
+      if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) { rejDupName++; return false }
+      if (hasIg && existingIg.some((n: string) => n === ig)) { rejDupIg++; return false }
       return true
     })
 
-    log(`✂️  Tras filtrar contacto + exclusión local: ${providers.length}`)
+    log(`✂️  Filtro: ${providers.length}/${beforeFilter} (sin contacto: ${rejNoContact}, dup nombre: ${rejDupName}, dup IG: ${rejDupIg})`)
 
-    // Cap final al count solicitado (priorizamos email > IG > web)
+    // Priorizamos email > IG > web. NO cortamos a count: dejamos buffer
+    // para que el dedupe BD pueda saltar dups y aun así llegar a count.
     providers.sort((a: any, b: any) => {
       const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0) + (a.website ? 1 : 0)
       const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0) + (b.website ? 1 : 0)
       return bScore - aScore
     })
-    providers = providers.slice(0, count)
 
     let saved = 0
     let emailsSent = 0
     let skippedDup = 0
 
     for (const p of providers) {
+      if (saved >= count) break
       const email = p.email || null
       const websiteRaw = p.website || ''
       const isSocial = /instagram\.com|tiktok\.com/i.test(websiteRaw)
@@ -216,11 +240,12 @@ Formato — SOLO este JSON, sin texto extra:
       const phone = p.phone || null
       const contactable = !!(email || phone || website || instagram)
 
-      // Dedupe de BD por si justo se metió en otra ejecución paralela
-      if (email || instagram) {
-        const orParts: string[] = []
-        if (email)     orParts.push(`email.eq.${email}`)
-        if (instagram) orParts.push(`instagram.eq.${instagram}`)
+      // Dedupe BD: email, instagram o website.
+      const orParts: string[] = []
+      if (email)     orParts.push(`email.eq.${email}`)
+      if (instagram) orParts.push(`instagram.eq.${instagram}`)
+      if (website)   orParts.push(`website.eq.${website}`)
+      if (orParts.length > 0) {
         const { count: dbExisting } = await supabase
           .from('providers')
           .select('id', { count: 'exact', head: true })

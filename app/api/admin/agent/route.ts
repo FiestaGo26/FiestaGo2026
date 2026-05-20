@@ -182,42 +182,71 @@ Formato — SOLO este JSON, sin texto extra:
       return NextResponse.json({ providers: [], logs, stats: { found: 0, saved: 0 } })
     }
 
+    // Normalización: Claude a veces devuelve URLs sin protocolo
+    // (www.foo.es) o mete instagram.com/handle en website. Normalizamos
+    // ANTES de filtrar para no perder candidatos válidos.
+    providers = providers.map((p: any) => {
+      const w = (p.website || '').toString().trim()
+      if (w) {
+        // Si es URL de Instagram, mover handle al campo instagram
+        const igMatch = w.match(/instagram\.com\/@?([A-Za-z0-9_.]{1,30})/i)
+        if (igMatch) {
+          if (!p.instagram || !p.instagram.toString().trim().startsWith('@')) {
+            p.instagram = '@' + igMatch[1]
+          }
+          p.website = ''
+        } else if (!/^https?:\/\//i.test(w) && /\.[a-z]{2,}/i.test(w)) {
+          p.website = 'https://' + w.replace(/^\/+/, '')
+        }
+      }
+      // Normaliza instagram: añade @ si falta y limpia URLs
+      const ig = (p.instagram || '').toString().trim()
+      if (ig) {
+        const m = ig.match(/(?:instagram\.com\/)?@?([A-Za-z0-9_.]{1,30})/i)
+        if (m) p.instagram = '@' + m[1]
+      }
+      return p
+    })
+
     // Filtro: email, IG o web + no presente en exclusión local.
     // Aceptamos web aunque no tenga email porque después
     // /api/admin/agent/extract-email scrapea la web buscando el email.
     const beforeFilter = providers.length
+    let rejNoContact = 0, rejDupName = 0, rejDupIg = 0
     providers = providers.filter((p: any) => {
       const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
       const ig       = (p.instagram || '').toString().trim()
       const hasIg    = ig.length > 1 && ig !== '@'
       const hasWeb   = typeof p.website === 'string' && /^https?:\/\//i.test(p.website)
-      if (!hasEmail && !hasIg && !hasWeb) return false
+      if (!hasEmail && !hasIg && !hasWeb) { rejNoContact++; return false }
 
       const nameLow = (p.name || '').toLowerCase().trim()
-      if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) return false
-      if (hasIg && existingIg.some((n: string) => n === ig)) return false
+      if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) { rejDupName++; return false }
+      if (hasIg && existingIg.some((n: string) => n === ig)) { rejDupIg++; return false }
       return true
     })
-    log(`✂️  Tras filtrar contacto + exclusión local: ${providers.length}`)
+    log(`✂️  Filtro local: ${providers.length}/${beforeFilter} (sin contacto: ${rejNoContact}, dup nombre: ${rejDupName}, dup IG: ${rejDupIg})`)
 
     if (!providers.length) {
       log(`❌ Sin proveedores nuevos. Esta categoría/ciudad puede estar saturada.`)
       return NextResponse.json({ providers: [], logs, stats: { found: beforeFilter, saved: 0 } })
     }
 
-    // Sortear por calidad: email > IG > web, y limitar al count solicitado
+    // Sortear por calidad: email > IG > web. NO cortamos a count aquí —
+    // metemos buffer porque algunos serán dups en BD y queremos quedar
+    // con count finales válidos.
     providers.sort((a: any, b: any) => {
       const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0) + (a.website ? 2 : 0)
       const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0) + (b.website ? 2 : 0)
       return bScore - aScore
     })
-    providers = providers.slice(0, count)
 
-    log(`📊 ${providers.length} proveedores válidos. Guardando en Supabase...`)
+    log(`📊 ${providers.length} candidatos pasan filtro. Guardando hasta ${count}...`)
 
     const saved: any[] = []
     let skippedDup = 0
     for (const p of providers) {
+      if (saved.length >= count) break  // hemos llegado al target
       const email = p.email || null
       const phone = p.phone || null
       const websiteRaw = p.website || ''
@@ -226,11 +255,12 @@ Formato — SOLO este JSON, sin texto extra:
       const instagram = p.instagram || null
       const contactable = !!(email || phone || website || instagram)
 
-      // Dedupe final contra BD (por si entró entre nuestra carga local y ahora)
-      if (email || instagram) {
-        const orParts: string[] = []
-        if (email)     orParts.push(`email.eq.${email}`)
-        if (instagram) orParts.push(`instagram.eq.${instagram}`)
+      // Dedupe final contra BD (email, instagram o website).
+      const orParts: string[] = []
+      if (email)     orParts.push(`email.eq.${email}`)
+      if (instagram) orParts.push(`instagram.eq.${instagram}`)
+      if (website)   orParts.push(`website.eq.${website}`)
+      if (orParts.length > 0) {
         const { count: existingCount } = await supabase
           .from('providers')
           .select('id', { count: 'exact', head: true })
