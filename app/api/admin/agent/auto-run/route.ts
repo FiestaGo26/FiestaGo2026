@@ -112,17 +112,22 @@ export async function POST(req: NextRequest) {
       ? `\n\nYA TENEMOS ESTOS NEGOCIOS (NO los repitas, busca DISTINTOS):\n${existingNames.slice(0, 20).join(', ')}`
       : ''
 
+    // Pedimos a Claude el triple de candidatos para que tras filtrar
+    // por exclusión y contacto válido queden suficientes.
+    const overprovision = Math.min(count * 3, 9)
+
     const prompt = `Eres un investigador buscando negocios profesionales de eventos en España. NO uses los nombres más conocidos ni los top resultados de Google. Tu trabajo es encontrar el LONG-TAIL: negocios reales pero menos visibles.
 
-Necesito ${count} negocios de "${cat.label}" en ${city} (incluye pueblos y provincia), ${angle}.
+Necesito hasta ${overprovision} negocios de "${cat.label}" en ${city} (incluye pueblos, barrios y provincia), ${angle}.
 
 REGLAS:
-1. Cada negocio DEBE tener email REAL (con @) o handle de Instagram (@usuario). Mejor menos resultados que sin contacto válido.
-2. Busca en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia, etc.) además de Google.
+1. Cada negocio DEBE tener al menos UN canal de contacto: email, Instagram, web o teléfono. SÍ vale "solo web" o "solo teléfono" — los marcaremos para que el admin investigue.
+2. Busca en Google Maps, en Instagram con hashtags locales (#${cat.id}valencia, #bodasvalencia…), en Páginas Amarillas y en directorios locales.
 3. Mira páginas 2-3 de los resultados, no solo la primera.
-4. Considera negocios pequeños, autónomos, recién abiertos — no solo grandes empresas.${exclusionBlock}
+4. Considera autónomos, negocios pequeños, recién abiertos, cuentas IG activas con menos de 5.000 seguidores.
+5. Si tiene web sin email visible — inclúyelo igualmente con la web. Si tiene teléfono sin nada más — inclúyelo igualmente.${exclusionBlock}
 
-Devuelve SOLO este JSON, sin texto extra antes ni después:
+Devuelve SOLO este JSON (mínimo 1, máximo ${overprovision} resultados), sin texto extra:
 [{"name":"","email":"","phone":"","website":"","instagram":"@","description":"","avgPrice":0,"city":"${city}","specialties":[]}]`
 
     // max_uses 3 (no 4) para acotar tokens y respetar rate limit Anthropic Tier 1
@@ -141,13 +146,17 @@ Devuelve SOLO este JSON, sin texto extra antes ni después:
 
     log(`📦 Claude devolvió ${providers.length}`)
 
-    // Filtrar por contacto + por nombre/IG no presente en la exclusión
-    // (Claude a veces se salta la regla — segundo filtro client-side)
+    // Filtrar: ahora aceptamos CUALQUIER canal de contacto (email, IG,
+    // web o teléfono). Lo importante es tener algo por donde llegar al
+    // proveedor. Los que solo tienen web/teléfono van con tag "Investigar"
+    // para que el admin enriquezca contacto a mano si quiere.
     providers = providers.filter((p: any) => {
-      const hasEmail = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
-      const ig       = (p.instagram || '').toString().trim()
-      const hasIg    = ig.length > 1 && ig !== '@'
-      if (!hasEmail && !hasIg) return false
+      const hasEmail   = typeof p.email === 'string' && p.email.includes('@') && p.email.length > 5
+      const ig         = (p.instagram || '').toString().trim()
+      const hasIg      = ig.length > 1 && ig !== '@'
+      const hasWeb     = !!p.website && /^https?:\/\//i.test(p.website)
+      const hasPhone   = !!p.phone && p.phone.replace(/\D/g, '').length >= 6
+      if (!hasEmail && !hasIg && !hasWeb && !hasPhone) return false
 
       const nameLow = (p.name || '').toLowerCase().trim()
       if (existingNames.some((n: string) => n.toLowerCase() === nameLow)) return false
@@ -157,9 +166,18 @@ Devuelve SOLO este JSON, sin texto extra antes ni después:
 
     log(`✂️  Tras filtrar contacto + exclusión local: ${providers.length}`)
 
+    // Cap final al count solicitado (priorizamos los que tienen email>IG>resto)
+    providers.sort((a: any, b: any) => {
+      const aScore = (a.email ? 10 : 0) + (a.instagram ? 5 : 0) + (a.website ? 2 : 0) + (a.phone ? 1 : 0)
+      const bScore = (b.email ? 10 : 0) + (b.instagram ? 5 : 0) + (b.website ? 2 : 0) + (b.phone ? 1 : 0)
+      return bScore - aScore
+    })
+    providers = providers.slice(0, count)
+
     let saved = 0
     let emailsSent = 0
     let skippedDup = 0
+    let needsResearch = 0
 
     for (const p of providers) {
       const email = p.email || null
@@ -169,6 +187,8 @@ Devuelve SOLO este JSON, sin texto extra antes ni después:
       const instagram = p.instagram || null
       const phone = p.phone || null
       const contactable = !!(email || phone || website || instagram)
+      const hasReachableChannel = !!(email || instagram)
+      if (!hasReachableChannel) needsResearch++
 
       // Dedupe de BD por si justo se metió en otra ejecución paralela
       if (email || instagram) {
@@ -196,7 +216,7 @@ Devuelve SOLO este JSON, sin texto extra antes ni después:
           price_unit: 'por evento',
           specialties: p.specialties || [],
           source: 'web', status: 'pending',
-          tag: 'Nuevo', contactable,
+          tag: hasReachableChannel ? 'Nuevo' : 'Investigar', contactable,
           outreach_sent: false,
           outreach_email: emailDraft,
           outreach_dm: dmDraft,
@@ -224,8 +244,8 @@ Devuelve SOLO este JSON, sin texto extra antes ni después:
       }
     }
 
-    log(`✅ ${saved} guardados · ${emailsSent} emails enviados · ${skippedDup} duplicados`)
-    return NextResponse.json({ saved, emailsSent, skippedDup, logs })
+    log(`✅ ${saved} guardados · ${emailsSent} emails enviados · ${needsResearch} a investigar · ${skippedDup} duplicados`)
+    return NextResponse.json({ saved, emailsSent, skippedDup, needsResearch, logs })
   } catch (err: any) {
     log(`❌ ${err.message}`)
     return NextResponse.json({ error: err.message, logs }, { status: 500 })
