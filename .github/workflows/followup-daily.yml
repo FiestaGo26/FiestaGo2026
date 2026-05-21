@@ -1,0 +1,54 @@
+name: Follow-ups diarios de outreach
+
+# Una vez al día (11:00 UTC = 13:00 Madrid verano), revisa proveedores
+# que recibieron el 1er toque hace ≥7 días sin responder y dispara el
+# 2º. Lo mismo con el 3º a +14. Cap en 2 follow-ups por proveedor.
+#
+# Para email se envía AUTO por Resend. Para DM solo se actualiza el
+# draft + tag en el panel (Meta no permite bot DMs sin app review).
+on:
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      days_initial:
+        description: 'Días desde 1er toque para mandar 2º (default 7)'
+        required: false
+        default: '7'
+      days_between:
+        description: 'Días entre 2º y 3er toque (default 7)'
+        required: false
+        default: '7'
+
+jobs:
+  run-followups:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Disparar follow-ups
+        env:
+          SITE_URL:     ${{ secrets.SITE_URL }}
+          CRON_SECRET:  ${{ secrets.CRON_SECRET }}
+          DAYS_INITIAL: ${{ github.event.inputs.days_initial || '7' }}
+          DAYS_BETWEEN: ${{ github.event.inputs.days_between || '7' }}
+        run: |
+          set -e
+          echo "Days initial: $DAYS_INITIAL · Days between: $DAYS_BETWEEN"
+
+          RESPONSE=$(curl -sS -X POST "$SITE_URL/api/admin/agent/followup" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -d "{\"days_initial\":$DAYS_INITIAL,\"days_between\":$DAYS_BETWEEN,\"limit\":50}" \
+            -w "\nHTTP_CODE:%{http_code}" || true)
+
+          HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+          echo "$BODY"
+          echo "HTTP $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Endpoint devolvió $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "✅ Follow-ups completados"

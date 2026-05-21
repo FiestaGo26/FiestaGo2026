@@ -102,6 +102,7 @@ export default function AdminPage() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendStatus,  setSendStatus]   = useState<{ok:boolean,msg:string}|null>(null)
   const [extractingEmails, setExtractingEmails] = useState(false)
+  const [runningFollowups, setRunningFollowups] = useState(false)
   // Marketing / social_posts
   const [socialPosts,    setSocialPosts]    = useState<any[]>([])
   const [socialFilter,   setSocialFilter]   = useState<'pending'|'approved'|'published'|'all'>('pending')
@@ -435,6 +436,35 @@ export default function AdminPage() {
       setAgentLogs(l => [...l, `❌ ${err.message}`])
     } finally {
       setExtractingEmails(false)
+    }
+  }
+
+  // Dispara follow-ups: email automático por Resend (2º + 3º toque),
+  // DM solo queda en la cola con tag para enviar a mano desde IG.
+  async function runFollowups() {
+    setRunningFollowups(true)
+    setAgentLogs(l => [...l, `📬 Procesando follow-ups (1º toque hace ≥7 días sin respuesta)...`])
+    try {
+      const res = await fetch('/api/admin/agent/followup', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ days_initial: 7, days_between: 7, limit: 50 }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAgentLogs(l => [...l, `❌ ${data.error || 'error'}`])
+      } else {
+        setAgentLogs(l => [...l,
+          `📦 Candidatos: ${data.candidates}`,
+          `✉️  Emails enviados: ${data.emailsSent}`,
+          `📱 DMs en cola (manda desde IG): ${data.dmsQueued}`,
+          ...(data.logs || []),
+        ])
+      }
+    } catch (err: any) {
+      setAgentLogs(l => [...l, `❌ ${err.message}`])
+    } finally {
+      setRunningFollowups(false)
     }
   }
 
@@ -1079,15 +1109,26 @@ export default function AdminPage() {
                   {agentRunning?'⏳ BUSCANDO...':'▶ EJECUTAR AGENTE'}
                 </button>
 
-                <button onClick={extractEmailsBatch} disabled={extractingEmails || agentRunning}
+                <button onClick={extractEmailsBatch} disabled={extractingEmails || agentRunning || runningFollowups}
                   title="Procesa proveedores con tag 'Investigar web' o 'Nuevo' que aún no tienen email: scrapea su web y dispara outreach automático si lo encuentra."
                   style={{ width:'100%', padding:'10px', borderRadius:10,
                     background:'transparent',
                     border:`1px solid ${extractingEmails?'#8B5CF644':'#8B5CF6'}`,
                     color:'#8B5CF6', fontSize:11, fontWeight:700,
-                    cursor:(extractingEmails||agentRunning)?'not-allowed':'pointer',
+                    cursor:(extractingEmails||agentRunning||runningFollowups)?'not-allowed':'pointer',
                     fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
                   {extractingEmails?'⏳ EXTRAYENDO...':'🔍 EXTRAER EMAILS DE WEBS'}
+                </button>
+
+                <button onClick={runFollowups} disabled={runningFollowups || agentRunning || extractingEmails}
+                  title="Dispara los follow-ups pendientes: 2º y 3er toque para proveedores que no respondieron. Email se envía solo, DM se queda con tag para mandar a mano desde IG."
+                  style={{ width:'100%', padding:'10px', borderRadius:10,
+                    background:'transparent',
+                    border:`1px solid ${runningFollowups?'#F59E0B44':'#F59E0B'}`,
+                    color:'#F59E0B', fontSize:11, fontWeight:700,
+                    cursor:(runningFollowups||agentRunning||extractingEmails)?'not-allowed':'pointer',
+                    fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
+                  {runningFollowups?'⏳ ENVIANDO...':'📬 LANZAR FOLLOW-UPS'}
                 </button>
 
                 {agentResults.length>0&&(
