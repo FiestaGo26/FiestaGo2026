@@ -23,6 +23,21 @@ export default function FavoritosPage() {
   const favs = useFavorites()
   const [providers, setProviders] = useState<Provider[]>([])
   const [loading, setLoading] = useState(true)
+  // Selección para comparador. Si está vacía o tiene <2, no se muestra CTA.
+  // Cap a 4: más columnas no caben razonablemente en la tabla comparativa.
+  const [compareSel, setCompareSel] = useState<Set<string>>(new Set())
+
+  function toggleCompare(id: string) {
+    setCompareSel(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else if (next.size < 4) next.add(id)
+      else toast.error('Máximo 4 proveedores en la comparación')
+      return next
+    })
+  }
+  const compareIds = providers.filter(p => compareSel.has(p.id)).map(p => p.id)
+  const compareHref = `/comparar?ids=${encodeURIComponent(compareIds.join(','))}`
 
   // Carga los datos públicos de cada provider favorito. Los favoritos
   // que ya no estén aprobados (status≠approved) los descarta el API y
@@ -101,7 +116,7 @@ export default function FavoritosPage() {
             </p>
           </div>
           {providers.length > 0 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button onClick={handleShare}
                 className="bg-coral text-white font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors flex items-center gap-2">
                 🔗 Compartir
@@ -129,23 +144,44 @@ export default function FavoritosPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-8">
+          <>
+          {providers.length >= 2 && (
+            <div className="bg-white border border-stone-200 rounded-2xl p-3 px-4 mt-6 text-xs text-ink/65 flex items-center gap-2">
+              <span>📊</span>
+              <span>Marca 2-4 proveedores con el círculo de la esquina para compararlos lado a lado.</span>
+            </div>
+          )}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
             {providers.map(p => {
               const cat = CATEGORIES.find(c => c.id === p.category)
+              const selected = compareSel.has(p.id)
               return (
                 <div key={p.id}
-                  className="group bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col">
-                  <Link href={`/proveedores/${p.id}`} className="relative h-44 overflow-hidden bg-stone-100 block">
-                    <img src={p.photo_url || getPhoto(p.category, p.photo_idx || 0, 600, 400)} alt={p.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
+                  className={`group bg-white border rounded-2xl overflow-hidden flex flex-col transition-colors
+                    ${selected ? 'border-coral ring-2 ring-coral/30' : 'border-stone-200'}`}>
+                  <div className="relative h-44 overflow-hidden bg-stone-100">
+                    <Link href={`/proveedores/${p.id}`} className="block w-full h-full">
+                      <img src={p.photo_url || getPhoto(p.category, p.photo_idx || 0, 600, 400)} alt={p.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
+                    </Link>
                     {p.rating > 0 && (
                       <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-white/90 rounded-full px-2.5 py-1">
                         <span className="text-gold text-xs">★</span>
                         <span className="text-xs font-bold text-ink">{p.rating}</span>
                       </div>
                     )}
-                  </Link>
+                    {/* Botón de selección para comparador — círculo arriba a la izquierda */}
+                    <button onClick={() => toggleCompare(p.id)}
+                      aria-pressed={selected}
+                      aria-label={selected ? 'Quitar de la comparación' : 'Añadir a la comparación'}
+                      className={`absolute top-3 left-3 w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all shadow-sm
+                        ${selected
+                          ? 'bg-coral border-coral text-white'
+                          : 'bg-white/90 border-white/90 text-ink/0 hover:text-coral/60'}`}>
+                      <span className="text-xs font-bold leading-none">{selected ? '✓' : ''}</span>
+                    </button>
+                  </div>
                   <div className="p-4 flex flex-col flex-1">
                     <div className="text-xs font-bold uppercase tracking-wide mb-1" style={{ color: cat?.color || '#E8553E' }}>
                       {cat?.icon} {cat?.label}
@@ -181,8 +217,20 @@ export default function FavoritosPage() {
               )
             })}
           </div>
+          </>
         )}
       </div>
+
+      {/* Sticky CTA de comparar cuando hay 2-4 seleccionados */}
+      {compareSel.size >= 2 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4 w-full max-w-md">
+          <Link href={compareHref}
+            className="flex items-center justify-between gap-3 bg-ink text-white rounded-2xl shadow-xl px-5 py-3 hover:bg-ink/85 transition-colors">
+            <span className="text-sm font-semibold">📊 Comparar {compareSel.size} proveedores</span>
+            <span className="text-xs bg-coral px-3 py-1 rounded-full font-bold">Ver tabla →</span>
+          </Link>
+        </div>
+      )}
     </main>
   )
 }
