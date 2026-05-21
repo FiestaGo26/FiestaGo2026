@@ -60,7 +60,7 @@ Soy Mariano, fundador de FiestaGo. He estado viendo lo que haces en ${p.city} y 
 
 FiestaGo es un marketplace nuevo de celebraciones — bodas, cumples, comuniones, eventos privados. Lanzamos el 10 de junio en España.
 
-A diferencia de Bodas.net o Zankyou, no hay cuota ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha. El cliente paga un 8% extra como Garantía de Éxito (si algo sale mal con la reserva, le respondemos económicamente). Tú no pagas nada.
+A diferencia de los marketplaces tradicionales del sector (con cuota anual y permanencia), no hay cuota ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha. El cliente paga un 8% extra como Garantía de Éxito (si algo sale mal con la reserva, le respondemos económicamente). Tú no pagas nada.
 
 En esta página tienes la calculadora de cuánto ganarías de más al año:
 👉 https://fiestago.es/profesionales
