@@ -118,6 +118,17 @@ export async function POST(req: NextRequest) {
       emailAdminNewProvider(updated || existing).catch(err =>
         console.error('emailAdminNewProvider (self-register existing):', err.message))
 
+      // Notificación en el panel (campana). Otras acciones como reservas o
+      // incidencias ya lo hacen; el self-register se nos había escapado.
+      const target = updated || existing
+      supabase.from('notifications').insert({
+        type:    'provider_self_registered',
+        title:   `✍️ Nuevo proveedor registrado · ${target.name}`,
+        message: `${target.category || 'Sin categoría'} en ${target.city || 'sin ciudad'}. Aprueba o rechaza desde el panel.`,
+        data:    { provider_id: target.id, email: target.email, merged: true },
+        action_url: `/admin#providers-${target.id}`,
+      }).then(() => {})
+
       return NextResponse.json({ provider: updated || existing, alreadyExists: true, selfRegistered: true }, { status: 200 })
     }
   }
@@ -153,6 +164,15 @@ export async function POST(req: NextRequest) {
   // Notificar al admin (no bloquear si falla el email)
   emailAdminNewProvider(data).catch(err =>
     console.error('emailAdminNewProvider:', err.message))
+
+  // Notificación en el panel (campana).
+  supabase.from('notifications').insert({
+    type:    'provider_self_registered',
+    title:   `✍️ Nuevo proveedor registrado · ${data.name}`,
+    message: `${data.category || 'Sin categoría'} en ${data.city || 'sin ciudad'}. Aprueba o rechaza desde el panel.`,
+    data:    { provider_id: data.id, email: data.email, merged: false },
+    action_url: `/admin#providers-${data.id}`,
+  }).then(() => {})
 
   return NextResponse.json({ provider: data, selfRegistered: true }, { status: 201 })
 }

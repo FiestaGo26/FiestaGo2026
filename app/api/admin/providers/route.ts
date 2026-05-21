@@ -120,7 +120,12 @@ export async function PATCH(req: NextRequest) {
 
   // ── APROBAR ──
   if (updates.status === 'approved') {
-    const isRecruitment = !!(current.outreach_email && !current.outreach_sent)
+    // OJO: si el proveedor se autoregistró, SIEMPRE vamos a flujo de
+    // aprobación real, aunque tenga draft de outreach del agente. De lo
+    // contrario el sistema lo trataría como captación, le mandaría el
+    // email de bienvenida-marketplace en vez del welcome y lo dejaría
+    // pending — no aparecería nunca en el marketplace.
+    const isRecruitment = !!(current.outreach_email && !current.outreach_sent && !current.self_registered)
 
     if (isRecruitment) {
       // Flow 1: intentar enviar outreach con el diseño completo, mantener pending
