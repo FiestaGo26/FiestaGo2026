@@ -39,7 +39,7 @@ function getProviderState(p: any) {
     if (p.self_registered)      return { label:'✍️ Registrado · APROBAR', bg:'#FEE2E2', color:'#991B1B' }
     if (!p.outreach_sent)       return { label:'🆕 Sin contactar',      bg:'#E5E7EB', color:'#374151' }
     if (p.tag === 'Contactado por DM') return { label:'💬 Contactado DM',  bg:'#FCE7F3', color:'#9D174D' }
-    if (p.tag === 'Contactado')        return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
+    if (p.tag === 'Contactado por email' || p.tag === 'Contactado') return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
     return { label:'⏳ Pendiente', bg:'#FEF3C7', color:'#92400E' }
   }
   return { label: p.status, bg:'#F3F4F6', color:'#4B5563' }
@@ -197,7 +197,7 @@ export default function AdminPage() {
     } else if (filterStatus === 'nuevo') {
       list = list.filter((p: any) => !p.outreach_sent && !p.self_registered)
     } else if (filterStatus === 'contactado_email') {
-      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado' && !p.self_registered)
+      list = list.filter((p: any) => p.outreach_sent && (p.tag === 'Contactado por email' || p.tag === 'Contactado') && !p.self_registered)
     } else if (filterStatus === 'contactado_dm') {
       list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado por DM' && !p.self_registered)
     }
@@ -863,7 +863,7 @@ export default function AdminPage() {
                   const counts = {
                     registrados: all.filter((p:any) => p.status==='pending' && p.self_registered).length,
                     nuevo:     all.filter((p:any) => p.status==='pending' && !p.outreach_sent && !p.self_registered).length,
-                    email:     all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado' && !p.self_registered).length,
+                    email:     all.filter((p:any) => p.status==='pending' && p.outreach_sent && (p.tag==='Contactado por email' || p.tag==='Contactado') && !p.self_registered).length,
                     dm:        all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado por DM' && !p.self_registered).length,
                     approved:  all.filter((p:any) => p.status==='approved').length,
                     rejected:  all.filter((p:any) => p.status==='rejected').length,
@@ -1961,11 +1961,14 @@ export default function AdminPage() {
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {[
                   { label:'🆕 Sin contactar',     outreach_sent:false, tag:null,                  contacted_via:null },
-                  { label:'📧 Contactado email',   outreach_sent:true,  tag:'Contactado',          contacted_via:'email' },
+                  { label:'📧 Contactado email',   outreach_sent:true,  tag:'Contactado por email', contacted_via:'email' },
                   { label:'💬 Contactado por DM',  outreach_sent:true,  tag:'Contactado por DM',   contacted_via:'instagram' },
                 ].map((opt:any) => {
-                  const isActive = editProv.outreach_sent === opt.outreach_sent &&
-                    ((!opt.tag && !editProv.tag) || editProv.tag === opt.tag)
+                  const tagMatches = (!opt.tag && !editProv.tag)
+                    || editProv.tag === opt.tag
+                    // El tag 'Contactado' (sin sufijo) es legacy y equivale a 'Contactado por email'
+                    || (opt.tag === 'Contactado por email' && editProv.tag === 'Contactado')
+                  const isActive = editProv.outreach_sent === opt.outreach_sent && tagMatches
                   return (
                     <button key={opt.label}
                       onClick={()=>setEditProv(p=>p?{...p, outreach_sent: opt.outreach_sent, tag: opt.tag, contacted_via: opt.contacted_via }:null)}

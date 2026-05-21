@@ -135,7 +135,7 @@ export async function PATCH(req: NextRequest) {
       if (sent.ok) {
         updates.outreach_sent = true
         updates.outreach_at   = new Date().toISOString()
-        updates.tag           = 'Contactado'
+        updates.tag           = 'Contactado por email'
         updates.contacted_via = 'email'
         result.flow = 'outreach_sent'
       } else if (!current.email && current.instagram) {
