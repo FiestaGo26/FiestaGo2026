@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { getPhoto, CATEGORIES, CITIES } from '@/lib/constants'
+import FavoriteButton from '../_components/FavoriteButton'
 
 type Provider = {
   id: string
@@ -180,6 +181,7 @@ export default function ProveedoresPage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={e => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.id}/600/400` }}/>
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
+                    <FavoriteButton providerId={p.id}/>
                     <div className="absolute top-3 left-3 flex gap-2">
                       {p.tag && (
                         <span className="text-xs font-bold px-2.5 py-1 rounded-full text-white"

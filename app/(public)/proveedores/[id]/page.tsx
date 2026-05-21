@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
+import FavoriteButton from '../../_components/FavoriteButton'
 
 type Provider = {
   id: string
@@ -400,7 +401,10 @@ export default function ProviderDetailPage() {
 
         {/* TITLE BLOCK (Airbnb-style — texto, sin card) */}
         <div className="mb-6">
-          <h1 className="font-serif text-3xl md:text-4xl text-ink leading-tight tracking-tight">{provider.name}</h1>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <h1 className="font-serif text-3xl md:text-4xl text-ink leading-tight tracking-tight">{provider.name}</h1>
+            <FavoriteButton providerId={provider.id} variant="inline"/>
+          </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm text-ink/65">
             {provider.rating > 0 && (
               <span className="flex items-center gap-1">

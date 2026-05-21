@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { useFavorites } from '@/lib/favorites'
 
 type AuthState = {
   loading: boolean
@@ -15,6 +16,7 @@ export default function Navbar() {
   const router   = useRouter()
   const supabase = createClient()
   const [auth, setAuth] = useState<AuthState>({ loading: true, email: null, isProvider: false })
+  const favs = useFavorites()
 
   useEffect(() => {
     let active = true
@@ -62,6 +64,19 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Corazón de favoritos — siempre visible, badge con count si hay alguno */}
+          <Link href="/favoritos"
+            aria-label="Mis favoritos"
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-lg
+              border border-stone-200 text-ink hover:border-coral hover:text-coral transition-colors">
+            <span>{favs.length > 0 ? '❤️' : '🤍'}</span>
+            {favs.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-coral text-white text-[10px] font-bold flex items-center justify-center px-1">
+                {favs.length > 99 ? '99+' : favs.length}
+              </span>
+            )}
+          </Link>
+
           {/* Mi panel + Salir SOLO si está logueado (extra, antes de los botones de auth) */}
           {auth.email && !auth.loading && (
             <>
