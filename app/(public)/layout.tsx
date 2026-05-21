@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ReactNode } from 'react'
 import Navbar from './_components/Navbar'
+import WaitlistBanner from './_components/WaitlistBanner'
 
 function Footer() {
   return (
@@ -39,6 +40,7 @@ function Footer() {
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen">
+      <WaitlistBanner/>
       <Navbar/>
       <div className="flex-1">{children}</div>
       <Footer/>

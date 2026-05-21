@@ -298,6 +298,39 @@ export async function emailProviderWelcome(provider: any) {
   return sendEmail({ to: provider.email, subject, text, html })
 }
 
+// Email de confirmación a quien se apunta a la waitlist pre-lanzamiento.
+// Confirma inscripción + comunica el beneficio (sorteo entre primeros 100
+// + acceso prioritario el día del lanzamiento).
+export async function emailWaitlistWelcome(entry: any) {
+  if (!entry?.email) return { ok: false, error: 'Sin email' }
+  const firstName = (entry.name || '').split(' ')[0] || 'hola'
+  const subject = `🎉 Estás en la lista de FiestaGo — lanzamiento 10 de junio`
+  const text = [
+    `${firstName === 'hola' ? '¡Hola!' : `¡Hola ${firstName}!`}`,
+    ``,
+    `Te confirmo que estás en la waitlist de FiestaGo. Eres de los primeros y eso tiene premio.`,
+    ``,
+    `Qué pasa ahora:`,
+    ``,
+    `🔓 Acceso prioritario el 10 de junio — entras antes de que abramos al público y reservas las mejores fechas del verano.`,
+    ``,
+    `🎁 Sorteo entre los primeros 100 inscritos — un evento completo de hasta 300€ para uno de vosotros (fotógrafo, decoración, animación… lo que elijas del catálogo).`,
+    ``,
+    `🛡️ Garantía de Éxito incluida en todas tus reservas — si tu proveedor falla, te respondemos económicamente. Esto no lo encontrarás en Bodas.net ni Zankyou.`,
+    ``,
+    `Mientras tanto, ya puedes ojear el catálogo y guardar tus favoritos:`,
+    `https://fiestago.es/proveedores`,
+    ``,
+    `Si tienes una fecha en mente o quieres avisar a tu pareja, comparte tu shortlist con un solo link desde la sección de favoritos.`,
+    ``,
+    `Cualquier duda, responde a este correo. Estamos al otro lado.`,
+    ``,
+    `Un abrazo,`,
+    `Mariano — Fundador de FiestaGo`,
+  ].join('\n')
+  return sendEmail({ to: entry.email, subject, text })
+}
+
 export async function emailProviderRejection(provider: any, reason?: string) {
   if (!provider.email) return { ok: false, error: 'Proveedor sin email' }
   const subject = `Tu solicitud en FiestaGo`

@@ -103,6 +103,9 @@ export default function AdminPage() {
   const [sendStatus,  setSendStatus]   = useState<{ok:boolean,msg:string}|null>(null)
   const [extractingEmails, setExtractingEmails] = useState(false)
   const [runningFollowups, setRunningFollowups] = useState(false)
+  // Waitlist
+  const [waitlistEntries, setWaitlistEntries] = useState<any[]>([])
+  const [waitlistStats,   setWaitlistStats]   = useState<any>({ total:0, active:0, last7d:0, byCity:{}, byEventType:{} })
   // Marketing / social_posts
   const [socialPosts,    setSocialPosts]    = useState<any[]>([])
   const [socialFilter,   setSocialFilter]   = useState<'pending'|'approved'|'published'|'all'>('pending')
@@ -539,6 +542,20 @@ export default function AdminPage() {
     if (section === 'metrics') fetchMetrics()
   }, [authed, section, fetchMetrics])
 
+  // ── WAITLIST ──────────────────────────────────────────────────────────────
+  const fetchWaitlist = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/admin/waitlist', { headers: adminHeaders() })
+      const data = await res.json()
+      setWaitlistEntries(data.entries || [])
+      setWaitlistStats(data.stats || { total:0, active:0, last7d:0, byCity:{}, byEventType:{} })
+    } catch {}
+  }, [])
+  useEffect(() => {
+    if (!authed) return
+    fetchWaitlist()  // se carga siempre — alimenta el badge del menú
+  }, [authed, fetchWaitlist])
+
   // ── INCIDENCIAS ───────────────────────────────────────────────────────────
   const fetchIncidents = useCallback(async () => {
     setIncidentsLoading(true)
@@ -700,6 +717,7 @@ export default function AdminPage() {
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
     { id:'incidents',    icon:'🚨', label:'Incidencias', badge: incidentsStats.open || 0 },
     { id:'customers',    icon:'👥', label:'Socios' },
+    { id:'waitlist',     icon:'🎉', label:'Waitlist',     badge: waitlistStats.last7d || 0 },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
@@ -1018,6 +1036,76 @@ export default function AdminPage() {
                     </div>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* ══ WAITLIST ══ */}
+          {section === 'waitlist' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap', gap:10 }}>
+                <div>
+                  <h1 style={{ fontFamily:'Fraunces,serif', fontSize:28, fontWeight:600 }}>🎉 Waitlist pre-lanzamiento</h1>
+                  <div style={{ fontSize:13, color:'#9CA3AF', marginTop:4 }}>
+                    Clientes interesados en el lanzamiento del 10 de junio.
+                  </div>
+                </div>
+                <a href="/api/admin/waitlist?format=csv" download
+                  style={{ background:'#06B6D4', color:'#000', fontSize:12, fontWeight:700, padding:'10px 16px', borderRadius:10, textDecoration:'none' }}>
+                  ⬇ EXPORTAR CSV
+                </a>
+              </div>
+
+              {/* Stats */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:18 }}>
+                {[
+                  { label:'Total inscritos',      value: waitlistStats.total, color:'#10B981' },
+                  { label:'Activos (no baja)',     value: waitlistStats.active, color:'#06B6D4' },
+                  { label:'Últimos 7 días',        value: waitlistStats.last7d, color:'#F59E0B' },
+                  { label:'Ciudades distintas',    value: Object.keys(waitlistStats.byCity || {}).length, color:'#8B5CF6' },
+                ].map(t => (
+                  <div key={t.label} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, padding:'14px 16px' }}>
+                    <div style={{ fontSize:11, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600 }}>{t.label}</div>
+                    <div style={{ fontFamily:'Fraunces,serif', fontSize:28, fontWeight:700, color: t.color, marginTop:4 }}>{t.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desglose por tipo de evento */}
+              {Object.keys(waitlistStats.byEventType || {}).length > 0 && (
+                <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, padding:'14px 16px', marginBottom:18 }}>
+                  <div style={{ fontSize:11, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600, marginBottom:8 }}>Por tipo de evento</div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {Object.entries(waitlistStats.byEventType).map(([type, n]) => (
+                      <span key={type} style={{ background:'#1F2937', border:'1px solid #374151', borderRadius:8, padding:'5px 12px', fontSize:12 }}>
+                        {type}: <strong style={{ color:'#06B6D4' }}>{n as number}</strong>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lista */}
+              <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, overflow:'hidden' }}>
+                <div style={{ padding:'12px 16px', borderBottom:'1px solid #1F2937', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#9CA3AF', display:'grid', gridTemplateColumns:'2fr 1.5fr 1fr 1fr 1fr 0.7fr', gap:10 }}>
+                  <div>Email</div><div>Nombre</div><div>Ciudad</div><div>Evento</div><div>Fuente</div><div>Hace</div>
+                </div>
+                {waitlistEntries.length === 0 ? (
+                  <div style={{ padding:'40px 16px', textAlign:'center', color:'#4B5563', fontSize:13 }}>
+                    Nadie se ha apuntado aún. Comparte el link de la home y verás aterrizar a los primeros.
+                  </div>
+                ) : (
+                  waitlistEntries.map((e: any) => (
+                    <div key={e.id} style={{ padding:'10px 16px', borderBottom:'1px solid #1F2937', fontSize:13, display:'grid', gridTemplateColumns:'2fr 1.5fr 1fr 1fr 1fr 0.7fr', gap:10, alignItems:'center' }}>
+                      <div style={{ color:'#06B6D4', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.email}</div>
+                      <div style={{ color:'#F0F4FF' }}>{e.name || '—'}</div>
+                      <div style={{ color:'#9CA3AF' }}>{e.city || '—'}</div>
+                      <div style={{ color:'#9CA3AF' }}>{e.event_type || '—'}</div>
+                      <div style={{ color:'#6B7280', fontSize:11 }}>{e.source || '—'}</div>
+                      <div style={{ color:'#6B7280', fontSize:11 }}>{ago(e.created_at)}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
