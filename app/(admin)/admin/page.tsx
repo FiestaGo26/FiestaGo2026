@@ -981,16 +981,21 @@ export default function AdminPage() {
                   return (
                     <div key={p.id}
                       style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr auto',
-                        padding:'10px 14px', borderBottom: i<providers.length-1?'1px solid #1F2937':'none',
+                        padding:'10px 14px',
+                        borderBottom: i<providers.length-1?'1px solid #1F2937':'none',
+                        borderLeft: (p.self_registered && p.status === 'pending') ? '3px solid #EF4444' : '3px solid transparent',
+                        background: (p.self_registered && p.status === 'pending') ? 'rgba(239,68,68,0.06)' : 'transparent',
                         alignItems:'center', transition:'background 0.1s' }}
-                      onMouseEnter={e=>(e.currentTarget.style.background='#0D1117')}
-                      onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                      onMouseEnter={e=>(e.currentTarget.style.background=(p.self_registered && p.status === 'pending') ? 'rgba(239,68,68,0.12)' : '#0D1117')}
+                      onMouseLeave={e=>(e.currentTarget.style.background=(p.self_registered && p.status === 'pending') ? 'rgba(239,68,68,0.06)' : 'transparent')}>
                       <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                         <img src={p.photo_url || getPhoto(p.category, p.photo_idx)} alt=""
-                          style={{ width:34, height:34, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
+                          style={{ width:34, height:34, borderRadius:7, objectFit:'cover', flexShrink:0,
+                            border: (p.self_registered && p.status === 'pending') ? '2px solid #EF4444' : 'none' }}/>
                         <div style={{ minWidth:0 }}>
                           <div style={{ fontSize:12, fontWeight:600, color:'#F0F4FF', display:'flex', alignItems:'center', gap:5 }}>
                             <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
+                            {(p.self_registered && p.status === 'pending')&&<span title="Auto-registrado · Pendiente de aprobar" style={{ fontSize:10, fontWeight:700, color:'#EF4444' }}>🔴 APROBAR</span>}
                             {p.featured&&<span>⭐</span>}
                             {p.outreach_sent&&<span title="Outreach enviado" style={{ fontSize:9 }}>✉️</span>}
                             {p.contactable===false&&<span title="Sin canales de contacto" style={{ color:'#EF4444', fontSize:10 }}>⚠</span>}
@@ -1942,6 +1947,58 @@ export default function AdminPage() {
                 <span style={{ fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:10,
                   background:'#10B98122', color:'#10B981' }}>✓ contactable</span>
               )}
+            </div>
+
+            {/* Auto-registro + Términos aceptados */}
+            {editProv.self_registered && (
+              <div style={{ background:'#FEE2E233', border:'1px solid #991B1B44', borderRadius:12, padding:14, marginTop:16 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#EF4444', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                  ✍️ Proveedor auto-registrado
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
+                  <div>
+                    <span style={{ color:'#6B7280' }}>Fecha de registro: </span>
+                    <span style={{ color:'#F0F4FF' }}>{editProv.self_registered_at ? new Date(editProv.self_registered_at).toLocaleString('es-ES') : '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color:'#6B7280' }}>Status actual: </span>
+                    <span style={{ color: editProv.status === 'approved' ? '#10B981' : editProv.status === 'rejected' ? '#EF4444' : '#F59E0B', fontWeight:700 }}>
+                      {editProv.status?.toUpperCase() || '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Términos y condiciones */}
+            <div style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:12, padding:14, marginTop:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                📋 Compromisos del Proveedor
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
+                <div>
+                  <span style={{ color:'#6B7280' }}>Aceptados: </span>
+                  {editProv.terms_accepted_at
+                    ? <span style={{ color:'#10B981', fontWeight:700 }}>✓ Sí — {new Date(editProv.terms_accepted_at).toLocaleString('es-ES')}</span>
+                    : <span style={{ color:'#EF4444', fontWeight:700 }}>✕ No aceptados</span>}
+                </div>
+                <div>
+                  <span style={{ color:'#6B7280' }}>Versión: </span>
+                  <span style={{ color:'#F0F4FF' }}>{editProv.terms_version || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ color:'#6B7280' }}>IP de aceptación: </span>
+                  <span style={{ color:'#9CA3AF' }}>{editProv.terms_accepted_ip || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ color:'#6B7280' }}>Verificación doc: </span>
+                  {editProv.verification_status === 'approved'
+                    ? <span style={{ color:'#10B981', fontWeight:700 }}>🛡️ Verificado</span>
+                    : editProv.verification_status === 'pending'
+                      ? <span style={{ color:'#F59E0B', fontWeight:700 }}>⏳ Doc subido, pendiente de revisar</span>
+                      : <span style={{ color:'#9CA3AF' }}>No ha subido documentación</span>}
+                </div>
+              </div>
             </div>
 
             {/* Verificación */}
