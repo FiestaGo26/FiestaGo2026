@@ -50,33 +50,37 @@ export default async function HomePage() {
     <main>
 
       {/* ─────────── HERO ─────────── */}
-      <section className="relative h-[88vh] min-h-[680px] flex items-end overflow-hidden">
+      <section className="relative h-auto md:h-[88vh] min-h-[640px] md:min-h-[680px] flex items-end overflow-hidden pt-20 md:pt-0">
         <Image
           src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1920&q=85&auto=format&fit=crop"
           alt="Amigos celebrando con FiestaGo"
           fill priority className="object-cover"/>
-        <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/25 to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/30 to-black/75" />
 
-        <div className="relative max-w-6xl mx-auto px-6 pb-44 md:pb-52 w-full text-white">
+        <div className="relative max-w-6xl mx-auto px-6 pb-64 md:pb-52 w-full text-white">
           <div className="max-w-2xl">
             <p className="inline-flex items-center gap-2 text-xs md:text-sm font-bold tracking-[0.22em] uppercase mb-5 bg-coral/95 text-white px-4 py-1.5 rounded-full">
               🛡 Garantía de Éxito
             </p>
-            <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.02] tracking-tight mb-6">
+            <h1 className="font-serif text-[2.6rem] sm:text-5xl md:text-6xl lg:text-7xl leading-[1.05] tracking-tight mb-5 md:mb-6">
               Reserva tu celebración{' '}
-              <span className="italic font-light text-coral">en 3 pasos.</span>
+              <span
+                className="italic font-bold text-white"
+                style={{ background: 'linear-gradient(180deg, transparent 55%, rgba(232,85,62,0.95) 55%)', padding: '0 0.15em' }}>
+                en 3 pasos.
+              </span>
             </h1>
-            <p className="text-lg md:text-2xl text-white/95 max-w-xl leading-relaxed mb-4">
+            <p className="text-base sm:text-lg md:text-2xl text-white/95 max-w-xl leading-snug md:leading-relaxed mb-3 md:mb-4">
               Bodas, cumpleaños, comuniones o eventos corporativos. Garantizado.
             </p>
-            <p className="text-sm md:text-base text-white/80 max-w-xl leading-relaxed">
+            <p className="hidden sm:block text-sm md:text-base text-white/80 max-w-xl leading-relaxed">
               Si tu proveedor te falla, te devolvemos hasta el 110%. Profesionales verificados, pago seguro hasta el evento, y nuestra mediación si algo se complica.
             </p>
           </div>
         </div>
 
         {/* Search bar flotante DENTRO del hero (sobre la foto) */}
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-10 md:bottom-12 w-[92%] max-w-4xl z-20">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-6 md:bottom-12 w-[94%] max-w-4xl z-20">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-2 md:p-3">
             <SearchBar />
           </div>

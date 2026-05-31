@@ -58,6 +58,27 @@ export default function Navbar() {
           <Link href="/servicios" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             Servicios
           </Link>
+          <div className="relative group">
+            <button className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors inline-flex items-center gap-1">
+              Celebraciones <span className="text-[10px]">▾</span>
+            </button>
+            <div className="absolute top-full left-0 pt-1 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-150 z-50">
+              <div className="bg-white border border-stone-200 rounded-2xl shadow-xl py-2 min-w-[220px]">
+                <Link href="/cumpleanos" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  🎂 Cumpleaños
+                </Link>
+                <Link href="/comuniones" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  ✨ Comuniones y bautizos
+                </Link>
+                <Link href="/corporativo" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  🏢 Eventos corporativos
+                </Link>
+                <Link href="/proveedores?categoria=planner" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  💍 Bodas
+                </Link>
+              </div>
+            </div>
+          </div>
           <Link href="/calculadora" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             🧮 Calculadora
           </Link>
@@ -72,9 +93,6 @@ export default function Navbar() {
               📅 Mi evento
             </Link>
           )}
-          <Link href="/#packs" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            Packs
-          </Link>
         </div>
 
         <div className="flex items-center gap-2">
