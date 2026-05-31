@@ -30,9 +30,10 @@ const REVIEWS = [
 ]
 
 const COLLECTIONS = [
-  { id:'bodas',      title:'Tu boda perfecta',         hint:'Espacios, catering y todo lo que necesitas para el gran día.', cat:'planner',   seed:'wedding' },
-  { id:'cumple',     title:'Cumpleaños inolvidables',  hint:'Animación, tartas, decoración… que cada año sea el mejor.',     cat:'animacion', seed:'kids' },
-  { id:'privado',    title:'Eventos privados',         hint:'Fiestas íntimas, despedidas, comuniones y celebraciones únicas.',cat:'catering',  seed:'party' },
+  { id:'cumple',     title:'Cumpleaños inolvidables',  hint:'Animación, tartas, decoración… que cada año sea el mejor.',    cat:'animacion', seed:'kids',     href:'/cumpleanos' },
+  { id:'bodas',      title:'Tu boda perfecta',         hint:'Espacios, catering y todo lo que necesitas para el gran día.', cat:'planner',   seed:'wedding',  href:'/proveedores?categoria=planner' },
+  { id:'comuniones', title:'Comuniones y bautizos',    hint:'Restaurante, fotografía, decoración y tarta — el día especial.',cat:'pastel',    seed:'kids',     href:'/comuniones' },
+  { id:'corporativo',title:'Eventos corporativos',     hint:'Cenas de empresa, despedidas, lanzamientos. Sin estrés logístico.',cat:'catering',seed:'party',   href:'/corporativo' },
 ]
 
 const CITIES_FEAT = [
@@ -62,14 +63,14 @@ export default async function HomePage() {
               🛡 Garantía de Éxito
             </p>
             <h1 className="font-serif text-5xl md:text-6xl lg:text-7xl leading-[1.02] tracking-tight mb-6">
-              Tu celebración en 2 minutos.{' '}
-              <span className="italic font-light text-coral">Y garantizada.</span>
+              Reserva tu celebración{' '}
+              <span className="italic font-light text-coral">en 3 pasos.</span>
             </h1>
             <p className="text-lg md:text-2xl text-white/95 max-w-xl leading-relaxed mb-4">
-              Si tu proveedor te falla, te devolvemos el dinero.
+              Bodas, cumpleaños, comuniones o eventos corporativos. Garantizado.
             </p>
             <p className="text-sm md:text-base text-white/80 max-w-xl leading-relaxed">
-              Bodas, cumpleaños, comuniones o cualquier evento privado. Profesionales verificados, pago seguro hasta el evento, y nuestra mediación si algo se complica.
+              Si tu proveedor te falla, te devolvemos hasta el 110%. Profesionales verificados, pago seguro hasta el evento, y nuestra mediación si algo se complica.
             </p>
           </div>
         </div>
@@ -78,6 +79,65 @@ export default async function HomePage() {
         <div className="absolute left-1/2 -translate-x-1/2 bottom-10 md:bottom-12 w-[92%] max-w-4xl z-20">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-2 md:p-3">
             <SearchBar />
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────── 3 PASOS ─────────── */}
+      <section className="bg-cream">
+        <div className="max-w-6xl mx-auto px-6 py-14 md:py-20">
+          <div className="text-center mb-10 md:mb-14">
+            <p className="text-xs font-bold tracking-[0.25em] uppercase text-coral mb-3">
+              Así de fácil
+            </p>
+            <h2 className="font-serif text-3xl md:text-4xl text-ink leading-tight tracking-tight">
+              Tu celebración{' '}
+              <span className="italic font-light">en 3 pasos.</span>
+            </h2>
+            <p className="text-ink/60 mt-3 max-w-xl mx-auto leading-relaxed">
+              Sin mandar 10 emails, sin esperar 2 semanas a un presupuesto, sin pagar por adelantado a desconocidos.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
+            {[
+              {
+                step:'1',
+                icon:'🎯',
+                title:'Elige qué necesitas',
+                body:'Cuéntanos qué celebras (boda, cumpleaños, comunión, evento de empresa…), fecha y ciudad. Te enseñamos los profesionales disponibles ese día con precio claro.',
+              },
+              {
+                step:'2',
+                icon:'❤️',
+                title:'Guarda tus favoritos y reserva',
+                body:'Compara, comparte tu shortlist con tu pareja o familia, y reserva al que más te encaje en un click. Pago seguro, retenido hasta el evento.',
+              },
+              {
+                step:'3',
+                icon:'🎉',
+                title:'Disfruta tu evento',
+                body:'Ya está. Si algo va mal el día D, te respaldamos económicamente hasta el 110% del importe. Esto no lo encontrarás en ningún portal del sector.',
+              },
+            ].map(s => (
+              <div key={s.step} className="relative">
+                <div className="bg-white border border-stone-200 rounded-3xl p-7 h-full">
+                  <div className="absolute -top-4 -left-2 text-7xl font-serif font-bold text-coral/15 leading-none select-none">
+                    {s.step}
+                  </div>
+                  <div className="relative">
+                    <div className="text-4xl mb-4">{s.icon}</div>
+                    <h3 className="font-serif text-xl text-ink font-bold mb-3 leading-snug">{s.title}</h3>
+                    <p className="text-sm text-ink/70 leading-relaxed">{s.body}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link href="/quiz"
+              className="inline-block bg-coral text-white font-bold px-7 py-3.5 rounded-xl text-sm hover:bg-coral-dark transition-colors shadow-coral">
+              ✨ Empezar el quiz (2 minutos) →
+            </Link>
           </div>
         </div>
       </section>
@@ -147,9 +207,9 @@ export default async function HomePage() {
             Inspiración <span className="italic font-light">para tu próxima fiesta</span>
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-7">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
           {COLLECTIONS.map(c => (
-            <Link key={c.id} href={`/servicios?categoria=${c.cat}`}
+            <Link key={c.id} href={c.href}
               className="group block">
               <div className="relative aspect-[4/5] rounded-3xl overflow-hidden bg-stone-100">
                 <Image src={getPhoto(c.seed, 0, 600, 750)} alt={c.title} fill
