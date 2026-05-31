@@ -10,7 +10,7 @@ function Footer() {
       <div className="max-w-6xl mx-auto">
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-10">
           <div>
-            <div className="font-serif text-white text-xl font-black mb-3">🎉 FiestaGo</div>
+            <img src="/logo-white.svg" alt="FiestaGo" className="h-9 w-auto mb-4" />
             <p className="text-sm leading-relaxed">Tu celebración con red de seguridad. Bodas, cumpleaños, comuniones y cualquier evento privado en España.</p>
           </div>
           {[

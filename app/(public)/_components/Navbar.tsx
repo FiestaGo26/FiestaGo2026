@@ -51,8 +51,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-stone-200 shadow-sm">
       <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="font-serif text-xl font-black text-ink tracking-tight flex items-center gap-2">
-          <span className="text-2xl">🎉</span> FiestaGo
+        <Link href="/" className="flex items-center" aria-label="FiestaGo — inicio">
+          <img src="/logo.svg" alt="FiestaGo" className="h-9 md:h-10 w-auto" />
         </Link>
         <div className="hidden md:flex items-center gap-1">
           <Link href="/servicios" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">

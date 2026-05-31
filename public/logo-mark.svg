@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" role="img" aria-label="FiestaGo">
+  <circle cx="30" cy="30" r="28" fill="#E8553E"/>
+  <path d="M30 12.5 L33.6 24.2 L45.8 24.2 L36.1 31.4 L39.7 43 L30 35.9 L20.3 43 L23.9 31.4 L14.2 24.2 L26.4 24.2 Z" fill="#FBF7F0"/>
+  <circle cx="48" cy="13" r="2.5" fill="#C8860A"/>
+  <circle cx="12" cy="46" r="1.8" fill="#C8860A"/>
+  <circle cx="49" cy="47" r="1.5" fill="#FBF7F0" opacity="0.85"/>
+</svg>
