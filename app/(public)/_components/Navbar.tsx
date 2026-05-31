@@ -64,6 +64,14 @@ export default function Navbar() {
           <Link href="/quiz" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             ✨ Quiz
           </Link>
+          <Link href="/eventos-reales" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+            📸 Inspírate
+          </Link>
+          {auth.email && !auth.isProvider && (
+            <Link href="/mi-evento" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+              📅 Mi evento
+            </Link>
+          )}
           <Link href="/#packs" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             Packs
           </Link>

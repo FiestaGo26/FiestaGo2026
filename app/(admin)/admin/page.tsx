@@ -106,6 +106,13 @@ export default function AdminPage() {
   // Waitlist
   const [waitlistEntries, setWaitlistEntries] = useState<any[]>([])
   const [waitlistStats,   setWaitlistStats]   = useState<any>({ total:0, active:0, last7d:0, byCity:{}, byEventType:{} })
+  // Galerías de eventos reales
+  const [galleries, setGalleries]   = useState<any[]>([])
+  const [galleryForm, setGalleryForm] = useState<any>({
+    title:'', event_type:'boda', city:'', cover_photo_url:'',
+    description:'', guests:'', vibe:'', photos:'', provider_ids:'', featured:false,
+  })
+  const [creatingGallery, setCreatingGallery] = useState(false)
   // Marketing / social_posts
   const [socialPosts,    setSocialPosts]    = useState<any[]>([])
   const [socialFilter,   setSocialFilter]   = useState<'pending'|'approved'|'published'|'all'>('pending')
@@ -556,6 +563,77 @@ export default function AdminPage() {
     fetchWaitlist()  // se carga siempre — alimenta el badge del menú
   }, [authed, fetchWaitlist])
 
+  // ── GALERÍAS DE EVENTOS REALES ────────────────────────────────────────────
+  const fetchGalleries = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/admin/event-galleries', { headers: adminHeaders() })
+      const data = await res.json()
+      setGalleries(data.galleries || [])
+    } catch {}
+  }, [])
+  useEffect(() => {
+    if (!authed) return
+    if (section === 'galerias') fetchGalleries()
+  }, [authed, section, fetchGalleries])
+
+  async function createGallery(e: React.FormEvent) {
+    e.preventDefault()
+    setCreatingGallery(true)
+    try {
+      const payload: any = {
+        title:           galleryForm.title,
+        event_type:      galleryForm.event_type,
+        city:            galleryForm.city,
+        cover_photo_url: galleryForm.cover_photo_url,
+        description:     galleryForm.description || null,
+        guests:          galleryForm.guests ? parseInt(galleryForm.guests) : null,
+        vibe:            galleryForm.vibe || null,
+        photos:          galleryForm.photos ? galleryForm.photos.split('\n').map((s: string) => s.trim()).filter(Boolean) : [],
+        provider_ids:    galleryForm.provider_ids ? galleryForm.provider_ids.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        featured:        !!galleryForm.featured,
+      }
+      const res = await fetch('/api/admin/event-galleries', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Error al crear')
+      } else {
+        toast.success('Galería creada')
+        setGalleryForm({
+          title:'', event_type:'boda', city:'', cover_photo_url:'',
+          description:'', guests:'', vibe:'', photos:'', provider_ids:'', featured:false,
+        })
+        fetchGalleries()
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setCreatingGallery(false)
+    }
+  }
+
+  async function deleteGallery(id: string) {
+    if (!confirm('¿Eliminar esta galería?')) return
+    const res = await fetch(`/api/admin/event-galleries?id=${id}`, {
+      method: 'DELETE', headers: adminHeaders(),
+    })
+    if (res.ok) {
+      toast.success('Eliminada')
+      fetchGalleries()
+    }
+  }
+
+  async function toggleGalleryFeatured(g: any) {
+    await fetch('/api/admin/event-galleries', {
+      method: 'PATCH', headers: adminHeaders(),
+      body: JSON.stringify({ id: g.id, featured: !g.featured }),
+    })
+    fetchGalleries()
+  }
+
   // ── INCIDENCIAS ───────────────────────────────────────────────────────────
   const fetchIncidents = useCallback(async () => {
     setIncidentsLoading(true)
@@ -721,6 +799,7 @@ export default function AdminPage() {
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
+    { id:'galerias',     icon:'📸', label:'Eventos reales' },
     { id:'settings',     icon:'⚙️', label:'Ajustes' },
   ]
 
@@ -1892,6 +1971,129 @@ export default function AdminPage() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ══ EVENTOS REALES ══ */}
+          {section === 'galerias' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap', gap:10 }}>
+                <div>
+                  <h1 style={{ fontFamily:'Fraunces,serif', fontSize:28, fontWeight:600 }}>📸 Galerías de eventos reales</h1>
+                  <div style={{ fontSize:13, color:'#9CA3AF', marginTop:4 }}>
+                    Contenido inspiracional con fotos + proveedores que lo hicieron.
+                  </div>
+                </div>
+              </div>
+
+              {/* Form crear */}
+              <form onSubmit={createGallery} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, padding:18, marginBottom:24 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#06B6D4', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:14 }}>
+                  ➕ Nueva galería
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:10, marginBottom:10 }}>
+                  <input required placeholder="Título (ej: Boda íntima en una masía de Valencia)"
+                    value={galleryForm.title}
+                    onChange={e => setGalleryForm({ ...galleryForm, title: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                  <select value={galleryForm.event_type}
+                    onChange={e => setGalleryForm({ ...galleryForm, event_type: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}>
+                    <option value="boda">Boda</option>
+                    <option value="cumpleanos">Cumpleaños</option>
+                    <option value="comunion">Comunión</option>
+                    <option value="corporativo">Corporativo</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                  <input required placeholder="Ciudad"
+                    value={galleryForm.city}
+                    onChange={e => setGalleryForm({ ...galleryForm, city: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:10, marginBottom:10 }}>
+                  <input required placeholder="URL de foto principal (Unsplash, Drive, lo que sea)"
+                    value={galleryForm.cover_photo_url}
+                    onChange={e => setGalleryForm({ ...galleryForm, cover_photo_url: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                  <input type="number" placeholder="Invitados"
+                    value={galleryForm.guests}
+                    onChange={e => setGalleryForm({ ...galleryForm, guests: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                  <select value={galleryForm.vibe}
+                    onChange={e => setGalleryForm({ ...galleryForm, vibe: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}>
+                    <option value="">Vibe (opcional)</option>
+                    <option value="clasico">Clásico</option>
+                    <option value="moderno">Moderno</option>
+                    <option value="rustico">Rústico</option>
+                    <option value="lujo">Premium</option>
+                    <option value="intimo">Íntimo</option>
+                    <option value="divertido">Divertido</option>
+                  </select>
+                </div>
+                <textarea placeholder="Descripción breve (1-2 frases)"
+                  value={galleryForm.description}
+                  onChange={e => setGalleryForm({ ...galleryForm, description: e.target.value })}
+                  rows={2}
+                  style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none', width:'100%', marginBottom:10, resize:'vertical' }}/>
+                <textarea placeholder="URLs de fotos adicionales (una por línea)"
+                  value={galleryForm.photos}
+                  onChange={e => setGalleryForm({ ...galleryForm, photos: e.target.value })}
+                  rows={3}
+                  style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none', width:'100%', marginBottom:10, resize:'vertical' }}/>
+                <input placeholder="IDs de proveedores que participaron (separados por coma)"
+                  value={galleryForm.provider_ids}
+                  onChange={e => setGalleryForm({ ...galleryForm, provider_ids: e.target.value })}
+                  style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none', width:'100%', marginBottom:10 }}/>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#9CA3AF', cursor:'pointer' }}>
+                    <input type="checkbox" checked={galleryForm.featured}
+                      onChange={e => setGalleryForm({ ...galleryForm, featured: e.target.checked })}/>
+                    Destacar en home
+                  </label>
+                  <button type="submit" disabled={creatingGallery}
+                    style={{ background:'#06B6D4', color:'#000', border:'none', padding:'8px 18px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    {creatingGallery ? 'Creando...' : '➕ Crear galería'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Lista */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:14 }}>
+                {galleries.length === 0 ? (
+                  <div style={{ gridColumn:'1/-1', padding:'30px 16px', textAlign:'center', color:'#4B5563', fontSize:13 }}>
+                    Aún no hay galerías. Crea la primera arriba.
+                  </div>
+                ) : galleries.map((g: any) => (
+                  <div key={g.id} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, overflow:'hidden' }}>
+                    <div style={{ height:140, background:`url(${g.cover_photo_url}) center/cover`, position:'relative' }}>
+                      {g.featured && (
+                        <span style={{ position:'absolute', top:8, left:8, background:'#E8553E', color:'#fff', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6 }}>⭐ DESTACADO</span>
+                      )}
+                    </div>
+                    <div style={{ padding:12 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#F0F4FF', marginBottom:4 }}>{g.title}</div>
+                      <div style={{ fontSize:11, color:'#6B7280', marginBottom:10 }}>
+                        {g.event_type} · {g.city} · {g.guests || '?'} inv.
+                      </div>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <a href={`/eventos-reales/${g.slug}`} target="_blank" rel="noreferrer"
+                          style={{ flex:1, background:'#1F2937', color:'#F0F4FF', textDecoration:'none', padding:'6px 10px', borderRadius:6, fontSize:11, fontWeight:600, textAlign:'center' }}>
+                          Ver
+                        </a>
+                        <button onClick={() => toggleGalleryFeatured(g)}
+                          style={{ background:'#1F2937', color:g.featured?'#E8553E':'#9CA3AF', border:'none', padding:'6px 10px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                          ⭐
+                        </button>
+                        <button onClick={() => deleteGallery(g.id)}
+                          style={{ background:'#7F1D1D', color:'#fff', border:'none', padding:'6px 10px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                          🗑
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

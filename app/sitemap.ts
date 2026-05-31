@@ -20,6 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/profesionales`,           changeFrequency: 'monthly', priority: 0.9 },
     { url: `${SITE}/calculadora`,             changeFrequency: 'weekly',  priority: 0.85 },
     { url: `${SITE}/quiz`,                    changeFrequency: 'weekly',  priority: 0.8  },
+    { url: `${SITE}/eventos-reales`,          changeFrequency: 'weekly',  priority: 0.85 },
     { url: `${SITE}/alternativas-bodas-net`,  changeFrequency: 'monthly', priority: 0.9 },
     { url: `${SITE}/buscar`,                  changeFrequency: 'weekly',  priority: 0.5 },
     { url: `${SITE}/registro-proveedor`,      changeFrequency: 'monthly', priority: 0.7 },
@@ -58,7 +59,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.75,
     }))
 
-    return [...staticPaths, ...providerUrls, ...marketplaceUrls]
+    // Galerías de eventos publicadas
+    const { data: galleries } = await supabase
+      .from('event_galleries')
+      .select('slug, updated_at')
+      .eq('status', 'published')
+      .limit(2000)
+
+    const galleryUrls: MetadataRoute.Sitemap = (galleries || []).map((g: any) => ({
+      url: `${SITE}/eventos-reales/${g.slug}`,
+      lastModified: g.updated_at ? new Date(g.updated_at) : undefined,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    }))
+
+    return [...staticPaths, ...providerUrls, ...marketplaceUrls, ...galleryUrls]
   } catch {
     return staticPaths
   }
