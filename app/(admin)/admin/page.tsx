@@ -809,7 +809,7 @@ export default function AdminPage() {
       <aside style={{ width:220, background:'#0D1117', borderRight:'1px solid #1F2937',
         display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:100 }}>
         <div style={{ padding:'20px 18px 14px', borderBottom:'1px solid #1F2937' }}>
-          <img src="/logo-white.svg" alt="FiestaGo" style={{ height:28, width:'auto', display:'block' }} />
+          <img src="/logo.svg" alt="FiestaGo" style={{ height:56, width:'auto', display:'block', borderRadius:'50%' }} />
           <div style={{ fontSize:10, fontWeight:700, color:'#F43F5E', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:2 }}>Admin Panel</div>
         </div>
         <nav style={{ padding:'12px 10px', flex:1 }}>
