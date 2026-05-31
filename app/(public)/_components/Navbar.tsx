@@ -61,6 +61,9 @@ export default function Navbar() {
           <Link href="/calculadora" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             🧮 Calculadora
           </Link>
+          <Link href="/quiz" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+            ✨ Quiz
+          </Link>
           <Link href="/#packs" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             Packs
           </Link>

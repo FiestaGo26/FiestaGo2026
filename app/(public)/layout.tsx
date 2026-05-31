@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ReactNode } from 'react'
 import Navbar from './_components/Navbar'
 import WaitlistBanner from './_components/WaitlistBanner'
+import PwaInit from './_components/PwaInit'
 
 function Footer() {
   return (
@@ -44,6 +45,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <Navbar/>
       <div className="flex-1">{children}</div>
       <Footer/>
+      <PwaInit/>
     </div>
   )
 }

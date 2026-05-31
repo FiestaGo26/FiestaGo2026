@@ -19,6 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE}/garantia`,                changeFrequency: 'monthly', priority: 0.9 },
     { url: `${SITE}/profesionales`,           changeFrequency: 'monthly', priority: 0.9 },
     { url: `${SITE}/calculadora`,             changeFrequency: 'weekly',  priority: 0.85 },
+    { url: `${SITE}/quiz`,                    changeFrequency: 'weekly',  priority: 0.8  },
     { url: `${SITE}/alternativas-bodas-net`,  changeFrequency: 'monthly', priority: 0.9 },
     { url: `${SITE}/buscar`,                  changeFrequency: 'weekly',  priority: 0.5 },
     { url: `${SITE}/registro-proveedor`,      changeFrequency: 'monthly', priority: 0.7 },
