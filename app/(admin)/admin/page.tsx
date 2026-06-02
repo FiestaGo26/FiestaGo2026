@@ -97,8 +97,15 @@ export default function AdminPage() {
   // Agent state
   const [agentCfg,  setAgentCfg]  = useState({ category:'foto', city:'Madrid', count:2, tone:'profesional y cercano', sources:['web'] })
   const [agentRunning, setAgentRunning] = useState(false)
+  const [teamRunning,  setTeamRunning]  = useState(false)
   const [agentLogs,    setAgentLogs]    = useState<string[]>([])
   const [agentResults, setAgentResults] = useState<any[]>([])
+  const [convThreads,  setConvThreads]  = useState<any[]>([])
+  const [convStats,    setConvStats]    = useState<{escalated:number,active:number,registered:number}>({escalated:0,active:0,registered:0})
+  const [convActive,   setConvActive]   = useState<{provider:any,messages:any[]}|null>(null)
+  const [convReply,    setConvReply]    = useState('')
+  const [convLoading,  setConvLoading]  = useState(false)
+  const [convSending,  setConvSending]  = useState(false)
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendStatus,  setSendStatus]   = useState<{ok:boolean,msg:string}|null>(null)
   const [extractingEmails, setExtractingEmails] = useState(false)
@@ -419,6 +426,56 @@ export default function AdminPage() {
     setAgentRunning(false)
   }
 
+  // EQUIPO VALENCIA — barre las 12 categorías de Valencia, una tras otra.
+  // Cada categoría es una llamada independiente al endpoint (cada request
+  // se mantiene bajo el límite de 30s). Pausa de 30s entre categorías para
+  // no saturar el rate limit de Anthropic.
+  async function runValenciaTeam() {
+    if (teamRunning || agentRunning) return
+    setTeamRunning(true)
+    const cats = CATEGORIES.map(c => c.id)
+    const CITY = 'Valencia'
+    const PER  = 3
+    const DELAY_MS = 30_000
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+    setAgentLogs([
+      `🏆 EQUIPO VALENCIA — barriendo ${cats.length} categorías × ${PER} proveedores`,
+      `⏱ Tiempo estimado: ~${Math.round((cats.length * 25 + (cats.length - 1) * (DELAY_MS / 1000)) / 60)} min. No cierres esta pestaña.`,
+    ])
+    setAgentResults([])
+
+    let grandTotal = 0
+    let acc: any[] = []
+    for (let i = 0; i < cats.length; i++) {
+      const cat = cats[i]
+      const label = CATEGORIES.find(c => c.id === cat)?.label || cat
+      setAgentLogs(l => [...l, `── [${i + 1}/${cats.length}] ${label} · ${CITY} ──`])
+      try {
+        const res = await fetch('/api/admin/agent', {
+          method: 'POST', headers: adminHeaders(),
+          body: JSON.stringify({ category: cat, city: CITY, count: PER }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (data.logs) setAgentLogs(l => [...l, ...data.logs])
+        if (data.error) setAgentLogs(l => [...l, `❌ ${data.error}`])
+        const got: any[] = data.providers || []
+        grandTotal += got.length
+        acc = [...acc, ...got]
+        setAgentResults(acc)
+      } catch (e: any) {
+        setAgentLogs(l => [...l, `❌ Error de red en ${label}: ${e.message}`])
+      }
+      if (i < cats.length - 1) {
+        setAgentLogs(l => [...l, `⏸ Pausa de 30s antes de la siguiente categoría...`])
+        await sleep(DELAY_MS)
+      }
+    }
+    setAgentLogs(l => [...l, `🎉 EQUIPO VALENCIA completado: ${grandTotal} proveedores guardados como pendientes. Apruébalos en Proveedores.`])
+    setTeamRunning(false)
+    fetchProviders()
+  }
+
   // Scrapea webs de proveedores con tag "Investigar web" y extrae email.
   // Si lo encuentra, dispara outreach automático.
   async function extractEmailsBatch() {
@@ -478,6 +535,55 @@ export default function AdminPage() {
     }
   }
 
+  // ── CONVERSACIONES (agente WhatsApp) ───────────────────────────────────────
+  const fetchConversations = useCallback(async () => {
+    setConvLoading(true)
+    try {
+      const res = await fetch('/api/admin/conversations', { headers: adminHeaders() })
+      const data = await res.json()
+      setConvThreads(data.threads || [])
+      setConvStats(data.stats || { escalated:0, active:0, registered:0 })
+    } catch { /* noop */ }
+    setConvLoading(false)
+  }, [])
+
+  async function openConversation(providerId: string) {
+    setConvActive(null)
+    setConvReply('')
+    try {
+      const res = await fetch(`/api/admin/conversations?provider_id=${providerId}`, { headers: adminHeaders() })
+      const data = await res.json()
+      setConvActive({ provider: data.provider, messages: data.messages || [] })
+      // Pre-rellenar con el último borrador de la IA pendiente de revisión
+      const lastDraft = [...(data.messages || [])].reverse()
+        .find((m: any) => m.direction === 'out' && m.needs_human && !m.autosent)
+      if (lastDraft) setConvReply(lastDraft.body)
+      fetchConversations()
+    } catch { /* noop */ }
+  }
+
+  async function sendConvReply() {
+    if (!convActive?.provider?.id || !convReply.trim() || convSending) return
+    setConvSending(true)
+    try {
+      const res = await fetch('/api/admin/conversations', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ provider_id: convActive.provider.id, body: convReply.trim(), resolve: true }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        await openConversation(convActive.provider.id)
+        setConvReply('')
+      } else {
+        alert(`No se pudo enviar: ${data.error || 'error'}`)
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`)
+    } finally {
+      setConvSending(false)
+    }
+  }
+
   // ── SOCIAL POSTS ──────────────────────────────────────────────────────────
   const fetchSocialPosts = useCallback(async () => {
     setSocialLoading(true)
@@ -495,6 +601,12 @@ export default function AdminPage() {
     if (section !== 'marketing') return
     fetchSocialPosts()
   }, [authed, section, fetchSocialPosts])
+
+  useEffect(() => {
+    if (!authed) return
+    if (section !== 'conversaciones' && section !== 'dashboard') return
+    fetchConversations()
+  }, [authed, section, fetchConversations])
 
   // ── BOOKINGS ─────────────────────────────────────────────────────────────
   const fetchBookings = useCallback(async () => {
@@ -798,6 +910,7 @@ export default function AdminPage() {
     { id:'waitlist',     icon:'🎉', label:'Waitlist',     badge: waitlistStats.last7d || 0 },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
+    { id:'conversaciones',icon:'💬', label:'Conversaciones', badge: convStats.escalated || 0 },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
     { id:'galerias',     icon:'📸', label:'Eventos reales' },
     { id:'settings',     icon:'⚙️', label:'Ajustes' },
@@ -1281,6 +1394,17 @@ export default function AdminPage() {
                   {agentRunning?'⏳ BUSCANDO...':'▶ EJECUTAR AGENTE'}
                 </button>
 
+                <button onClick={runValenciaTeam} disabled={teamRunning || agentRunning}
+                  title="Lanza el equipo de captación sobre las 12 categorías de Valencia, una tras otra. Tarda varios minutos. Los proveedores quedan como pendientes para que los apruebes."
+                  style={{ width:'100%', padding:'11px', borderRadius:10,
+                    background: teamRunning?'transparent':'#F43F5E',
+                    border: teamRunning?'1px solid #F43F5E44':'none',
+                    color: teamRunning?'#F43F5E':'#fff', fontSize:12, fontWeight:700,
+                    cursor:(teamRunning||agentRunning)?'not-allowed':'pointer',
+                    fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
+                  {teamRunning?'⏳ BARRIENDO VALENCIA...':'🏆 EQUIPO VALENCIA (12 cats)'}
+                </button>
+
                 <button onClick={extractEmailsBatch} disabled={extractingEmails || agentRunning || runningFollowups}
                   title="Procesa proveedores con tag 'Investigar web' o 'Nuevo' que aún no tienen email: scrapea su web y dispara outreach automático si lo encuentra."
                   style={{ width:'100%', padding:'10px', borderRadius:10,
@@ -1363,6 +1487,110 @@ export default function AdminPage() {
               </div>
             </div>
             </>
+          )}
+
+          {/* ══ CONVERSACIONES (agente WhatsApp) ══ */}
+          {section === 'conversaciones' && (
+            <div>
+              <div style={{ display:'flex', gap:12, marginBottom:16, flexWrap:'wrap' }}>
+                {[['🚨 A revisar', convStats.escalated, '#F43F5E'],
+                  ['💬 Activas', convStats.active, '#06B6D4'],
+                  ['✅ Registrados', convStats.registered, '#10B981']].map(([lbl,n,col]:any)=>(
+                  <div key={lbl} style={{ background:'#111827', border:`1px solid ${col}33`, borderRadius:12, padding:'10px 16px', minWidth:120 }}>
+                    <div style={{ fontSize:22, fontWeight:800, color:col }}>{n}</div>
+                    <div style={{ fontSize:11, color:'#9CA3AF' }}>{lbl}</div>
+                  </div>
+                ))}
+                <button onClick={fetchConversations} disabled={convLoading}
+                  style={{ marginLeft:'auto', alignSelf:'center', padding:'8px 14px', borderRadius:8,
+                    background:'transparent', border:'1px solid #1F2937', color:'#9CA3AF',
+                    fontSize:11, fontWeight:700, cursor:'pointer' }}>
+                  {convLoading?'⏳':'↻ Refrescar'}
+                </button>
+              </div>
+
+              <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, padding:'10px 14px', marginBottom:16, fontSize:11, color:'#6B7280' }}>
+                El agente responde solo los casos claros (dudas, precios, cómo darse de alta) y escala a ti los sensibles (🚨 A revisar). Abre un hilo para ver el borrador de la IA, editarlo y enviarlo por WhatsApp.
+              </div>
+
+              <div style={{ display:'grid', gridTemplateColumns:'320px 1fr', gap:16 }}>
+                {/* Lista de hilos */}
+                <div>
+                  {convThreads.length === 0 && (
+                    <div style={{ color:'#374151', fontSize:12, padding:'30px 10px', textAlign:'center' }}>
+                      Aún no hay conversaciones. Cuando un proveedor responda por WhatsApp aparecerá aquí.
+                    </div>
+                  )}
+                  {convThreads.map((t:any)=>{
+                    const col = t.conversation_status==='escalated'?'#F43F5E':t.conversation_status==='registered'?'#10B981':'#06B6D4'
+                    const active = convActive?.provider?.id === t.id
+                    return (
+                      <button key={t.id} onClick={()=>openConversation(t.id)}
+                        style={{ width:'100%', textAlign:'left', display:'block', marginBottom:6, cursor:'pointer',
+                          background: active?'#0D1117':'#111827', border:`1px solid ${active?col:'#1F2937'}`, borderRadius:10, padding:'10px 12px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <span style={{ width:8, height:8, borderRadius:'50%', background:col }} />
+                          <span style={{ fontSize:12, fontWeight:700, color:'#F0F4FF', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.name}</span>
+                          {(t.conversation_unread||0)>0 && <span style={{ background:'#F43F5E', color:'#fff', fontSize:9, fontWeight:800, padding:'1px 6px', borderRadius:8 }}>nuevo</span>}
+                        </div>
+                        <div style={{ fontSize:10, color:'#9CA3AF', marginTop:3 }}>
+                          {t.city} · {t.conversation_status}{t.conversation_intent?` · ${t.conversation_intent}`:''}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Hilo abierto */}
+                <div style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:12, padding:16, minHeight:400, display:'flex', flexDirection:'column' }}>
+                  {!convActive && (
+                    <div style={{ margin:'auto', color:'#374151', fontSize:12, textAlign:'center' }}>
+                      <div style={{ fontSize:32, marginBottom:8 }}>💬</div>
+                      Selecciona una conversación a la izquierda.
+                    </div>
+                  )}
+                  {convActive && (
+                    <>
+                      <div style={{ borderBottom:'1px solid #1F2937', paddingBottom:10, marginBottom:12 }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:'#F0F4FF' }}>{convActive.provider?.name}</div>
+                        <div style={{ fontSize:11, color:'#9CA3AF' }}>
+                          {convActive.provider?.whatsapp || convActive.provider?.phone || 'sin WhatsApp'} · {convActive.provider?.conversation_status}
+                        </div>
+                      </div>
+                      <div style={{ flex:1, overflowY:'auto', maxHeight:380, display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+                        {convActive.messages.map((m:any)=>(
+                          <div key={m.id} style={{ alignSelf: m.direction==='in'?'flex-start':'flex-end', maxWidth:'78%' }}>
+                            <div style={{ background: m.direction==='in'?'#1F2937':(m.needs_human&&!m.autosent?'#F43F5E22':'#06B6D422'),
+                              border:`1px solid ${m.direction==='in'?'#374151':(m.needs_human&&!m.autosent?'#F43F5E55':'#06B6D455')}`,
+                              borderRadius:10, padding:'8px 11px', fontSize:12, color:'#F0F4FF', whiteSpace:'pre-wrap' }}>
+                              {m.body}
+                            </div>
+                            <div style={{ fontSize:9, color:'#6B7280', marginTop:2, textAlign: m.direction==='in'?'left':'right' }}>
+                              {m.direction==='in'?'Proveedor':(m.autosent?'IA · enviado':m.ai_generated?'IA · borrador':'Tú')}
+                              {m.reason?` · ${m.reason}`:''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ borderTop:'1px solid #1F2937', paddingTop:10 }}>
+                        <textarea value={convReply} onChange={e=>setConvReply(e.target.value)}
+                          placeholder="Escribe o edita la respuesta… (se envía por WhatsApp)"
+                          rows={3}
+                          style={{ width:'100%', background:'#111827', border:'1px solid #1F2937', borderRadius:8,
+                            padding:'8px 10px', fontSize:12, color:'#F0F4FF', outline:'none', resize:'vertical', fontFamily:'inherit' }} />
+                        <button onClick={sendConvReply} disabled={convSending || !convReply.trim()}
+                          style={{ marginTop:8, padding:'9px 18px', borderRadius:9, border:'none',
+                            background: convSending||!convReply.trim()?'#1F2937':'#10B981',
+                            color: convSending||!convReply.trim()?'#6B7280':'#000', fontSize:12, fontWeight:700,
+                            cursor: convSending||!convReply.trim()?'not-allowed':'pointer' }}>
+                          {convSending?'⏳ Enviando…':'📤 Enviar por WhatsApp'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ══ SETTINGS ══ */}
