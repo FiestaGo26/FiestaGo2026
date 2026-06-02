@@ -195,7 +195,21 @@ export async function POST(req: NextRequest) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // Antes este return era silencioso: el toast del cliente desaparecía en
+    // 4s y se perdía la causa real. Ahora dejamos rastro en notifications
+    // para que /admin lo vea con el error exacto y un link al auth user
+    // huérfano (si lo hubiese — viene del flujo de /registro-proveedor).
+    console.error('[providers POST] INSERT failed:', JSON.stringify(error), { email, name, category, city })
+    supabase.from('notifications').insert({
+      type:       'provider_insert_failure',
+      title:      `❌ Alta de proveedor FALLÓ · ${name}`,
+      message:    `${error.message}. Email: ${email}. Ciudad: ${city}. Categoría: ${category}. Revisa /admin-tools/huerfanos para recuperarlo.`,
+      data:       { email, name, category, city, db_error: error },
+      action_url: `/admin-tools/huerfanos`,
+    }).then(() => {})
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   // Notificar al admin (no bloquear si falla el email — fireEmail registra el
   // fallo en /admin para que NO se nos escape como antes).
