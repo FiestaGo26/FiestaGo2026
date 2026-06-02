@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { searchPlaces, extractCity } from '@/lib/google-places'
+import { searchPlaces, extractCity, extractPhone, extractWebsite, extractEmail } from '@/lib/here-places'
 import { CATEGORIES } from '@/lib/constants'
 
 // POST /api/admin/agent/search
 //
-// Búsqueda agéntica de proveedores vía Google Places. Crea leads en la tabla
-// `providers` con status='pending', source='agent', tag='Lead Google Places'.
+// Búsqueda agéntica de proveedores vía HERE Maps Discover API. Crea leads
+// en `providers` con status='pending', source='agent', tag='Lead búsqueda'.
 // El admin después los aprueba/descarta desde /admin o desde la UI del agente.
 //
 // Body: { category: 'catering', city: 'Valencia', extraQuery?: '', maxResults?: 20 }
@@ -37,64 +37,56 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient()
 
-  // Mapeamos cada Place a una fila de provider. Idempotencia por google_place_id:
-  // si ya existe esa fila (por google_place_id o por mismo nombre+ciudad), no la
-  // duplicamos.
+  // Idempotencia: por external_place_id si lo tenemos, o por (name + city)
+  // como fallback cuando el ID no es estable entre fuentes.
   const placeIds = search.places.map(p => p.id).filter(Boolean)
   let existingPlaceIds = new Set<string>()
   if (placeIds.length > 0) {
     const { data: existing } = await supabase
-      .from('providers').select('google_place_id')
-      .in('google_place_id', placeIds)
-    existingPlaceIds = new Set((existing || []).map((r: any) => r.google_place_id))
+      .from('providers').select('external_place_id')
+      .in('external_place_id', placeIds)
+    existingPlaceIds = new Set((existing || []).map((r: any) => r.external_place_id))
   }
 
   const newRows: any[] = []
-  const skipped: any[] = []
+  const skipped: Array<{ name?: string; reason: string; place_id?: string }> = []
 
   for (const place of search.places) {
     if (existingPlaceIds.has(place.id)) {
-      skipped.push({ place_id: place.id, name: place.displayName?.text, reason: 'ya existe' })
+      skipped.push({ place_id: place.id, name: place.title, reason: 'ya existe' })
       continue
     }
 
-    // Cerrado permanente → no nos interesa
-    if (place.businessStatus === 'CLOSED_PERMANENTLY') {
-      skipped.push({ place_id: place.id, name: place.displayName?.text, reason: 'cerrado permanente' })
-      continue
-    }
-
-    const phone = place.internationalPhoneNumber || place.nationalPhoneNumber || null
-    const website = place.websiteUri || null
+    const phone   = extractPhone(place)
+    const website = extractWebsite(place)
+    const email   = extractEmail(place)
     const placeCity = extractCity(place) || city
-    const desc = place.editorialSummary?.text || null
 
     newRows.push({
-      name:               place.displayName?.text || '(sin nombre)',
+      name:               place.title || '(sin nombre)',
       category,
       city:               placeCity,
-      address:            place.formattedAddress || null,
-      description:        desc,
+      address:            place.address?.label || null,
+      description:        null,
       phone,
       website,
-      email:              null,                 // Google Places no expone email; el Enricher lo sacará
+      email,
       price_unit:         'por evento',
       specialties:        [],
       source:             'agent',
       status:             'pending',
-      tag:                'Lead Google Places',
-      contactable:        !!(phone || website),
-      google_place_id:    place.id,
-      google_rating:      place.rating || null,
-      google_rating_count: place.userRatingCount || null,
-      google_maps_uri:    place.googleMapsUri || null,
-      google_lat:         place.location?.latitude  || null,
-      google_lng:         place.location?.longitude || null,
+      tag:                'Lead búsqueda',
+      contactable:        !!(phone || website || email),
+      external_place_id:  place.id,
+      external_source:    'here',
+      external_lat:       place.position?.lat || null,
+      external_lng:       place.position?.lng || null,
       agent_metadata: {
-        searched_at:      new Date().toISOString(),
-        searched_query:   query,
-        place_types:      place.types || [],
-        price_level:      place.priceLevel || null,
+        searched_at:    new Date().toISOString(),
+        searched_query: query,
+        categories:     (place.categories || []).map(c => c.name),
+        postal_code:    place.address?.postalCode || null,
+        state:          place.address?.state || null,
       },
     })
   }
@@ -103,7 +95,8 @@ export async function POST(req: NextRequest) {
   let insertError: any = null
   if (newRows.length > 0) {
     const { data, error } = await supabase
-      .from('providers').insert(newRows).select('id, name, city, phone, website, google_rating')
+      .from('providers').insert(newRows)
+      .select('id, name, city, phone, website, email')
     if (error) {
       insertError = error.message
       console.error('[agent/search] INSERT failed:', JSON.stringify(error))

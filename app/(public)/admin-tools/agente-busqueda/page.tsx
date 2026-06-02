@@ -16,7 +16,7 @@ type RunResult = {
   inserted:      number
   skipped:       number
   skippedItems?: Array<{ name?: string; reason: string }>
-  insertedItems?: Array<{ id: string; name: string; city: string; phone?: string; website?: string; google_rating?: number }>
+  insertedItems?: Array<{ id: string; name: string; city: string; phone?: string; website?: string; email?: string }>
   error?:        string
   query?:        string
   city?:         string
@@ -72,10 +72,10 @@ export default function AgenteBusquedaPage() {
           <a href="/admin" className="text-xs text-ink/50 hover:text-coral">← Volver al admin</a>
           <h1 className="font-serif text-3xl font-bold text-ink mt-2">🔍 Agente Searcher</h1>
           <p className="text-sm text-ink/65 mt-2 max-w-2xl leading-relaxed">
-            Busca proveedores reales en Google Places por categoría y ciudad,
-            y los crea en <code className="bg-stone-100 px-1.5 py-0.5 rounded text-xs">providers</code> como
-            leads (status pending, tag <em>Lead Google Places</em>) para que tú
-            los apruebes o descartes desde el panel admin.
+            Busca proveedores reales en HERE Maps por categoría y ciudad, y los
+            crea en <code className="bg-stone-100 px-1.5 py-0.5 rounded text-xs">providers</code> como
+            leads (status pending, tag <em>Lead búsqueda</em>) para que los
+            apruebes o descartes desde el panel admin.
           </p>
         </div>
 
@@ -137,12 +137,12 @@ export default function AgenteBusquedaPage() {
 
           <button onClick={runSearch} disabled={loading || !token}
             className="bg-coral text-white font-bold px-6 py-3 rounded-xl text-sm hover:bg-coral-dark disabled:opacity-50 transition-colors">
-            {loading ? 'Buscando en Google…' : `🔍 Buscar y guardar como leads`}
+            {loading ? 'Buscando en HERE Maps…' : `🔍 Buscar y guardar como leads`}
           </button>
 
           <p className="text-[11px] text-ink/45 mt-3 leading-snug">
-            Coste estimado: ~$0.032 por búsqueda. Google da $200/mes de crédito gratuito (≈6000 búsquedas).
-            Si la búsqueda devuelve negocios ya existentes en tu BD, los saltamos automáticamente.
+            HERE Maps: 250.000 búsquedas gratis al mes, sin tarjeta. Si la búsqueda
+            devuelve negocios ya existentes en tu BD, los saltamos automáticamente.
           </p>
         </div>
 
@@ -187,7 +187,7 @@ export default function AgenteBusquedaPage() {
                         <th className="text-left p-3">Ciudad</th>
                         <th className="text-left p-3">Teléfono</th>
                         <th className="text-left p-3">Web</th>
-                        <th className="text-left p-3">★ Google</th>
+                        <th className="text-left p-3">Email</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -198,12 +198,14 @@ export default function AgenteBusquedaPage() {
                           <td className="p-3 text-ink/65 font-mono text-xs">{p.phone || '—'}</td>
                           <td className="p-3 text-ink/65 text-xs">
                             {p.website ? (
-                              <a href={p.website} target="_blank" rel="noopener" className="text-coral hover:underline truncate inline-block max-w-[200px]">
+                              <a href={p.website} target="_blank" rel="noopener" className="text-coral hover:underline truncate inline-block max-w-[180px]">
                                 {p.website.replace(/^https?:\/\//, '')}
                               </a>
                             ) : '—'}
                           </td>
-                          <td className="p-3 text-ink/65">{p.google_rating ? p.google_rating.toFixed(1) : '—'}</td>
+                          <td className="p-3 text-ink/65 font-mono text-xs truncate max-w-[180px]">
+                            {p.email || <span className="text-ink/35 italic">por enriquecer</span>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
