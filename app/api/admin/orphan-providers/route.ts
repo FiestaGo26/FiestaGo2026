@@ -79,20 +79,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ provider: existing, alreadyExists: true }, { status: 200 })
   }
 
+  // Mismos campos que el INSERT normal de /api/providers para evitar
+  // fallos por columnas NOT NULL sin default (terms_*, price_unit, etc.).
+  const { TERMS_VERSION_CURRENT } = await import('@/lib/terms')
+  const insertPayload: any = {
+    name, category, city, email,
+    phone:        null,
+    website:      null,
+    instagram:    null,
+    description:  null,
+    price_base:   null,
+    price_unit:   'por evento',
+    specialties:  [],
+    source:       'web',
+    status:       'pending',
+    contactable:  true,
+    referred_by:  null,
+    self_registered:    true,
+    self_registered_at: new Date().toISOString(),
+    terms_accepted_at:  new Date().toISOString(),
+    terms_version:      TERMS_VERSION_CURRENT,
+    terms_accepted_ip:  null,
+  }
+
   const { data, error } = await supabase
     .from('providers')
-    .insert({
-      name, category, city, email,
-      source:             'web_recovered',
-      status:             'pending',
-      self_registered:    true,
-      self_registered_at: new Date().toISOString(),
-      contactable:        true,
-    })
+    .insert(insertPayload)
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('[orphan-providers POST] INSERT failed:', JSON.stringify(error), { email, name })
+    return NextResponse.json({
+      error:   error.message,
+      details: error,
+      hint:    'El INSERT falló a nivel BD. Mira details.code y details.message para la causa exacta (constraint, NOT NULL, RLS, etc.).',
+      payload: insertPayload,
+    }, { status: 500 })
+  }
 
   return NextResponse.json({ provider: data, recovered: true }, { status: 201 })
 }

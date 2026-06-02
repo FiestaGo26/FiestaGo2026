@@ -22,6 +22,7 @@ export default function HuerfanosPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
   const [draft, setDraft]     = useState<Record<string, { name: string; category: string; city: string }>>({})
+  const [lastError, setLastError] = useState<{ id: string; message: string; details?: any } | null>(null)
 
   // Persistimos el token en sessionStorage para no tenerlo que poner cada
   // vez que se recarga (solo durante la sesión del navegador).
@@ -62,7 +63,7 @@ export default function HuerfanosPage() {
       alert('Rellena nombre, categoría y ciudad antes de recuperar.')
       return
     }
-    setLoading(true)
+    setLoading(true); setLastError(null)
     try {
       const res = await fetch('/api/admin/orphan-providers', {
         method:  'POST',
@@ -75,12 +76,14 @@ export default function HuerfanosPage() {
           city:         d.city,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || `Error ${res.status}`)
-      // Lo quitamos de la lista local
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setLastError({ id: o.auth_user_id, message: data.error || `Error ${res.status}`, details: data.details || data })
+        return
+      }
       setOrphans(prev => prev.filter(x => x.auth_user_id !== o.auth_user_id))
     } catch (e: any) {
-      alert('No se pudo recuperar: ' + (e.message || 'error'))
+      setLastError({ id: o.auth_user_id, message: e.message || 'Error de red' })
     } finally {
       setLoading(false)
     }
@@ -203,6 +206,25 @@ export default function HuerfanosPage() {
                     className="bg-sage text-white font-bold px-5 py-2.5 rounded-xl text-sm hover:opacity-90 disabled:opacity-40 transition">
                     ✓ Recuperar (crear ficha en pending)
                   </button>
+
+                  {lastError?.id === o.auth_user_id && (
+                    <div className="mt-4 bg-coral/5 border-2 border-coral/40 rounded-xl p-4">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-coral mb-1">
+                        Error al recuperar
+                      </div>
+                      <div className="font-mono text-xs text-ink break-words mb-2">
+                        {lastError.message}
+                      </div>
+                      {lastError.details && (
+                        <details className="text-[11px] text-ink/60">
+                          <summary className="cursor-pointer hover:text-coral">Ver detalles técnicos</summary>
+                          <pre className="mt-2 bg-white p-2 rounded text-[10px] overflow-x-auto">
+                            {JSON.stringify(lastError.details, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
