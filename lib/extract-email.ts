@@ -86,6 +86,32 @@ function findContactLinks(html: string, baseUrl: string): string[] {
   return Array.from(new Set(candidates)).slice(0, 3)
 }
 
+// Detecta enlaces de WhatsApp en el HTML de la web del proveedor.
+// Acepta: wa.me/34<digits>, api.whatsapp.com/send?phone=…,
+// whatsapp://send?phone=… y construye la URL canónica wa.me con
+// prefijo 34 (España) si el número es nacional. Devuelve null si no
+// detecta ninguno válido.
+export function findWhatsAppUrl(html: string): string | null {
+  const patterns = [
+    /(?:https?:)?\/\/(?:api\.)?wa\.me\/(?:send\?phone=)?\+?(\d{8,15})/i,
+    /(?:https?:)?\/\/api\.whatsapp\.com\/send\?phone=\+?(\d{8,15})/i,
+    /whatsapp:\/\/send\?phone=\+?(\d{8,15})/i,
+  ]
+  for (const pat of patterns) {
+    const m = html.match(pat)
+    if (m && m[1]) {
+      let digits = m[1].replace(/^0+/, '')
+      // Si tiene 9 dígitos exactos, asumimos España y añadimos 34.
+      if (digits.length === 9) digits = '34' + digits
+      // Si empieza por 6/7/8/9 y tiene >9 dígitos pero parece móvil ES sin prefijo
+      if (digits.length >= 10 && digits.length <= 15) {
+        return `https://wa.me/${digits}`
+      }
+    }
+  }
+  return null
+}
+
 // Detecta si una página HTML tiene un formulario de contacto real
 // (<form> con campos de texto y un botón de envío, o un iframe de form
 // builder como Typeform, Tally, Jotform…). Usado para verificar que la
@@ -124,15 +150,21 @@ function findContactFormUrl(homeHtml: string, baseUrl: string): string | null {
 }
 
 /**
- * Intenta extraer email + URL del formulario de contacto de una web.
- * Devuelve { email, source, contactFormUrl } o null si no hay nada útil.
- * Cualquiera de los dos campos puede ser null individualmente.
+ * Intenta extraer email + URL del formulario de contacto + WhatsApp de una web.
+ * Devuelve { email, source, contactFormUrl, whatsappUrl } o null si no hay
+ * nada útil. Cualquiera de los campos puede ser null individualmente.
  *   - email/source: 'home' | 'contact-page' | 'mailto'
  *   - contactFormUrl: URL absoluta del form (o de la subpágina /contacto)
+ *   - whatsappUrl: URL wa.me canónica si la web embebe un enlace WhatsApp
  */
 export async function extractEmailFromWeb(
   url: string,
-): Promise<{ email: string | null; source: string | null; contactFormUrl: string | null } | null> {
+): Promise<{
+  email:          string | null
+  source:         string | null
+  contactFormUrl: string | null
+  whatsappUrl:    string | null
+} | null> {
   if (!url || !/^https?:\/\//i.test(url)) return null
 
   // 1. Probar homepage
@@ -161,13 +193,13 @@ export async function extractEmailFromWeb(
     }
   }
 
-  // 2. URL del formulario de contacto: la home si tiene <form>, o la
-  //    mejor sub-URL detectada (/contacto, /presupuesto…).
+  // 2. URL del formulario de contacto + WhatsApp directo embebido.
   let contactFormUrl = findContactFormUrl(home, url)
+  let whatsappUrl    = findWhatsAppUrl(home)
 
-  // 3. Si no hay email aún, seguir hasta 2 links de contacto buscando
-  //    email + verificando que tiene formulario real.
-  if (!foundEmail || !contactFormUrl) {
+  // 3. Si falta algo, seguir hasta 2 links de contacto buscando email +
+  //    verificando si la subpágina tiene formulario + WhatsApp.
+  if (!foundEmail || !contactFormUrl || !whatsappUrl) {
     const contactLinks = findContactLinks(home, url)
     for (const link of contactLinks.slice(0, 2)) {
       const sub = await fetchPage(link, 5000)
@@ -193,9 +225,14 @@ export async function extractEmailFromWeb(
       if (!contactFormUrl && hasContactForm(sub)) {
         contactFormUrl = link
       }
+      // Buscar WhatsApp también en subpágina si no se encontró en home
+      if (!whatsappUrl) {
+        const wa = findWhatsAppUrl(sub)
+        if (wa) whatsappUrl = wa
+      }
     }
   }
 
-  if (!foundEmail && !contactFormUrl) return null
-  return { email: foundEmail, source: emailSource, contactFormUrl }
+  if (!foundEmail && !contactFormUrl && !whatsappUrl) return null
+  return { email: foundEmail, source: emailSource, contactFormUrl, whatsappUrl }
 }

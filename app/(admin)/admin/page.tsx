@@ -1199,12 +1199,20 @@ export default function AdminPage() {
                           🔑
                         </a>
                         {p.status==='pending' && !p.outreach_sent && <>
-                          {p.phone && (
-                            <a href={`https://wa.me/${phoneToWa(p.phone)}?text=${encodeURIComponent(p.outreach_whatsapp || '')}`}
+                          {(p.whatsapp_url || p.phone) && (
+                            <a href={p.whatsapp_url
+                                  ? `${p.whatsapp_url}${p.whatsapp_url.includes('?') ? '&' : '?'}text=${encodeURIComponent(p.outreach_whatsapp || '')}`
+                                  : `https://wa.me/${phoneToWa(p.phone!)}?text=${encodeURIComponent(p.outreach_whatsapp || '')}`}
                               target="_blank" rel="noreferrer"
                               onClick={()=>markContacted(p.id,'whatsapp')}
-                              title={`WhatsApp a ${p.phone} (abre con mensaje pre-escrito)`}
-                              style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#25D36620', color:'#25D366', fontSize:10, cursor:'pointer', textDecoration:'none' }}>💬</a>
+                              title={p.whatsapp_url
+                                ? `WhatsApp del negocio: ${p.whatsapp_url}`
+                                : `WhatsApp a ${p.phone} (teléfono fijo, puede no responder)`}
+                              style={{ padding:'4px 7px', borderRadius:6, border:'none',
+                                background: p.whatsapp_url ? '#25D36640' : '#25D36620',
+                                color:'#25D366', fontSize:10, cursor:'pointer', textDecoration:'none' }}>
+                              {p.whatsapp_url ? '💬✓' : '💬'}
+                            </a>
                           )}
                           {p.email && (
                             <a href={`mailto:${p.email}?subject=${encodeURIComponent('Tu negocio en FiestaGo · '+p.city)}&body=${encodeURIComponent((p.outreach_email || '').replace(/^ASUNTO:[^\n]*\n+/, ''))}`}

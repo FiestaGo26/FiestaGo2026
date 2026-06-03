@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
         const extracted = await extractEmailFromWeb(c.website)
         if (extracted?.email) c.email = extracted.email
         const contactFormUrl = extracted?.contactFormUrl || null
+        const whatsappUrl    = extracted?.whatsappUrl    || null
 
         // Dedupe BD por email/website/teléfono.
         const orParts: string[] = []
@@ -147,14 +148,13 @@ export async function POST(req: NextRequest) {
           if ((dbExisting || 0) > 0) { skippedDup++; continue }
         }
 
-        // Filtro mínimo: tiene que tener email, teléfono, o form URL.
-        // Si solo tiene web sin nada accionable, no nos vale.
-        if (!c.email && !c.phone && !c.instagram && !contactFormUrl) {
+        // Filtro mínimo: tiene que tener email, teléfono, IG, form URL o WA URL.
+        if (!c.email && !c.phone && !c.instagram && !contactFormUrl && !whatsappUrl) {
           log(`   ⨯ ${c.name} · sin canal accionable`)
           continue
         }
 
-        const ok = await persistProvider(c, contactFormUrl, category, city, supabase, log)
+        const ok = await persistProvider(c, contactFormUrl, whatsappUrl, category, city, supabase, log)
         if (!ok) continue
         saved++
         if (phoneKey) phonesUsed.add(phoneKey)
@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
             .or(orParts.join(','))
           if ((dbExisting || 0) > 0) { skippedDup++; continue }
         }
-        const ok = await persistProvider(c, null, category, city, supabase, log)
+        const ok = await persistProvider(c, null, null, category, city, supabase, log)
         if (ok) {
           saved++
           if (phoneKey) phonesUsed.add(phoneKey)
@@ -209,18 +209,19 @@ async function persistProvider(
   c: { name: string; phone: string | null; website: string | null; email: string | null;
        instagram: string | null; address: string | null; sourceTag: 'osm' | 'ddg' },
   contactFormUrl: string | null,
+  whatsappUrl: string | null,
   category: string,
   city: string,
   supabase: any,
   log: (m: string) => void,
 ): Promise<boolean> {
   const provLike = { name: c.name, city, source: 'web' }
-  const emailDraft = c.email     ? buildEmailDraft(provLike)    : ''
-  const dmDraft    = c.instagram ? buildDmDraft(provLike)       : ''
-  const waDraft    = c.phone     ? buildWhatsAppDraft(provLike) : ''
-  const contactable = !!(c.email || c.phone || c.website || c.instagram || contactFormUrl)
-  const tag = (c.email || c.instagram || c.phone) ? 'Nuevo'
-            : contactFormUrl                       ? 'Nuevo'
+  const emailDraft = c.email                ? buildEmailDraft(provLike)    : ''
+  const dmDraft    = c.instagram            ? buildDmDraft(provLike)       : ''
+  const waDraft    = (c.phone || whatsappUrl) ? buildWhatsAppDraft(provLike) : ''
+  const contactable = !!(c.email || c.phone || c.website || c.instagram || contactFormUrl || whatsappUrl)
+  const tag = (c.email || c.instagram || c.phone || whatsappUrl) ? 'Nuevo'
+            : contactFormUrl                                       ? 'Nuevo'
             : 'Investigar web'
 
   const { error } = await supabase.from('providers').insert({
@@ -244,6 +245,7 @@ async function persistProvider(
     outreach_dm:       dmDraft,
     outreach_whatsapp: waDraft,
     contact_form_url:  contactFormUrl,
+    whatsapp_url:      whatsappUrl,
   })
   if (error) {
     log(`   ⨯ ${c.name} · insert error: ${error.message}`)
@@ -252,6 +254,7 @@ async function persistProvider(
   log(`   ✓ ${c.name} [${c.sourceTag}]` +
     (c.email ? ` · ${c.email}` : '') +
     (c.phone ? ` · ${c.phone}` : '') +
+    (whatsappUrl ? ' · 💬' : '') +
     (contactFormUrl ? ' · form' : ''))
   return true
 }

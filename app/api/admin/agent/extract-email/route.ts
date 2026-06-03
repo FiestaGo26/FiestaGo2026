@@ -76,18 +76,25 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    // Persistir la URL del formulario detectado, exista o no email.
-    // Permite que el botón 🌐 del admin abra el form directamente.
-    if (found.contactFormUrl) {
-      await supabase.from('providers')
-        .update({ contact_form_url: found.contactFormUrl })
-        .eq('id', p.id)
+    // Persistir URL del formulario + WhatsApp detectados, exista o no
+    // email. Permite que los botones 🌐 / 💬 del admin abran el canal
+    // correcto directamente.
+    const enrich: any = {}
+    if (found.contactFormUrl) enrich.contact_form_url = found.contactFormUrl
+    if (found.whatsappUrl)    enrich.whatsapp_url     = found.whatsappUrl
+    if (Object.keys(enrich).length > 0) {
+      await supabase.from('providers').update(enrich).eq('id', p.id)
     }
 
-    // Caso: solo encontramos URL de form, no email. Mantenemos el lead
-    // como "Nuevo" para que sea contactable por web desde el panel.
+    // Caso: solo encontramos URL de form o WhatsApp, no email. Mantenemos
+    // el lead como "Nuevo" para que sea contactable por web/WA desde el panel.
     if (!found.email) {
-      results.push({ id: p.id, name: p.name, status: 'solo-form', contactFormUrl: found.contactFormUrl })
+      results.push({
+        id: p.id, name: p.name,
+        status: found.whatsappUrl ? 'solo-whatsapp' : 'solo-form',
+        contactFormUrl: found.contactFormUrl,
+        whatsappUrl:    found.whatsappUrl,
+      })
       await supabase.from('providers')
         .update({ tag: 'Nuevo' })
         .eq('id', p.id)
