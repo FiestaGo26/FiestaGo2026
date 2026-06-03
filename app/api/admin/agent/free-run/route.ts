@@ -140,7 +140,8 @@ export async function POST(req: NextRequest) {
           continue
         }
 
-        await persistProvider(c, contactFormUrl, category, city, supabase, log)
+        const ok = await persistProvider(c, contactFormUrl, category, city, supabase, log)
+        if (!ok) continue
         saved++
 
         // Outreach automático por email si hay
@@ -172,8 +173,8 @@ export async function POST(req: NextRequest) {
             .or(orParts.join(','))
           if ((dbExisting || 0) > 0) { skippedDup++; continue }
         }
-        await persistProvider(c, null, category, city, supabase, log)
-        saved++
+        const ok = await persistProvider(c, null, category, city, supabase, log)
+        if (ok) saved++
       }
     }
 
@@ -193,7 +194,7 @@ async function persistProvider(
   city: string,
   supabase: any,
   log: (m: string) => void,
-) {
+): Promise<boolean> {
   const provLike = { name: c.name, city, source: 'web' }
   const emailDraft = c.email     ? buildEmailDraft(provLike)    : ''
   const dmDraft    = c.instagram ? buildDmDraft(provLike)       : ''
@@ -227,10 +228,11 @@ async function persistProvider(
   })
   if (error) {
     log(`   ⨯ ${c.name} · insert error: ${error.message}`)
-  } else {
-    log(`   ✓ ${c.name} [${c.sourceTag}]` +
-      (c.email ? ` · ${c.email}` : '') +
-      (c.phone ? ` · ${c.phone}` : '') +
-      (contactFormUrl ? ' · form' : ''))
+    return false
   }
+  log(`   ✓ ${c.name} [${c.sourceTag}]` +
+    (c.email ? ` · ${c.email}` : '') +
+    (c.phone ? ` · ${c.phone}` : '') +
+    (contactFormUrl ? ' · form' : ''))
+  return true
 }
