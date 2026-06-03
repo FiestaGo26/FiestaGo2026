@@ -1,0 +1,79 @@
+name: Captación diaria gratis (OSM + DDG)
+
+# Buscador 100% gratis: usa Overpass (OpenStreetMap) + DuckDuckGo HTML.
+# No llama a la API de Anthropic, así que NO consume créditos.
+#
+# 3 horarios al día para resistir saltos de schedule de GitHub Actions:
+#  · 08:00 UTC = 10:00 Madrid (verano) / 09:00 (invierno)
+#  · 13:00 UTC = 15:00 Madrid (verano) / 14:00 (invierno)
+#  · 18:00 UTC = 20:00 Madrid (verano) / 19:00 (invierno)
+on:
+  schedule:
+    - cron: '0 8 * * *'
+    - cron: '0 13 * * *'
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-free-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Buscar proveedores en Valencia (OSM + DDG, 0€/mes)
+        env:
+          SITE_URL:    ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+
+          # Rotación de categorías. 12 categorías × 3 ejecuciones/día =
+          # cada categoría se busca ~6 veces/semana en Valencia.
+          CATEGORIES=(flores pastel espacios catering joyeria belleza papeleria foto musica planner animacion transporte)
+
+          # Solo Valencia + sub-áreas (el usuario está restringido a
+          # Valencia de momento). El endpoint hace match flexible:
+          # "Valencia centro" matcha también proveedores con city="Valencia".
+          CITIES=("Valencia" "Valencia centro" "Gandía" "Sagunto" "Torrent" "Paterna")
+
+          # Día del año (1-366) como semilla determinista pero variable.
+          DAY=$(date +%j)
+          NUM_COMBOS=$((${#CATEGORIES[@]} * ${#CITIES[@]}))
+
+          # 6 lotes × 5 proveedores objetivo = ~30 leads/ejecución máximo.
+          # En la práctica, tras dedupe y filtros, ~10-15 reales.
+          BATCHES=6
+
+          for i in $(seq 0 $((BATCHES - 1))); do
+            IDX=$(( (DAY * BATCHES + i) % NUM_COMBOS ))
+            CAT_IDX=$(( IDX % ${#CATEGORIES[@]} ))
+            CITY_IDX=$(( IDX % ${#CITIES[@]} ))
+            CAT="${CATEGORIES[$CAT_IDX]}"
+            CITY="${CITIES[$CITY_IDX]}"
+
+            echo "────────────────────────────────────────"
+            echo "Lote $((i+1))/$BATCHES · $CAT en $CITY"
+            echo "────────────────────────────────────────"
+
+            RESPONSE=$(curl -sS -X POST "$SITE_URL/api/admin/agent/free-run" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              -d "{\"category\":\"$CAT\",\"city\":\"$CITY\",\"count\":5}" \
+              -w "\nHTTP_CODE:%{http_code}" \
+              --max-time 75 || true)
+
+            HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+            BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+            echo "$BODY"
+            echo "HTTP $HTTP_CODE"
+
+            # Pausa 5s entre lotes — el endpoint gratis no tiene rate
+            # limit estricto (Overpass admite 10k/día/IP, DDG no documenta
+            # tope pero responde estable).
+            if [ $i -lt $((BATCHES - 1)) ]; then
+              echo "⏸ Esperando 5s..."
+              sleep 5
+            fi
+          done
+
+          echo ""
+          echo "✅ Captación gratis completada"
