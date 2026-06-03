@@ -1156,14 +1156,21 @@ export default function AdminPage() {
                               title={`Mailto a ${p.email} (abre tu cliente de correo con todo pre-escrito)`}
                               style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#06B6D420', color:'#06B6D4', fontSize:10, cursor:'pointer', textDecoration:'none' }}>📧</a>
                           )}
-                          {p.website && (
-                            <a href={p.website} target="_blank" rel="noreferrer"
+                          {(p.contact_form_url || p.website) && (
+                            <a href={p.contact_form_url || p.website || '#'} target="_blank" rel="noreferrer"
                               onClick={()=>{
                                 navigator.clipboard?.writeText(buildWebFormDraft({ name: p.name, city: p.city })).catch(()=>{})
                                 markContacted(p.id,'web_form')
                               }}
-                              title={`Abrir ${p.website} (el mensaje se copia al portapapeles para pegarlo en el formulario)`}
-                              style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#9CA3AF20', color:'#9CA3AF', fontSize:10, cursor:'pointer', textDecoration:'none' }}>🌐</a>
+                              title={p.contact_form_url
+                                ? `📋 Formulario detectado: ${p.contact_form_url} — mensaje copiado al portapapeles`
+                                : `Abrir ${p.website} (mensaje copiado al portapapeles)`}
+                              style={{ padding:'4px 7px', borderRadius:6, border:'none',
+                                background: p.contact_form_url ? '#10B98120' : '#9CA3AF20',
+                                color:      p.contact_form_url ? '#10B981'   : '#9CA3AF',
+                                fontSize:10, cursor:'pointer', textDecoration:'none' }}>
+                              {p.contact_form_url ? '📋' : '🌐'}
+                            </a>
                           )}
                         </>}
                         {p.status==='pending'&&<>

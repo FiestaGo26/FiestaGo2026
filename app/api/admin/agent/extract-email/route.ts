@@ -76,6 +76,24 @@ export async function POST(req: NextRequest) {
       continue
     }
 
+    // Persistir la URL del formulario detectado, exista o no email.
+    // Permite que el botón 🌐 del admin abra el form directamente.
+    if (found.contactFormUrl) {
+      await supabase.from('providers')
+        .update({ contact_form_url: found.contactFormUrl })
+        .eq('id', p.id)
+    }
+
+    // Caso: solo encontramos URL de form, no email. Mantenemos el lead
+    // como "Nuevo" para que sea contactable por web desde el panel.
+    if (!found.email) {
+      results.push({ id: p.id, name: p.name, status: 'solo-form', contactFormUrl: found.contactFormUrl })
+      await supabase.from('providers')
+        .update({ tag: 'Nuevo' })
+        .eq('id', p.id)
+      continue
+    }
+
     extracted++
 
     // Comprobar que el email no existe ya en otro proveedor (dedupe)
