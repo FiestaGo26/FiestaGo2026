@@ -1,6 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { emailAdminNewProvider } from '@/lib/resend'
+import { emailAdminNewProvider, emailProviderWelcome } from '@/lib/resend'
+
+// Wrapper que dispara un email y, si Resend devuelve {ok:false} o lanza una
+// excepción, escribe una notificación visible en /admin con el error real.
+// Antes el .catch() nunca disparaba porque sendEmail() no rechaza la promise
+// — solo devuelve {ok:false, error}. Resultado: fallos completamente silenciados.
+function fireEmail(
+  label: string,
+  fn: () => Promise<{ ok: boolean; error?: string; id?: string }>,
+  context: Record<string, any>,
+) {
+  const supabase = createAdminClient()
+  fn().then(result => {
+    if (!result?.ok) {
+      console.error(`[email] ${label} FAILED:`, JSON.stringify(result), context)
+      supabase.from('notifications').insert({
+        type:       'email_send_failure',
+        title:      `⚠️ Email no enviado · ${label}`,
+        message:    `${result?.error || 'error desconocido'}. Comprueba RESEND_API_KEY, ADMIN_EMAIL y OUTREACH_FROM en Netlify.`,
+        data:       { function: label, error: result, ...context },
+        action_url: `/admin`,
+      }).then(() => {})
+    } else {
+      console.log(`[email] ${label} sent, id=${result.id}`)
+    }
+  }).catch(err => {
+    console.error(`[email] ${label} EXCEPTION:`, err?.message, context)
+  })
+}
 
 // Campos que SÍ pueden viajar al cliente público. Se excluye cualquier canal
 // de contacto directo (email, phone, website, instagram, tiktok, social_*) y
@@ -115,8 +143,27 @@ export async function POST(req: NextRequest) {
         .from('providers').update(merged).eq('id', existing.id).select().single()
 
       // Notificar al admin de que ESTE proveedor se ha registrado por su cuenta
-      emailAdminNewProvider(updated || existing).catch(err =>
-        console.error('emailAdminNewProvider (self-register existing):', err.message))
+      const target0 = updated || existing
+      fireEmail('emailAdminNewProvider (existing)', () => emailAdminNewProvider(target0), {
+        provider_id: target0.id, provider_email: target0.email,
+      })
+      // Bienvenida al proveedor (confirmando que su registro está en revisión)
+      if (target0.email) {
+        fireEmail('emailProviderWelcome (existing)', () => emailProviderWelcome(target0), {
+          provider_id: target0.id, provider_email: target0.email,
+        })
+      }
+
+      // Notificación en el panel (campana). Otras acciones como reservas o
+      // incidencias ya lo hacen; el self-register se nos había escapado.
+      const target = updated || existing
+      supabase.from('notifications').insert({
+        type:    'provider_self_registered',
+        title:   `✍️ Nuevo proveedor registrado · ${target.name}`,
+        message: `${target.category || 'Sin categoría'} en ${target.city || 'sin ciudad'}. Aprueba o rechaza desde el panel.`,
+        data:    { provider_id: target.id, email: target.email, merged: true },
+        action_url: `/admin#providers-${target.id}`,
+      }).then(() => {})
 
       return NextResponse.json({ provider: updated || existing, alreadyExists: true, selfRegistered: true }, { status: 200 })
     }
@@ -148,11 +195,42 @@ export async function POST(req: NextRequest) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // Antes este return era silencioso: el toast del cliente desaparecía en
+    // 4s y se perdía la causa real. Ahora dejamos rastro en notifications
+    // para que /admin lo vea con el error exacto y un link al auth user
+    // huérfano (si lo hubiese — viene del flujo de /registro-proveedor).
+    console.error('[providers POST] INSERT failed:', JSON.stringify(error), { email, name, category, city })
+    supabase.from('notifications').insert({
+      type:       'provider_insert_failure',
+      title:      `❌ Alta de proveedor FALLÓ · ${name}`,
+      message:    `${error.message}. Email: ${email}. Ciudad: ${city}. Categoría: ${category}. Revisa /admin-tools/huerfanos para recuperarlo.`,
+      data:       { email, name, category, city, db_error: error },
+      action_url: `/admin-tools/huerfanos`,
+    }).then(() => {})
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
-  // Notificar al admin (no bloquear si falla el email)
-  emailAdminNewProvider(data).catch(err =>
-    console.error('emailAdminNewProvider:', err.message))
+  // Notificar al admin (no bloquear si falla el email — fireEmail registra el
+  // fallo en /admin para que NO se nos escape como antes).
+  fireEmail('emailAdminNewProvider', () => emailAdminNewProvider(data), {
+    provider_id: data.id, provider_email: data.email,
+  })
+  // Bienvenida al proveedor — antes existía la función pero NO se llamaba.
+  if (data.email) {
+    fireEmail('emailProviderWelcome', () => emailProviderWelcome(data), {
+      provider_id: data.id, provider_email: data.email,
+    })
+  }
+
+  // Notificación en el panel (campana).
+  supabase.from('notifications').insert({
+    type:    'provider_self_registered',
+    title:   `✍️ Nuevo proveedor registrado · ${data.name}`,
+    message: `${data.category || 'Sin categoría'} en ${data.city || 'sin ciudad'}. Aprueba o rechaza desde el panel.`,
+    data:    { provider_id: data.id, email: data.email, merged: false },
+    action_url: `/admin#providers-${data.id}`,
+  }).then(() => {})
 
   return NextResponse.json({ provider: data, selfRegistered: true }, { status: 201 })
 }

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { useFavorites } from '@/lib/favorites'
 
 type AuthState = {
   loading: boolean
@@ -15,6 +16,7 @@ export default function Navbar() {
   const router   = useRouter()
   const supabase = createClient()
   const [auth, setAuth] = useState<AuthState>({ loading: true, email: null, isProvider: false })
+  const favs = useFavorites()
 
   useEffect(() => {
     let active = true
@@ -48,20 +50,65 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-stone-200 shadow-sm">
-      <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="font-serif text-xl font-black text-ink tracking-tight flex items-center gap-2">
-          <span className="text-2xl">🎉</span> FiestaGo
+      <nav className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+        <Link href="/" className="flex items-center" aria-label="FiestaGo — inicio">
+          <img src="/logo.svg" alt="FiestaGo — Celebra sin complicarte" className="h-14 md:h-16 w-auto" />
         </Link>
         <div className="hidden md:flex items-center gap-1">
           <Link href="/servicios" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
             Servicios
           </Link>
-          <Link href="/#packs" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            Packs
+          <div className="relative group">
+            <button className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors inline-flex items-center gap-1">
+              Celebraciones <span className="text-[10px]">▾</span>
+            </button>
+            <div className="absolute top-full left-0 pt-1 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-150 z-50">
+              <div className="bg-white border border-stone-200 rounded-2xl shadow-xl py-2 min-w-[220px]">
+                <Link href="/cumpleanos" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  🎂 Cumpleaños
+                </Link>
+                <Link href="/comuniones" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  ✨ Comuniones y bautizos
+                </Link>
+                <Link href="/corporativo" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  🏢 Eventos corporativos
+                </Link>
+                <Link href="/proveedores?categoria=planner" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
+                  💍 Bodas
+                </Link>
+              </div>
+            </div>
+          </div>
+          <Link href="/calculadora" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+            🧮 Calculadora
           </Link>
+          <Link href="/quiz" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+            ✨ Quiz
+          </Link>
+          <Link href="/eventos-reales" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+            📸 Inspírate
+          </Link>
+          {auth.email && !auth.isProvider && (
+            <Link href="/mi-evento" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
+              📅 Mi evento
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Corazón de favoritos — siempre visible, badge con count si hay alguno */}
+          <Link href="/favoritos"
+            aria-label="Mis favoritos"
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-lg
+              border border-stone-200 text-ink hover:border-coral hover:text-coral transition-colors">
+            <span>{favs.length > 0 ? '❤️' : '🤍'}</span>
+            {favs.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-coral text-white text-[10px] font-bold flex items-center justify-center px-1">
+                {favs.length > 99 ? '99+' : favs.length}
+              </span>
+            )}
+          </Link>
+
           {/* Mi panel + Salir SOLO si está logueado (extra, antes de los botones de auth) */}
           {auth.email && !auth.loading && (
             <>

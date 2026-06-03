@@ -46,6 +46,16 @@ export type Provider = {
   verification_status: 'none' | 'pending' | 'approved' | 'rejected' | null
   verification_doc_type: string | null
   verification_notes: string | null
+  self_registered: boolean
+  self_registered_at: string | null
+  terms_accepted_at: string | null
+  terms_version: string | null
+  terms_accepted_ip: string | null
+  contacted_via: string | null
+  outreach_at: string | null
+  referred_by: string | null
+  followup_count: number
+  followup_sent_at: string | null
 }
 
 export type Pack = {

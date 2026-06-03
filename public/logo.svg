@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="FiestaGo — Celebra sin complicarte">
+  <!-- Fondo cream circular -->
+  <circle cx="200" cy="200" r="198" fill="#FBF7F0"/>
+
+  <!-- ──────── CONFETI ────────
+       Distribuido alrededor del wordmark, evitando el centro -->
+  <!-- Top -->
+  <rect x="115" y="60"  width="14" height="3.5" rx="1.5" fill="#3D7A52" transform="rotate(-25 122 62)"/>
+  <rect x="160" y="80"  width="14" height="3.5" rx="1.5" fill="#E8553E" transform="rotate(35 167 82)"/>
+  <rect x="220" y="62"  width="14" height="3.5" rx="1.5" fill="#C8860A" transform="rotate(-10 227 64)"/>
+  <rect x="265" y="85"  width="14" height="3.5" rx="1.5" fill="#3D7A52" transform="rotate(20 272 87)"/>
+  <circle cx="148" cy="105" r="3.2" fill="#E8553E"/>
+  <circle cx="198" cy="92"  r="3.2" fill="#1C4E80"/>
+  <circle cx="250" cy="108" r="3.2" fill="#D04A87"/>
+  <polygon points="290,108 297,118 283,118" fill="#E8553E"/>
+  <polygon points="115,135 122,145 108,145" fill="#3D7A52"/>
+  <polygon points="320,140 327,150 313,150" fill="#C8860A"/>
+
+  <!-- Sides -->
+  <rect x="62" y="190"  width="14" height="3.5" rx="1.5" fill="#D04A87" transform="rotate(-15 69 192)"/>
+  <rect x="324" y="195" width="14" height="3.5" rx="1.5" fill="#1C4E80" transform="rotate(25 331 197)"/>
+  <circle cx="92"  cy="220" r="3.2" fill="#C8860A"/>
+  <circle cx="312" cy="225" r="3.2" fill="#3D7A52"/>
+
+  <!-- Bottom -->
+  <rect x="100" y="290" width="14" height="3.5" rx="1.5" fill="#E8553E" transform="rotate(-20 107 292)"/>
+  <rect x="180" y="320" width="14" height="3.5" rx="1.5" fill="#3D7A52" transform="rotate(10 187 322)"/>
+  <rect x="245" y="305" width="14" height="3.5" rx="1.5" fill="#C8860A" transform="rotate(-25 252 307)"/>
+  <rect x="290" y="280" width="14" height="3.5" rx="1.5" fill="#D04A87" transform="rotate(30 297 282)"/>
+  <circle cx="138" cy="320" r="3.2" fill="#1C4E80"/>
+  <circle cx="215" cy="340" r="3.2" fill="#E8553E"/>
+  <circle cx="278" cy="328" r="3.2" fill="#C8860A"/>
+  <polygon points="160,305 167,315 153,315" fill="#D04A87"/>
+  <polygon points="318,318 325,328 311,328" fill="#1C4E80"/>
+  <polygon points="84,280 91,290 77,290" fill="#3D7A52"/>
+
+  <!-- ──────── WORDMARK ──────── -->
+  <text x="200" y="210"
+        font-family="'Playfair Display', Georgia, 'Times New Roman', serif"
+        font-size="72" font-weight="800" fill="#1C1108"
+        text-anchor="middle" letter-spacing="-1">
+    FiestaGo<tspan fill="#E8553E">.</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="200" y="248"
+        font-family="'Inter', 'Helvetica Neue', Arial, sans-serif"
+        font-size="14" font-weight="500" fill="#1C1108"
+        text-anchor="middle" letter-spacing="4">
+    CELEBRA SIN COMPLICARTE
+  </text>
+</svg>

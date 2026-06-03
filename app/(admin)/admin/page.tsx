@@ -43,7 +43,7 @@ function getProviderState(p: any) {
     if (p.tag === 'Contactado por web')      return { label:'🌐 Contactado web', bg:'#F3F4F6', color:'#1F2937' }
     if (p.tag === 'Contactado por email')    return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
     if (p.tag === 'Contactado por DM') return { label:'💬 Contactado DM',  bg:'#FCE7F3', color:'#9D174D' }
-    if (p.tag === 'Contactado')        return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
+    if (p.tag === 'Contactado por email' || p.tag === 'Contactado') return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
     return { label:'⏳ Pendiente', bg:'#FEF3C7', color:'#92400E' }
   }
   return { label: p.status, bg:'#F3F4F6', color:'#4B5563' }
@@ -106,6 +106,17 @@ export default function AdminPage() {
   const [sendingEmail, setSendingEmail] = useState(false)
   const [sendStatus,  setSendStatus]   = useState<{ok:boolean,msg:string}|null>(null)
   const [extractingEmails, setExtractingEmails] = useState(false)
+  const [runningFollowups, setRunningFollowups] = useState(false)
+  // Waitlist
+  const [waitlistEntries, setWaitlistEntries] = useState<any[]>([])
+  const [waitlistStats,   setWaitlistStats]   = useState<any>({ total:0, active:0, last7d:0, byCity:{}, byEventType:{} })
+  // Galerías de eventos reales
+  const [galleries, setGalleries]   = useState<any[]>([])
+  const [galleryForm, setGalleryForm] = useState<any>({
+    title:'', event_type:'boda', city:'', cover_photo_url:'',
+    description:'', guests:'', vibe:'', photos:'', provider_ids:'', featured:false,
+  })
+  const [creatingGallery, setCreatingGallery] = useState(false)
   // Marketing / social_posts
   const [socialPosts,    setSocialPosts]    = useState<any[]>([])
   const [socialFilter,   setSocialFilter]   = useState<'pending'|'approved'|'published'|'all'>('pending')
@@ -200,7 +211,7 @@ export default function AdminPage() {
     } else if (filterStatus === 'nuevo') {
       list = list.filter((p: any) => !p.outreach_sent && !p.self_registered)
     } else if (filterStatus === 'contactado_email') {
-      list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado' && !p.self_registered)
+      list = list.filter((p: any) => p.outreach_sent && (p.tag === 'Contactado por email' || p.tag === 'Contactado') && !p.self_registered)
     } else if (filterStatus === 'contactado_dm') {
       list = list.filter((p: any) => p.outreach_sent && p.tag === 'Contactado por DM' && !p.self_registered)
     }
@@ -470,6 +481,35 @@ export default function AdminPage() {
     }
   }
 
+  // Dispara follow-ups: email automático por Resend (2º + 3º toque),
+  // DM solo queda en la cola con tag para enviar a mano desde IG.
+  async function runFollowups() {
+    setRunningFollowups(true)
+    setAgentLogs(l => [...l, `📬 Procesando follow-ups (1º toque hace ≥7 días sin respuesta)...`])
+    try {
+      const res = await fetch('/api/admin/agent/followup', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ days_initial: 7, days_between: 7, limit: 50 }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAgentLogs(l => [...l, `❌ ${data.error || 'error'}`])
+      } else {
+        setAgentLogs(l => [...l,
+          `📦 Candidatos: ${data.candidates}`,
+          `✉️  Emails enviados: ${data.emailsSent}`,
+          `📱 DMs en cola (manda desde IG): ${data.dmsQueued}`,
+          ...(data.logs || []),
+        ])
+      }
+    } catch (err: any) {
+      setAgentLogs(l => [...l, `❌ ${err.message}`])
+    } finally {
+      setRunningFollowups(false)
+    }
+  }
+
   // ── SOCIAL POSTS ──────────────────────────────────────────────────────────
   const fetchSocialPosts = useCallback(async () => {
     setSocialLoading(true)
@@ -540,6 +580,91 @@ export default function AdminPage() {
     if (!authed) return
     if (section === 'metrics') fetchMetrics()
   }, [authed, section, fetchMetrics])
+
+  // ── WAITLIST ──────────────────────────────────────────────────────────────
+  const fetchWaitlist = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/admin/waitlist', { headers: adminHeaders() })
+      const data = await res.json()
+      setWaitlistEntries(data.entries || [])
+      setWaitlistStats(data.stats || { total:0, active:0, last7d:0, byCity:{}, byEventType:{} })
+    } catch {}
+  }, [])
+  useEffect(() => {
+    if (!authed) return
+    fetchWaitlist()  // se carga siempre — alimenta el badge del menú
+  }, [authed, fetchWaitlist])
+
+  // ── GALERÍAS DE EVENTOS REALES ────────────────────────────────────────────
+  const fetchGalleries = useCallback(async () => {
+    try {
+      const res  = await fetch('/api/admin/event-galleries', { headers: adminHeaders() })
+      const data = await res.json()
+      setGalleries(data.galleries || [])
+    } catch {}
+  }, [])
+  useEffect(() => {
+    if (!authed) return
+    if (section === 'galerias') fetchGalleries()
+  }, [authed, section, fetchGalleries])
+
+  async function createGallery(e: React.FormEvent) {
+    e.preventDefault()
+    setCreatingGallery(true)
+    try {
+      const payload: any = {
+        title:           galleryForm.title,
+        event_type:      galleryForm.event_type,
+        city:            galleryForm.city,
+        cover_photo_url: galleryForm.cover_photo_url,
+        description:     galleryForm.description || null,
+        guests:          galleryForm.guests ? parseInt(galleryForm.guests) : null,
+        vibe:            galleryForm.vibe || null,
+        photos:          galleryForm.photos ? galleryForm.photos.split('\n').map((s: string) => s.trim()).filter(Boolean) : [],
+        provider_ids:    galleryForm.provider_ids ? galleryForm.provider_ids.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+        featured:        !!galleryForm.featured,
+      }
+      const res = await fetch('/api/admin/event-galleries', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Error al crear')
+      } else {
+        toast.success('Galería creada')
+        setGalleryForm({
+          title:'', event_type:'boda', city:'', cover_photo_url:'',
+          description:'', guests:'', vibe:'', photos:'', provider_ids:'', featured:false,
+        })
+        fetchGalleries()
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setCreatingGallery(false)
+    }
+  }
+
+  async function deleteGallery(id: string) {
+    if (!confirm('¿Eliminar esta galería?')) return
+    const res = await fetch(`/api/admin/event-galleries?id=${id}`, {
+      method: 'DELETE', headers: adminHeaders(),
+    })
+    if (res.ok) {
+      toast.success('Eliminada')
+      fetchGalleries()
+    }
+  }
+
+  async function toggleGalleryFeatured(g: any) {
+    await fetch('/api/admin/event-galleries', {
+      method: 'PATCH', headers: adminHeaders(),
+      body: JSON.stringify({ id: g.id, featured: !g.featured }),
+    })
+    fetchGalleries()
+  }
 
   // ── INCIDENCIAS ───────────────────────────────────────────────────────────
   const fetchIncidents = useCallback(async () => {
@@ -702,9 +827,11 @@ export default function AdminPage() {
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
     { id:'incidents',    icon:'🚨', label:'Incidencias', badge: incidentsStats.open || 0 },
     { id:'customers',    icon:'👥', label:'Socios' },
+    { id:'waitlist',     icon:'🎉', label:'Waitlist',     badge: waitlistStats.last7d || 0 },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
+    { id:'galerias',     icon:'📸', label:'Eventos reales' },
     { id:'settings',     icon:'⚙️', label:'Ajustes' },
   ]
 
@@ -714,7 +841,7 @@ export default function AdminPage() {
       <aside style={{ width:220, background:'#0D1117', borderRight:'1px solid #1F2937',
         display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:100 }}>
         <div style={{ padding:'20px 18px 14px', borderBottom:'1px solid #1F2937' }}>
-          <div style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:15, fontWeight:700, color:'#F0F4FF' }}>🎉 FiestaGo</div>
+          <img src="/logo.svg" alt="FiestaGo" style={{ height:56, width:'auto', display:'block', borderRadius:'50%' }} />
           <div style={{ fontSize:10, fontWeight:700, color:'#F43F5E', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:2 }}>Admin Panel</div>
         </div>
         <nav style={{ padding:'12px 10px', flex:1 }}>
@@ -865,7 +992,7 @@ export default function AdminPage() {
                   const counts = {
                     registrados: all.filter((p:any) => p.status==='pending' && p.self_registered).length,
                     nuevo:     all.filter((p:any) => p.status==='pending' && !p.outreach_sent && !p.self_registered).length,
-                    email:     all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado' && !p.self_registered).length,
+                    email:     all.filter((p:any) => p.status==='pending' && p.outreach_sent && (p.tag==='Contactado por email' || p.tag==='Contactado') && !p.self_registered).length,
                     dm:        all.filter((p:any) => p.status==='pending' && p.outreach_sent && p.tag==='Contactado por DM' && !p.self_registered).length,
                     approved:  all.filter((p:any) => p.status==='approved').length,
                     rejected:  all.filter((p:any) => p.status==='rejected').length,
@@ -965,16 +1092,21 @@ export default function AdminPage() {
                   return (
                     <div key={p.id}
                       style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 1fr auto',
-                        padding:'10px 14px', borderBottom: i<providers.length-1?'1px solid #1F2937':'none',
+                        padding:'10px 14px',
+                        borderBottom: i<providers.length-1?'1px solid #1F2937':'none',
+                        borderLeft: (p.self_registered && p.status === 'pending') ? '3px solid #EF4444' : '3px solid transparent',
+                        background: (p.self_registered && p.status === 'pending') ? 'rgba(239,68,68,0.06)' : 'transparent',
                         alignItems:'center', transition:'background 0.1s' }}
-                      onMouseEnter={e=>(e.currentTarget.style.background='#0D1117')}
-                      onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                      onMouseEnter={e=>(e.currentTarget.style.background=(p.self_registered && p.status === 'pending') ? 'rgba(239,68,68,0.12)' : '#0D1117')}
+                      onMouseLeave={e=>(e.currentTarget.style.background=(p.self_registered && p.status === 'pending') ? 'rgba(239,68,68,0.06)' : 'transparent')}>
                       <div style={{ display:'flex', alignItems:'center', gap:9 }}>
                         <img src={p.photo_url || getPhoto(p.category, p.photo_idx)} alt=""
-                          style={{ width:34, height:34, borderRadius:7, objectFit:'cover', flexShrink:0 }}/>
+                          style={{ width:34, height:34, borderRadius:7, objectFit:'cover', flexShrink:0,
+                            border: (p.self_registered && p.status === 'pending') ? '2px solid #EF4444' : 'none' }}/>
                         <div style={{ minWidth:0 }}>
                           <div style={{ fontSize:12, fontWeight:600, color:'#F0F4FF', display:'flex', alignItems:'center', gap:5 }}>
                             <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
+                            {(p.self_registered && p.status === 'pending')&&<span title="Auto-registrado · Pendiente de aprobar" style={{ fontSize:10, fontWeight:700, color:'#EF4444' }}>🔴 APROBAR</span>}
                             {p.featured&&<span>⭐</span>}
                             {p.outreach_sent&&<span title="Outreach enviado" style={{ fontSize:9 }}>✉️</span>}
                             {p.contactable===false&&<span title="Sin canales de contacto" style={{ color:'#EF4444', fontSize:10 }}>⚠</span>}
@@ -1044,6 +1176,76 @@ export default function AdminPage() {
                     </div>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* ══ WAITLIST ══ */}
+          {section === 'waitlist' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap', gap:10 }}>
+                <div>
+                  <h1 style={{ fontFamily:'Fraunces,serif', fontSize:28, fontWeight:600 }}>🎉 Waitlist pre-lanzamiento</h1>
+                  <div style={{ fontSize:13, color:'#9CA3AF', marginTop:4 }}>
+                    Clientes interesados en el lanzamiento del 10 de junio.
+                  </div>
+                </div>
+                <a href="/api/admin/waitlist?format=csv" download
+                  style={{ background:'#06B6D4', color:'#000', fontSize:12, fontWeight:700, padding:'10px 16px', borderRadius:10, textDecoration:'none' }}>
+                  ⬇ EXPORTAR CSV
+                </a>
+              </div>
+
+              {/* Stats */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:12, marginBottom:18 }}>
+                {[
+                  { label:'Total inscritos',      value: waitlistStats.total, color:'#10B981' },
+                  { label:'Activos (no baja)',     value: waitlistStats.active, color:'#06B6D4' },
+                  { label:'Últimos 7 días',        value: waitlistStats.last7d, color:'#F59E0B' },
+                  { label:'Ciudades distintas',    value: Object.keys(waitlistStats.byCity || {}).length, color:'#8B5CF6' },
+                ].map(t => (
+                  <div key={t.label} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, padding:'14px 16px' }}>
+                    <div style={{ fontSize:11, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600 }}>{t.label}</div>
+                    <div style={{ fontFamily:'Fraunces,serif', fontSize:28, fontWeight:700, color: t.color, marginTop:4 }}>{t.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desglose por tipo de evento */}
+              {Object.keys(waitlistStats.byEventType || {}).length > 0 && (
+                <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, padding:'14px 16px', marginBottom:18 }}>
+                  <div style={{ fontSize:11, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.07em', fontWeight:600, marginBottom:8 }}>Por tipo de evento</div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {Object.entries(waitlistStats.byEventType).map(([type, n]) => (
+                      <span key={type} style={{ background:'#1F2937', border:'1px solid #374151', borderRadius:8, padding:'5px 12px', fontSize:12 }}>
+                        {type}: <strong style={{ color:'#06B6D4' }}>{n as number}</strong>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lista */}
+              <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, overflow:'hidden' }}>
+                <div style={{ padding:'12px 16px', borderBottom:'1px solid #1F2937', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#9CA3AF', display:'grid', gridTemplateColumns:'2fr 1.5fr 1fr 1fr 1fr 0.7fr', gap:10 }}>
+                  <div>Email</div><div>Nombre</div><div>Ciudad</div><div>Evento</div><div>Fuente</div><div>Hace</div>
+                </div>
+                {waitlistEntries.length === 0 ? (
+                  <div style={{ padding:'40px 16px', textAlign:'center', color:'#4B5563', fontSize:13 }}>
+                    Nadie se ha apuntado aún. Comparte el link de la home y verás aterrizar a los primeros.
+                  </div>
+                ) : (
+                  waitlistEntries.map((e: any) => (
+                    <div key={e.id} style={{ padding:'10px 16px', borderBottom:'1px solid #1F2937', fontSize:13, display:'grid', gridTemplateColumns:'2fr 1.5fr 1fr 1fr 1fr 0.7fr', gap:10, alignItems:'center' }}>
+                      <div style={{ color:'#06B6D4', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{e.email}</div>
+                      <div style={{ color:'#F0F4FF' }}>{e.name || '—'}</div>
+                      <div style={{ color:'#9CA3AF' }}>{e.city || '—'}</div>
+                      <div style={{ color:'#9CA3AF' }}>{e.event_type || '—'}</div>
+                      <div style={{ color:'#6B7280', fontSize:11 }}>{e.source || '—'}</div>
+                      <div style={{ color:'#6B7280', fontSize:11 }}>{ago(e.created_at)}</div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -1135,15 +1337,26 @@ export default function AdminPage() {
                   {agentRunning?'⏳ BUSCANDO...':'▶ EJECUTAR AGENTE'}
                 </button>
 
-                <button onClick={extractEmailsBatch} disabled={extractingEmails || agentRunning}
+                <button onClick={extractEmailsBatch} disabled={extractingEmails || agentRunning || runningFollowups}
                   title="Procesa proveedores con tag 'Investigar web' o 'Nuevo' que aún no tienen email: scrapea su web y dispara outreach automático si lo encuentra."
                   style={{ width:'100%', padding:'10px', borderRadius:10,
                     background:'transparent',
                     border:`1px solid ${extractingEmails?'#8B5CF644':'#8B5CF6'}`,
                     color:'#8B5CF6', fontSize:11, fontWeight:700,
-                    cursor:(extractingEmails||agentRunning)?'not-allowed':'pointer',
+                    cursor:(extractingEmails||agentRunning||runningFollowups)?'not-allowed':'pointer',
                     fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
                   {extractingEmails?'⏳ EXTRAYENDO...':'🔍 EXTRAER EMAILS DE WEBS'}
+                </button>
+
+                <button onClick={runFollowups} disabled={runningFollowups || agentRunning || extractingEmails}
+                  title="Dispara los follow-ups pendientes: 2º y 3er toque para proveedores que no respondieron. Email se envía solo, DM se queda con tag para mandar a mano desde IG."
+                  style={{ width:'100%', padding:'10px', borderRadius:10,
+                    background:'transparent',
+                    border:`1px solid ${runningFollowups?'#F59E0B44':'#F59E0B'}`,
+                    color:'#F59E0B', fontSize:11, fontWeight:700,
+                    cursor:(runningFollowups||agentRunning||extractingEmails)?'not-allowed':'pointer',
+                    fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
+                  {runningFollowups?'⏳ ENVIANDO...':'📬 LANZAR FOLLOW-UPS'}
                 </button>
 
                 {agentResults.length>0&&(
@@ -1817,6 +2030,129 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* ══ EVENTOS REALES ══ */}
+          {section === 'galerias' && (
+            <div>
+              <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:18, flexWrap:'wrap', gap:10 }}>
+                <div>
+                  <h1 style={{ fontFamily:'Fraunces,serif', fontSize:28, fontWeight:600 }}>📸 Galerías de eventos reales</h1>
+                  <div style={{ fontSize:13, color:'#9CA3AF', marginTop:4 }}>
+                    Contenido inspiracional con fotos + proveedores que lo hicieron.
+                  </div>
+                </div>
+              </div>
+
+              {/* Form crear */}
+              <form onSubmit={createGallery} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, padding:18, marginBottom:24 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#06B6D4', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:14 }}>
+                  ➕ Nueva galería
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:10, marginBottom:10 }}>
+                  <input required placeholder="Título (ej: Boda íntima en una masía de Valencia)"
+                    value={galleryForm.title}
+                    onChange={e => setGalleryForm({ ...galleryForm, title: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                  <select value={galleryForm.event_type}
+                    onChange={e => setGalleryForm({ ...galleryForm, event_type: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}>
+                    <option value="boda">Boda</option>
+                    <option value="cumpleanos">Cumpleaños</option>
+                    <option value="comunion">Comunión</option>
+                    <option value="corporativo">Corporativo</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                  <input required placeholder="Ciudad"
+                    value={galleryForm.city}
+                    onChange={e => setGalleryForm({ ...galleryForm, city: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr', gap:10, marginBottom:10 }}>
+                  <input required placeholder="URL de foto principal (Unsplash, Drive, lo que sea)"
+                    value={galleryForm.cover_photo_url}
+                    onChange={e => setGalleryForm({ ...galleryForm, cover_photo_url: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                  <input type="number" placeholder="Invitados"
+                    value={galleryForm.guests}
+                    onChange={e => setGalleryForm({ ...galleryForm, guests: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}/>
+                  <select value={galleryForm.vibe}
+                    onChange={e => setGalleryForm({ ...galleryForm, vibe: e.target.value })}
+                    style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none' }}>
+                    <option value="">Vibe (opcional)</option>
+                    <option value="clasico">Clásico</option>
+                    <option value="moderno">Moderno</option>
+                    <option value="rustico">Rústico</option>
+                    <option value="lujo">Premium</option>
+                    <option value="intimo">Íntimo</option>
+                    <option value="divertido">Divertido</option>
+                  </select>
+                </div>
+                <textarea placeholder="Descripción breve (1-2 frases)"
+                  value={galleryForm.description}
+                  onChange={e => setGalleryForm({ ...galleryForm, description: e.target.value })}
+                  rows={2}
+                  style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none', width:'100%', marginBottom:10, resize:'vertical' }}/>
+                <textarea placeholder="URLs de fotos adicionales (una por línea)"
+                  value={galleryForm.photos}
+                  onChange={e => setGalleryForm({ ...galleryForm, photos: e.target.value })}
+                  rows={3}
+                  style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none', width:'100%', marginBottom:10, resize:'vertical' }}/>
+                <input placeholder="IDs de proveedores que participaron (separados por coma)"
+                  value={galleryForm.provider_ids}
+                  onChange={e => setGalleryForm({ ...galleryForm, provider_ids: e.target.value })}
+                  style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:8, padding:'8px 12px', fontSize:13, color:'#F0F4FF', outline:'none', width:'100%', marginBottom:10 }}/>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <label style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#9CA3AF', cursor:'pointer' }}>
+                    <input type="checkbox" checked={galleryForm.featured}
+                      onChange={e => setGalleryForm({ ...galleryForm, featured: e.target.checked })}/>
+                    Destacar en home
+                  </label>
+                  <button type="submit" disabled={creatingGallery}
+                    style={{ background:'#06B6D4', color:'#000', border:'none', padding:'8px 18px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    {creatingGallery ? 'Creando...' : '➕ Crear galería'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Lista */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:14 }}>
+                {galleries.length === 0 ? (
+                  <div style={{ gridColumn:'1/-1', padding:'30px 16px', textAlign:'center', color:'#4B5563', fontSize:13 }}>
+                    Aún no hay galerías. Crea la primera arriba.
+                  </div>
+                ) : galleries.map((g: any) => (
+                  <div key={g.id} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:12, overflow:'hidden' }}>
+                    <div style={{ height:140, background:`url(${g.cover_photo_url}) center/cover`, position:'relative' }}>
+                      {g.featured && (
+                        <span style={{ position:'absolute', top:8, left:8, background:'#E8553E', color:'#fff', fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6 }}>⭐ DESTACADO</span>
+                      )}
+                    </div>
+                    <div style={{ padding:12 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#F0F4FF', marginBottom:4 }}>{g.title}</div>
+                      <div style={{ fontSize:11, color:'#6B7280', marginBottom:10 }}>
+                        {g.event_type} · {g.city} · {g.guests || '?'} inv.
+                      </div>
+                      <div style={{ display:'flex', gap:6 }}>
+                        <a href={`/eventos-reales/${g.slug}`} target="_blank" rel="noreferrer"
+                          style={{ flex:1, background:'#1F2937', color:'#F0F4FF', textDecoration:'none', padding:'6px 10px', borderRadius:6, fontSize:11, fontWeight:600, textAlign:'center' }}>
+                          Ver
+                        </a>
+                        <button onClick={() => toggleGalleryFeatured(g)}
+                          style={{ background:'#1F2937', color:g.featured?'#E8553E':'#9CA3AF', border:'none', padding:'6px 10px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                          ⭐
+                        </button>
+                        <button onClick={() => deleteGallery(g.id)}
+                          style={{ background:'#7F1D1D', color:'#fff', border:'none', padding:'6px 10px', borderRadius:6, fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                          🗑
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {section === 'settings' && (
             <div style={{ maxWidth:560 }}>
               {[
@@ -1869,6 +2205,58 @@ export default function AdminPage() {
                 <span style={{ fontSize:10, fontWeight:700, padding:'3px 9px', borderRadius:10,
                   background:'#10B98122', color:'#10B981' }}>✓ contactable</span>
               )}
+            </div>
+
+            {/* Auto-registro + Términos aceptados */}
+            {editProv.self_registered && (
+              <div style={{ background:'#FEE2E233', border:'1px solid #991B1B44', borderRadius:12, padding:14, marginTop:16 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'#EF4444', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                  ✍️ Proveedor auto-registrado
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
+                  <div>
+                    <span style={{ color:'#6B7280' }}>Fecha de registro: </span>
+                    <span style={{ color:'#F0F4FF' }}>{editProv.self_registered_at ? new Date(editProv.self_registered_at).toLocaleString('es-ES') : '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color:'#6B7280' }}>Status actual: </span>
+                    <span style={{ color: editProv.status === 'approved' ? '#10B981' : editProv.status === 'rejected' ? '#EF4444' : '#F59E0B', fontWeight:700 }}>
+                      {editProv.status?.toUpperCase() || '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Términos y condiciones */}
+            <div style={{ background:'#0D1117', border:'1px solid #1F2937', borderRadius:12, padding:14, marginTop:16 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10 }}>
+                📋 Compromisos del Proveedor
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
+                <div>
+                  <span style={{ color:'#6B7280' }}>Aceptados: </span>
+                  {editProv.terms_accepted_at
+                    ? <span style={{ color:'#10B981', fontWeight:700 }}>✓ Sí — {new Date(editProv.terms_accepted_at).toLocaleString('es-ES')}</span>
+                    : <span style={{ color:'#EF4444', fontWeight:700 }}>✕ No aceptados</span>}
+                </div>
+                <div>
+                  <span style={{ color:'#6B7280' }}>Versión: </span>
+                  <span style={{ color:'#F0F4FF' }}>{editProv.terms_version || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ color:'#6B7280' }}>IP de aceptación: </span>
+                  <span style={{ color:'#9CA3AF' }}>{editProv.terms_accepted_ip || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ color:'#6B7280' }}>Verificación doc: </span>
+                  {editProv.verification_status === 'approved'
+                    ? <span style={{ color:'#10B981', fontWeight:700 }}>🛡️ Verificado</span>
+                    : editProv.verification_status === 'pending'
+                      ? <span style={{ color:'#F59E0B', fontWeight:700 }}>⏳ Doc subido, pendiente de revisar</span>
+                      : <span style={{ color:'#9CA3AF' }}>No ha subido documentación</span>}
+                </div>
+              </div>
             </div>
 
             {/* Verificación */}
@@ -1976,11 +2364,14 @@ export default function AdminPage() {
               <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                 {[
                   { label:'🆕 Sin contactar',     outreach_sent:false, tag:null,                  contacted_via:null },
-                  { label:'📧 Contactado email',   outreach_sent:true,  tag:'Contactado',          contacted_via:'email' },
+                  { label:'📧 Contactado email',   outreach_sent:true,  tag:'Contactado por email', contacted_via:'email' },
                   { label:'💬 Contactado por DM',  outreach_sent:true,  tag:'Contactado por DM',   contacted_via:'instagram' },
                 ].map((opt:any) => {
-                  const isActive = editProv.outreach_sent === opt.outreach_sent &&
-                    ((!opt.tag && !editProv.tag) || editProv.tag === opt.tag)
+                  const tagMatches = (!opt.tag && !editProv.tag)
+                    || editProv.tag === opt.tag
+                    // El tag 'Contactado' (sin sufijo) es legacy y equivale a 'Contactado por email'
+                    || (opt.tag === 'Contactado por email' && editProv.tag === 'Contactado')
+                  const isActive = editProv.outreach_sent === opt.outreach_sent && tagMatches
                   return (
                     <button key={opt.label}
                       onClick={()=>setEditProv(p=>p?{...p, outreach_sent: opt.outreach_sent, tag: opt.tag, contacted_via: opt.contacted_via }:null)}

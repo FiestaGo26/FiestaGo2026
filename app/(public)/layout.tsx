@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { ReactNode } from 'react'
 import Navbar from './_components/Navbar'
+import WaitlistBanner from './_components/WaitlistBanner'
+import PwaInit from './_components/PwaInit'
 
 function Footer() {
   return (
@@ -8,7 +10,7 @@ function Footer() {
       <div className="max-w-6xl mx-auto">
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-10">
           <div>
-            <div className="font-serif text-white text-xl font-black mb-3">🎉 FiestaGo</div>
+            <img src="/logo.svg" alt="FiestaGo" className="h-20 w-auto mb-4 rounded-full shadow-lg" />
             <p className="text-sm leading-relaxed">Tu celebración con red de seguridad. Bodas, cumpleaños, comuniones y cualquier evento privado en España.</p>
           </div>
           {[
@@ -39,9 +41,11 @@ function Footer() {
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen">
+      <WaitlistBanner/>
       <Navbar/>
       <div className="flex-1">{children}</div>
       <Footer/>
+      <PwaInit/>
     </div>
   )
 }

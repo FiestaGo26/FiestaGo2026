@@ -250,8 +250,9 @@ export default function ProfesionalesPage() {
         </h2>
         <p className="text-ink/65 mb-8 max-w-xl mx-auto">
           Los primeros profesionales que se inscriban tendrán visibilidad
-          destacada, sello "Fundador" en su ficha y onboarding personal
-          conmigo. Te lleva 60 segundos.
+          destacada, sello "Fundador" en su ficha (lo mantienes mientras
+          tu rating siga en 4,5/5 o más) y onboarding personal conmigo.
+          Te lleva 60 segundos.
         </p>
         <Link href="/registro-proveedor"
           className="inline-block bg-coral text-white font-bold px-10 py-4 rounded-xl hover:bg-coral-dark transition-colors shadow-coral text-lg">

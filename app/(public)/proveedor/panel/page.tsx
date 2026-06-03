@@ -947,7 +947,7 @@ function ProveedorPanelInner() {
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-stone-200 flex flex-col fixed top-0 left-0 bottom-0">
         <div className="p-5 border-b border-stone-200">
-          <a href="/" className="font-serif text-lg font-black text-ink">🎉 FiestaGo</a>
+          <a href="/" aria-label="FiestaGo — inicio"><img src="/logo.svg" alt="FiestaGo" className="h-12 w-auto" /></a>
           <div className="text-xs text-ink/50 mt-1">Panel del proveedor</div>
         </div>
         <nav className="p-3 flex-1 overflow-y-auto">

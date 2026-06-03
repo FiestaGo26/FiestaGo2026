@@ -14,6 +14,12 @@ function RegistroProveedorInner() {
   const [step,    setStep]    = useState(1)
   const [loading, setLoading] = useState(false)
   const [referrerName, setReferrerName] = useState<string | null>(null)
+  // Si el POST a /api/providers falla después de que el signup de Auth haya
+  // funcionado, NO podemos perder al proveedor. Guardamos el mensaje de error
+  // y le mostramos un banner persistente con botón "Reintentar" que NO recrea
+  // el auth user (ya existe), solo reintenta el INSERT del provider row.
+  const [postError, setPostError] = useState<string | null>(null)
+  const [authCreated, setAuthCreated] = useState(false)
   const [form, setForm] = useState({
     name:'', category:'foto', city:'Madrid',
     email:'', password:'', confirmPassword:'',
@@ -53,71 +59,92 @@ function RegistroProveedorInner() {
     }
 
     setLoading(true)
+    setPostError(null)
     try {
-      // 1. Intentar crear cuenta en Supabase Auth.
-      //    Si el auth user ya existe (caso "orphan": auth creado en intento anterior
-      //    pero el provider no se llegó a insertar), intentamos sign-in con la
-      //    misma contraseña para continuar y crear solo el provider.
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email:    form.email,
-        password: form.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/proveedor/panel`,
-          data: { name: form.name, role: 'provider' },
-        },
-      })
-
-      // Caso "user already registered" (orphan): probamos sign-in
-      const isAlreadyRegistered = authError && (
-        /already registered|already exists|user already|user_already/i.test(authError.message || '')
-      )
-      if (authError && !isAlreadyRegistered) throw authError
-      if (isAlreadyRegistered) {
-        const { error: signInErr } = await supabase.auth.signInWithPassword({
-          email: form.email,
+      // 1. Auth: signUp si es nuevo, o sign-in si ya existe (orphan recovery).
+      if (!authCreated) {
+        const { error: authError } = await supabase.auth.signUp({
+          email:    form.email,
           password: form.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/proveedor/panel`,
+            data: { name: form.name, role: 'provider' },
+          },
         })
-        if (signInErr) {
-          throw new Error('Ya existe una cuenta con este email. Si la contraseña es correcta, espera unos segundos y reintenta. Si no la recuerdas, usa "He olvidado mi contraseña" desde la página de acceso.')
+        const isAlreadyRegistered = authError && (
+          /already registered|already exists|user already|user_already/i.test(authError.message || '')
+        )
+        if (authError && !isAlreadyRegistered) throw authError
+        if (isAlreadyRegistered) {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({
+            email: form.email,
+            password: form.password,
+          })
+          if (signInErr) {
+            throw new Error('Ya existe una cuenta con este email. Si la contraseña es correcta, espera unos segundos y reintenta. Si no la recuerdas, usa "He olvidado mi contraseña" desde la página de acceso.')
+          }
         }
+        setAuthCreated(true)
       }
 
-      // 2. Crear el provider row. El POST detecta si ya existe por email.
-      const res = await fetch('/api/providers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name:        form.name,
-          category:    form.category,
-          city:        form.city,
-          email:       form.email,
-          phone:       form.phone || null,
-          website:     form.website || null,
-          instagram:   form.instagram || null,
-          description: form.description || null,
-          price_base:  parseFloat(form.price_base) || null,
-          price_unit:  form.price_unit,
-          specialties: [],
-          source:      'web',
-          referred_by: refParam,
-          accept_terms: true,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok || data.error) {
-        // Si el provider ya existe (constraint violation), lo damos por OK
-        const msg = (data.error || '').toLowerCase()
-        if (!msg.includes('duplicate') && !msg.includes('already')) {
-          throw new Error(data.error || `Error ${res.status}`)
-        }
-      }
+      // 2. Provider INSERT (separado para poder reintentar sin tocar el auth).
+      await createProviderRow()
 
       setStep(2)
-      toast.success(isAlreadyRegistered ? 'Cuenta vinculada y perfil creado' : '¡Registro completado!')
+      toast.success(authCreated ? 'Perfil creado correctamente' : '¡Registro completado!')
 
     } catch (err: any) {
-      toast.error(err.message || 'Error al registrarse. Inténtalo de nuevo.')
+      const msg = err.message || 'Error al registrarse. Inténtalo de nuevo.'
+      toast.error(msg)
+      // Si el auth ya está creado pero el INSERT del provider falló, mostramos
+      // banner persistente con botón Reintentar — el form mantiene los datos.
+      if (authCreated) setPostError(msg)
+    }
+    setLoading(false)
+  }
+
+  // Llamada al endpoint que crea el provider row. Separada para que el banner
+  // "Reintentar" la pueda invocar sin volver a tocar el auth.
+  async function createProviderRow() {
+    const res = await fetch('/api/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:        form.name,
+        category:    form.category,
+        city:        form.city,
+        email:       form.email,
+        phone:       form.phone || null,
+        website:     form.website || null,
+        instagram:   form.instagram || null,
+        description: form.description || null,
+        price_base:  parseFloat(form.price_base) || null,
+        price_unit:  form.price_unit,
+        specialties: [],
+        source:      'web',
+        referred_by: refParam,
+        accept_terms: true,
+      }),
+    })
+    const data = await res.json().catch(() => ({} as any))
+    if (!res.ok || data.error) {
+      const msg = (data.error || '').toLowerCase()
+      if (!msg.includes('duplicate') && !msg.includes('already')) {
+        throw new Error(data.error || `Error ${res.status} al crear el perfil`)
+      }
+    }
+  }
+
+  async function handleRetryPost() {
+    setLoading(true); setPostError(null)
+    try {
+      await createProviderRow()
+      setStep(2)
+      toast.success('Perfil creado correctamente')
+    } catch (err: any) {
+      const msg = err.message || 'Error al crear el perfil'
+      toast.error(msg)
+      setPostError(msg)
     }
     setLoading(false)
   }
@@ -182,6 +209,31 @@ function RegistroProveedorInner() {
             </div>
           ))}
         </div>
+
+        {/* Banner de recuperación: aparece si el auth se creó pero el INSERT del
+            provider falló. Mantenemos los datos del form y damos botón Reintentar
+            que NO vuelve a tocar el auth. */}
+        {postError && authCreated && (
+          <div className="mb-5 bg-coral/5 border-2 border-coral/40 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl">⚠️</div>
+              <div className="flex-1">
+                <div className="font-bold text-coral mb-1">Tu cuenta se creó, pero falló el último paso</div>
+                <div className="text-sm text-ink/75 leading-relaxed mb-3">
+                  Tu email y contraseña ya están guardados. Solo falta crear tu perfil de proveedor.
+                  Pulsa <strong>Reintentar</strong> — no perderás los datos del formulario.
+                </div>
+                <div className="bg-white border border-coral/20 rounded-lg px-3 py-2 text-xs font-mono text-ink/70 mb-3 break-words">
+                  {postError}
+                </div>
+                <button type="button" onClick={handleRetryPost} disabled={loading}
+                  className="bg-coral text-white font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-coral-dark disabled:opacity-50 transition-colors">
+                  {loading ? 'Reintentando…' : '🔄 Reintentar creación del perfil'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={submit} className="bg-white border border-stone-200 rounded-3xl p-6 shadow-card">
           <div className="grid grid-cols-1 gap-4">
