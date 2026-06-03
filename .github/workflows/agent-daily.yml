@@ -1,16 +1,15 @@
-name: Captación diaria de proveedores
+name: Captación diaria de proveedores (Claude API — DESACTIVADO)
 
-# 3 horarios al día para resistir los saltos de schedule de GitHub Actions
-# (que silenciosamente omite ejecuciones a veces — issue conocido).
-# Los lotes que repitan combo ya están deduplicados en el server.
-#  · 08:00 UTC = 10:00 Madrid (verano) / 09:00 (invierno)
-#  · 13:00 UTC = 15:00 Madrid (verano) / 14:00 (invierno)
-#  · 18:00 UTC = 20:00 Madrid (verano) / 19:00 (invierno)
+# ⛔ DESACTIVADO — este workflow llama a la API de Anthropic
+# (api.anthropic.com), que se factura aparte de la suscripción Claude.ai Pro.
+# Sustituido por agent-free-daily.yml que usa Overpass + DuckDuckGo + PA.
+# Mantengo el archivo para poder reactivarlo manualmente con
+# workflow_dispatch si hace falta una pasada puntual.
 on:
-  schedule:
-    - cron: '0 8 * * *'
-    - cron: '0 13 * * *'
-    - cron: '0 18 * * *'
+  # schedule:
+  #   - cron: '0 8 * * *'
+  #   - cron: '0 13 * * *'
+  #   - cron: '0 18 * * *'
   # Permite lanzarlo a mano desde la pestaña Actions
   workflow_dispatch:
 
