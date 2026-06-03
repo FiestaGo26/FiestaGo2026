@@ -326,6 +326,91 @@ export default function AdminPage() {
     }
   }
 
+  // Botón "ACEPTAR" — orquesta el contacto en TODOS los canales disponibles
+  // de una vez: email auto vía Resend + WhatsApp abierto en pestaña +
+  // mensaje web copiado al portapapeles + crea conversaciones en BD.
+  // Pensado para que el admin pulse 1 botón por lead en vez de 3.
+  async function acceptAndContact(p: Provider) {
+    const tasks: string[] = []
+    let waUrl: string | null = null
+
+    // 1. EMAIL: enviar via Resend (auto, completamente sin intervención)
+    if (p.email && p.outreach_email && !p.outreach_sent) {
+      try {
+        const res = await fetch('/api/admin/send-outreach', {
+          method: 'POST', headers: adminHeaders(),
+          body: JSON.stringify({ id: p.id }),
+        })
+        if (res.ok) {
+          tasks.push('📧 email enviado')
+          // Crear conversación email para que el webhook entrante la pueda continuar
+          await fetch('/api/admin/conversations', {
+            method: 'POST', headers: adminHeaders(),
+            body: JSON.stringify({
+              provider_id:    p.id,
+              channel:        'email',
+              initialMessage: p.outreach_email,
+              role:           'us',
+            }),
+          })
+        } else {
+          tasks.push('⚠ email falló')
+        }
+      } catch { tasks.push('⚠ email falló') }
+    }
+
+    // 2. WHATSAPP: construir URL (1 clic humano para enviar)
+    if (p.whatsapp_url || p.phone) {
+      const base = p.whatsapp_url || `https://wa.me/${phoneToWa(p.phone!)}`
+      const sep  = base.includes('?') ? '&' : '?'
+      waUrl = `${base}${sep}text=${encodeURIComponent(p.outreach_whatsapp || '')}`
+      // Marcar y crear conversación WA
+      await fetch('/api/admin/mark-contacted', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ id: p.id, channel: 'whatsapp' }),
+      })
+      if (p.outreach_whatsapp) {
+        await fetch('/api/admin/conversations', {
+          method: 'POST', headers: adminHeaders(),
+          body: JSON.stringify({
+            provider_id:    p.id,
+            channel:        'whatsapp',
+            initialMessage: p.outreach_whatsapp,
+            role:           'us',
+          }),
+        })
+      }
+      tasks.push('💬 WA listo')
+    }
+
+    // 3. FORMULARIO WEB: copiar el mensaje al portapapeles para pegar
+    if (p.contact_form_url || p.website) {
+      try {
+        const draft = `Hola ${p.name},\n\nSoy Mariano de FiestaGo. Lanzamos un marketplace nuevo de celebraciones el 10-jun en España, sin cuotas ni permanencia (cobras el 100%). Os dejo el registro en 60 seg: https://fiestago.es/profesionales\n\nUn abrazo,\nMariano`
+        await navigator.clipboard?.writeText(draft)
+        tasks.push('🌐 mensaje en portapapeles')
+      } catch {}
+    }
+
+    // Actualizar fila localmente
+    setProviders(prev => prev.map(prov => prov.id === p.id
+      ? { ...prov, outreach_sent: true, tag: 'Contactado' }
+      : prov))
+
+    if (tasks.length === 0) {
+      toast.error('Este lead no tiene canales accionables')
+      return
+    }
+
+    toast.success(`✓ ${p.name}: ${tasks.join(' · ')}`)
+
+    // Si hay WhatsApp, abrir en una nueva pestaña ahora — es lo último
+    // porque el navegador bloquea popups si pasa demasiado tiempo desde
+    // el click. En la mayoría de casos sigue funcionando dentro de unos
+    // pocos cientos de ms.
+    if (waUrl) window.open(waUrl, '_blank', 'noopener')
+  }
+
   // Normaliza un teléfono español a formato wa.me (solo dígitos, prefijo 34).
   function phoneToWa(phone: string): string {
     const digits = phone.replace(/\D/g, '')
@@ -1198,6 +1283,15 @@ export default function AdminPage() {
                             background:'transparent', color:'#9CA3AF', fontSize:10, cursor:'pointer', textDecoration:'none' }}>
                           🔑
                         </a>
+                        {p.status==='pending' && !p.outreach_sent && (p.email || p.whatsapp_url || p.phone || p.contact_form_url || p.website) && (
+                          <button onClick={()=>acceptAndContact(p)}
+                            title="ACEPTAR: envía email auto + abre WhatsApp + copia mensaje web al portapapeles + crea conversaciones IA"
+                            style={{ padding:'4px 10px', borderRadius:6, border:'none',
+                              background:'#10B981', color:'#000', fontSize:10, fontWeight:700, cursor:'pointer',
+                              fontFamily:'monospace', letterSpacing:'0.04em' }}>
+                            🚀 ACEPTAR
+                          </button>
+                        )}
                         {p.status==='pending' && !p.outreach_sent && <>
                           {(p.whatsapp_url || p.phone) && (
                             <a href={p.whatsapp_url
