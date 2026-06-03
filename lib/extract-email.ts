@@ -7,7 +7,11 @@
 //
 // Devuelve el email más prometedor o null.
 
-const EMAIL_REGEX = /[a-zA-Z0-9][a-zA-Z0-9._+-]{0,40}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,30}[a-zA-Z0-9])?(?:\.[a-zA-Z]{2,10}){1,3}/g
+// Negative lookbehind para no glue el local-part a caracteres alfanuméricos
+// previos. Sin esto, HTML del tipo `font-size:20"info@dominio.com` produce
+// "20info@dominio.com". Con esto, solo capturamos cuando antes del local-part
+// hay inicio de string, espacio, ':', '>', '<', '"', '/', etc.
+const EMAIL_REGEX = /(?<![a-zA-Z0-9._+-])[a-zA-Z][a-zA-Z0-9._+-]{0,40}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,30}[a-zA-Z0-9])?(?:\.[a-zA-Z]{2,10}){1,3}/g
 
 // Emails que no nos sirven (junk corporativo, sentinels, placeholders).
 const BLOCKLIST = [
