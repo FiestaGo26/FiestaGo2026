@@ -51,7 +51,6 @@ export type Provider = {
   terms_accepted_at: string | null
   terms_version: string | null
   terms_accepted_ip: string | null
-  contacted_via: string | null
   outreach_at: string | null
   referred_by: string | null
   followup_count: number
