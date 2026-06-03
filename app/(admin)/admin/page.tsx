@@ -302,6 +302,25 @@ export default function AdminPage() {
       setProviders(prev => prev.map(p => p.id === id
         ? { ...p, outreach_sent: true, contacted_via: channel as any, tag: `Contactado por ${labels[channel]}` }
         : p))
+
+      // Si el canal soporta conversación bidireccional (WhatsApp, IG),
+      // creamos también una conversación con el mensaje inicial guardado
+      // para poder usar el asistente IA en /admin-tools/conversaciones.
+      if (channel === 'whatsapp' || channel === 'instagram') {
+        const prov = providers.find(p => p.id === id)
+        const initialMessage = channel === 'whatsapp' ? prov?.outreach_whatsapp : prov?.outreach_dm
+        if (initialMessage) {
+          await fetch('/api/admin/conversations', {
+            method: 'POST', headers: adminHeaders(),
+            body: JSON.stringify({
+              provider_id:    id,
+              channel,
+              initialMessage,
+              role:           'us',
+            }),
+          })
+        }
+      }
     } catch (err: any) {
       toast.error(err.message || 'No se pudo marcar como contactado')
     }
