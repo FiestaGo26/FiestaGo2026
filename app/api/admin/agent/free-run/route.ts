@@ -112,8 +112,21 @@ export async function POST(req: NextRequest) {
     let emailsSent = 0
     let skippedDup = 0
 
+    // Teléfonos guardados en ESTA ejecución — para no insertar 2 candidatos
+    // OSM distintos que en realidad son el mismo negocio con el mismo número.
+    const phonesUsed = new Set<string>()
+    const normalizePhone = (p: string | null) => p ? p.replace(/[^\d]/g, '').slice(-9) : ''
+
     for (const c of candidates) {
       if (saved >= count) break
+
+      // Dedupe in-batch por teléfono (mismo negocio en 2 nodos OSM).
+      const phoneKey = normalizePhone(c.phone)
+      if (phoneKey && phonesUsed.has(phoneKey)) {
+        log(`   ⨯ ${c.name} · dup teléfono in-batch (${c.phone})`)
+        skippedDup++
+        continue
+      }
 
       // Solo scraping si tiene web y no tiene ya email.
       if (c.website && !c.email && scraped < count * 2) {
@@ -122,10 +135,11 @@ export async function POST(req: NextRequest) {
         if (extracted?.email) c.email = extracted.email
         const contactFormUrl = extracted?.contactFormUrl || null
 
-        // Dedupe BD: si el email/website ya existe, salto.
+        // Dedupe BD por email/website/teléfono.
         const orParts: string[] = []
         if (c.email)    orParts.push(`email.eq.${c.email}`)
         if (c.website)  orParts.push(`website.eq.${c.website}`)
+        if (c.phone)    orParts.push(`phone.eq.${c.phone}`)
         if (orParts.length > 0) {
           const { count: dbExisting } = await supabase
             .from('providers').select('id', { count: 'exact', head: true })
@@ -143,6 +157,7 @@ export async function POST(req: NextRequest) {
         const ok = await persistProvider(c, contactFormUrl, category, city, supabase, log)
         if (!ok) continue
         saved++
+        if (phoneKey) phonesUsed.add(phoneKey)
 
         // Outreach automático por email si hay
         if (c.email) {
@@ -167,6 +182,7 @@ export async function POST(req: NextRequest) {
         if (c.email)     orParts.push(`email.eq.${c.email}`)
         if (c.website)   orParts.push(`website.eq.${c.website}`)
         if (c.instagram) orParts.push(`instagram.eq.${c.instagram}`)
+        if (c.phone)     orParts.push(`phone.eq.${c.phone}`)
         if (orParts.length > 0) {
           const { count: dbExisting } = await supabase
             .from('providers').select('id', { count: 'exact', head: true })
@@ -174,7 +190,10 @@ export async function POST(req: NextRequest) {
           if ((dbExisting || 0) > 0) { skippedDup++; continue }
         }
         const ok = await persistProvider(c, null, category, city, supabase, log)
-        if (ok) saved++
+        if (ok) {
+          saved++
+          if (phoneKey) phonesUsed.add(phoneKey)
+        }
       }
     }
 

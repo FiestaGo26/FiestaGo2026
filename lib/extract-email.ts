@@ -9,13 +9,24 @@
 
 const EMAIL_REGEX = /[a-zA-Z0-9][a-zA-Z0-9._+-]{0,40}@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,30}[a-zA-Z0-9])?(?:\.[a-zA-Z]{2,10}){1,3}/g
 
-// Emails que no nos sirven (junk corporativo, sentinels de webmasters, etc.)
+// Emails que no nos sirven (junk corporativo, sentinels, placeholders).
 const BLOCKLIST = [
+  // Sentinels de webmasters/proveedores
   /noreply@/i, /no-reply@/i, /donotreply@/i, /postmaster@/i,
   /webmaster@/i, /support@wix/i, /admin@wp\./i, /sentry/i,
   /\.png$/i, /\.jpg$/i, /\.gif$/i, /\.webp$/i,
   /@sentry\.io/i, /@cloudflare/i, /@gstatic/i, /@google/i,
-  /@example\./i, /@test\./i, /@localhost/i,
+  /@wordpress\.com/i, /@wix\./i, /@squarespace\./i,
+  // Dominios de ejemplo / sandbox
+  /@example\./i, /@test\./i, /@localhost/i, /@dominio\./i,
+  /@midominio\./i, /@tudominio\./i, /@yourdomain\./i,
+  /@email\.com$/i, /@correo\.com$/i, /@mail\.com$/i,
+  // Locales que son claramente placeholders en español/inglés
+  /^(tu|su|mi|info|nombre|usuario|user|name|tuemail|tucorreo|nuestrocorreo)@/i,
+  /^email@/i, /^correo@/i, /^contacto@(?:ejemplo|example|placeholder|test|dominio)/i,
+  /@(ejemplo|placeholder)\./i,
+  // Lorem ipsum y similares
+  /lorem@/i, /ipsum@/i, /^foo@/i, /^bar@/i, /^baz@/i,
 ]
 
 async function fetchPage(url: string, timeoutMs: number = 6000): Promise<string | null> {
