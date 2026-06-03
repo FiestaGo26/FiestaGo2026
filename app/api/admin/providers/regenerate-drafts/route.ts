@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { buildEmailDraft, buildDmDraft } from '@/lib/outreach'
+import { buildEmailDraft, buildDmDraft, buildWhatsAppDraft } from '@/lib/outreach'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,17 +20,18 @@ export async function POST(req: NextRequest) {
   // Cargar TODOS los pendientes (haya sido contactado o no — el draft solo se muestra al admin)
   const { data: candidates, error } = await supabase
     .from('providers')
-    .select('id, name, city, email, instagram, source, outreach_sent')
+    .select('id, name, city, email, phone, instagram, source, outreach_sent')
     .eq('status', 'pending')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!candidates || !candidates.length) {
-    return NextResponse.json({ updated: 0, emailDraftsRegenerated: 0, dmDraftsRegenerated: 0, total: 0 })
+    return NextResponse.json({ updated: 0, emailDraftsRegenerated: 0, dmDraftsRegenerated: 0, waDraftsRegenerated: 0, total: 0 })
   }
 
   let updatedRows = 0
   let emailCount = 0
   let dmCount = 0
+  let waCount = 0
 
   for (const p of candidates as any[]) {
     const updates: any = {}
@@ -42,6 +43,10 @@ export async function POST(req: NextRequest) {
       updates.outreach_dm = buildDmDraft(p)
       dmCount++
     }
+    if (p.phone) {
+      updates.outreach_whatsapp = buildWhatsAppDraft(p)
+      waCount++
+    }
     if (Object.keys(updates).length === 0) continue
     const { error: upErr } = await supabase.from('providers').update(updates).eq('id', p.id)
     if (!upErr) updatedRows++
@@ -52,5 +57,6 @@ export async function POST(req: NextRequest) {
     updated: updatedRows,
     emailDraftsRegenerated: emailCount,
     dmDraftsRegenerated: dmCount,
+    waDraftsRegenerated: waCount,
   })
 }

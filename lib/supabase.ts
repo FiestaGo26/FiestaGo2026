@@ -32,6 +32,8 @@ export type Provider = {
   outreach_sent: boolean
   outreach_email: string | null
   outreach_dm: string | null
+  outreach_whatsapp: string | null
+  contacted_via: 'email' | 'instagram' | 'tiktok' | 'whatsapp' | 'phone' | 'web_form' | null
   social_handle: string | null
   social_platform: string | null
   social_url: string | null

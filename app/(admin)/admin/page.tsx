@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase'
 import type { Provider, Notification } from '@/lib/supabase'
 import { CATEGORIES, getPhoto } from '@/lib/constants'
+import { buildWebFormDraft } from '@/lib/outreach'
 
 const ADMIN_PASS = typeof window !== 'undefined'
   ? localStorage.getItem('fg_admin_pass') || '' : ''
@@ -38,6 +39,9 @@ function getProviderState(p: any) {
     // PRIORIDAD MÁXIMA: el proveedor se ha registrado por sí mismo, hay que aprobarlo.
     if (p.self_registered)      return { label:'✍️ Registrado · APROBAR', bg:'#FEE2E2', color:'#991B1B' }
     if (!p.outreach_sent)       return { label:'🆕 Sin contactar',      bg:'#E5E7EB', color:'#374151' }
+    if (p.tag === 'Contactado por WhatsApp') return { label:'💬 Contactado WA', bg:'#DCFCE7', color:'#166534' }
+    if (p.tag === 'Contactado por web')      return { label:'🌐 Contactado web', bg:'#F3F4F6', color:'#1F2937' }
+    if (p.tag === 'Contactado por email')    return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
     if (p.tag === 'Contactado por DM') return { label:'💬 Contactado DM',  bg:'#FCE7F3', color:'#9D174D' }
     if (p.tag === 'Contactado')        return { label:'📧 Contactado email', bg:'#DBEAFE', color:'#1E40AF' }
     return { label:'⏳ Pendiente', bg:'#FEF3C7', color:'#92400E' }
@@ -265,12 +269,40 @@ export default function AdminPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error')
-      toast.success(`✓ Regenerados: ${data.emailDraftsRegenerated} emails · ${data.dmDraftsRegenerated} DMs · ${data.updated}/${data.total} filas`)
+      toast.success(`✓ Regenerados: ${data.emailDraftsRegenerated} emails · ${data.dmDraftsRegenerated} DMs · ${data.waDraftsRegenerated || 0} WhatsApps · ${data.updated}/${data.total} filas`)
       fetchProviders()
     } catch (err: any) {
       toast.error(err.message || 'Error regenerando drafts')
     }
     setRegenLoading(false)
+  }
+
+  // Marca como contactado vía un canal manual (whatsapp/web_form/email)
+  // tras abrir el link externo. NO usa Resend — el admin ya envió a mano.
+  async function markContacted(id: string, channel: 'whatsapp' | 'web_form' | 'email' | 'instagram') {
+    try {
+      const res = await fetch('/api/admin/mark-contacted', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ id, channel }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error || 'Error')
+      const labels = { whatsapp:'WhatsApp', web_form:'web', email:'email', instagram:'Instagram' }
+      toast.success(`✓ Marcado como contactado por ${labels[channel]}`)
+      setProviders(prev => prev.map(p => p.id === id
+        ? { ...p, outreach_sent: true, contacted_via: channel as any, tag: `Contactado por ${labels[channel]}` }
+        : p))
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo marcar como contactado')
+    }
+  }
+
+  // Normaliza un teléfono español a formato wa.me (solo dígitos, prefijo 34).
+  function phoneToWa(phone: string): string {
+    const digits = phone.replace(/\D/g, '')
+    if (!digits) return ''
+    if (digits.startsWith('34')) return digits
+    if (digits.length === 9) return '34' + digits
+    return digits
   }
 
   async function bulkApprove() {
@@ -978,6 +1010,30 @@ export default function AdminPage() {
                             background:'transparent', color:'#9CA3AF', fontSize:10, cursor:'pointer', textDecoration:'none' }}>
                           🔑
                         </a>
+                        {p.status==='pending' && !p.outreach_sent && <>
+                          {p.phone && (
+                            <a href={`https://wa.me/${phoneToWa(p.phone)}?text=${encodeURIComponent(p.outreach_whatsapp || '')}`}
+                              target="_blank" rel="noreferrer"
+                              onClick={()=>markContacted(p.id,'whatsapp')}
+                              title={`WhatsApp a ${p.phone} (abre con mensaje pre-escrito)`}
+                              style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#25D36620', color:'#25D366', fontSize:10, cursor:'pointer', textDecoration:'none' }}>💬</a>
+                          )}
+                          {p.email && (
+                            <a href={`mailto:${p.email}?subject=${encodeURIComponent('Tu negocio en FiestaGo · '+p.city)}&body=${encodeURIComponent((p.outreach_email || '').replace(/^ASUNTO:[^\n]*\n+/, ''))}`}
+                              onClick={()=>markContacted(p.id,'email')}
+                              title={`Mailto a ${p.email} (abre tu cliente de correo con todo pre-escrito)`}
+                              style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#06B6D420', color:'#06B6D4', fontSize:10, cursor:'pointer', textDecoration:'none' }}>📧</a>
+                          )}
+                          {p.website && (
+                            <a href={p.website} target="_blank" rel="noreferrer"
+                              onClick={()=>{
+                                navigator.clipboard?.writeText(buildWebFormDraft({ name: p.name, city: p.city })).catch(()=>{})
+                                markContacted(p.id,'web_form')
+                              }}
+                              title={`Abrir ${p.website} (el mensaje se copia al portapapeles para pegarlo en el formulario)`}
+                              style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#9CA3AF20', color:'#9CA3AF', fontSize:10, cursor:'pointer', textDecoration:'none' }}>🌐</a>
+                          )}
+                        </>}
                         {p.status==='pending'&&<>
                           <button onClick={()=>updateProvider(p.id,{status:'approved'})}
                             style={{ padding:'4px 7px', borderRadius:6, border:'none', background:'#10B98120', color:'#10B981', fontSize:10, cursor:'pointer' }}>✓</button>

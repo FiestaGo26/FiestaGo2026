@@ -49,6 +49,40 @@ export function buildEmailDraft(p: ProviderLike): string {
   return `ASUNTO: Tu negocio en FiestaGo · ${p.city}\n\n${buildEmailBody(p)}`
 }
 
+// WhatsApp compacto (~700 chars). Tono cercano, sin asunto, sin formato
+// formal. El admin lo envía con 1 clic vía wa.me — el mensaje viene
+// pre-rellenado en el chat y solo tiene que pulsar enviar.
+export function buildWhatsAppDraft(p: ProviderLike): string {
+  return `Hola ${p.name} 👋 Soy Mariano, fundador de FiestaGo.
+
+Vi vuestro trabajo en ${p.city} y me ha encantado. Os escribo porque lanzamos el 10 de junio un marketplace nuevo de celebraciones en España (bodas, cumpleaños, comuniones, eventos privados) y estoy seleccionando los primeros profesionales con los que arrancar.
+
+A diferencia de Bodas.net o Zankyou, en FiestaGo no hay cuota ni permanencia: cobras el 100% del precio que pongas en tu ficha. La comisión del 8% la paga el cliente como Garantía de Éxito.
+
+Tienes la calculadora de cuánto ganarías de más al año aquí:
+👉 https://fiestago.es/profesionales
+
+Si te encaja, te puedes inscribir en menos de 1 minuto. Cualquier duda, respóndeme por aquí. ¡Un abrazo!`
+}
+
+// Mensaje corto para dejar en formularios de contacto web. El admin
+// rellena el formulario y pega este mensaje en el campo de "Mensaje".
+export function buildWebFormDraft(p: ProviderLike): string {
+  return `Hola ${p.name},
+
+Soy Mariano, fundador de FiestaGo. Os escribo desde vuestra web porque me ha encantado vuestro trabajo en ${p.city}.
+
+FiestaGo es un marketplace nuevo de celebraciones que lanzamos el 10 de junio en España. Sin cuotas ni permanencia: cobráis el 100% del precio que pongáis en vuestra ficha; la comisión del 8% la paga el cliente como Garantía de Éxito.
+
+Os dejo la calculadora de cuánto ganaríais de más al año + el registro en 60 segundos:
+https://fiestago.es/profesionales
+
+Si os encaja, podéis inscribiros directamente. Cualquier duda, respondedme a contacto@fiestago.es.
+
+Un abrazo,
+Mariano · FiestaGo`
+}
+
 // DM compacto (~800 chars) — Instagram limita a ~1000 por mensaje.
 // Tono personal, en primera persona, sin folleto de ventajas. Si
 // responden, ya les explicamos sello, referidos y el resto en

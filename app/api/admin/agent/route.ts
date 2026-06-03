@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/constants'
-import { buildEmailDraft, buildDmDraft } from '@/lib/outreach'
+import { buildEmailDraft, buildDmDraft, buildWhatsAppDraft } from '@/lib/outreach'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -271,10 +271,11 @@ Formato — SOLO este JSON, sin texto extra:
       const provLike = { name: p.name, city, source: 'web' }
       const emailDraft = email     ? buildEmailDraft(provLike) : ''
       const dmDraft    = instagram ? buildDmDraft(provLike)    : ''
+      const waDraft    = phone     ? buildWhatsAppDraft(provLike) : ''
       // Tag según canal disponible:
-      //   - Si tiene email o IG → 'Nuevo' (listo para outreach)
-      //   - Si solo tiene web → 'Investigar web' (extract-email lo procesará)
-      const tag = (email || instagram) ? 'Nuevo' : 'Investigar web'
+      //   - email/IG/teléfono → 'Nuevo' (listo para outreach 1-clic)
+      //   - solo web → 'Investigar web' (extract-email lo procesará)
+      const tag = (email || instagram || phone) ? 'Nuevo' : 'Investigar web'
 
       const { data: row } = await supabase
         .from('providers')
@@ -291,9 +292,10 @@ Formato — SOLO este JSON, sin texto extra:
           status:          'pending',
           tag,
           contactable,
-          outreach_sent:   false,
-          outreach_email:  emailDraft,
-          outreach_dm:     dmDraft,
+          outreach_sent:    false,
+          outreach_email:   emailDraft,
+          outreach_dm:      dmDraft,
+          outreach_whatsapp: waDraft,
         })
         .select().single()
 
