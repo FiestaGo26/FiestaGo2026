@@ -355,6 +355,43 @@ export default function AdminPage() {
     setUnread(0)
   }
 
+  // Busca con el agente gratis (OSM + DuckDuckGo). NO consume API
+  // de Anthropic. Usa el mismo selector de categoría/ciudad del panel.
+  async function runFreeAgent() {
+    setAgentRunning(true)
+    setAgentLogs([
+      `🌍 Iniciando buscador GRATIS — ${agentCfg.category} en ${agentCfg.city}...`,
+      `⏱ Esto tarda 30-60s (OSM + DuckDuckGo + scraping de webs). Coste: 0€.`,
+    ])
+    setAgentResults([])
+
+    try {
+      const res = await fetch('/api/admin/agent/free-run', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({
+          category: agentCfg.category,
+          city:     agentCfg.city,
+          count:    agentCfg.count,
+        }),
+      })
+      const data = await res.json()
+      if (data.logs) setAgentLogs(l => [...l, ...data.logs])
+      if (!res.ok) {
+        setAgentLogs(l => [...l, `❌ Error: ${data.error || 'desconocido'}`])
+      } else {
+        setAgentLogs(l => [...l, '',
+          `✅ ${data.saved || 0} guardados · ${data.emailsSent || 0} emails auto-enviados · ${data.skippedDup || 0} duplicados · ${data.scraped || 0} webs scraped`,
+          `📋 Apruébalos desde la pestaña Proveedores → 🆕 Sin contactar`,
+        ])
+        fetchProviders()
+      }
+    } catch (err: any) {
+      setAgentLogs(l => [...l, `❌ Error de red: ${err.message}`])
+    }
+    setAgentRunning(false)
+  }
+
   async function runAgent() {
     setAgentRunning(true)
     const totalTarget = agentCfg.count
@@ -1334,14 +1371,26 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <button onClick={runAgent} disabled={agentRunning}
+                <button onClick={runFreeAgent} disabled={agentRunning}
+                  title="Buscador 100% gratis: OpenStreetMap + DuckDuckGo. No usa API de Anthropic. Coste: 0€."
                   style={{ width:'100%', padding:'11px', borderRadius:10,
-                    background:agentRunning?'transparent':'#06B6D4',
-                    border:agentRunning?'1px solid #06B6D444':'none',
-                    color:agentRunning?'#06B6D4':'#000', fontSize:12, fontWeight:700,
+                    background:agentRunning?'transparent':'#10B981',
+                    border:agentRunning?'1px solid #10B98144':'none',
+                    color:agentRunning?'#10B981':'#000', fontSize:12, fontWeight:700,
                     cursor:agentRunning?'not-allowed':'pointer',
                     fontFamily:'IBM Plex Mono,monospace', marginTop:8 }}>
-                  {agentRunning?'⏳ BUSCANDO...':'▶ EJECUTAR AGENTE'}
+                  {agentRunning?'⏳ BUSCANDO...':'🌍 BUSCAR GRATIS (OSM+DDG)'}
+                </button>
+
+                <button onClick={runAgent} disabled={agentRunning}
+                  title="Agente original con Claude web_search. CONSUME créditos de api.anthropic.com (~$0.03 por ejecución)."
+                  style={{ width:'100%', padding:'8px', borderRadius:10,
+                    background:'transparent',
+                    border:`1px solid ${agentRunning?'#06B6D444':'#06B6D4'}`,
+                    color:'#06B6D4', fontSize:10, fontWeight:700,
+                    cursor:agentRunning?'not-allowed':'pointer',
+                    fontFamily:'IBM Plex Mono,monospace', marginTop:6 }}>
+                  {agentRunning?'⏳':'▶ Agente Claude (de pago)'}
                 </button>
 
                 <button onClick={extractEmailsBatch} disabled={extractingEmails || agentRunning || runningFollowups}
