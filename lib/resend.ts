@@ -24,7 +24,7 @@ function paragraphsToHtml(text: string): string {
     .join('')
 }
 
-async function sendEmail(opts: {
+export async function sendEmail(opts: {
   to: string | string[]
   subject: string
   text: string
