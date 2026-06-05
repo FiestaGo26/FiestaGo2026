@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import type { Provider, Notification } from '@/lib/supabase'
 import { CATEGORIES, getPhoto } from '@/lib/constants'
 import { buildWebFormDraft } from '@/lib/outreach'
+import WhatsappInbox from './WhatsappInbox'
 
 const ADMIN_PASS = typeof window !== 'undefined'
   ? localStorage.getItem('fg_admin_pass') || '' : ''
@@ -973,6 +974,7 @@ export default function AdminPage() {
     { id:'agent',        icon:'🤖', label:'Agente IA' },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
     { id:'galerias',     icon:'📸', label:'Eventos reales' },
+    { id:'whatsapp',     icon:'💬', label:'WhatsApp' },
     { id:'settings',     icon:'⚙️', label:'Ajustes' },
   ]
 
@@ -2347,6 +2349,9 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+
+          {/* ══ WHATSAPP ══ */}
+          {section === 'whatsapp' && <WhatsappInbox />}
         </div>
       </main>
 
