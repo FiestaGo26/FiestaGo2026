@@ -131,12 +131,83 @@ export default function WhatsappInbox() {
     })
   }
 
+  // ── Ad-hoc: enviar plantilla a cualquier teléfono sin necesidad de que
+  //    esté en la BD. Si no existe ficha, se crea una mínima al vuelo.
+  const [adhocPhone, setAdhocPhone] = useState('')
+  const [adhocName,  setAdhocName]  = useState('')
+
+  function doAdhocOutreach() {
+    if (!adhocPhone.trim()) { toast.error('Introduce un teléfono'); return }
+    startTransition(async () => {
+      const res = await fetch('/api/admin/whatsapp', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({
+          op: 'outreach_adhoc',
+          phone: adhocPhone.trim(),
+          name:  adhocName.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        toast.success(data.reused
+          ? `Plantilla enviada a ficha existente`
+          : `Plantilla enviada · ficha creada`)
+        setAdhocPhone('')
+        setAdhocName('')
+        await load()
+        if (data.provider_id) setSelectedId(data.provider_id)
+      } else {
+        toast.error(data.error || 'Error')
+      }
+    })
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, color: C.muted }}>
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>
           Inicia la conversación con la plantilla de captación. Cuando el proveedor responda, el
           agente IA continúa solo.
+        </div>
+
+        {/* Ad-hoc: enviar a cualquier número sin estar en la lista */}
+        <div style={{
+          background: C.card, border: `1px solid ${C.border}`, borderRadius: 12,
+          padding: 14, display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap',
+        }}>
+          <div style={{ flex: '1 1 220px', minWidth: 200 }}>
+            <label style={{ fontSize: 10, fontWeight: 700, color: C.faint,
+              letterSpacing: '0.07em', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+              ✨ Enviar plantilla a un número nuevo
+            </label>
+            <input value={adhocPhone} onChange={e => setAdhocPhone(e.target.value)}
+              placeholder="+34612345678 o 612345678"
+              style={{
+                width: '100%', padding: '8px 12px',
+                background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+                color: C.text, fontSize: 13, outline: 'none', fontFamily: 'monospace',
+              }}/>
+          </div>
+          <div style={{ flex: '1 1 180px', minWidth: 150 }}>
+            <input value={adhocName} onChange={e => setAdhocName(e.target.value)}
+              placeholder="Nombre (opcional)"
+              style={{
+                width: '100%', padding: '8px 12px',
+                background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+                color: C.text, fontSize: 13, outline: 'none',
+              }}/>
+          </div>
+          <button onClick={doAdhocOutreach} disabled={pending || !adhocPhone.trim()}
+            style={{
+              padding: '8px 16px', borderRadius: 8, border: 'none',
+              background: (pending || !adhocPhone.trim()) ? C.faint : C.green,
+              color: '#000', fontSize: 12, fontWeight: 700,
+              cursor: (pending || !adhocPhone.trim()) ? 'not-allowed' : 'pointer',
+              fontFamily: 'IBM Plex Mono, monospace',
+            }}>
+            {pending ? '⏳' : '💬 ENVIAR'}
+          </button>
         </div>
       </div>
 

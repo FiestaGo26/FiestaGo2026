@@ -68,13 +68,100 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const op: string = body.op
-  const providerId: string = body.providerId
 
-  if (!op || !providerId) {
-    return NextResponse.json({ error: 'op y providerId requeridos' }, { status: 400 })
+  if (!op) {
+    return NextResponse.json({ error: 'op requerido' }, { status: 400 })
   }
 
   const supabase = createAdminClient()
+
+  // ── Op especial: enviar plantilla a un número arbitrario sin provider_id ──
+  // Acepta { phone, name } → si existe ya un proveedor con ese tel lo reusa,
+  // si no crea una ficha mínima ('WhatsApp ad-hoc'). Así el webhook puede
+  // hacer match cuando el destinatario responda y el agente continúe solo.
+  if (op === 'outreach_adhoc') {
+    const rawPhone = String(body.phone || '').trim()
+    const name = String(body.name || '').trim() || 'Contacto WhatsApp'
+    const to = normalizePhone(rawPhone)
+    if (!to) {
+      return NextResponse.json({ error: 'Teléfono inválido' }, { status: 400 })
+    }
+
+    try {
+      // 1. Buscar proveedor existente con ese número (mismos últimos 9 dígitos)
+      const last9 = to.slice(-9)
+      const { data: existing } = await supabase
+        .from('providers')
+        .select('id, name')
+        .or(`phone.ilike.%${last9}%,outreach_whatsapp.ilike.%${last9}%`)
+        .limit(1)
+
+      let providerId: string
+      let providerName: string
+      if (existing && existing.length > 0) {
+        providerId = existing[0].id
+        providerName = existing[0].name || name
+      } else {
+        // 2. No existe → crear ficha mínima ad-hoc
+        const { data: created, error: createErr } = await supabase
+          .from('providers')
+          .insert({
+            name,
+            category: 'foto', // categoría por defecto — el admin puede editarla luego
+            city: 'Madrid',   // ciudad por defecto
+            phone: '+' + to,
+            status: 'pending',
+            tag: 'WhatsApp ad-hoc',
+            source: 'web',
+            contactable: true,
+            outreach_sent: true,
+            outreach_at: new Date().toISOString(),
+            contacted_via: 'whatsapp',
+          })
+          .select('id, name')
+          .single()
+        if (createErr || !created) {
+          return NextResponse.json({ error: createErr?.message || 'Error creando ficha' }, { status: 500 })
+        }
+        providerId = created.id
+        providerName = created.name || name
+      }
+
+      // 3. Enviar plantilla aprobada (única forma de escribir en frío)
+      const waId = await sendTemplate(to, { bodyParams: [providerName] })
+
+      await supabase.from('whatsapp_messages').insert({
+        wa_message_id: waId || null,
+        direction: 'outbound',
+        from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+        to_number: to,
+        type: 'template',
+        body: `[plantilla de captación ad-hoc enviada a ${providerName}]`,
+        status: 'sent',
+        provider_id: providerId,
+      })
+
+      // Asegurar marcado de contactado (por si era un proveedor preexistente)
+      await supabase.from('providers')
+        .update({
+          outreach_sent: true,
+          outreach_at:   new Date().toISOString(),
+          contacted_via: 'whatsapp',
+        })
+        .eq('id', providerId)
+
+      return NextResponse.json({ ok: true, provider_id: providerId, reused: !!existing?.length })
+    } catch (err: any) {
+      return NextResponse.json({ error: err?.message ?? 'Error desconocido' }, { status: 502 })
+    }
+  }
+
+  // Resto de operaciones necesitan providerId
+  const providerId: string = body.providerId
+  if (!providerId) {
+    return NextResponse.json({ error: 'providerId requerido' }, { status: 400 })
+  }
+
   const { data: provider, error } = await supabase
     .from('providers')
     .select('id, name, category, city, social_handle, phone, outreach_whatsapp')
