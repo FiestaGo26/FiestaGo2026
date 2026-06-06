@@ -112,20 +112,61 @@ async function handleInbound(supabase: any, msg: any) {
     }))
 
   // 5) El agente genera la respuesta.
-  const reply = await generateReply({
-    provider: {
-      name: provider.name,
-      category: provider.category,
-      city: provider.city,
-      social_handle: provider.social_handle,
-    },
-    history,
-  })
+  let reply: string
+  try {
+    reply = await generateReply({
+      provider: {
+        name: provider.name,
+        category: provider.category,
+        city: provider.city,
+        social_handle: provider.social_handle,
+      },
+      history,
+    })
+  } catch (err: any) {
+    console.error('[whatsapp webhook] Claude generateReply falló:', err?.message)
+    // Persistir el error en BD para poder diagnosticar desde Supabase.
+    await supabase.from('whatsapp_messages').insert({
+      wa_message_id: null,
+      direction: 'outbound',
+      from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+      to_number: fromNumber,
+      type: 'text',
+      body: `[ERROR Claude] ${String(err?.message || err).slice(0, 500)}`,
+      status: 'failed_claude',
+      provider_id: provider.id,
+    })
+    return
+  }
 
-  if (!reply) return
+  if (!reply) {
+    await supabase.from('whatsapp_messages').insert({
+      direction: 'outbound', from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+      to_number: fromNumber, type: 'text',
+      body: '[ERROR Claude] devolvió respuesta vacía',
+      status: 'failed_empty', provider_id: provider.id,
+    })
+    return
+  }
 
   // 6) Enviar por WhatsApp (dentro de la ventana de 24h, texto libre permitido).
-  const waId = await sendText(fromNumber!, reply)
+  let waId: string
+  try {
+    waId = await sendText(fromNumber!, reply)
+  } catch (err: any) {
+    console.error('[whatsapp webhook] sendText falló:', err?.message)
+    await supabase.from('whatsapp_messages').insert({
+      wa_message_id: null,
+      direction: 'outbound',
+      from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+      to_number: fromNumber,
+      type: 'text',
+      body: `[ERROR sendText] ${String(err?.message || err).slice(0, 500)}\n\n--- Claude generó ---\n${reply.slice(0, 800)}`,
+      status: 'failed_send',
+      provider_id: provider.id,
+    })
+    return
+  }
 
   // 7) Guardar el saliente.
   await supabase.from('whatsapp_messages').insert({
