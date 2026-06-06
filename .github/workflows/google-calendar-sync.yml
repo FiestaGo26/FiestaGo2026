@@ -1,0 +1,36 @@
+name: Sincronización Google Calendar (diaria)
+
+# Renueva los watches (caducan a los ~7 días) y re-sincroniza el ocupado/libre
+# de TODOS los proveedores con Google Calendar conectado.
+on:
+  schedule:
+    # 06:00 UTC = 08:00 Madrid (verano) / 07:00 (invierno)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  google-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Llamar a /api/google/cron-sync
+        env:
+          SITE_URL:    ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+          RESPONSE=$(curl -sS -X POST "$SITE_URL/api/google/cron-sync" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -w "\nHTTP_CODE:%{http_code}" \
+            --max-time 120 || true)
+          HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+          echo "$BODY"
+          echo "HTTP $HTTP_CODE"
+          # Si el endpoint devuelve != 2xx, fallamos para que se vea en el log
+          if [ "$HTTP_CODE" -ge 300 ] || [ -z "$HTTP_CODE" ]; then
+            echo "❌ Error HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "✅ Sincronización completada"

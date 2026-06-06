@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { emailClientBookingConfirmed, emailClientBookingCancelled } from '@/lib/resend'
 import { calcRefund } from '@/lib/constants'
+import { exportBookingToGoogle, removeBookingFromGoogle } from '@/lib/google-sync'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -97,6 +98,13 @@ export async function PATCH(req: NextRequest) {
         }
       }
     } catch { /* no-op */ }
+  }
+
+  // Google Calendar sync: si está conectado, exportar/borrar el evento.
+  if (status === 'confirmed') {
+    exportBookingToGoogle(id).catch(err => console.error('gcal export:', err?.message))
+  } else if (status === 'cancelled') {
+    removeBookingFromGoogle(id).catch(err => console.error('gcal remove:', err?.message))
   }
 
   return NextResponse.json({ booking: data })

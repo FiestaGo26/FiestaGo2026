@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
 import { emailClientBookingConfirmed, emailClientBookingCancelled } from '@/lib/resend'
 import { calcRefund } from '@/lib/constants'
+import { exportBookingToGoogle, removeBookingFromGoogle } from '@/lib/google-sync'
 
 // Antes de aceptar la reserva, el proveedor solo ve datos generales.
 // Esto evita que el proveedor contacte al cliente fuera de la plataforma
@@ -116,6 +117,14 @@ export async function PATCH(req: NextRequest) {
         }
       }
     } catch { /* no-op */ }
+  }
+
+  // Google Calendar sync: si está conectado, exportar al confirmar y
+  // borrar el evento al cancelar. Best-effort, no bloquea la respuesta.
+  if (status === 'confirmed') {
+    exportBookingToGoogle(id).catch(err => console.error('gcal export:', err?.message))
+  } else if (status === 'cancelled') {
+    removeBookingFromGoogle(id).catch(err => console.error('gcal remove:', err?.message))
   }
 
   return NextResponse.json({ booking: data })

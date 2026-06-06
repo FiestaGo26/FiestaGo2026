@@ -1720,6 +1720,7 @@ function ProveedorPanelInner() {
             <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
               💡 Los cambios se guardan automáticamente y los clientes los ven al instante.
             </div>
+            <GoogleCalendarBlock providerId={provider?.id || ''} />
           </div>
         )}
 
@@ -2620,6 +2621,104 @@ function OnboardingChecklist({ provider, services, onGoTab }: {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+// Sub-bloque que se muestra al final del tab "availability". Permite al
+// proveedor conectar/desconectar su Google Calendar. La conexión importa
+// los ocupados a service_availability (source='google') y exporta cada
+// reserva confirmada como evento de día completo.
+function GoogleCalendarBlock({ providerId }: { providerId: string }) {
+  const [status, setStatus] = useState<{
+    connected: boolean
+    google_email: string | null
+    last_synced_at: string | null
+    watch_until: string | null
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const searchParams = useSearchParams()
+
+  async function load() {
+    if (!providerId) { setLoading(false); return }
+    try {
+      const res = await fetch(`/api/google/status?provider_id=${providerId}`)
+      if (res.ok) setStatus(await res.json())
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => {
+    load()
+    const gcal = searchParams.get('gcal')
+    if (gcal === 'ok')    toast.success('Google Calendar conectado ✓')
+    if (gcal === 'error') toast.error('No se pudo conectar Google Calendar')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerId])
+
+  async function disconnect() {
+    if (!confirm('¿Desconectar Google Calendar? Los bloqueos importados se borrarán; los manuales se mantienen.')) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/google/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: providerId }),
+      })
+      if (res.ok) {
+        toast.success('Google Calendar desconectado')
+        await load()
+      } else {
+        const d = await res.json().catch(() => ({}))
+        toast.error(d.error || 'Error desconectando')
+      }
+    } finally { setBusy(false) }
+  }
+
+  if (loading) return null
+
+  if (!status?.connected) {
+    return (
+      <div className="mt-6 bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
+        <div className="flex items-start gap-4">
+          <div className="text-3xl">📅</div>
+          <div className="flex-1">
+            <div className="font-bold text-ink mb-1">Sincroniza con Google Calendar</div>
+            <p className="text-sm text-ink/55 mb-3">
+              Conecta tu Google Calendar y los días que tengas otros compromisos se bloquearán
+              solos aquí. Las reservas que aceptes se añadirán a tu Google Calendar como eventos.
+              Solo leemos disponibilidad (ocupado/libre), nunca los títulos.
+            </p>
+            <a
+              href={`/api/google/connect?provider_id=${providerId}`}
+              className="inline-block text-sm font-bold bg-coral text-white px-4 py-2 rounded-xl hover:bg-coral-dark"
+            >
+              Conectar Google Calendar
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-6 bg-green-50 border border-green-200 rounded-2xl p-5">
+      <div className="flex items-start gap-4">
+        <div className="text-3xl">✅</div>
+        <div className="flex-1">
+          <div className="font-bold text-ink">Google Calendar conectado</div>
+          <div className="text-xs text-ink/60 mt-1">
+            {status.google_email && <>Como <strong>{status.google_email}</strong>. </>}
+            {status.last_synced_at
+              ? <>Última sincronización: {new Date(status.last_synced_at).toLocaleString('es-ES')}.</>
+              : 'Sincronización inicial en curso.'}
+          </div>
+          <button onClick={disconnect} disabled={busy}
+            className="text-xs text-coral hover:underline mt-2 disabled:opacity-50">
+            Desconectar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
