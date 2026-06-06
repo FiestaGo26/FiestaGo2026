@@ -67,6 +67,11 @@ export async function sendText(to: string, body: string): Promise<string> {
 // ─── Envío de plantilla (única forma de iniciar conversación en frío) ────────
 // La plantilla debe estar creada y APROBADA en Meta. Por defecto asumimos una
 // plantilla con un parámetro de cuerpo {{1}} = nombre del proveedor.
+//
+// Para plantillas SIN parámetros (como 'hello_world' que viene pre-aprobada
+// por defecto), se detecta automáticamente o se puede forzar con la env
+// var WHATSAPP_TEMPLATE_HAS_PARAMS=false → no se incluyen components.
+// Idiomas: 'hello_world' solo existe en en_US, no en español.
 export async function sendTemplate(
   to: string,
   opts: {
@@ -82,10 +87,20 @@ export async function sendTemplate(
       'Falta WHATSAPP_OUTREACH_TEMPLATE (nombre de la plantilla de captación aprobada en Meta)'
     )
   }
-  const languageCode = opts.languageCode || process.env.WHATSAPP_TEMPLATE_LANG || 'es'
+  // hello_world solo existe en en_US — forzamos el idioma correcto.
+  const defaultLang =
+    template === 'hello_world'
+      ? 'en_US'
+      : process.env.WHATSAPP_TEMPLATE_LANG || 'es'
+  const languageCode = opts.languageCode || defaultLang
+
+  // Plantillas que NO aceptan parámetros — no incluimos components.body.
+  const templateHasNoParams =
+    template === 'hello_world' ||
+    process.env.WHATSAPP_TEMPLATE_HAS_PARAMS === 'false'
 
   const components =
-    opts.bodyParams && opts.bodyParams.length
+    !templateHasNoParams && opts.bodyParams && opts.bodyParams.length
       ? [
           {
             type: 'body',
