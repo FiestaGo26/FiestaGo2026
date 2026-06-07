@@ -71,6 +71,22 @@ Ventajas extra para los que entren AHORA (pre-lanzamiento):
 "No sé si tendréis clientes"
 → Por eso lanzamos con catálogo pre-construido + campañas SEO ya en marcha contra Bodas.net. Como no pagas nada, no pierdes nada por estar.
 
+═══ RESPUESTAS A BOTONES DE LA PLANTILLA ═══
+
+La plantilla de captación lleva 3 botones de respuesta rápida. Cuando el proveedor pulsa uno, te llega el texto del botón como su primer mensaje. Responde así:
+
+"Sí, contadme más" (o variantes "cuéntame", "sí")
+→ El proveedor es high-intent. Responde con la propuesta concreta en 4-6 frases:
+   "Genial {{name}}! Te lo resumo. FiestaGo lanza el 10-jun como marketplace donde el cliente paga el precio del proveedor + 8% Garantía. Tú cobras el 100% íntegro a las 48h del evento. Sin cuotas ni permanencia. Por entrar antes del lanzamiento: mejor posición + sello Proveedor Verificado gratis. Te dejo el registro (60 seg): https://fiestago.es/profesionales — ¿alguna duda?"
+
+"Quiero apuntarme" (o "Apuntarme ya", "registro")
+→ Máxima intención. NO marees con explicación — dale el link directo y celebra:
+   "¡Genial {{name}}! Te dejo el registro aquí: https://fiestago.es/profesionales tarda 60 seg. Una vez dentro, te valida nuestro equipo y te aparece el sello Proveedor Verificado. Si te quedas con alguna duda durante el registro, escríbeme aquí mismo."
+
+"Ahora no, gracias" (o variantes "no me interesa", "no es buen momento")
+→ NO insistas. Despídete cálido y deja puerta abierta:
+   "Sin problema {{name}}. Si en algún momento cambias de idea, fiestago.es/profesionales sigue ahí. Un abrazo y mucha suerte con tus eventos 🙏"
+
 ═══ ESTILO ═══
 
 - Español de España, cercano, en primera persona como Mariano.
@@ -107,6 +123,33 @@ function providerBlurb(p: ProviderContext): string {
   if (p.city) parts.push(`Ciudad: ${p.city}`)
   if (p.social_handle) parts.push(`Redes: ${p.social_handle}`)
   return parts.length ? parts.join(' · ') : '(sin datos adicionales)'
+}
+
+// Genera el descriptor que va en {{2}} de la plantilla de captación.
+// Adapta el sustantivo al tipo de negocio: "vuestra floristería en
+// Valencia", "vuestro espacio en Sevilla", "vuestro trabajo en Madrid".
+// Hace que el primer mensaje suene personalizado, no genérico.
+export function buildOutreachDescriptor(opts: {
+  category?: string | null
+  city?: string | null
+}): string {
+  const { category, city } = opts
+  const nounMap: Record<string, string> = {
+    foto:       'vuestro trabajo',
+    catering:   'vuestro catering',
+    espacios:   'vuestro espacio',
+    musica:     'vuestro trabajo',
+    flores:     'vuestra floristería',
+    pastel:     'vuestra pastelería',
+    belleza:    'vuestro trabajo',
+    animacion:  'vuestras animaciones',
+    transporte: 'vuestro servicio',
+    papeleria:  'vuestra papelería',
+    planner:    'vuestro trabajo',
+    joyeria:    'vuestra joyería',
+  }
+  const noun = (category && nounMap[category]) || 'vuestro trabajo'
+  return city ? `${noun} en ${city}` : noun
 }
 
 // Genera el siguiente mensaje del agente dado el historial.

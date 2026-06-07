@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { normalizePhone, sendTemplate, sendText } from '@/lib/whatsapp'
-import { generateOpeningMessage } from '@/lib/fiestago-agent'
+import { generateOpeningMessage, buildOutreachDescriptor } from '@/lib/fiestago-agent'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -127,8 +127,10 @@ export async function POST(req: NextRequest) {
         providerName = created.name || name
       }
 
-      // 3. Enviar plantilla aprobada (única forma de escribir en frío)
-      const waId = await sendTemplate(to, { bodyParams: [providerName] })
+      // 3. Enviar plantilla aprobada (única forma de escribir en frío).
+      //    Para ad-hoc no sabemos categoría → descriptor genérico.
+      const descriptor = buildOutreachDescriptor({ category: null, city: null })
+      const waId = await sendTemplate(to, { bodyParams: [providerName, descriptor] })
 
       await supabase.from('whatsapp_messages').insert({
         wa_message_id: waId || null,
@@ -195,7 +197,13 @@ export async function POST(req: NextRequest) {
 
     // ── Iniciar captación: plantilla aprobada (única vía en frío) ──
     if (op === 'outreach') {
-      const waId = await sendTemplate(to, { bodyParams: [provider.name || 'hola'] })
+      const descriptor = buildOutreachDescriptor({
+        category: provider.category,
+        city:     provider.city,
+      })
+      const waId = await sendTemplate(to, {
+        bodyParams: [provider.name || 'hola', descriptor],
+      })
 
       await supabase.from('whatsapp_messages').insert({
         wa_message_id: waId || null,
