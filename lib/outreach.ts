@@ -20,7 +20,7 @@ export function buildEmailBody(p: ProviderLike): string {
 
 Soy Mariano, fundador de FiestaGo. Te escribo porque vimos tu trabajo${sourceLabel} y me ha encantado.
 
-FiestaGo es un marketplace nuevo de celebraciones en España — bodas, cumpleaños, comuniones, eventos privados y familiares. Lanzamos el 10 de junio de 2026 y estoy seleccionando los primeros profesionales en ${p.city} con los que arrancar.
+FiestaGo es un marketplace nuevo de celebraciones en España — bodas, cumpleaños, comuniones, eventos privados y familiares. Estamos lanzando ahora y seleccionando los primeros profesionales en ${p.city} con los que arrancar.
 
 Lo que te puedo ofrecer es visibilidad real: una fuente nueva de clientes sin que tengas que cambiar nada de cómo trabajas hoy. Recibes la solicitud, decides si te encaja y haces tu evento como siempre.
 
@@ -29,7 +29,7 @@ A diferencia de Bodas.net o Zankyou, en FiestaGo no hay cuota anual ni permanenc
 En esta página tienes la comparativa completa con Bodas.net + una calculadora para que veas con tus números cuánto ganarías de más al año:
 https://fiestago.es/profesionales
 
-Además, al entrar antes del lanzamiento te llevas:
+Además, al entrar ahora te llevas:
 
 - Mejor posición en los resultados (catálogo en construcción).
 - Sello FiestaGo de Calidad gratis, visible junto a tu perfil mientras mantengas 4,5/5 en reseñas.
@@ -55,7 +55,7 @@ export function buildEmailDraft(p: ProviderLike): string {
 export function buildWhatsAppDraft(p: ProviderLike): string {
   return `Hola ${p.name} 👋 Soy Mariano, fundador de FiestaGo.
 
-Vi vuestro trabajo en ${p.city} y me ha encantado. Os escribo porque lanzamos el 10 de junio un marketplace nuevo de celebraciones en España (bodas, cumpleaños, comuniones, eventos privados) y estoy seleccionando los primeros profesionales con los que arrancar.
+Vi vuestro trabajo en ${p.city} y me ha encantado. Os escribo porque estamos lanzando en España un marketplace nuevo de celebraciones (bodas, cumpleaños, comuniones, eventos privados) y seleccionando los primeros profesionales con los que arrancar.
 
 A diferencia de Bodas.net o Zankyou, en FiestaGo no hay cuota ni permanencia: cobras el 100% del precio que pongas en tu ficha. La comisión del 8% la paga el cliente como Garantía de Éxito.
 
@@ -72,7 +72,7 @@ export function buildWebFormDraft(p: ProviderLike): string {
 
 Soy Mariano, fundador de FiestaGo. Os escribo desde vuestra web porque me ha encantado vuestro trabajo en ${p.city}.
 
-FiestaGo es un marketplace nuevo de celebraciones que lanzamos el 10 de junio en España. Sin cuotas ni permanencia: cobráis el 100% del precio que pongáis en vuestra ficha; la comisión del 8% la paga el cliente como Garantía de Éxito.
+FiestaGo es un marketplace nuevo de celebraciones que estamos lanzando en España. Sin cuotas ni permanencia: cobráis el 100% del precio que pongáis en vuestra ficha; la comisión del 8% la paga el cliente como Garantía de Éxito.
 
 Os dejo la calculadora de cuánto ganaríais de más al año + el registro en 60 segundos:
 https://fiestago.es/profesionales
@@ -92,14 +92,14 @@ export function buildDmDraft(p: ProviderLike): string {
 
 Soy Mariano, fundador de FiestaGo. He estado viendo lo que haces en ${p.city} y me ha encantado.
 
-FiestaGo es un marketplace nuevo de celebraciones — bodas, cumples, comuniones, eventos privados. Lanzamos el 10 de junio en España.
+FiestaGo es un marketplace nuevo de celebraciones — bodas, cumples, comuniones, eventos privados. Lanzamos en España.
 
 A diferencia de los marketplaces tradicionales del sector (con cuota anual y permanencia), no hay cuota ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha. El cliente paga un 8% extra como Garantía de Éxito (si algo sale mal con la reserva, le respondemos económicamente). Tú no pagas nada.
 
 En esta página tienes la calculadora de cuánto ganarías de más al año:
 👉 https://fiestago.es/profesionales
 
-Inscríbete en 60 segundos y entras antes del lanzamiento.
+Inscríbete en 60 segundos y entras en el catálogo inicial.
 
 Cualquier duda, respóndeme por aquí mismo. Un abrazo,
 Mariano`
@@ -116,7 +116,7 @@ export function buildDmFollowup(p: ProviderLike, attempt: number = 1): string {
 
 No quiero saturarte, así que este es el último. Si no te encaja FiestaGo, sin problema — borro la nota y dejamos aquí.
 
-Pero si te interesa probar el lanzamiento del 10 de junio con los primeros profesionales de ${p.city}, inscríbete en 60 segundos:
+Pero si te interesa probarlo con los primeros profesionales de ${p.city}, inscríbete en 60 segundos:
 👉 https://fiestago.es/profesionales
 
 Un abrazo,
@@ -126,7 +126,7 @@ Mariano`
 
 Te escribí hace unos días sobre FiestaGo y no he tenido respuesta — imagino que se te traspapeló entre tantos mensajes (a mí me pasa todo el rato).
 
-Te dejo el resumen rapidito: lanzamos el 10 de junio en España, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas — la comisión la paga el cliente como Garantía de Éxito. La calculadora con tus números está en la landing.
+Te dejo el resumen rapidito: estamos lanzando en España, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas — la comisión la paga el cliente como Garantía de Éxito. La calculadora con tus números está en la landing.
 
 Si te encaja, regístrate aquí en menos de 60 segundos:
 👉 https://fiestago.es/profesionales
@@ -143,7 +143,7 @@ export function buildEmailFollowup(p: ProviderLike, attempt: number = 1): string
 
 Soy Mariano de FiestaGo. Te he escrito un par de veces y este es el último mensaje — no quiero ser pesado.
 
-Si no te encaja FiestaGo, sin problema. Si sí, el lanzamiento es el 10 de junio y todavía estamos a tiempo de meterte en el catálogo inicial:
+Si no te encaja FiestaGo, sin problema. Si sí, estamos lanzando ahora en España y todavía a tiempo de meterte en el catálogo inicial:
 
 https://fiestago.es/profesionales
 
@@ -153,7 +153,7 @@ Mariano`
 
 Soy Mariano, fundador de FiestaGo. Te escribí hace unos días y no recibí respuesta — imagino que se traspapeló entre tantos correos (a mí me pasa todo el rato).
 
-Te dejo el resumen rapidito: lanzamos el 10 de junio, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha; la comisión del 8% la paga el cliente como Garantía de Éxito. La calculadora de cuánto ganarías de más al año está en la landing.
+Te dejo el resumen rapidito: estamos lanzando en España, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha; la comisión del 8% la paga el cliente como Garantía de Éxito. La calculadora de cuánto ganarías de más al año está en la landing.
 
 Si te interesa, te puedes inscribir en menos de 60 segundos:
 https://fiestago.es/profesionales
