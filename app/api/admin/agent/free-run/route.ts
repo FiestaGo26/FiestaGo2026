@@ -249,6 +249,21 @@ async function persistProvider(
   })
   if (error) {
     log(`   ⨯ ${c.name} · insert error: ${error.message}`)
+    // Si el error es "columna no encontrada en schema cache" → es un
+    // bug crítico de esquema (migración no aplicada). Lo escalamos a
+    // agent_alerts para que sea visible en /admin sin tener que cazar
+    // logs de GitHub Actions.
+    if (/Could not find the .* column.* in the schema cache/i.test(error.message)) {
+      const colMatch = error.message.match(/'([^']+)' column/)
+      const missingCol = colMatch?.[1] || 'desconocida'
+      await supabase.from('agent_alerts').insert({
+        source:   'agent/free-run',
+        severity: 'critical',
+        title:    `Columna faltante en providers: ${missingCol}`,
+        detail:   `El insert de candidatos está fallando porque la columna '${missingCol}' no existe en la tabla 'providers'. Aplica la migración correspondiente en Supabase.`,
+        context:  { table: 'providers', missing_column: missingCol, sample_error: error.message },
+      }).then(() => {}, () => {})
+    }
     return false
   }
   log(`   ✓ ${c.name} [${c.sourceTag}]` +
