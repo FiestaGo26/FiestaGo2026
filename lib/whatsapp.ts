@@ -95,42 +95,57 @@ export async function sendTemplate(
   const languageCode = opts.languageCode || defaultLang
 
   // Plantillas que NO aceptan parámetros — no incluimos components.body.
+  // Case-insensitive para tolerar valores "False", "FALSE", " false ".
+  const envHasParamsFlag = (process.env.WHATSAPP_TEMPLATE_HAS_PARAMS || '').trim().toLowerCase()
   const templateHasNoParams =
     template === 'hello_world' ||
-    process.env.WHATSAPP_TEMPLATE_HAS_PARAMS === 'false'
+    envHasParamsFlag === 'false' ||
+    envHasParamsFlag === '0' ||
+    envHasParamsFlag === 'no'
 
-  const components =
-    !templateHasNoParams && opts.bodyParams && opts.bodyParams.length
-      ? [
-          {
-            type: 'body',
-            parameters: opts.bodyParams.map((text) => ({ type: 'text', text })),
-          },
-        ]
-      : undefined
+  const buildPayload = (includeComponents: boolean) => ({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to,
+    type: 'template',
+    template: {
+      name: template,
+      language: { code: languageCode },
+      ...(includeComponents && opts.bodyParams && opts.bodyParams.length
+        ? {
+            components: [
+              {
+                type: 'body',
+                parameters: opts.bodyParams.map((text) => ({ type: 'text', text })),
+              },
+            ],
+          }
+        : {}),
+    },
+  })
 
-  const res = await fetch(
-    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to,
-        type: 'template',
-        template: {
-          name: template,
-          language: { code: languageCode },
-          ...(components ? { components } : {}),
-        },
-      }),
-    }
-  )
-  const data = await res.json()
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  }
+
+  // Intento 1: con params si la plantilla los admite (o sin si la marca como sin).
+  let payload = buildPayload(!templateHasNoParams)
+  let res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
+  let data = await res.json()
+
+  // Auto-retry defensivo: si Meta devuelve "param count mismatch" (132000)
+  // porque la plantilla esperaba 0 params y le mandamos N, reintenta sin
+  // params. Hace el sistema resistente a configuración incorrecta de
+  // WHATSAPP_TEMPLATE_HAS_PARAMS y a actualizaciones de plantillas en Meta.
+  const errMsg = JSON.stringify(data?.error ?? data ?? {})
+  if (!res.ok && /132000|number of localizable_params|expected number of params/i.test(errMsg)) {
+    payload = buildPayload(false)
+    res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
+    data = await res.json()
+  }
+
   if (!res.ok) {
     throw new Error(
       `WhatsApp sendTemplate falló (${res.status}): ${JSON.stringify(data?.error ?? data)}`
