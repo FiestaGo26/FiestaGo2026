@@ -38,7 +38,7 @@ export default function GarantiaPage() {
         <div className="grid md:grid-cols-3 gap-5">
           {[
             { num:'48h',  label:'Para resolverte una cancelación', body:'Si tu proveedor cancela, te conseguimos un sustituto equivalente en 48h o te reembolsamos.' },
-            { num:'110%', label:'Reembolso máximo',                body:'Si no podemos conseguirte un sustituto, te devolvemos el 110% de lo pagado. No solo el 100%.' },
+            { num:'110%', label:'Reembolso máximo',                body:'Si tu proveedor cancela y no encontramos sustituto en 48h, te devolvemos el 110% — sin importar cuándo cancele.' },
             { num:'24/7', label:'Pago retenido',                   body:'El dinero del cliente no llega al proveedor hasta que la celebración termina. FiestaGo retiene el escrow.' },
           ].map(c => (
             <div key={c.num} className="bg-white border border-stone-200 rounded-2xl p-6">
@@ -61,14 +61,14 @@ export default function GarantiaPage() {
         <div className="space-y-4">
           {[
             {
-              title: 'El proveedor cancela con más de 7 días de antelación',
-              action: 'Te conseguimos un sustituto equivalente en menos de 48h, o te devolvemos el 110% del importe que hayas pagado.',
+              title: 'El proveedor cancela tu reserva',
+              action: 'Da igual con cuánta antelación. Te conseguimos un sustituto equivalente en menos de 48h, o te devolvemos el 110% del importe pagado.',
               tag: 'Cubierto',
               tagColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
             },
             {
-              title: 'El proveedor no se presenta o cancela con menos de 7 días',
-              action: 'Reembolso del 100% del importe pagado + compensación adicional escalonada según el ticket de la reserva (300€ a 3.000€).',
+              title: 'El proveedor no se presenta el día del evento',
+              action: 'Reembolso del 100% del importe pagado + compensación adicional de 300€ a 3.000€ según el ticket de tu reserva.',
               tag: 'Cubierto',
               tagColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
             },
@@ -98,7 +98,7 @@ export default function GarantiaPage() {
           Cuánto recibes si tu proveedor falla
         </h2>
         <p className="text-ink/55 mb-8 leading-relaxed">
-          Si tu proveedor no aparece o cancela con menos de 7 días, recibes el reembolso del 100% del importe pagado <strong>más</strong> esta compensación adicional. Escalonada según el precio de la reserva.
+          Si tu proveedor no se presenta el día del evento, recibes el reembolso del 100% del importe pagado <strong>más</strong> esta compensación adicional, escalonada según el precio de la reserva.
         </p>
         <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-card">
           <table className="w-full">
@@ -146,6 +146,7 @@ export default function GarantiaPage() {
               'Daños causados por invitados a la propiedad del proveedor.',
               'Reclamaciones presentadas más de 14 días después del evento.',
               'Eventos sin reserva confirmada y pagada íntegramente dentro de FiestaGo.',
+              'Reservas superiores a 25.000€ (la garantía cubre hasta ese importe máximo por reserva).',
             ].map(item => (
               <li key={item} className="flex items-start gap-3 text-sm text-ink/70 leading-relaxed">
                 <span className="text-stone-400 shrink-0 mt-0.5">✕</span>
@@ -233,7 +234,7 @@ export default function GarantiaPage() {
       {/* Nota legal */}
       <section className="max-w-3xl mx-auto px-6 pb-16">
         <div className="bg-stone-100 border border-stone-200 rounded-xl p-5 text-xs text-ink/55 leading-relaxed">
-          <strong className="text-ink">Aviso legal.</strong> La Garantía de Éxito FiestaGo solo aplica a reservas realizadas y pagadas íntegramente dentro de la plataforma (canal, comunicación y pago). Las condiciones detalladas y los importes específicos de compensación según ticket están disponibles en los Términos de Servicio. Los reembolsos se procesan al método de pago original. FiestaGo se reserva el derecho de verificar la veracidad de las reclamaciones antes de ejecutar la garantía.
+          <strong className="text-ink">Aviso legal.</strong> La Garantía de Éxito FiestaGo solo aplica a reservas realizadas y pagadas íntegramente dentro de la plataforma (canal, comunicación y pago). Las condiciones detalladas y los importes específicos de compensación según ticket están disponibles en los Términos de Servicio. Los reembolsos se procesan al método de pago original. FiestaGo se reserva el derecho de verificar la veracidad de las reclamaciones antes de ejecutar la garantía. La Garantía de Éxito aplica a reservas de hasta 25.000€ por reserva.
         </div>
       </section>
     </main>

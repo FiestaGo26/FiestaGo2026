@@ -191,7 +191,7 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
               Esos portales viven de cobrar al proveedor: cuota anual de 600 a 2.500€. Como cliente, eso no te afecta directamente — pero sí encarece el precio final, porque el proveedor incluye esa cuota en su presupuesto.
             </p>
             <p className="text-sm text-ink/70 leading-relaxed mb-3">
-              En FiestaGo el modelo es al revés: el profesional no paga nada. Tú, como cliente, pagas un 8% adicional al precio de tu proveedor como Garantía de Éxito. Es lo que sostiene la garantía: si tu proveedor falla — cancela última hora, no aparece, calidad muy por debajo — FiestaGo te devuelve hasta el 110% del importe. Eso no lo encontrarás en ningún directorio publicitario.
+              En FiestaGo el modelo es al revés: el profesional no paga nada. Tú, como cliente, pagas un 8% adicional al precio de tu proveedor como Garantía de Éxito. Es lo que sostiene la garantía: si tu proveedor cancela y no encontramos sustituto, FiestaGo te devuelve el 110% del importe; si no se presenta el día del evento, el 100% más una compensación de hasta 3.000€. Eso no lo encontrarás en ningún directorio publicitario.
             </p>
             <p className="text-sm text-ink/70 leading-relaxed">
               Para profesionales de {cat.label.toLowerCase()} en {city}, FiestaGo es la <Link href="/alternativas-bodas-net" className="text-coral underline">alternativa real a Bodas.net</Link>: sin cuota, sin permanencia, y solo pagan comisión cuando hay reserva.

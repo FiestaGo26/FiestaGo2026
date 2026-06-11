@@ -74,7 +74,7 @@ export default async function HomePage() {
               Bodas, cumpleaños, comuniones o eventos corporativos. Garantizado.
             </p>
             <p className="hidden sm:block text-sm md:text-base text-white/80 max-w-xl leading-relaxed">
-              Si tu proveedor te falla, te devolvemos hasta el 110%. Profesionales verificados, pago seguro hasta el evento, y nuestra mediación si algo se complica.
+              Si tu proveedor te falla, te devolvemos el 110% — o más. Profesionales verificados, pago seguro hasta el evento, y nuestra mediación si algo se complica.
             </p>
           </div>
         </div>
@@ -120,7 +120,7 @@ export default async function HomePage() {
                 step:'3',
                 icon:'🎉',
                 title:'Disfruta tu evento',
-                body:'Ya está. Si algo va mal el día D, te respaldamos económicamente hasta el 110% del importe. Esto no lo encontrarás en ningún portal del sector.',
+                body:'Ya está. Si algo va mal el día D, te respaldamos económicamente: 110% si no encontramos sustituto, o 100% más compensación si tu proveedor no aparece. Esto no lo encontrarás en ningún portal del sector.',
               },
             ].map(s => (
               <div key={s.step} className="relative">
@@ -163,7 +163,7 @@ export default async function HomePage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              { icon:'💸', title:'Te devolvemos hasta el 110%', body:'Si tu proveedor cancela o no aparece, te conseguimos un sustituto en 48h o te reembolsamos el 110% del importe pagado.' },
+              { icon:'💸', title:'Te devolvemos el 110%', body:'Si tu proveedor cancela y no encontramos sustituto en 48h, recuperas el 110% de lo pagado. Y si no se presenta el día del evento, el 100% más una compensación de hasta 3.000€.' },
               { icon:'🔒', title:'Pago retenido hasta el evento', body:'El dinero queda en FiestaGo, no en el proveedor, hasta que tu celebración termina. Si algo falla, podemos actuar de verdad.' },
               { icon:'✅', title:'Profesionales verificados', body:'DNI/CIF y seguro de responsabilidad civil contrastados. Solo aparece en la web quien puede demostrar que es de fiar.' },
               { icon:'🎉', title:'Cualquier celebración', body:'Bodas, comuniones, cumpleaños, despedidas, eventos privados o corporativos. La misma garantía da igual lo que organices.' },

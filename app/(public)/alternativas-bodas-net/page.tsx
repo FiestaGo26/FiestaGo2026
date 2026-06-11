@@ -38,7 +38,7 @@ const JSON_LD = {
         { '@type': 'Question', name: '¿Cuál es la diferencia clave entre FiestaGo y Bodas.net?',
           acceptedAnswer: { '@type': 'Answer', text: 'Bodas.net es un directorio publicitario: pagas por aparecer. FiestaGo es un marketplace transaccional: solo ganas dinero cuando hay reservas reales. Bodas.net cobra al proveedor; FiestaGo cobra al cliente como prima de garantía.' } },
         { '@type': 'Question', name: '¿Qué es la Garantía de Éxito de FiestaGo?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Es un seguro incluido en cada reserva, pagado por el cliente (8% extra sobre el precio que tú pongas). Si el proveedor falla — cancela última hora, no aparece, mala calidad — FiestaGo le devuelve económicamente al cliente hasta el 110% del importe. El proveedor cumplidor no paga nada.' } },
+          acceptedAnswer: { '@type': 'Answer', text: 'Es un seguro incluido en cada reserva, pagado por el cliente (8% extra sobre el precio que tú pongas). Si el proveedor cancela y no encontramos sustituto, FiestaGo devuelve el 110% del importe al cliente; si no se presenta el día del evento, el 100% más una compensación de 300€ a 3.000€ según el ticket. El proveedor cumplidor no paga nada.' } },
       ],
     },
   ],
@@ -108,7 +108,7 @@ export default function AlternativasBodasNetPage() {
                     { feat: 'Pago de la comisión', fg: 'El cliente (8%)', bn: 'Tú, vía cuota', zk: 'Tú, vía cuota' },
                     { feat: 'Lo que cobras por reserva', fg: '100% de tu precio', bn: '100% (cuota ya pagada)', zk: '100% (cuota ya pagada)' },
                     { feat: 'Riesgo si no hay reservas', fg: 'Cero (pago variable)', bn: 'Pierdes la cuota', zk: 'Pierdes la cuota' },
-                    { feat: 'Sistema de garantía al cliente', fg: 'Sí, incluida (hasta 110%)', bn: 'No', zk: 'No' },
+                    { feat: 'Sistema de garantía al cliente', fg: 'Sí, incluida (110% sin sustituto)', bn: 'No', zk: 'No' },
                     { feat: 'Bloqueo automático de fechas', fg: 'Sí', bn: 'Manual', zk: 'Manual' },
                     { feat: 'Categorías cubiertas', fg: 'Bodas + cumples + comuniones + corp.', bn: 'Solo bodas', zk: 'Solo bodas' },
                     { feat: 'Promoción en redes (@fiestagospain)', fg: 'Incluida', bn: 'Plan Premium', zk: 'Plan Premium' },
@@ -144,7 +144,7 @@ export default function AlternativasBodasNetPage() {
                 },
                 {
                   icon: '🛡️', title: 'Garantía que vende por ti',
-                  body: 'Cada reserva en FiestaGo incluye Garantía de Éxito: si algo falla, el cliente recupera hasta el 110%. Cobramos un 8% al cliente para sostenerla. Esa garantía es lo que convierte "interesado" en "pago ya". Bodas.net no la tiene.'
+                  body: 'Cada reserva en FiestaGo incluye Garantía de Éxito: si el proveedor cancela y no encontramos sustituto, el cliente recupera el 110%. Cobramos un 8% al cliente para sostenerla. Esa garantía es lo que convierte "interesado" en "pago ya". Bodas.net no la tiene.'
                 },
                 {
                   icon: '🎯', title: 'Solicitudes cualificadas',

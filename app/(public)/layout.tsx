@@ -30,7 +30,7 @@ function Footer() {
           ))}
         </div>
         <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-2 text-xs">
-          <span>© 2025 FiestaGo. Todos los derechos reservados.</span>
+          <span>© 2026 FiestaGo. Todos los derechos reservados.</span>
           <span>contacto@fiestago.es</span>
         </div>
       </div>

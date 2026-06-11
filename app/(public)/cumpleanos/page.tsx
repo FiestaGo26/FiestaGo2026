@@ -29,7 +29,7 @@ export default function CumpleanosLanding() {
       categories: ['animacion', 'pastel', 'foto', 'catering', 'espacios', 'flores'],
       benefits: [
         { icon: '🎈', title: 'Para cualquier edad',         body: 'Desde fiestas de princesas para los 5 años hasta cenas sorpresa de 40 cumpleaños. Filtramos por edad y temática.' },
-        { icon: '🛡️', title: 'Si no aparecen, los pones tú', body: 'Si tu animador, fotógrafo o catering cancela última hora, FiestaGo te devuelve hasta el 110% del importe y te ayuda a encontrar sustituto.' },
+        { icon: '🛡️', title: 'Si no aparecen, los pones tú', body: 'Si tu animador, fotógrafo o catering cancela, FiestaGo busca sustituto en 48h o te devuelve el 110%. Si no se presentan el día del evento, recibes el 100% más compensación.' },
         { icon: '⚡', title: 'Reserva en minutos',           body: 'No esperes 2 semanas a un presupuesto. Precio claro, calendario en tiempo real, pago seguro y a otra cosa.' },
       ],
       faq: [

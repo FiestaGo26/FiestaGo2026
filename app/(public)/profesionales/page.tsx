@@ -78,7 +78,7 @@ export default function ProfesionalesPage() {
                 ['¿Cobras el 100%?',           'Sí',                         'Sí (pero pagas cuota)', 'Sí (pero pagas cuota)'],
                 ['Permanencia',                'Ninguna',                    '1 año',            '1 año'],
                 ['Cobro de la reserva',        'Escrow en FiestaGo',         'Fuera de plataforma','Fuera de plataforma'],
-                ['Garantía al cliente',        'Sí, hasta 110%',             'Ninguna',          'Ninguna'],
+                ['Garantía al cliente',        'Sí, 110% sin sustituto',     'Ninguna',          'Ninguna'],
                 ['Tipo de eventos',            'Todas las celebraciones',    'Solo bodas',       'Solo bodas'],
                 ['Verificación de proveedores','DNI/CIF + sello',            'No',               'No'],
                 ['Chat con el cliente',        'Integrado, con histórico',   'Email/teléfono',   'Email/teléfono'],

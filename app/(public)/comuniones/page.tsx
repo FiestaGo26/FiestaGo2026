@@ -30,7 +30,7 @@ export default function ComunionesLanding() {
       benefits: [
         { icon: '👨‍👩‍👧', title: 'Pensado para familias',          body: 'Los restaurantes y proveedores en FiestaGo entienden las necesidades específicas: menús infantiles, espacios para niños, horarios flexibles.' },
         { icon: '📸', title: 'Fotografía profesional',           body: 'Fotógrafos especializados en comuniones, con reportajes completos y entrega de archivos en tiempo razonable. No te quedes con fotos del móvil.' },
-        { icon: '🛡️', title: 'Si algo falla, te respondemos',    body: 'Si el restaurante cancela, el fotógrafo no aparece o la tarta no llega a tiempo, FiestaGo cubre hasta el 110%. Nunca te quedas sin solución.' },
+        { icon: '🛡️', title: 'Si algo falla, te respondemos',    body: 'Si el restaurante cancela y no encontramos sustituto en 48h, recuperas el 110%. Si el fotógrafo no aparece o la tarta no llega, 100% más compensación. Nunca te quedas sin solución.' },
       ],
       faq: [
         { q: '¿Cuándo conviene reservar la comunión?',

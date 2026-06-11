@@ -330,7 +330,7 @@ function RegistroProveedorInner() {
               He leído y acepto los{' '}
               <a href="/proveedor/compromisos" target="_blank" rel="noreferrer" className="text-coral underline font-semibold">
                 Compromisos del Proveedor
-              </a>: responder en plazo, cumplir el servicio reservado, comparecer al evento, tener documentos en regla, no saltarme FiestaGo en la primera reserva y mantener disponibilidad real.
+              </a>, incluidas las penalizaciones económicas del punto 3 y la autorización de domiciliación bancaria para su cargo.
             </span>
           </label>
 

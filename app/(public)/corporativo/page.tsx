@@ -30,7 +30,7 @@ export default function CorporativoLanding() {
       benefits: [
         { icon: '🧾', title: 'Factura y proceso simplificado',  body: 'Una sola reserva, una sola factura. Pago retenido hasta el evento — útil para los procesos de aprobación interna y conciliación contable.' },
         { icon: '⚡', title: 'Reserva express',                 body: 'Sin esperar 3 semanas a un presupuesto. Precio cerrado, disponibilidad real y reserva inmediata. Si te toca cuadrar un evento en 10 días, FiestaGo lo permite.' },
-        { icon: '🛡️', title: 'Backup si falla algo',            body: 'Si el catering cancela 48h antes o el espacio te falla, FiestaGo cubre hasta el 110% del importe. Para un evento corporativo, esa garantía vale oro.' },
+        { icon: '🛡️', title: 'Backup si falla algo',            body: 'Si el catering cancela o el espacio te falla, FiestaGo te busca sustituto en 48h o te devuelve el 110%. Para un evento corporativo, esa garantía vale oro.' },
       ],
       faq: [
         { q: '¿Podéis facturar a empresa con CIF?',

@@ -13,13 +13,13 @@ export default function CompromisosPage() {
       <article className="max-w-2xl mx-auto bg-white border border-stone-200 rounded-3xl p-8 md:p-12 shadow-card">
         <Link href="/profesionales" className="text-xs text-coral hover:underline mb-6 inline-block">← Volver</Link>
         <div className="text-[10px] font-bold tracking-widest uppercase text-coral mb-3">
-          Versión {TERMS_VERSION_CURRENT} · Borrador interno
+          Versión {TERMS_VERSION_CURRENT} — Junio 2026
         </div>
         <h1 className="font-serif text-3xl md:text-4xl font-black text-ink mb-3 leading-tight">
           Compromisos del Proveedor en FiestaGo
         </h1>
         <p className="text-ink/55 text-sm leading-relaxed mb-8">
-          Esto es lo que firmas al inscribirte. Es corto a propósito y la versión legal definitiva la afinamos con un abogado antes del lanzamiento del 10 de junio. Pero el espíritu es este.
+          Esto es lo que aceptas al inscribirte. Es corto a propósito, para que lo leas de verdad.
         </p>
 
         <Section title="Por qué existen estos compromisos">
@@ -36,36 +36,69 @@ export default function CompromisosPage() {
           <p className="mt-2 text-xs text-ink/55">Cambios solo con acuerdo explícito por escrito en el chat de FiestaGo. Si incumples, cubrimos la diferencia al cliente y te la facturamos del siguiente pago.</p>
         </Section>
 
-        <Section title="3. Comparecer al evento" badge="No-show: cargo entero + baja">
-          Te presentas en la fecha y hora acordadas. Si surge una urgencia legítima, avisas con la máxima antelación posible y FiestaGo busca sustituto.
-          <div className="mt-3">
-            <p className="text-xs text-ink/55 mb-2">Si no apareces o cancelas con menos de 7 días, el cliente recibe reembolso del 100% más la siguiente compensación, todo descontado de tu próximo payout o facturado directamente:</p>
-            <table className="text-xs w-full border border-stone-200 rounded-lg overflow-hidden mt-1">
-              <thead className="bg-stone-50 text-ink/55">
-                <tr><th className="text-left p-2 font-semibold">Ticket reserva</th><th className="text-right p-2 font-semibold">Compensación que asumes</th></tr>
-              </thead>
-              <tbody className="text-ink/75">
-                {[
-                  ['Hasta 500 €',    '300 €'],
-                  ['500–2 000 €',    '500 €'],
-                  ['2 000–5 000 €',  '1 000 €'],
-                  ['5 000–15 000 €', '2 000 €'],
-                  ['Más de 15 000 €','3 000 €'],
-                ].map(([t,c]) => (
-                  <tr key={t} className="border-t border-stone-100">
-                    <td className="p-2">{t}</td>
-                    <td className="p-2 text-right font-semibold text-coral">{c}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="text-[11px] text-ink/55 mt-2">Tras una segunda incidencia grave, baja permanente del marketplace.</p>
-          </div>
+        <Section title="3. Comparecer al evento" badge="Lo importante: que el evento se celebre">
+          Te presentas en la fecha y hora acordadas. Si necesitas cancelar una reserva confirmada, avisas lo antes posible y colaboras con FiestaGo en encontrar un sustituto — puedes incluso proponer tú a un profesional de confianza que cumpla nuestros requisitos.
+
+          <p className="mt-3"><strong>Si se encuentra sustituto, no asumes penalización.</strong> Solo cubres la diferencia de precio si el sustituto es más caro que tu servicio.</p>
+
+          <p className="mt-3"><strong>Si no se encuentra sustituto, asumes la penalización que financia la garantía al cliente:</strong></p>
+
+          <table className="text-xs w-full border border-stone-200 rounded-lg overflow-hidden mt-2">
+            <thead className="bg-stone-50 text-ink/55">
+              <tr>
+                <th className="text-left p-2 font-semibold">Cuándo cancelaste</th>
+                <th className="text-right p-2 font-semibold">Penalización</th>
+              </tr>
+            </thead>
+            <tbody className="text-ink/75">
+              {[
+                ['Más de 30 días antes',   '15% del ticket (mínimo 75€)'],
+                ['Entre 7 y 30 días',      '25% del ticket (mínimo 150€)'],
+                ['Menos de 7 días',        'Compensación según tabla: 300€ – 3.000€'],
+              ].map(([t,c]) => (
+                <tr key={t} className="border-t border-stone-100">
+                  <td className="p-2">{t}</td>
+                  <td className="p-2 text-right font-semibold text-coral">{c}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p className="mt-4"><strong>Si no te presentas al evento (no-show), la penalización aplica siempre</strong> — compensación según tabla + baja tras la 2ª incidencia.</p>
+
+          <p className="mt-3 text-xs text-ink/55">Tabla de compensaciones para cancelación con menos de 7 días o no-show:</p>
+          <table className="text-xs w-full border border-stone-200 rounded-lg overflow-hidden mt-1">
+            <thead className="bg-stone-50 text-ink/55">
+              <tr>
+                <th className="text-left p-2 font-semibold">Ticket reserva</th>
+                <th className="text-right p-2 font-semibold">Compensación que asumes</th>
+              </tr>
+            </thead>
+            <tbody className="text-ink/75">
+              {[
+                ['Hasta 500 €',    '300 €'],
+                ['500–2 000 €',    '500 €'],
+                ['2 000–5 000 €',  '1 000 €'],
+                ['5 000–15 000 €', '2 000 €'],
+                ['Más de 15 000 €','3 000 €'],
+              ].map(([t,c]) => (
+                <tr key={t} className="border-t border-stone-100">
+                  <td className="p-2">{t}</td>
+                  <td className="p-2 text-right font-semibold text-coral">{c}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p className="mt-4 text-xs text-ink/55">
+            La acumulación de 3 cancelaciones en 12 meses, aunque se haya encontrado sustituto, supone la pausa de tu perfil. Las penalizaciones se descuentan de tu próximo payout o se cargan mediante la domiciliación bancaria autorizada en tu registro, y constituyen deuda líquida, vencida y exigible a favor de FiestaGo. Las urgencias de fuerza mayor acreditadas (hospitalización, fallecimiento familiar directo) se valoran caso por caso sin penalización automática.
+          </p>
         </Section>
 
         <Section title="4. Documentos en regla" badge="Pierdes el sello">
           Estás dado de alta como autónomo o empresa, declaras el IVA cuando corresponde, y tienes seguro de responsabilidad civil cuando tu actividad lo requiere (catering, animación con menores, espacios con aforo).
           <p className="mt-2 text-xs text-ink/55">FiestaGo guarda tu DNI/CIF en un bucket privado y lo elimina tras verificarte. Falsificar documentación = baja inmediata.</p>
+          <p className="mt-3">Al registrarte autorizas la domiciliación bancaria (mandato SEPA) para el cargo de las penalizaciones del punto 3, en caso de que no existan payouts pendientes de los que descontarlas.</p>
         </Section>
 
         <Section title="5. No saltarse FiestaGo" badge="Aviso → baja">
@@ -76,6 +109,10 @@ export default function CompromisosPage() {
         <Section title="6. Mantener la disponibilidad real" badge="Cuenta como no-show">
           Mantienes tu calendario actualizado. No aceptas reservas para fechas en las que ya estabas comprometido por otro canal.
           <p className="mt-2 text-xs text-ink/55">Cada doble-reserva por descuido tuyo cuenta como un no-show (ver punto 3).</p>
+        </Section>
+
+        <Section title="7. Flexibilidad ante fuerza mayor del cliente" badge="Colaboración en reprogramación">
+          Si el cliente sufre una causa de fuerza mayor (fallecimiento familiar directo, hospitalización), FiestaGo le permite aplazar el evento hasta 12 meses. Te comprometes a ofrecer una fecha alternativa razonable o, si no tienes disponibilidad, a facilitar que FiestaGo te sustituya sin penalización para nadie.
         </Section>
 
         <hr className="my-10 border-stone-200"/>
@@ -94,7 +131,7 @@ export default function CompromisosPage() {
         <hr className="my-10 border-stone-200"/>
 
         <p className="text-xs text-ink/45 leading-relaxed">
-          Al inscribirte en FiestaGo confirmas que has leído y aceptas estos seis compromisos. La aceptación queda registrada con tu fecha y la versión del documento. Si actualizamos los compromisos, te pedimos volver a aceptarlos antes de seguir aceptando reservas.
+          Al inscribirte en FiestaGo confirmas que has leído y aceptas estos siete compromisos, <strong>incluidas las penalizaciones económicas del punto 3 y la autorización de domiciliación bancaria para su cargo</strong>. La aceptación queda registrada con tu fecha y la versión del documento. Si actualizamos los compromisos, te pedimos volver a aceptarlos antes de seguir aceptando reservas.
         </p>
       </article>
     </main>
