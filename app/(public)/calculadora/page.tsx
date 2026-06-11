@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { CATEGORIES, CITIES, getPhoto } from '@/lib/constants'
 import toast from 'react-hot-toast'
 
@@ -38,7 +39,16 @@ type Result = {
   }>
 }
 
+const STYLES = [
+  { id: 'rustico',  label: '🌾 Rústico',   hint: 'Madera, naturaleza, fincas campestres' },
+  { id: 'clasico',  label: '🎩 Clásico',   hint: 'Elegancia tradicional, salones' },
+  { id: 'moderno',  label: '✨ Moderno',   hint: 'Minimalista, urbano, industrial' },
+  { id: 'playa',    label: '🌊 Playa',     hint: 'Aire libre, costero, descalzo' },
+  { id: 'elegante', label: '💎 Elegante',  hint: 'Premium, refinado, exclusivo' },
+]
+
 export default function CalculadoraPage() {
+  const router = useRouter()
   const [eventType, setEventType] = useState<EventType>('boda')
   const [guests, setGuests]       = useState(100)
   const [city, setCity]           = useState('')
@@ -47,6 +57,10 @@ export default function CalculadoraPage() {
   const [loading, setLoading]     = useState(false)
   const [email, setEmail]         = useState('')
   const [emailSent, setEmailSent] = useState(false)
+  // AI Planner state
+  const [style,    setStyle]      = useState<string>('')
+  const [eventDate, setEventDate] = useState<string>('')
+  const [planning, setPlanning]   = useState(false)
 
   // Cuando cambia el tipo, actualizamos categorías y nº de invitados.
   function handleEventTypeChange(t: EventType) {
@@ -88,6 +102,46 @@ export default function CalculadoraPage() {
       toast.error('Sin conexión')
     }
     setLoading(false)
+  }
+
+  // Llama al AI Planner. Necesita ciudad + presupuesto definidos
+  // (usamos la mediana del cálculo previo como presupuesto si no nos
+  // han dado uno explícito).
+  async function generatePlan() {
+    if (!result) { toast.error('Calcula primero el presupuesto'); return }
+    if (!city) {
+      toast.error('Para una propuesta personalizada, selecciona tu ciudad')
+      return
+    }
+    setPlanning(true)
+    try {
+      const res = await fetch('/api/calculadora/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_type:    eventType,
+          guests,
+          city,
+          categories:    selectedCats,
+          budget_total:  result.total.avg,
+          style:         style || null,
+          event_date:    eventDate || null,
+          client_email:  email || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'No se pudo generar la propuesta')
+      } else if (data.proposal_id) {
+        toast.success('¡Equipo recomendado listo!')
+        router.push(`/mi-evento/${data.proposal_id}`)
+      } else {
+        toast.error('La propuesta se generó pero no se pudo guardar.')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Sin conexión')
+    }
+    setPlanning(false)
   }
 
   async function handleEmailCapture(e: FormEvent) {
@@ -171,6 +225,28 @@ export default function CalculadoraPage() {
                 <option value="">Toda España</option>
                 {CITIES.map((c: string) => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+          </div>
+
+          {/* Estilo + Fecha (opcionales, para la IA Planner) */}
+          <div className="grid sm:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-bold text-ink mb-2">
+                Estilo <span className="text-ink/50 font-normal">(para la IA)</span>
+              </label>
+              <select value={style} onChange={e => { setStyle(e.target.value); setResult(null) }}
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-200 focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none text-sm bg-white">
+                <option value="">Sin preferencia</option>
+                {STYLES.map(s => <option key={s.id} value={s.id}>{s.label} — {s.hint}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-ink mb-2">
+                Fecha <span className="text-ink/50 font-normal">(opcional, filtra por disponibilidad)</span>
+              </label>
+              <input type="date" value={eventDate}
+                onChange={e => { setEventDate(e.target.value); setResult(null) }}
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-200 focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none text-sm"/>
             </div>
           </div>
 
@@ -260,6 +336,25 @@ export default function CalculadoraPage() {
                   </div>
                 )
               })}
+            </div>
+
+            {/* ✨ AI Planner — botón hero antes del email capture */}
+            <div className="bg-gradient-to-br from-violet-600 to-coral text-white rounded-2xl p-6 mb-5 text-center">
+              <div className="text-3xl mb-2">🎯</div>
+              <h3 className="font-serif text-xl md:text-2xl font-bold mb-1">
+                ¿Quieres que te arme el equipo entero?
+              </h3>
+              <p className="text-sm opacity-90 mb-5 max-w-md mx-auto">
+                Nuestro AI Planner elige los mejores proveedores reales de {city || 'tu ciudad'} y te
+                arma 3 propuestas (económica, estándar, premium) en 10 segundos.
+              </p>
+              <button onClick={generatePlan} disabled={planning || !city}
+                className="bg-white text-violet-700 font-bold px-6 py-3 rounded-xl text-sm hover:bg-cream transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                {planning ? '✨ Pensando tu equipo...' : '🎯 Generar mi equipo con IA'}
+              </button>
+              {!city && (
+                <p className="text-xs opacity-75 mt-3">⚠ Selecciona tu ciudad arriba para activar el planner</p>
+              )}
             </div>
 
             {/* CTA Email capture */}
