@@ -17,7 +17,7 @@ function Footer() {
             { title:'Celebraciones', links:[['Bodas','/proveedores?categoria=planner'],['Cumpleaños','/#packs'],['Fiestas privadas','/#packs']] },
             { title:'Proveedores',   links:[['Saber más','/profesionales'],['Inscribirse','/registro-proveedor'],['Acceder a mi panel','/proveedor/login']] },
             { title:'FiestaGo',      links:[['🛡 Garantía de Éxito','/garantia'],['Compromisos del Proveedor','/proveedor/compromisos']] },
-            { title:'Legal',         links:[['Términos de uso','#'],['Privacidad','#'],['Cookies','#']] },
+            { title:'Legal',         links:[['Términos de uso','/terminos'],['Privacidad','/privacidad'],['Cookies','/cookies']] },
           ].map(col => (
             <div key={col.title}>
               <div className="text-white font-semibold text-sm mb-4">{col.title}</div>
