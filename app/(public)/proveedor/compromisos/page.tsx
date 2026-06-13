@@ -91,14 +91,14 @@ export default function CompromisosPage() {
           </table>
 
           <p className="mt-4 text-xs text-ink/55">
-            La acumulación de 3 cancelaciones en 12 meses, aunque se haya encontrado sustituto, supone la pausa de tu perfil. Las penalizaciones se descuentan de tu próximo payout o se cargan mediante la domiciliación bancaria autorizada en tu registro, y constituyen deuda líquida, vencida y exigible a favor de FiestaGo. Las urgencias de fuerza mayor acreditadas (hospitalización, fallecimiento familiar directo) se valoran caso por caso sin penalización automática.
+            La acumulación de 3 cancelaciones en 12 meses, aunque se haya encontrado sustituto, supone la pausa de tu perfil. Las penalizaciones se descuentan de tu próximo payout o se cargan en el método de pago vinculado a tu cuenta, y constituyen deuda líquida, vencida y exigible a favor de FiestaGo. Las urgencias de fuerza mayor acreditadas (hospitalización, fallecimiento familiar directo) se valoran caso por caso sin penalización automática.
           </p>
         </Section>
 
         <Section title="4. Documentos en regla" badge="Pierdes el sello">
           Estás dado de alta como autónomo o empresa, declaras el IVA cuando corresponde, y tienes seguro de responsabilidad civil cuando tu actividad lo requiere (catering, animación con menores, espacios con aforo).
           <p className="mt-2 text-xs text-ink/55">FiestaGo guarda tu DNI/CIF en un bucket privado y lo elimina tras verificarte. Falsificar documentación = baja inmediata.</p>
-          <p className="mt-3">Al registrarte autorizas la domiciliación bancaria (mandato SEPA) para el cargo de las penalizaciones del punto 3, en caso de que no existan payouts pendientes de los que descontarlas.</p>
+          <p className="mt-3 text-xs text-ink/55">Antes de tu primera reserva confirmada, te pediremos firmar una domiciliación bancaria (mandato SEPA) para poder cargar, si llegara el caso, las penalizaciones del punto 3 cuando no existan payouts pendientes. En el momento del registro no necesitamos este dato — solo cuando estés a punto de aceptar tu primera reserva pagada.</p>
         </Section>
 
         <Section title="5. No saltarse FiestaGo" badge="Aviso → baja">
@@ -131,7 +131,7 @@ export default function CompromisosPage() {
         <hr className="my-10 border-stone-200"/>
 
         <p className="text-xs text-ink/45 leading-relaxed">
-          Al inscribirte en FiestaGo confirmas que has leído y aceptas estos siete compromisos, <strong>incluidas las penalizaciones económicas del punto 3 y la autorización de domiciliación bancaria para su cargo</strong>. La aceptación queda registrada con tu fecha y la versión del documento. Si actualizamos los compromisos, te pedimos volver a aceptarlos antes de seguir aceptando reservas.
+          Al inscribirte en FiestaGo confirmas que has leído y aceptas estos siete compromisos, <strong>incluidas las penalizaciones económicas del punto 3</strong>. La aceptación queda registrada con tu fecha y la versión del documento. Si actualizamos los compromisos, te pedimos volver a aceptarlos antes de seguir aceptando reservas. La autorización de domiciliación bancaria (mandato SEPA) se solicitará por separado antes de tu primera reserva confirmada, no en este momento.
         </p>
       </article>
     </main>

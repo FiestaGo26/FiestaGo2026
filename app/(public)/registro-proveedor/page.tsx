@@ -330,7 +330,7 @@ function RegistroProveedorInner() {
               He leído y acepto los{' '}
               <a href="/proveedor/compromisos" target="_blank" rel="noreferrer" className="text-coral underline font-semibold">
                 Compromisos del Proveedor
-              </a>, incluidas las penalizaciones económicas del punto 3 y la autorización de domiciliación bancaria para su cargo.
+              </a>, incluidas las penalizaciones económicas del punto 3.
             </span>
           </label>
 

@@ -72,7 +72,10 @@ export default function TerminosPage() {
 
         <Section title="7. Obligaciones de los Proveedores">
           <p>
-            Los Proveedores aceptan en su registro los <Link href="/proveedor/compromisos" className="text-coral underline">Compromisos del Proveedor</Link>, que forman parte integrante de estos Términos, incluyendo: la veracidad de la documentación aportada, el cumplimiento del servicio en los términos publicados, el régimen de penalizaciones por cancelación o incomparecencia, la autorización de domiciliación bancaria (mandato SEPA) para el cargo de dichas penalizaciones, y la prohibición de derivar la operación fuera de la Plataforma durante la primera reserva.
+            Los Proveedores aceptan en su registro los <Link href="/proveedor/compromisos" className="text-coral underline">Compromisos del Proveedor</Link>, que forman parte integrante de estos Términos, incluyendo: la veracidad de la documentación aportada, el cumplimiento del servicio en los términos publicados, el régimen de penalizaciones por cancelación o incomparecencia, y la prohibición de derivar la operación fuera de la Plataforma durante la primera reserva.
+          </p>
+          <p>
+            La autorización de domiciliación bancaria (mandato SEPA) necesaria para el cargo de las penalizaciones, cuando no existan payouts pendientes de los que descontarlas, se solicitará al Proveedor de forma separada antes de la confirmación de su primera reserva, no en el momento del registro inicial.
           </p>
         </Section>
 

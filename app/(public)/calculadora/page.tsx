@@ -110,7 +110,9 @@ export default function CalculadoraPage() {
   async function generatePlan() {
     if (!result) { toast.error('Calcula primero el presupuesto'); return }
     if (!city) {
-      toast.error('Para una propuesta personalizada, selecciona tu ciudad')
+      toast.error('Selecciona tu ciudad arriba para personalizar la propuesta')
+      // Scroll suave al formulario para que vea el selector
+      document.querySelector<HTMLElement>('select[aria-label="ciudad"], select')?.scrollIntoView({ behavior:'smooth', block:'center' })
       return
     }
     setPlanning(true)
@@ -348,12 +350,14 @@ export default function CalculadoraPage() {
                 Nuestro AI Planner elige los mejores proveedores reales de {city || 'tu ciudad'} y te
                 arma 3 propuestas (económica, estándar, premium) en 10 segundos.
               </p>
-              <button onClick={generatePlan} disabled={planning || !city}
+              <button onClick={generatePlan} disabled={planning}
                 className="bg-white text-violet-700 font-bold px-6 py-3 rounded-xl text-sm hover:bg-cream transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                 {planning ? '✨ Pensando tu equipo...' : '🎯 Generar mi equipo con IA'}
               </button>
               {!city && (
-                <p className="text-xs opacity-75 mt-3">⚠ Selecciona tu ciudad arriba para activar el planner</p>
+                <p className="text-xs opacity-90 mt-3">
+                  💡 <strong>Tip:</strong> selecciona tu ciudad arriba para una propuesta más personalizada (al pulsar te llevamos)
+                </p>
               )}
             </div>
 
