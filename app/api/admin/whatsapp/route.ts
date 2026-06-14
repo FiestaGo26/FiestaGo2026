@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { normalizePhone, sendTemplate, sendText } from '@/lib/whatsapp'
-import { generateOpeningMessage, buildOutreachDescriptor } from '@/lib/fiestago-agent'
+import { generateOpeningMessage, buildOutreachDescriptor, countPlazasConSelloRestantes } from '@/lib/fiestago-agent'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -179,12 +179,13 @@ export async function POST(req: NextRequest) {
   try {
     // ── Borrador con IA (no envía nada) ──
     if (op === 'draft') {
+      const plazasConSello = await countPlazasConSelloRestantes()
       const text = await generateOpeningMessage({
         name: provider.name,
         category: provider.category,
         city: provider.city,
         social_handle: provider.social_handle,
-      })
+      }, plazasConSello)
       return NextResponse.json({ ok: true, text })
     }
 

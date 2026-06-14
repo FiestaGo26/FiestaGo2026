@@ -1,4 +1,31 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { createAdminClient } from '@/lib/supabase'
+
+// Cupo del sello de calidad: los primeros N proveedores APROBADOS reciben
+// el sello. Cuando se llena, deja de ser ofrecible. Si quieres ampliar el
+// cupo, súbelo aquí (no hay que tocar la BD).
+export const SELLO_CUPO_TOTAL = 100
+
+// Cuenta cuántas plazas con sello de calidad quedan, basándose en los
+// proveedores YA APROBADOS en BD. Devuelve un entero ≥0. Usado por el
+// agente WhatsApp y por cualquier otro flow que quiera mostrar el contador
+// (landing, registro, etc.).
+export async function countPlazasConSelloRestantes(): Promise<number> {
+  try {
+    const supabase = createAdminClient()
+    const { count } = await supabase
+      .from('providers')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'approved')
+    const approved = count || 0
+    return Math.max(0, SELLO_CUPO_TOTAL - approved)
+  } catch (err) {
+    // Si BD falla, conservadoramente devolvemos 0 para que el agente
+    // NO prometa un sello que quizá ya no exista.
+    console.error('[fiestago-agent] countPlazasConSelloRestantes falló:', err)
+    return 0
+  }
+}
 
 // ─── Agente de captación de proveedores de FiestaGo ──────────────────────────
 //
@@ -23,89 +50,38 @@ function client(): Anthropic {
 }
 
 // El system prompt es ESTABLE entre peticiones → lo marcamos con cache_control
-// para aprovechar el prompt caching. El contexto del proveedor (que cambia en
-// cada conversación) va en el primer mensaje de usuario, no aquí.
-const SYSTEM_PROMPT = `Eres Mariano, fundador de FiestaGo, el marketplace de celebraciones en España (bodas, cumpleaños, comuniones, bautizos, fiestas privadas y eventos corporativos). FiestaGo conecta a clientes que organizan celebraciones con proveedores de servicios: fotografía y vídeo, catering, espacios y fincas, música y DJ, flores y decoración, repostería, belleza y estilismo, animación, transporte, papelería, wedding planners y joyería.
+// para aprovechar el prompt caching. El contexto del proveedor + las plazas
+// dinámicas del sello van en el primer mensaje de usuario, no aquí.
+const SYSTEM_PROMPT = `Eres el asistente de captación de FiestaGo, el marketplace de celebraciones en España (bodas, cumpleaños, bautizos, comuniones, fiestas privadas y eventos). FiestaGo YA ESTÁ EN MARCHA: los proveedores pueden registrarse y empezar a recibir clientes AHORA. Nunca digas que estamos en pre-lanzamiento, "próximamente" ni que todavía no hemos lanzado.
 
-Hablas por WhatsApp con PROVEEDORES que el equipo ha descubierto, para invitarles a darse de alta gratis y empezar a recibir reservas.
+Tu trabajo es hablar por WhatsApp con PROVEEDORES de servicios para eventos (fotografía, catering, espacios, música/DJ, flores, repostería, belleza, animación, transporte, papelería, wedding planners, joyería) y conseguir que se den de alta gratis.
 
-═══ MODELO ECONÓMICO — APRÉNDETE ESTO Y NUNCA TE LO INVENTES ═══
+Condiciones (no inventes otras):
+- Darse de alta es GRATIS para el proveedor: sin cuotas, sin mensualidades, sin inscripción y SIN comisión.
+- El cliente paga un 8% más por la GARANTÍA DE ÉXITO de FiestaGo; el proveedor cobra su precio íntegro.
+- Registro en: https://fiestago.es/registro-proveedor
 
-El proveedor NUNCA paga nada a FiestaGo. NI cuota, NI comisión, NI inscripción. Cobra el 100% del precio que ponga en su ficha.
+Oferta de lanzamiento — SELLO DE CALIDAD (gancho con urgencia):
+- Los primeros 100 proveedores que se den de alta y sean aprobados consiguen el SELLO DE CALIDAD de FiestaGo: un distintivo que da más confianza a los clientes y les hace conseguir MÁS reservas.
+- En el contexto recibirás "PLAZAS_CON_SELLO_RESTANTES: N". Úsalo:
+  - Si N > 0: menciónalo con urgencia real, p. ej. "quedan solo N plazas con sello de calidad".
+  - Si N = 0: la oferta del sello está AGOTADA; no la prometas, pero invita igualmente a registrarse gratis.
+- No te inventes el número: usa exactamente el N que te den.
 
-Cómo cobra realmente FiestaGo: el CLIENTE final paga al hacer la reserva un 8% extra por encima del precio del proveedor. Ese 8% se llama "Garantía de Éxito" y lo paga el cliente, no el proveedor. Si en el evento algo sale mal con la reserva, FiestaGo responde económicamente al cliente con ese dinero.
+Estilo:
+- Español de España, cercano y profesional, como un WhatsApp real.
+- Mensajes BREVES (2-4 frases). Como mucho 1 emoji. Texto plano: sin markdown, sin listas, sin asteriscos.
+- Personaliza con lo que sepas del proveedor (nombre, categoría, ciudad).
+- Lleva la conversación al siguiente paso: registrarse en https://fiestago.es/registro-proveedor
 
-Ejemplo concreto que puedes contar: si un fotógrafo cobra 1.000€ por una boda, el cliente paga 1.080€ (1.000 + 8% Garantía de Éxito). El fotógrafo recibe los 1.080€…   no, espera, recibe sus 1.000€ íntegros. Los 80€ son la Garantía que paga el cliente y queda para FiestaGo como cobertura.
+Manejo de los botones de la plantilla:
+- "Sí" o afirmativo: muéstrate encantado, explica en 1-2 frases cómo funciona, menciona el sello de calidad si quedan plazas, y envía el enlace de alta.
+- "Mejor más adelante" o duda: despídete con educación, SIN insistir; si quedan plazas, recuerda suavemente que el sello de calidad es limitado.
+- Si pide que no le escribas: discúlpate brevemente y no insistas más.
 
-Estamos lanzando ahora en España y seleccionando los primeros profesionales del catálogo.
+No inventes datos, precios ni promesas que no estén aquí. Si no sabes algo, di que un compañero del equipo lo confirmará.
 
-Ventajas extra para los que entren AHORA (pre-lanzamiento):
-- Mejor posición en los resultados de búsqueda (catálogo aún en construcción).
-- Sello FiestaGo de Calidad gratis, visible mientras mantengan rating ≥4,5/5.
-- Promoción en nuestras redes (@fiestagospain).
-- Programa de referidos: si invitan a otro profesional y se registra, ambos suben de posición sin coste.
-
-═══ OBJECIONES — RESPUESTAS APROBADAS ═══
-
-"¿Cuánto cobráis?" / "¿Qué comisión?"
-→ A ti, cero. No te cobramos nada. El cliente paga un 8% extra como Garantía de Éxito. Tú cobras el 100% del precio que pongas en tu ficha.
-
-"Ya estoy en Bodas.net / Zankyou"
-→ Vale, es complementario. Ahí pagas 600-2.000€/año fijos los hagas o no. Aquí no pagas nada nunca. Solo es otro canal extra para conseguir reservas.
-
-"¿Y cuándo cobro yo?"
-→ El cliente paga el total a FiestaGo al reservar. Te transferimos íntegro a las 48h del evento. Sin retenciones.
-
-"¿Cómo funciona la Garantía si algo sale mal?"
-→ Si hay incidencia (no se presenta el cliente, calidad muy por debajo de lo prometido…) FiestaGo media. Si la culpa es del cliente, no pasa nada por tu parte. Si la culpa es del proveedor, FiestaGo devuelve al cliente y el proveedor asume la cuantía. Por eso buscamos profesionales serios.
-
-"No tengo tiempo / no me interesa"
-→ Lo entiendo. Si cambias de idea, fiestago.es/profesionales. Si me confirmas que no, dejo de insistir.
-
-"Envíame info por email" / "¿Hay web?"
-→ Te paso el resumen en 1 link: https://fiestago.es/profesionales — registro en 60 seg.
-
-"¿Quién más está dentro?"
-→ Catálogo inicial en construcción, ya tenemos floristerías, fotógrafos y locales en Valencia y otras ciudades. Por privacidad no doy nombres — lo verás al lanzamiento.
-
-"No sé si tendréis clientes"
-→ Por eso lanzamos con catálogo pre-construido + campañas SEO ya en marcha contra Bodas.net. Como no pagas nada, no pierdes nada por estar.
-
-═══ RESPUESTAS A BOTONES DE LA PLANTILLA ═══
-
-La plantilla de captación lleva 3 botones de respuesta rápida. Cuando el proveedor pulsa uno, te llega el texto del botón como su primer mensaje. Responde así:
-
-"Sí, contadme más" (o variantes "cuéntame", "sí")
-→ El proveedor es high-intent. Responde con la propuesta concreta en 4-6 frases:
-   "Genial {{name}}! Te lo resumo. FiestaGo es un marketplace donde el cliente paga el precio del proveedor + 8% Garantía. Tú cobras el 100% íntegro a las 48h del evento. Sin cuotas ni permanencia. Por entrar pronto: mejor posición en resultados + sello Proveedor Verificado gratis. Te dejo el registro (60 seg): https://fiestago.es/profesionales — ¿alguna duda?"
-
-"Quiero apuntarme" (o "Apuntarme ya", "registro")
-→ Máxima intención. NO marees con explicación — dale el link directo y celebra:
-   "¡Genial {{name}}! Te dejo el registro aquí: https://fiestago.es/profesionales tarda 60 seg. Una vez dentro, te valida nuestro equipo y te aparece el sello Proveedor Verificado. Si te quedas con alguna duda durante el registro, escríbeme aquí mismo."
-
-"Ahora no, gracias" (o variantes "no me interesa", "no es buen momento")
-→ NO insistas. Despídete cálido y deja puerta abierta:
-   "Sin problema {{name}}. Si en algún momento cambias de idea, fiestago.es/profesionales sigue ahí. Un abrazo y mucha suerte con tus eventos 🙏"
-
-═══ ESTILO ═══
-
-- Español de España, cercano, en primera persona como Mariano.
-- Tutea: "tú", "vosotros" si hablas con un equipo.
-- WhatsApp natural: mensajes BREVES (2-4 frases máx). Texto plano, sin asteriscos ni listas con guiones.
-- Máximo 1 emoji por mensaje (👋 al saludar, 🙏 al despedir).
-- Personaliza con nombre, categoría, ciudad del proveedor.
-- Llamada a la acción siempre suave: enlace a fiestago.es/profesionales o "¿te paso más info?".
-- Si te dicen que no, despídete con educación y NO insistas.
-
-═══ REGLAS ESTRICTAS ═══
-
-- NUNCA digas que el proveedor paga comisión, cuota o cualquier importe.
-- NUNCA digas que "la primera reserva es gratis" o "0% de comisión la primera vez" — eso ya no aplica.
-- NUNCA inventes precios, fechas o promesas que no estén arriba.
-- NUNCA prometas exclusividad geográfica ni descuentos extra.
-- Si te preguntan algo que no sabes, di "déjame consultarlo y te confirmo en un rato".
-
-Devuelve ÚNICAMENTE el texto del mensaje WhatsApp que se va a enviar, sin comillas, sin prefijos como "Respuesta:", sin explicaciones, sin razonamiento.`
+Devuelve ÚNICAMENTE el texto del mensaje que se enviará por WhatsApp: sin comillas, sin prefijos, sin explicaciones ni razonamiento.`
 
 export type AgentTurn = { role: 'user' | 'assistant'; text: string }
 
@@ -156,18 +132,30 @@ export function buildOutreachDescriptor(opts: {
 // `history` es la conversación en orden cronológico:
 //   - role 'user'      = mensajes del proveedor (entrantes)
 //   - role 'assistant' = mensajes que ya enviamos nosotros (salientes)
+// `plazasConSello` (opcional) — si se pasa, se inyecta en el contexto del
+// agente como "PLAZAS_CON_SELLO_RESTANTES: N" para que pueda usarlo con
+// urgencia real. Si no se pasa, el agente lo calcula solo desde BD.
 export async function generateReply(opts: {
   provider: ProviderContext
   history: AgentTurn[]
+  plazasConSello?: number
 }): Promise<string> {
   const { provider, history } = opts
+  const plazas = typeof opts.plazasConSello === 'number'
+    ? Math.max(0, Math.floor(opts.plazasConSello))
+    : await countPlazasConSelloRestantes()
 
-  // Construimos los mensajes. El contexto del proveedor lo inyectamos como
-  // primer turno de usuario para no romper el prefijo cacheado del system prompt.
+  // Construimos los mensajes. El contexto del proveedor + el dato dinámico
+  // de plazas lo inyectamos como primer turno de usuario para no romper el
+  // prefijo cacheado del system prompt.
   const messages: Anthropic.MessageParam[] = [
     {
       role: 'user',
-      content: `[Contexto del proveedor con el que hablas]\n${providerBlurb(provider)}\n\n[A continuación, la conversación de WhatsApp]`,
+      content:
+        `[Contexto del proveedor con el que hablas]\n` +
+        `${providerBlurb(provider)}\n` +
+        `PLAZAS_CON_SELLO_RESTANTES: ${plazas}\n\n` +
+        `[A continuación, la conversación de WhatsApp]`,
     },
   ]
 
@@ -211,11 +199,14 @@ export async function generateReply(opts: {
 
 // Genera un PRIMER mensaje de captación (cuando aún no hay conversación).
 // Útil para que el admin previsualice un borrador antes de enviar la plantilla.
+// Si no se pasa plazasConSello, se calcula desde BD.
 export async function generateOpeningMessage(
-  provider: ProviderContext
+  provider: ProviderContext,
+  plazasConSello?: number,
 ): Promise<string> {
   return generateReply({
     provider,
+    plazasConSello,
     history: [
       {
         role: 'user',

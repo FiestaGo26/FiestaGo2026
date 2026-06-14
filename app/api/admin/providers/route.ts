@@ -152,6 +152,25 @@ export async function PATCH(req: NextRequest) {
     } else {
       // Flow 2: aprobación real
       result.flow = 'approval'
+
+      // Sello de calidad para los primeros 100 aprobados — el agente
+      // WhatsApp lo usa como gancho con urgencia ("quedan N plazas").
+      // Si este proveedor entra dentro del cupo (incluyéndose a sí mismo
+      // en el conteo final), lo marcamos automáticamente como verified
+      // para que el contador del sello y el sello real vayan
+      // sincronizados.
+      if (!current.verified) {
+        const { count: alreadyApproved } = await supabase
+          .from('providers')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'approved')
+        const newApprovedCount = (alreadyApproved || 0) + 1
+        if (newApprovedCount <= 100) {
+          updates.verified = true
+          result.selloAutoAssigned = newApprovedCount
+        }
+      }
+
       // Welcome email (no bloquea si falla)
       const welcome = await emailProviderWelcome(current)
       result.welcomeEmail = welcome.ok

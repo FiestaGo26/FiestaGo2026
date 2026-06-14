@@ -7,7 +7,7 @@ import {
   normalizePhone,
   sendText,
 } from '@/lib/whatsapp'
-import { generateReply, type AgentTurn } from '@/lib/fiestago-agent'
+import { generateReply, countPlazasConSelloRestantes, type AgentTurn } from '@/lib/fiestago-agent'
 
 // El webhook recibe datos externos (Meta) y llama a Claude → forzamos runtime
 // Node.js y ejecución dinámica.
@@ -111,7 +111,9 @@ async function handleInbound(supabase: any, msg: any) {
       text: r.body as string,
     }))
 
-  // 5) El agente genera la respuesta.
+  // 5) El agente genera la respuesta. Calculamos las plazas con sello
+  //    una sola vez y se las pasamos al cerebro (cupo de 100 - aprobados).
+  const plazasConSello = await countPlazasConSelloRestantes()
   let reply: string
   try {
     reply = await generateReply({
@@ -121,6 +123,7 @@ async function handleInbound(supabase: any, msg: any) {
         city: provider.city,
         social_handle: provider.social_handle,
       },
+      plazasConSello,
       history,
     })
   } catch (err: any) {
