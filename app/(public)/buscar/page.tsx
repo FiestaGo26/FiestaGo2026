@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { getPhoto, CATEGORIES } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 
 const CITIES = ['Madrid','Barcelona','Valencia','Sevilla','Bilbao','Málaga','Zaragoza','Murcia']
 
@@ -204,12 +205,13 @@ function ProviderCard({ provider }: { provider: any }) {
         <div className="flex justify-between items-end pt-2 border-t border-stone-100">
           <div>
             {provider.price_base ? (
-              <>
+              <span title={textoGarantiaIncluida(provider.price_base)}>
                 <span className="text-[10px] text-ink/40">desde </span>
                 <span className="font-serif text-lg font-bold" style={{ color: cat?.color || '#E8553E' }}>
-                  {provider.price_base.toLocaleString()}€
+                  {formatEuro(precioCliente(provider.price_base))}
                 </span>
-              </>
+                <span className="block text-[10px] text-ink/45 mt-0.5">garantía incl.</span>
+              </span>
             ) : <span className="text-xs text-ink/40">Precio a consultar</span>}
           </div>
           <span className="text-[10px] font-bold text-coral group-hover:underline">Ver perfil →</span>
@@ -251,8 +253,11 @@ function ServiceCard({ service }: { service: any }) {
         <div className="flex justify-between items-end pt-2 border-t border-stone-100">
           <div>
             {service.price != null ? (
-              <span className="font-serif text-lg font-bold" style={{ color: cat?.color || '#E8553E' }}>
-                {service.price.toLocaleString()}€
+              <span title={textoGarantiaIncluida(service.price)}>
+                <span className="font-serif text-lg font-bold" style={{ color: cat?.color || '#E8553E' }}>
+                  {formatEuro(precioCliente(service.price))}
+                </span>
+                <span className="block text-[10px] text-ink/45 mt-0.5">garantía incl.</span>
               </span>
             ) : <span className="text-xs text-ink/40">A consultar</span>}
           </div>

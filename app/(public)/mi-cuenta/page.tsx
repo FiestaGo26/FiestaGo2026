@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { formatEuro } from '@/lib/pricing'
 import toast from 'react-hot-toast'
 
 type Booking = {
@@ -361,7 +362,7 @@ function BookingCard({ booking, onReviewed }: { booking: Booking; onReviewed?: (
         )}
         <div className="flex justify-between items-center mt-2 pt-2 border-t border-stone-100">
           <span className="text-xs text-ink/45 uppercase tracking-widest font-bold">Total</span>
-          <span className="font-serif text-lg font-bold text-coral">{booking.total_amount.toLocaleString()}€</span>
+          <span className="font-serif text-lg font-bold text-coral">{formatEuro(booking.total_amount)}</span>
         </div>
 
         {/* Reseña ya dejada */}

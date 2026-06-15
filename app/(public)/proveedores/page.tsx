@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { getPhoto, CATEGORIES, CITIES } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import FavoriteButton from '../_components/FavoriteButton'
 
 type Provider = {
@@ -212,10 +213,12 @@ export default function ProveedoresPage() {
                         {p.price_base ? (
                           <>
                             <span className="text-xs text-ink/40">desde </span>
-                            <span className="font-serif text-lg font-bold" style={{ color: cat?.color || '#E8553E' }}>
-                              {p.price_base.toLocaleString()}€
+                            <span className="font-serif text-lg font-bold" style={{ color: cat?.color || '#E8553E' }}
+                              title={textoGarantiaIncluida(p.price_base)}>
+                              {formatEuro(precioCliente(p.price_base))}
                             </span>
                             <span className="text-xs text-ink/40"> {p.price_unit}</span>
+                            <div className="text-[10px] text-ink/45 mt-0.5">{textoGarantiaIncluida(p.price_base)}</div>
                           </>
                         ) : (
                           <span className="text-sm text-ink/40">Precio a consultar</span>

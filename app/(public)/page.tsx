@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase'
 import { getPhoto, CATEGORIES } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import SearchBar from './_components/SearchBar'
 
 async function getPacks() {
@@ -311,9 +312,10 @@ export default async function HomePage() {
                 <div>
                   <div className="font-medium text-ink text-[15px] truncate mb-1">{pk.name}</div>
                   <div className="text-sm text-ink/55 mb-1.5">{pk.duration} · hasta {pk.max_guests} personas</div>
-                  <div className="text-sm">
+                  <div className="text-sm" title={textoGarantiaIncluida(pk.price_base)}>
                     <span className="text-ink/50">desde </span>
-                    <span className="font-semibold text-ink">{pk.price_base}€</span>
+                    <span className="font-semibold text-ink">{formatEuro(precioCliente(pk.price_base))}</span>
+                    <span className="text-[10px] text-ink/50 block leading-tight">garantía incl.</span>
                   </div>
                 </div>
               </Link>

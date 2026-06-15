@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import { toggleFavorite, useIsFavorite } from '@/lib/favorites'
 import toast from 'react-hot-toast'
 
@@ -40,7 +41,12 @@ function buildRows(): Row[] {
     {
       key: 'price', label: 'Precio',
       render: p => p.price_base
-        ? <span className="font-serif text-xl font-bold text-coral">{p.price_base.toLocaleString()}€ <span className="text-xs text-ink/50 font-sans font-normal">{p.price_unit}</span></span>
+        ? (
+          <span title={textoGarantiaIncluida(p.price_base)}>
+            <span className="font-serif text-xl font-bold text-coral">{formatEuro(precioCliente(p.price_base))} <span className="text-xs text-ink/50 font-sans font-normal">{p.price_unit}</span></span>
+            <span className="block text-[10px] text-ink/45 font-sans font-normal mt-0.5">{textoGarantiaIncluida(p.price_base)}</span>
+          </span>
+        )
         : <span className="text-ink/50 text-sm">Bajo presupuesto</span>
     },
     {

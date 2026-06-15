@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import FavoriteButton from '../../_components/FavoriteButton'
@@ -609,15 +610,16 @@ export default function ProviderDetailPage() {
                 </div>
               )}
 
-              {/* Price */}
+              {/* Price (cliente ve base + 8% Garantía de Éxito) */}
               <div className="mb-5">
                 {selectedSvc ? (
                   selectedSvc.price != null ? (
                     <>
-                      <span className="font-serif text-3xl text-ink">
-                        {selectedSvc.price.toLocaleString()}€
+                      <span className="font-serif text-3xl text-ink" title={textoGarantiaIncluida(selectedSvc.price)}>
+                        {formatEuro(precioCliente(selectedSvc.price))}
                       </span>
                       <span className="text-sm text-ink/50"> {selectedSvc.price_unit}</span>
+                      <div className="text-xs text-ink/55 mt-1">{textoGarantiaIncluida(selectedSvc.price)}</div>
                     </>
                   ) : (
                     <span className="text-lg text-ink/50">A consultar</span>
@@ -625,10 +627,11 @@ export default function ProviderDetailPage() {
                 ) : provider.price_base ? (
                   <>
                     <span className="text-sm text-ink/45">desde </span>
-                    <span className="font-serif text-3xl text-ink">
-                      {provider.price_base.toLocaleString()}€
+                    <span className="font-serif text-3xl text-ink" title={textoGarantiaIncluida(provider.price_base)}>
+                      {formatEuro(precioCliente(provider.price_base))}
                     </span>
                     <span className="text-sm text-ink/50"> {provider.price_unit}</span>
+                    <div className="text-xs text-ink/55 mt-1">{textoGarantiaIncluida(provider.price_base)}</div>
                   </>
                 ) : (
                   <span className="text-lg text-ink/50">Precio a consultar</span>
@@ -725,28 +728,22 @@ export default function ProviderDetailPage() {
                 </details>
               )}
 
-              {/* Desglose del precio (nuevo modelo: cliente paga base + comisión) */}
-              <div className={`rounded-xl p-3.5 mb-5 text-xs ${commission.isFree
-                ? 'bg-sage/10 border border-sage/20'
-                : 'bg-cream-dark border border-stone-200'}`}>
-                <div className={`font-bold mb-2 ${commission.isFree ? 'text-sage' : 'text-ink/60'}`}>
-                  {commission.isFree ? '🎁 ¡Esta reserva sin coste de servicio!' : '💳 Desglose'}
-                </div>
+              {/* Desglose del precio (cliente paga base + 8% Garantía de Éxito) */}
+              <div className="rounded-xl p-3.5 mb-5 text-xs bg-cream-dark border border-stone-200">
+                <div className="font-bold mb-2 text-ink/60">💳 Desglose</div>
                 <div className="flex justify-between mb-1">
                   <span className="text-ink/50">Precio del proveedor</span>
-                  <span className="font-semibold">{effectivePrice.toLocaleString()}€</span>
+                  <span className="font-semibold">{formatEuro(effectivePrice)}</span>
                 </div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-ink/50" title="Incluye Garantía de Éxito: si la reserva falla, FiestaGo te devuelve el dinero">
-                    Servicio FiestaGo (Garantía de Éxito) 🛡
+                  <span className="text-ink/50" title="Si la reserva falla, FiestaGo te devuelve el dinero (110% si no encontramos sustituto)">
+                    Garantía de Éxito (8%) 🛡
                   </span>
-                  <span className={commission.isFree ? 'text-sage font-bold' : 'text-ink/65'}>
-                    {commission.isFree ? '¡GRATIS!' : `+${commission.amount.toLocaleString()}€`}
-                  </span>
+                  <span className="text-ink/65">+{formatEuro(commission.amount)}</span>
                 </div>
                 <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
                   <span className="text-ink font-semibold">Total a pagar</span>
-                  <span className="font-bold text-coral text-base">{commission.clientPays.toLocaleString()}€</span>
+                  <span className="font-bold text-coral text-base">{formatEuro(commission.clientPays)}</span>
                 </div>
               </div>
 

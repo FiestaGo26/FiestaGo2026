@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { CATEGORIES, getPhoto } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import FavoriteButton from '../../_components/FavoriteButton'
 
 type Gallery = {
@@ -163,11 +164,12 @@ export default function EventoRealDetail() {
                         <div className="text-xs text-ink/55 mb-2">📍 {p.city}</div>
                         <div className="flex items-center justify-between mt-auto gap-2">
                           {p.price_base ? (
-                            <div>
+                            <div title={textoGarantiaIncluida(p.price_base)}>
                               <span className="text-[10px] text-ink/40">desde </span>
                               <span className="font-serif font-bold" style={{ color: cat?.color || '#E8553E' }}>
-                                {p.price_base.toLocaleString()}€
+                                {formatEuro(precioCliente(p.price_base))}
                               </span>
+                              <div className="text-[10px] text-ink/45">garantía incl.</div>
                             </div>
                           ) : <span className="text-xs text-ink/40">Consultar</span>}
                           <FavoriteButton providerId={p.id} variant="inline"/>

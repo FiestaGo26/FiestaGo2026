@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CATEGORIES, CITIES, getPhoto } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import toast from 'react-hot-toast'
 
 type EventType = 'boda' | 'cumpleanos' | 'comunion' | 'corporativo' | 'otro'
@@ -282,12 +283,13 @@ export default function CalculadoraPage() {
           <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8 shadow-sm">
             <div className="text-center mb-8">
               <div className="text-xs font-bold uppercase tracking-wider text-coral mb-2">Presupuesto estimado</div>
-              <div className="font-serif text-4xl md:text-5xl text-ink font-bold leading-tight">
-                {result.total.min.toLocaleString()} € – {result.total.max.toLocaleString()} €
+              <div className="font-serif text-4xl md:text-5xl text-ink font-bold leading-tight" title={textoGarantiaIncluida(result.total.avg)}>
+                {formatEuro(precioCliente(result.total.min))} – {formatEuro(precioCliente(result.total.max))}
               </div>
               <div className="text-sm text-ink/55 mt-2">
-                Mediana: <strong>{result.total.avg.toLocaleString()} €</strong> · Para {result.guests} invitado{result.guests===1?'':'s'}
+                Mediana: <strong>{formatEuro(precioCliente(result.total.avg))}</strong> · Para {result.guests} invitado{result.guests===1?'':'s'}
               </div>
+              <div className="text-xs text-ink/45 mt-1">{textoGarantiaIncluida(result.total.avg)}</div>
             </div>
 
             {/* Desglose por categoría */}
@@ -312,10 +314,11 @@ export default function CalculadoraPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-serif text-lg font-bold" style={{ color: cat.color }}>
-                          {r.total.min.toLocaleString()} – {r.total.max.toLocaleString()} €
+                        <div className="font-serif text-lg font-bold" style={{ color: cat.color }}
+                          title={textoGarantiaIncluida(r.total.avg)}>
+                          {formatEuro(precioCliente(r.total.min))} – {formatEuro(precioCliente(r.total.max))}
                         </div>
-                        <div className="text-[10px] text-ink/50">{pct}% del total</div>
+                        <div className="text-[10px] text-ink/50">{pct}% del total · garantía incl.</div>
                       </div>
                     </div>
 
@@ -330,7 +333,7 @@ export default function CalculadoraPage() {
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform"/>
                             </div>
                             <div className="text-[10px] font-semibold text-ink truncate group-hover:text-coral">{p.name}</div>
-                            <div className="text-[9px] text-ink/50">{p.city} · {p.price_base?.toLocaleString()}€</div>
+                            <div className="text-[9px] text-ink/50" title={p.price_base ? textoGarantiaIncluida(p.price_base) : ''}>{p.city} · {p.price_base ? formatEuro(precioCliente(p.price_base)) : ''}</div>
                           </Link>
                         ))}
                       </div>

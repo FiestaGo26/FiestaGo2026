@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { CATEGORIES, getPhoto } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import toast from 'react-hot-toast'
 
 type ProviderItem = {
@@ -150,7 +151,7 @@ export default function MiEventoProposalPage() {
                   {style.emoji} {pkg.tier}
                 </div>
                 <div className="font-bold text-sm">{pkg.title}</div>
-                <div className="text-[10px] opacity-75">{pkg.estimated_total.toLocaleString()}€ aprox</div>
+                <div className="text-[10px] opacity-75" title={textoGarantiaIncluida(pkg.estimated_total)}>{formatEuro(precioCliente(pkg.estimated_total))} aprox</div>
               </button>
             )
           })}
@@ -195,10 +196,11 @@ export default function MiEventoProposalPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-serif text-xl font-bold text-ink">
-                              {prov.price_base.toLocaleString()}€
+                            <div className="font-serif text-xl font-bold text-ink" title={textoGarantiaIncluida(prov.price_base)}>
+                              {formatEuro(precioCliente(prov.price_base))}
                             </div>
                             <div className="text-[10px] text-ink/45">{prov.price_unit || 'por evento'}</div>
+                            <div className="text-[10px] text-ink/45">{textoGarantiaIncluida(prov.price_base)}</div>
                           </div>
                         </div>
                         {prov.justification && (
@@ -213,18 +215,19 @@ export default function MiEventoProposalPage() {
               })}
             </div>
 
-            {/* Total + Acciones */}
+            {/* Total + Acciones (lo que paga el cliente = base + 8% Garantía) */}
             <div className="mt-8 bg-white border border-stone-200 rounded-2xl p-6 text-center shadow-card">
               <div className="text-xs text-ink/55 uppercase tracking-widest font-bold mb-2">
                 Total estimado del equipo
               </div>
-              <div className="font-serif text-4xl text-ink font-black">
-                {activePkg.estimated_total.toLocaleString()}€
+              <div className="font-serif text-4xl text-ink font-black" title={textoGarantiaIncluida(activePkg.estimated_total)}>
+                {formatEuro(precioCliente(activePkg.estimated_total))}
               </div>
+              <div className="text-xs text-ink/55 mt-1">{textoGarantiaIncluida(activePkg.estimated_total)}</div>
               <div className="text-xs text-ink/55 mt-1">
-                {activePkg.estimated_total <= proposal.budget_total
-                  ? `✅ Dentro de tu presupuesto (${proposal.budget_total.toLocaleString()}€)`
-                  : `⚠️ ${Math.round(((activePkg.estimated_total / proposal.budget_total) - 1) * 100)}% por encima de tu presupuesto`}
+                {precioCliente(activePkg.estimated_total) <= precioCliente(proposal.budget_total)
+                  ? `✅ Dentro de tu presupuesto (${formatEuro(precioCliente(proposal.budget_total))} con garantía)`
+                  : `⚠️ ${Math.round(((precioCliente(activePkg.estimated_total) / precioCliente(proposal.budget_total)) - 1) * 100)}% por encima de tu presupuesto`}
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3 justify-center">

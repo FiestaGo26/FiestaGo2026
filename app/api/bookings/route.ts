@@ -66,21 +66,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Calcular comisión sobre lo que cobra el proveedor (modelo nuevo:
-    // cliente paga base + comisión, proveedor recibe el 100% de base).
-    // `amount` aquí ya tiene aplicado el cupón si lo había.
-    let commission: { rate: number; amount: number; providerEarns: number; clientPays: number; isFree: boolean }
-      = { rate: 0, amount: 0, providerEarns: amount, clientPays: amount, isFree: true }
-    if (provider_id) {
-      const { data: provider } = await supabase
-        .from('providers')
-        .select('total_bookings')
-        .eq('id', provider_id)
-        .single()
-      if (provider) {
-        commission = calcCommission(amount, provider.total_bookings || 0)
-      }
-    }
+    // Calcular Garantía de Éxito (8%) sobre lo que cobra el proveedor.
+    // Modelo: cliente paga base + 8%, proveedor recibe el 100% de base.
+    // `amount` aquí ya tiene aplicado el cupón si lo había. Aplica
+    // también a packs (mismo 8% encima del precio del pack).
+    const commission = calcCommission(amount)
 
     const { data, error } = await supabase
       .from('bookings')

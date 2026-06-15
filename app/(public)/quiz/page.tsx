@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { CATEGORIES, CITIES, getPhoto } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import { toggleFavorite, useIsFavorite } from '@/lib/favorites'
 import toast from 'react-hot-toast'
 
@@ -162,11 +163,12 @@ export default function QuizPage() {
                         <div className="text-xs text-ink/55 mt-1 mb-2">📍 {p.city}</div>
                         <div className="flex items-center justify-between gap-2">
                           {p.price_base ? (
-                            <div>
+                            <div title={textoGarantiaIncluida(p.price_base)}>
                               <span className="text-[10px] text-ink/45">desde </span>
                               <span className="font-serif font-bold text-base" style={{ color: cat.color }}>
-                                {p.price_base.toLocaleString()}€
+                                {formatEuro(precioCliente(p.price_base))}
                               </span>
+                              <div className="text-[10px] text-ink/45">garantía incl.</div>
                             </div>
                           ) : (
                             <span className="text-xs text-ink/40">Consultar</span>

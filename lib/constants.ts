@@ -72,20 +72,23 @@ export function getCat(id: string) {
   return CATEGORIES.find(c => c.id === id)
 }
 
-// Modelo nuevo: el cliente paga la comisión encima del precio del proveedor.
-// El proveedor recibe el 100% del precio que pone (`providerBase`).
-// El cliente paga `providerBase + commission` (= clientPays).
-// La primera reserva del proveedor sigue siendo 0% (incentivo de entrada).
-export function calcCommission(providerBase: number, totalBookings: number) {
-  const isFree = totalBookings === 0
-  const rate   = isFree ? 0 : COMMISSION_RATE
-  const comm   = Math.round(providerBase * rate * 100) / 100
+// Modelo económico: el cliente paga 8% por encima del precio del proveedor
+// como "Garantía de Éxito". El proveedor SIEMPRE recibe el 100% de su precio
+// base. Sin excepciones — el modelo "primera reserva = 0%" del v0 ya no
+// aplica. Mantenemos la firma con `totalBookings` para compatibilidad con
+// los call-sites, pero el parámetro ya no influye en el cálculo.
+//
+// La fuente canónica del cálculo +8% vive en lib/pricing.ts. Reexportamos
+// los importes aquí para evitar romper imports existentes.
+export function calcCommission(providerBase: number, _totalBookings?: number) {
+  const rate = COMMISSION_RATE
+  const comm = Math.round(providerBase * rate * 100) / 100
   return {
     rate,
-    amount:        comm,                // lo que se queda FiestaGo
+    amount:        comm,                // lo que se queda FiestaGo (Garantía)
     providerEarns: providerBase,        // 100% del precio del proveedor
     clientPays:    providerBase + comm, // lo que paga el cliente
-    isFree,
+    isFree:        false,               // siempre false en este modelo
   }
 }
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import { CATEGORIES, CITIES, getPhoto } from '@/lib/constants'
 
 // Slug structure: "{categoryId}-en-{citySlug}"
@@ -110,15 +111,16 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
                 : `Reserva ${cat.label.toLowerCase()} en ${city} con FiestaGo. Lanzamiento el 10 de junio de 2026.`}
             </p>
             {(minPrice && avgPrice) ? (
-              <div className="mt-5 inline-flex items-center gap-4 bg-white/10 rounded-xl px-4 py-2 backdrop-blur-sm">
+              <div className="mt-5 inline-flex items-center gap-4 bg-white/10 rounded-xl px-4 py-2 backdrop-blur-sm"
+                title={textoGarantiaIncluida(avgPrice)}>
                 <div>
                   <div className="text-[10px] uppercase tracking-wider opacity-75">Desde</div>
-                  <div className="font-serif text-xl font-bold">{minPrice.toLocaleString()}€</div>
+                  <div className="font-serif text-xl font-bold">{formatEuro(precioCliente(minPrice))}</div>
                 </div>
                 <div className="w-px h-8 bg-white/30"/>
                 <div>
                   <div className="text-[10px] uppercase tracking-wider opacity-75">Media</div>
-                  <div className="font-serif text-xl font-bold">{avgPrice.toLocaleString()}€</div>
+                  <div className="font-serif text-xl font-bold">{formatEuro(precioCliente(avgPrice))}</div>
                 </div>
               </div>
             ) : null}
@@ -155,9 +157,11 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
                     {p.price_base && (
                       <div className="border-t border-stone-100 pt-2 mt-auto">
                         <span className="text-xs text-ink/40">desde </span>
-                        <span className="font-serif text-lg font-bold" style={{ color: cat.color }}>
-                          {p.price_base.toLocaleString()}€
+                        <span className="font-serif text-lg font-bold" style={{ color: cat.color }}
+                          title={textoGarantiaIncluida(p.price_base)}>
+                          {formatEuro(precioCliente(p.price_base))}
                         </span>
+                        <div className="text-[10px] text-ink/45 mt-0.5">{textoGarantiaIncluida(p.price_base)}</div>
                       </div>
                     )}
                   </div>

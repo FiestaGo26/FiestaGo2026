@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { CATEGORIES, CANCELLATION_POLICIES } from '@/lib/constants'
+import { precioCliente, formatEuro } from '@/lib/pricing'
 
 type ServiceMedia = {
   id: string
@@ -43,7 +44,8 @@ type Booking = {
   event_type: string
   guests: number | null
   message: string | null
-  total_amount: number
+  total_amount: number      // lo que pagó el cliente (base + 8%)
+  provider_earns: number    // lo que cobra el proveedor (base, sin fee)
   status: string
 }
 
@@ -908,7 +910,8 @@ function ProveedorPanelInner() {
   const stats = {
     pending:   bookings.filter(b => b.status==='pending').length,
     confirmed: bookings.filter(b => b.status==='confirmed').length,
-    revenue:   bookings.filter(b => b.status==='confirmed').reduce((s,b) => s+b.total_amount, 0),
+    // Ingresos del proveedor = lo que él cobra (sin la Garantía de Éxito que paga el cliente).
+    revenue:   bookings.filter(b => b.status==='confirmed').reduce((s,b) => s + (b.provider_earns ?? b.total_amount / 1.08), 0),
     available: Object.values(availability).filter(Boolean).length,
   }
 
@@ -1182,7 +1185,7 @@ function ProveedorPanelInner() {
                             <div className="min-w-0 flex-1">
                               <div className="text-sm font-medium text-ink truncate">{s.name}</div>
                               {s.price != null && (
-                                <div className="text-xs text-ink/50">{s.price.toLocaleString()}€</div>
+                                <div className="text-xs text-ink/50" title={`Cliente paga ${formatEuro(precioCliente(s.price))} (incluye 8% Garantía)`}>{formatEuro(s.price)}</div>
                               )}
                             </div>
                           </div>
@@ -1385,10 +1388,15 @@ function ProveedorPanelInner() {
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Precio fijo (€) *</label>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Precio fijo (€) — el que tú cobras *</label>
                     <input type="number" value={newSvc.price} onChange={e => setNewSvc(s=>({...s,price:e.target.value}))}
                       placeholder="1200"
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                    {newSvc.price && parseFloat(newSvc.price) > 0 && (
+                      <div className="text-[11px] text-ink/55 mt-1 leading-tight">
+                        Tú cobras <strong>{formatEuro(parseFloat(newSvc.price))}</strong> · cliente paga <strong>{formatEuro(precioCliente(parseFloat(newSvc.price)))}</strong> (8% Garantía de Éxito)
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Duración</label>
@@ -1571,7 +1579,14 @@ function ProveedorPanelInner() {
                           )}
                         </div>
                         {svc.description&&<p className="text-xs text-ink/55 mb-2">{svc.description}</p>}
-                        <div className="font-serif text-xl font-bold text-coral">{svc.price!=null ? `${svc.price.toLocaleString()}€` : '—'}</div>
+                        {svc.price != null ? (
+                          <div>
+                            <div className="font-serif text-xl font-bold text-coral">{formatEuro(svc.price)}</div>
+                            <div className="text-[11px] text-ink/55 leading-tight">Tú cobras esto · cliente paga {formatEuro(precioCliente(svc.price))} (8% Garantía)</div>
+                          </div>
+                        ) : (
+                          <div className="font-serif text-xl font-bold text-coral">—</div>
+                        )}
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button onClick={() => setAvailSvc(svc)}
@@ -1759,8 +1774,8 @@ function ProveedorPanelInner() {
                     <div className="font-medium">{b.guests||'—'}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-ink/40 mb-0.5">Importe</div>
-                    <div className="font-semibold text-coral">{b.total_amount.toLocaleString()}€</div>
+                    <div className="text-xs text-ink/40 mb-0.5">Tú cobras</div>
+                    <div className="font-semibold text-coral" title={`El cliente pagó ${formatEuro(b.total_amount)} (incluye 8% Garantía)`}>{formatEuro(b.provider_earns || b.total_amount / 1.08)}</div>
                   </div>
                 </div>
                 {b.message&&(

@@ -4,6 +4,7 @@
 
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import { CATEGORIES, getPhoto } from '@/lib/constants'
 import FavoriteButton from './FavoriteButton'
 
@@ -140,9 +141,11 @@ export async function VerticalLandingPage({ config }: { config: VerticalConfig }
                       {p.price_base && (
                         <div className="border-t border-stone-100 pt-3 mt-auto">
                           <span className="text-xs text-ink/40">desde </span>
-                          <span className="font-serif text-lg font-bold" style={{ color: cat.color }}>
-                            {p.price_base.toLocaleString()}€
+                          <span className="font-serif text-lg font-bold" style={{ color: cat.color }}
+                            title={textoGarantiaIncluida(p.price_base)}>
+                            {formatEuro(precioCliente(p.price_base))}
                           </span>
+                          <div className="text-[10px] text-ink/45 mt-0.5">{textoGarantiaIncluida(p.price_base)}</div>
                         </div>
                       )}
                     </div>

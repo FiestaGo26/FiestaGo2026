@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getPhoto, CATEGORIES } from '@/lib/constants'
+import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import { useFavorites, removeFavorite, clearFavorites } from '@/lib/favorites'
 import toast from 'react-hot-toast'
 
@@ -198,9 +199,11 @@ export default function FavoritosPage() {
                         {p.price_base ? (
                           <>
                             <span className="text-xs text-ink/40">desde </span>
-                            <span className="font-serif text-lg font-bold" style={{ color: cat?.color || '#E8553E' }}>
-                              {p.price_base.toLocaleString()}€
+                            <span className="font-serif text-lg font-bold" style={{ color: cat?.color || '#E8553E' }}
+                              title={textoGarantiaIncluida(p.price_base)}>
+                              {formatEuro(precioCliente(p.price_base))}
                             </span>
+                            <div className="text-[10px] text-ink/45 mt-0.5">{textoGarantiaIncluida(p.price_base)}</div>
                           </>
                         ) : (
                           <span className="text-xs text-ink/40">Bajo presupuesto</span>
