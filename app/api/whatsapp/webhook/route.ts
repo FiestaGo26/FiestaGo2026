@@ -3,9 +3,15 @@ import { createAdminClient } from '@/lib/supabase'
 import {
   verifyWebhookSignature,
   extractInboundMessages,
+  extractStatusEvents,
   messageText,
+  categorizeInbound,
   normalizePhone,
   sendText,
+  InvalidPhoneError,
+  downloadWhatsappMedia,
+  transcribeAudio,
+  type WhatsappStatusEvent,
 } from '@/lib/whatsapp'
 import { generateReply, countPlazasConSelloRestantes, type AgentTurn } from '@/lib/fiestago-agent'
 
@@ -27,7 +33,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse('Forbidden', { status: 403 })
 }
 
-// ─── POST: mensajes entrantes ────────────────────────────────────────────────
+// ─── POST: mensajes entrantes + eventos de estado ────────────────────────────
 export async function POST(req: NextRequest) {
   // 1) Cuerpo CRUDO para verificar la firma (no usar req.json() antes de esto).
   const rawBody = await req.text()
@@ -44,14 +50,20 @@ export async function POST(req: NextRequest) {
     return new NextResponse('Bad payload', { status: 400 })
   }
 
-  const messages = extractInboundMessages(payload)
-  if (messages.length === 0) {
-    // Puede ser un evento de estado (entregado/leído) u otra cosa: 200 y fuera.
-    return NextResponse.json({ ok: true })
-  }
-
   const supabase = createAdminClient()
 
+  // 2. Procesar eventos de ESTADO (sent/delivered/read/failed).
+  const statuses = extractStatusEvents(payload)
+  for (const st of statuses) {
+    try {
+      await handleStatus(supabase, st)
+    } catch (err) {
+      console.error('[whatsapp webhook] error procesando status', st.id, err)
+    }
+  }
+
+  // 3. Procesar mensajes ENTRANTES.
+  const messages = extractInboundMessages(payload)
   for (const msg of messages) {
     try {
       await handleInbound(supabase, msg)
@@ -65,9 +77,79 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+// ─── Status outbound: actualiza la fila del mensaje saliente ────────────────
+//
+// Códigos típicos de error de Meta cuando el destinatario no es válido:
+//   131000 — Generic user error
+//   131026 — Receiver is incapable of receiving this message
+//   131056 — Couldn't deliver message
+// Marcar como whatsapp_invalid solo con códigos claros de número malo.
+async function handleStatus(supabase: any, st: WhatsappStatusEvent) {
+  const status = String(st.status || '').toLowerCase()
+  const tsIso  = st.timestamp ? new Date(Number(st.timestamp) * 1000).toISOString() : new Date().toISOString()
+  const update: Record<string, any> = {}
+
+  if (status === 'sent')      update.status = 'sent'
+  if (status === 'delivered') { update.delivered_at = tsIso; update.status = 'delivered' }
+  if (status === 'read')      { update.read_at      = tsIso; update.status = 'read' }
+  if (status === 'failed')    {
+    update.failed_at    = tsIso
+    update.status       = 'failed'
+    const firstErr = st.errors?.[0]
+    if (firstErr) {
+      update.error_code   = firstErr.code ?? null
+      update.error_detail = (firstErr.title || firstErr.message || JSON.stringify(firstErr)).slice(0, 500)
+    }
+  }
+
+  if (Object.keys(update).length === 0) return
+
+  const { data: outRow } = await supabase
+    .from('whatsapp_messages')
+    .select('id, provider_id, to_number')
+    .eq('wa_message_id', st.id)
+    .maybeSingle()
+
+  if (!outRow) {
+    console.warn('[whatsapp webhook] status para wa_id desconocido:', st.id, status)
+    return
+  }
+
+  await supabase.from('whatsapp_messages').update(update).eq('id', outRow.id)
+
+  // Si el fallo apunta a número inexistente, marcar al proveedor para no
+  // reintentar y que la UI deje de mostrar el botón "Enviar".
+  if (status === 'failed' && outRow.provider_id) {
+    const code = update.error_code
+    const isBadNumber = code === 131026 || code === 131056 || code === 131000
+    if (isBadNumber) {
+      await supabase.from('providers').update({
+        whatsapp_invalid:        true,
+        whatsapp_invalid_reason: `Meta error ${code}: ${update.error_detail || 'sin detalle'}`.slice(0, 500),
+      }).eq('id', outRow.provider_id)
+    }
+  }
+}
+
 async function handleInbound(supabase: any, msg: any) {
   const fromNumber = normalizePhone(msg.from)
-  const body = messageText(msg)
+  const category   = categorizeInbound(msg)
+
+  // 0) Si el mensaje es de AUDIO y tenemos Whisper, intentar transcribir
+  //    ANTES de guardar — la transcripción va en `body` para que el agente
+  //    razone con texto natural en lugar de "[audio]".
+  let body = messageText(msg)
+  let transcriptionUsed = false
+  if (category === 'audio' && msg.audio?.id && process.env.OPENAI_API_KEY) {
+    const media = await downloadWhatsappMedia(msg.audio.id)
+    if (media) {
+      const transcript = await transcribeAudio(media)
+      if (transcript) {
+        body = `🎙 ${transcript}`
+        transcriptionUsed = true
+      }
+    }
+  }
 
   // 1) Localizar al proveedor por su número (heurística: últimos 9 dígitos).
   const provider = fromNumber ? await findProviderByPhone(supabase, fromNumber) : null
@@ -82,7 +164,7 @@ async function handleInbound(supabase: any, msg: any) {
     type: msg.type ?? 'text',
     body,
     payload: msg,
-    status: 'received',
+    status: transcriptionUsed ? 'received_transcribed' : 'received',
     provider_id: provider?.id ?? null,
   })
 
@@ -94,6 +176,57 @@ async function handleInbound(supabase: any, msg: any) {
   // 3) Si no hay proveedor conocido, lo dejamos en la bandeja sin auto-responder.
   if (!provider) {
     console.warn('[whatsapp webhook] mensaje de número no asociado a proveedor:', fromNumber)
+    return
+  }
+
+  // 3b) Si es 'contacts', guardamos los teléfonos en agent_notes para revisión.
+  if (category === 'contact') {
+    const phones = (msg.contacts || [])
+      .flatMap((c: any) => (c.phones || []).map((p: any) => p.wa_id || p.phone))
+      .filter(Boolean)
+    if (phones.length > 0) {
+      const note = `[Contacto recibido por WhatsApp ${new Date().toISOString().slice(0,16)}]: ${phones.join(', ')}`
+      const { data: cur } = await supabase
+        .from('providers').select('agent_notes').eq('id', provider.id).single()
+      const merged = [(cur?.agent_notes || ''), note].filter(Boolean).join('\n').slice(0, 2000)
+      await supabase.from('providers').update({ agent_notes: merged }).eq('id', provider.id)
+    }
+  }
+
+  // 3c) Multimedia (visual / audio sin Whisper / other): responder con
+  //     cortesía pidiendo texto y marcar para revisión del admin.
+  const needsCourtesy =
+    category === 'visual' ||
+    (category === 'audio' && !transcriptionUsed) ||
+    category === 'other'
+
+  if (needsCourtesy && fromNumber) {
+    const courtesy = category === 'audio'
+      ? '¡Gracias por el mensaje! 🙏 ¿Me lo puedes poner por escrito y te cuento los detalles?'
+      : category === 'visual'
+        ? '¡Gracias por compartirlo! No puedo abrir adjuntos por aquí. ¿Me lo cuentas en un mensaje de texto y seguimos?'
+        : '¡Gracias! ¿Me lo puedes poner por escrito y te cuento los detalles?'
+
+    try {
+      const waId = await sendText(fromNumber, courtesy)
+      await supabase.from('whatsapp_messages').insert({
+        wa_message_id: waId || null,
+        direction:     'outbound',
+        from_number:   process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+        to_number:     fromNumber,
+        type:          'text',
+        body:          courtesy,
+        status:        'sent',
+        provider_id:   provider.id,
+      })
+    } catch (err: any) {
+      if (err instanceof InvalidPhoneError) {
+        await markProviderInvalidWhatsapp(supabase, provider.id, `Número no E.164 válido: "${fromNumber}"`)
+      } else {
+        console.error('[whatsapp webhook] cortesía sendText falló:', err?.message)
+      }
+    }
+    await supabase.from('providers').update({ tag: 'WhatsApp · revisar adjunto' }).eq('id', provider.id)
     return
   }
 
@@ -128,7 +261,6 @@ async function handleInbound(supabase: any, msg: any) {
     })
   } catch (err: any) {
     console.error('[whatsapp webhook] Claude generateReply falló:', err?.message)
-    // Persistir el error en BD para poder diagnosticar desde Supabase.
     await supabase.from('whatsapp_messages').insert({
       wa_message_id: null,
       direction: 'outbound',
@@ -157,6 +289,16 @@ async function handleInbound(supabase: any, msg: any) {
   try {
     waId = await sendText(fromNumber!, reply)
   } catch (err: any) {
+    if (err instanceof InvalidPhoneError) {
+      await markProviderInvalidWhatsapp(supabase, provider.id, `Número no E.164 válido: "${fromNumber}"`)
+      await supabase.from('whatsapp_messages').insert({
+        direction: 'outbound', from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+        to_number: fromNumber, type: 'text',
+        body: `[ERROR número inválido] no se envía respuesta — proveedor marcado whatsapp_invalid`,
+        status: 'failed_invalid_phone', provider_id: provider.id,
+      })
+      return
+    }
     console.error('[whatsapp webhook] sendText falló:', err?.message)
     await supabase.from('whatsapp_messages').insert({
       wa_message_id: null,
@@ -194,4 +336,19 @@ async function findProviderByPhone(supabase: any, normalized: string) {
     .or(`phone.ilike.%${last9}%,outreach_whatsapp.ilike.%${last9}%`)
     .limit(1)
   return data?.[0] ?? null
+}
+
+// Marca un proveedor como WhatsApp inválido para no reintentar.
+async function markProviderInvalidWhatsapp(supabase: any, providerId: string, reason: string) {
+  try {
+    await supabase
+      .from('providers')
+      .update({
+        whatsapp_invalid:        true,
+        whatsapp_invalid_reason: reason.slice(0, 500),
+      })
+      .eq('id', providerId)
+  } catch (err) {
+    console.error('[whatsapp webhook] markProviderInvalidWhatsapp falló:', (err as any)?.message)
+  }
 }

@@ -35,8 +35,50 @@ export function normalizePhone(raw: string | null | undefined): string | null {
   return digits
 }
 
+// ─── Validación de número (E.164 España) ─────────────────────────────────────
+// La BD del agente captura a veces IDs de redes sociales en el campo phone
+// (ej. "653685262962060080", 18 dígitos). Esos envíos a Meta fallan o caen
+// en buzones aleatorios. Filtra ANTES de enviar.
+//
+// Acepta:
+//   · 9 dígitos empezando por 6/7/8/9 (móvil/fijo ES sin prefijo)
+//   · 11 dígitos empezando por 34 + un primer dígito 6/7/8/9
+//   · E.164 internacional razonable (8-15 dígitos, no empieza por 0/1)
+//
+// Rechaza explícitamente cadenas de 16+ dígitos (claros IDs de redes).
+export function isValidPhoneE164ES(raw: string | null | undefined): boolean {
+  if (!raw) return false
+  const digits = String(raw).replace(/[^\d]/g, '')
+  if (!digits) return false
+
+  if (digits.length === 9 && /^[6789]/.test(digits)) return true
+  if (digits.length === 11 && digits.startsWith('34') && /^[6789]/.test(digits.slice(2))) return true
+
+  if (digits.length >= 10 && digits.length <= 15 && !/^[01]/.test(digits)) {
+    if (digits.startsWith('34') && digits.length === 11) return false
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Excepción que lanza sendText/sendTemplate cuando el `to` no es un número
+ * de teléfono válido. El llamante debe capturarla y marcar al proveedor
+ * para no reintentar.
+ */
+export class InvalidPhoneError extends Error {
+  to: string
+  constructor(to: string) {
+    super(`Número no válido para WhatsApp: "${to}"`)
+    this.name = 'InvalidPhoneError'
+    this.to = to
+  }
+}
+
 // ─── Envío de texto libre (solo válido dentro de la ventana de 24h) ──────────
 export async function sendText(to: string, body: string): Promise<string> {
+  if (!isValidPhoneE164ES(to)) throw new InvalidPhoneError(to)
   const { phoneNumberId, token } = cfg()
   const res = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
@@ -80,6 +122,7 @@ export async function sendTemplate(
     bodyParams?: string[]
   } = {}
 ): Promise<string> {
+  if (!isValidPhoneE164ES(to)) throw new InvalidPhoneError(to)
   const { phoneNumberId, token } = cfg()
   const template = opts.template || process.env.WHATSAPP_OUTREACH_TEMPLATE
   if (!template) {
@@ -179,13 +222,41 @@ export function verifyWebhookSignature(
 }
 
 // ─── Tipos del payload entrante del webhook ──────────────────────────────────
+// Versión extendida que cubre text, button, audio, image, document, video,
+// sticker, location y contacts. El webhook diferencia el tratamiento de
+// cada uno.
 export type WhatsappInboundMessage = {
-  from: string // número del remitente (proveedor)
-  id: string // wa message id
+  from: string
+  id: string
   timestamp: string
-  type: string // 'text' | 'image' | 'button' | ...
-  text?: { body: string }
-  button?: { text?: string; payload?: string }
+  type:
+    | 'text' | 'button'
+    | 'audio' | 'image' | 'video' | 'document' | 'sticker'
+    | 'location' | 'contacts' | 'reaction' | 'interactive'
+    | string
+  text?:    { body: string }
+  button?:  { text?: string; payload?: string }
+  audio?:   { id: string; mime_type?: string; voice?: boolean }
+  image?:   { id: string; mime_type?: string; caption?: string; sha256?: string }
+  video?:   { id: string; mime_type?: string; caption?: string }
+  document?:{ id: string; mime_type?: string; filename?: string; caption?: string }
+  sticker?: { id: string; mime_type?: string }
+  location?:{ latitude: number; longitude: number; name?: string; address?: string }
+  contacts?: Array<{
+    name?:   { formatted_name?: string; first_name?: string }
+    phones?: Array<{ phone?: string; wa_id?: string; type?: string }>
+  }>
+  reaction?:{ message_id: string; emoji?: string }
+}
+
+// Eventos de estado de mensajes salientes (sent/delivered/read/failed).
+// Llegan en el mismo webhook bajo value.statuses[].
+export type WhatsappStatusEvent = {
+  id: string                                  // wa_message_id del OUTBOUND
+  status: 'sent' | 'delivered' | 'read' | 'failed' | string
+  timestamp: string
+  recipient_id?: string
+  errors?: Array<{ code?: number; title?: string; message?: string; error_data?: any }>
 }
 
 // Extrae los mensajes entrantes de un payload de webhook de WhatsApp.
@@ -203,9 +274,112 @@ export function extractInboundMessages(payload: any): WhatsappInboundMessage[] {
   return out
 }
 
-// Devuelve el texto legible de un mensaje entrante (texto o botón).
+// Extrae los eventos de status de mensajes salientes (entrega, lectura, error).
+export function extractStatusEvents(payload: any): WhatsappStatusEvent[] {
+  const out: WhatsappStatusEvent[] = []
+  const entries = payload?.entry ?? []
+  for (const entry of entries) {
+    for (const change of entry?.changes ?? []) {
+      const value = change?.value
+      for (const st of value?.statuses ?? []) {
+        out.push(st as WhatsappStatusEvent)
+      }
+    }
+  }
+  return out
+}
+
+// Devuelve el texto legible de un mensaje entrante.
+// Para multimedia devuelve un marcador "[audio]" / "[image]" / etc. que el
+// llamante (webhook) usará para decidir si pedir texto o transcribir.
 export function messageText(msg: WhatsappInboundMessage): string {
-  if (msg.type === 'text') return msg.text?.body ?? ''
+  if (msg.type === 'text')   return msg.text?.body ?? ''
   if (msg.type === 'button') return msg.button?.text ?? msg.button?.payload ?? ''
+  if (msg.type === 'image' && msg.image?.caption)       return msg.image.caption
+  if (msg.type === 'video' && msg.video?.caption)       return msg.video.caption
+  if (msg.type === 'document' && msg.document?.caption) return msg.document.caption
+  if (msg.type === 'location') {
+    const l = msg.location
+    return l ? `[ubicación: ${l.latitude},${l.longitude}${l.address ? ` · ${l.address}` : ''}]` : '[ubicación]'
+  }
+  if (msg.type === 'contacts') {
+    const phones = (msg.contacts || []).flatMap(c => c.phones || []).map(p => p.wa_id || p.phone).filter(Boolean)
+    return phones.length ? `[contacto: ${phones.join(', ')}]` : '[contacto]'
+  }
+  if (msg.type === 'reaction') return `[reacción ${msg.reaction?.emoji ?? ''}]`
   return `[${msg.type}]`
+}
+
+// Categoriza el mensaje entrante para que el webhook decida cómo responder.
+export type InboundCategory = 'text' | 'button' | 'audio' | 'visual' | 'contact' | 'other'
+export function categorizeInbound(msg: WhatsappInboundMessage): InboundCategory {
+  if (msg.type === 'text')   return 'text'
+  if (msg.type === 'button') return 'button'
+  if (msg.type === 'audio')  return 'audio'
+  if (msg.type === 'image' || msg.type === 'video' || msg.type === 'document' || msg.type === 'sticker') return 'visual'
+  if (msg.type === 'contacts') return 'contact'
+  return 'other'
+}
+
+// ─── Descarga de media de WhatsApp ───────────────────────────────────────────
+// Meta NO entrega el binario en el webhook — solo el media_id. Hay que hacer
+// 2 saltos: 1) GET /<media_id> → devuelve {url}; 2) GET <url> con Bearer.
+// Devuelve { buffer, mimeType } o null si falla.
+export async function downloadWhatsappMedia(
+  mediaId: string,
+): Promise<{ buffer: Buffer; mimeType: string } | null> {
+  const token = process.env.WHATSAPP_TOKEN
+  if (!token) return null
+  try {
+    const metaRes = await fetch(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    )
+    if (!metaRes.ok) return null
+    const meta = await metaRes.json() as any
+    const url      = meta?.url
+    const mimeType = meta?.mime_type || 'application/octet-stream'
+    if (!url) return null
+
+    const binRes = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (!binRes.ok) return null
+    const arr = new Uint8Array(await binRes.arrayBuffer())
+    return { buffer: Buffer.from(arr), mimeType }
+  } catch (err) {
+    console.error('[whatsapp] downloadWhatsappMedia falló:', (err as any)?.message)
+    return null
+  }
+}
+
+// ─── Transcripción de audio (Whisper de OpenAI) ─────────────────────────────
+// Si OPENAI_API_KEY está configurada, transcribe el audio. Si no, devuelve
+// null para que el webhook caiga al fallback ("¿me lo pones por escrito?").
+export async function transcribeAudio(
+  audio: { buffer: Buffer; mimeType: string },
+): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return null
+  try {
+    const form = new FormData()
+    const blob = new Blob([new Uint8Array(audio.buffer)], { type: audio.mimeType || 'audio/ogg' })
+    form.append('file', blob, audio.mimeType.includes('mpeg') ? 'audio.mp3' : 'audio.ogg')
+    form.append('model', 'whisper-1')
+    form.append('language', 'es')
+    form.append('response_format', 'text')
+
+    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: form,
+    })
+    if (!res.ok) {
+      console.error('[whatsapp] transcribeAudio Whisper falló:', res.status, await res.text())
+      return null
+    }
+    const text = (await res.text()).trim()
+    return text || null
+  } catch (err) {
+    console.error('[whatsapp] transcribeAudio excepción:', (err as any)?.message)
+    return null
+  }
 }

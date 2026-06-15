@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { normalizePhone, sendTemplate, sendText } from '@/lib/whatsapp'
+import { normalizePhone, sendTemplate, sendText, isValidPhoneE164ES, InvalidPhoneError } from '@/lib/whatsapp'
 import { generateOpeningMessage, buildOutreachDescriptor, countPlazasConSelloRestantes } from '@/lib/fiestago-agent'
 
 export const runtime = 'nodejs'
@@ -11,7 +11,7 @@ function checkAdminAuth(req: NextRequest) {
 }
 
 const PROVIDER_COLS =
-  'id, name, category, city, phone, outreach_whatsapp, outreach_sent, contacted_via, agent_fit_score'
+  'id, name, category, city, phone, outreach_whatsapp, outreach_sent, contacted_via, agent_fit_score, whatsapp_invalid, whatsapp_invalid_reason'
 
 // ─── GET: datos de la bandeja (proveedores con número + todos los mensajes) ──
 export async function GET(req: NextRequest) {
@@ -83,8 +83,10 @@ export async function POST(req: NextRequest) {
     const rawPhone = String(body.phone || '').trim()
     const name = String(body.name || '').trim() || 'Contacto WhatsApp'
     const to = normalizePhone(rawPhone)
-    if (!to) {
-      return NextResponse.json({ error: 'Teléfono inválido' }, { status: 400 })
+    if (!to || !isValidPhoneE164ES(to)) {
+      return NextResponse.json({
+        error: 'Teléfono inválido — solo se aceptan móviles/fijos españoles o E.164 plausible.',
+      }, { status: 400 })
     }
 
     try {
@@ -196,6 +198,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Validar ANTES de gastar la llamada Cloud API. Si no encaja E.164,
+    // marca al proveedor y rechaza con mensaje claro.
+    if (!isValidPhoneE164ES(to)) {
+      await supabase.from('providers').update({
+        whatsapp_invalid:        true,
+        whatsapp_invalid_reason: `Número no E.164 válido: "${to}"`,
+      }).eq('id', provider.id)
+      return NextResponse.json({
+        error: 'Número no válido (parece un ID de redes, no un teléfono). Proveedor marcado para no reintentar.',
+      }, { status: 400 })
+    }
+
     // ── Iniciar captación: plantilla aprobada (única vía en frío) ──
     if (op === 'outreach') {
       const descriptor = buildOutreachDescriptor({
@@ -252,6 +266,17 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'op desconocida' }, { status: 400 })
   } catch (err: any) {
+    // Captura del InvalidPhoneError lanzado por sendText/sendTemplate por si
+    // se coló (doble red de seguridad).
+    if (err instanceof InvalidPhoneError) {
+      try {
+        await supabase.from('providers').update({
+          whatsapp_invalid: true,
+          whatsapp_invalid_reason: err.message.slice(0, 500),
+        }).eq('id', providerId)
+      } catch { /* no-op */ }
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
     return NextResponse.json({ error: err?.message ?? 'Error desconocido' }, { status: 502 })
   }
 }

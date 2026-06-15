@@ -23,6 +23,24 @@ type InboxProvider = {
   outreach_sent: boolean | null
   contacted_via: string | null
   agent_fit_score: number | null
+  whatsapp_invalid: boolean | null
+  whatsapp_invalid_reason: string | null
+}
+
+// Validador cliente-side espejo de lib/whatsapp isValidPhoneE164ES.
+// Evita mostrar el botón "enviar" cuando el número claramente no es válido,
+// ahorrando llamadas Cloud API. La validación canónica sigue en el server.
+function isPhoneLooksValid(raw: string | null | undefined): boolean {
+  if (!raw) return false
+  const digits = String(raw).replace(/[^\d]/g, '')
+  if (!digits) return false
+  if (digits.length === 9 && /^[6789]/.test(digits)) return true
+  if (digits.length === 11 && digits.startsWith('34') && /^[6789]/.test(digits.slice(2))) return true
+  if (digits.length >= 10 && digits.length <= 15 && !/^[01]/.test(digits)) {
+    if (digits.startsWith('34') && digits.length === 11) return false
+    return true
+  }
+  return false
 }
 
 type InboxMessage = {
@@ -331,18 +349,51 @@ export default function WhatsappInbox() {
 
               {/* Acciones */}
               <div style={{ borderTop: `1px solid ${C.border}`, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Alerta si el proveedor está marcado como WhatsApp inválido
+                    o si el número no parece un teléfono real. */}
+                {(() => {
+                  const phone = selected.outreach_whatsapp || selected.phone
+                  const flagged = selected.whatsapp_invalid === true
+                  const looksOk = isPhoneLooksValid(phone)
+                  if (flagged || !looksOk) {
+                    return (
+                      <div style={{
+                        background: '#7F1D1D33', border: `1px solid #DC2626`, color: '#FCA5A5',
+                        borderRadius: 10, padding: '8px 12px', fontSize: 12,
+                      }}>
+                        ⚠ Este proveedor no tiene WhatsApp válido.{' '}
+                        {flagged && selected.whatsapp_invalid_reason
+                          ? `Motivo: ${selected.whatsapp_invalid_reason}`
+                          : `Número: "${phone || '—'}" no parece un teléfono E.164.`}
+                        <div style={{ marginTop: 4, opacity: 0.85 }}>
+                          No se permite el envío para no malgastar la plantilla aprobada.
+                        </div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  <button
-                    disabled={pending}
-                    onClick={doOutreach}
-                    style={{
-                      fontSize: 13, fontWeight: 700, background: C.accent, color: '#fff',
-                      padding: '8px 16px', borderRadius: 10, border: 'none',
-                      cursor: pending ? 'default' : 'pointer', opacity: pending ? 0.5 : 1,
-                    }}
-                  >
-                    Enviar plantilla de captación
-                  </button>
+                  {(() => {
+                    const phone = selected.outreach_whatsapp || selected.phone
+                    const canSend = !selected.whatsapp_invalid && isPhoneLooksValid(phone)
+                    return (
+                      <button
+                        disabled={pending || !canSend}
+                        title={canSend ? 'Enviar la plantilla aprobada (cold open)' : 'Número no válido: botón deshabilitado'}
+                        onClick={doOutreach}
+                        style={{
+                          fontSize: 13, fontWeight: 700, background: canSend ? C.accent : C.faint, color: '#fff',
+                          padding: '8px 16px', borderRadius: 10, border: 'none',
+                          cursor: (pending || !canSend) ? 'not-allowed' : 'pointer',
+                          opacity: (pending || !canSend) ? 0.5 : 1,
+                        }}
+                      >
+                        Enviar plantilla de captación
+                      </button>
+                    )
+                  })()}
                   <button
                     disabled={pending}
                     onClick={doDraft}
