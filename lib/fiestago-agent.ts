@@ -174,19 +174,38 @@ export async function generateReply(opts: {
     })
   }
 
-  const response = await client().messages.create({
-    model: MODEL,
-    max_tokens: 1024,
-    thinking: { type: 'disabled' },
-    system: [
-      {
-        type: 'text',
-        text: SYSTEM_PROMPT,
-        cache_control: { type: 'ephemeral' },
-      },
-    ],
-    messages,
-  })
+  // Retry con backoff exponencial para errores transitorios de Anthropic:
+  //   429 (rate limit) y 529 (overloaded). Hasta 3 intentos: 0.5s, 2s, 5s.
+  //   El resto de errores (4xx/5xx no-transitorios) revienta al primer fallo.
+  const ANTHROPIC_RETRY_DELAYS_MS = [500, 2000, 5000]
+  let response: Anthropic.Message | null = null
+  let lastErr: any = null
+  for (let attempt = 0; attempt <= ANTHROPIC_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      response = await client().messages.create({
+        model: MODEL,
+        max_tokens: 1024,
+        thinking: { type: 'disabled' },
+        system: [
+          {
+            type: 'text',
+            text: SYSTEM_PROMPT,
+            cache_control: { type: 'ephemeral' },
+          },
+        ],
+        messages,
+      })
+      break
+    } catch (err: any) {
+      lastErr = err
+      const status = err?.status ?? err?.response?.status
+      const isTransient = status === 429 || status === 529 || status === 503
+      const hasMoreAttempts = attempt < ANTHROPIC_RETRY_DELAYS_MS.length
+      if (!isTransient || !hasMoreAttempts) throw err
+      await new Promise(r => setTimeout(r, ANTHROPIC_RETRY_DELAYS_MS[attempt]))
+    }
+  }
+  if (!response) throw lastErr
 
   const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
