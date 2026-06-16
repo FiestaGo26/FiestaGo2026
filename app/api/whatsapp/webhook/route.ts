@@ -327,15 +327,51 @@ async function handleInbound(supabase: any, msg: any) {
 }
 
 // Busca un proveedor cuyo phone u outreach_whatsapp contenga los últimos 9
-// dígitos del número entrante.
+// dígitos del número entrante. Estrategia escalonada:
+//   1. ilike directo (sirve si el phone está como "+34 619 654 293").
+//   2. Si falla: normalizar TODOS los phone a solo dígitos y comparar
+//      sustring. Pilla casos donde el phone tiene espacios/paréntesis raros.
+//   3. Si SIGUE fallando: buscar el outbound más reciente con to_number =
+//      from_number y reusar su provider_id. Pilla casos donde el proveedor
+//      respondió desde un número que NO está en su ficha (p.ej. responde
+//      con su móvil personal aunque su ficha tenga el fijo).
 async function findProviderByPhone(supabase: any, normalized: string) {
   const last9 = normalized.slice(-9)
-  const { data } = await supabase
-    .from('providers')
-    .select('id, name, category, city, social_handle, phone, outreach_whatsapp')
-    .or(`phone.ilike.%${last9}%,outreach_whatsapp.ilike.%${last9}%`)
-    .limit(1)
-  return data?.[0] ?? null
+
+  // 1. ilike directo
+  {
+    const { data } = await supabase
+      .from('providers')
+      .select('id, name, category, city, social_handle, phone, outreach_whatsapp')
+      .or(`phone.ilike.%${last9}%,outreach_whatsapp.ilike.%${last9}%`)
+      .limit(1)
+    if (data?.[0]) return data[0]
+  }
+
+  // 2. Fallback: buscar el outbound más reciente con to_number = from_number.
+  //    El outbound siempre lleva to_number normalizado (sin espacios, sin +)
+  //    porque pasa por normalizePhone antes de mandarse.
+  {
+    const { data: out } = await supabase
+      .from('whatsapp_messages')
+      .select('provider_id')
+      .eq('direction', 'outbound')
+      .eq('to_number', normalized)
+      .not('provider_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (out?.provider_id) {
+      const { data: prov } = await supabase
+        .from('providers')
+        .select('id, name, category, city, social_handle, phone, outreach_whatsapp')
+        .eq('id', out.provider_id)
+        .single()
+      if (prov) return prov
+    }
+  }
+
+  return null
 }
 
 // Marca un proveedor como WhatsApp inválido para no reintentar.
