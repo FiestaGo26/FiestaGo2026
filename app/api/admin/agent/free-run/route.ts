@@ -64,61 +64,58 @@ export async function POST(req: NextRequest) {
 
     let candidates: Candidate[] = []
 
-    // 1. OSM si soporta la categoría.
-    if (osmSupportsCategory(category)) {
-      log(`🌍 OSM · buscando ${cat.query || cat.label}…`)
-      const osmResults = await osmSearch(category, city)
-      candidates.push(...osmResults.map(r => ({ ...r, sourceTag: 'osm' as const })))
-      log(`   ${osmResults.length} candidatos OSM`)
-    } else {
-      log(`🌍 OSM · sin cobertura para "${category}" — salto a DDG`)
-    }
-
-    // 2. DDG SIEMPRE (incluso si OSM trajo suficientes). OSM tiene
-    // negocios geográficos físicos (muchas tiendas viejunas sin móvil ni
-    // web). DDG trae los profesionales con presencia online (más
-    // probabilidad de tener móvil/wa.me). Mezclar las 2 fuentes da
-    // diversidad real.
+    // 1+2. OSM y DDG en PARALELO. Cada fuente independiente — no hay
+    // motivo para esperar OSM antes de lanzar las queries de DDG. Esto
+    // ahorra ~10-15s del budget de 60s de Netlify.
     //
-    // Rotamos entre 8 plantillas de query — elegimos 3 al azar — para
-    // que sucesivos lotes de la misma (categoría, ciudad) no traigan
-    // siempre los mismos resultados. Sin embargo, si OSM ya trae mucho,
-    // recortamos a 2 queries para ahorrar tiempo.
-    {
-      const queryPool = [
-        `${cat.query || cat.label} ${city}`,
-        `${cat.label.split(' ')[0]} ${city} bodas eventos`,
-        `mejores ${cat.label.toLowerCase()} ${city}`,
-        `${cat.label.toLowerCase()} ${city} contacto whatsapp`,
-        `${cat.label.toLowerCase()} ${city} reseñas`,
-        `${cat.query || cat.label} ${city} pequeño negocio`,
-        `${cat.label.split(' ')[0]} ${city} barrio`,
-        `${cat.label.toLowerCase()} económico ${city}`,
-      ]
-      const numQueries = candidates.length >= count * 2 ? 2 : 3
-      const queries = queryPool.sort(() => Math.random() - 0.5).slice(0, numQueries)
-      for (const q of queries) {
-        if (candidates.length >= count * 5) break
-        log(`🦆 DDG · "${q}"`)
-        const v = await ddgSearchVerbose(q, 10)
-        if (!v.fetchedHtml) {
-          log(`   ⚠ DDG no respondió (timeout/captcha)`)
-        } else {
-          log(`   ${v.results.length} pasan filtro · ${v.rawCount} crudos · ${v.domainFiltered} dominio dir · ${v.titleFiltered} título dir`)
-        }
-        for (const r of v.results) {
-          candidates.push({
-            name: r.title.replace(/\s+-\s+.*$/, '').trim().slice(0, 80),
-            phone: null,
-            website: r.url,
-            email: null,
-            instagram: null,
-            address: null,
-            sourceTag: 'ddg',
-          })
-        }
-      }
+    // DDG: rotamos entre 8 plantillas de query — elegimos 2 al azar —
+    // para que sucesivos lotes de la misma (categoría, ciudad) no
+    // traigan siempre los mismos resultados. 2 queries en paralelo
+    // mantienen latencia ~10s (en vez de 20s secuencial).
+    const queryPool = [
+      `${cat.query || cat.label} ${city}`,
+      `${cat.label.split(' ')[0]} ${city} bodas eventos`,
+      `mejores ${cat.label.toLowerCase()} ${city}`,
+      `${cat.label.toLowerCase()} ${city} contacto whatsapp`,
+      `${cat.label.toLowerCase()} ${city} reseñas`,
+      `${cat.query || cat.label} ${city} pequeño negocio`,
+      `${cat.label.split(' ')[0]} ${city} barrio`,
+      `${cat.label.toLowerCase()} económico ${city}`,
+    ]
+    const ddgQueries = queryPool.sort(() => Math.random() - 0.5).slice(0, 2)
+    log(`🌍 OSM + 🦆 DDG (paralelo): "${ddgQueries.join('" · "')}"`)
+
+    const osmPromise = osmSupportsCategory(category)
+      ? osmSearch(category, city).catch(() => [])
+      : Promise.resolve([])
+    const ddgPromises = ddgQueries.map(q =>
+      ddgSearchVerbose(q, 10).catch(() => ({ results: [], rawCount: 0, domainFiltered: 0, titleFiltered: 0, fetchedHtml: false }))
+    )
+
+    const [osmResults, ...ddgStats] = await Promise.all([osmPromise, ...ddgPromises])
+
+    if (osmSupportsCategory(category)) {
+      log(`   OSM: ${osmResults.length} candidatos`)
+      candidates.push(...osmResults.map(r => ({ ...r, sourceTag: 'osm' as const })))
     }
+    ddgStats.forEach((v, i) => {
+      if (!v.fetchedHtml) {
+        log(`   DDG "${ddgQueries[i]}": ⚠ no respondió (timeout/captcha)`)
+      } else {
+        log(`   DDG "${ddgQueries[i]}": ${v.results.length} ok · ${v.rawCount} crudos · ${v.domainFiltered} dom · ${v.titleFiltered} tit`)
+      }
+      for (const r of v.results) {
+        candidates.push({
+          name: r.title.replace(/\s+-\s+.*$/, '').trim().slice(0, 80),
+          phone: null,
+          website: r.url,
+          email: null,
+          instagram: null,
+          address: null,
+          sourceTag: 'ddg',
+        })
+      }
+    })
 
     // Dedupe candidatos por nombre/website ANTES de scrapear (evita
     // visitar 3 veces la misma web).
@@ -179,9 +176,35 @@ export async function POST(req: NextRequest) {
     const withMobile = candidates.filter(c => c.phone && /^(?:34)?[67]/.test(c.phone.replace(/[^\d]/g, ''))).length
     log(`📦 ${candidates.length} candidatos únicos · ${withMobile} con móvil · ${candidates.length - withMobile} requieren scrape`)
 
-    // 3. Enriquecer con scraping de web (cap a count*2 visitas para no
-    //    pasarnos del timeout de 60s).
-    let scraped = 0
+    // 3. PRE-SCRAPE EN PARALELO. Identificamos los candidatos que tienen
+    // web y necesitan scrape, y los visitamos en paralelo con concurrencia
+    // 4 (4 fetchs simultáneos). Con cap `count * 2` y ~5s por fetch, esto
+    // baja de ~50s secuencial a ~10-15s.
+    type Scraped = { email: string|null; contactFormUrl: string|null; whatsappUrl: string|null; mobilePhone: string|null } | null
+    const scrapeCache = new Map<string, Scraped>()
+    const toScrape = candidates
+      .filter(c => c.website && !c.email)
+      .slice(0, count * 2)
+    if (toScrape.length > 0) {
+      const t0 = Date.now()
+      let idx = 0
+      const concurrency = 4
+      await Promise.all(Array.from({ length: Math.min(concurrency, toScrape.length) }, async () => {
+        while (true) {
+          const i = idx++
+          if (i >= toScrape.length) return
+          const c = toScrape[i]
+          try {
+            scrapeCache.set(c.website!, await extractEmailFromWeb(c.website!))
+          } catch {
+            scrapeCache.set(c.website!, null)
+          }
+        }
+      }))
+      log(`🔎 ${toScrape.length} webs scraped en ${Math.round((Date.now() - t0) / 1000)}s`)
+    }
+
+    let scraped = scrapeCache.size
     let saved = 0
     let emailsSent = 0
     let skippedDup = 0
@@ -218,19 +241,15 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Solo scraping si tiene web y no tiene ya email.
-      // CAP estricto: máx `count` scrapes por petición (cada uno tarda 2-6s
-      // por el fetch externo). Con count=5 son ~30s en el peor caso, dentro
-      // del límite de Netlify Functions (~26s en Pro, hasta 60s en Background).
-      if (c.website && !c.email && scraped < count) {
-        scraped++
-        const extracted = await extractEmailFromWeb(c.website)
+      // Si tenemos cache de scrape para esta web, úsalo; los demás (sin web
+      // o no scrapeados por el cap) van por la rama OSM-directa más abajo.
+      if (c.website && !c.email && scrapeCache.has(c.website)) {
+        const extracted = scrapeCache.get(c.website)
         if (extracted?.email) c.email = extracted.email
-        // Si el scraper extrajo un MÓVIL ES (6XX/7XX) del cuerpo de la web,
-        // úsalo como teléfono del candidato si no tenía ya uno utilizable.
-        // Esto es lo que convierte la mayoría de webs DDG en leads con WA:
-        // muchas webs profesionales escriben "WhatsApp: 678 123 456" en
-        // texto plano sin link wa.me.
+        // Si el scraper extrajo un MÓVIL ES (6XX/7XX), úsalo como teléfono
+        // del candidato si no tenía ya uno utilizable. Esto convierte la
+        // mayoría de webs DDG en leads con WA — muchas webs profesionales
+        // escriben "WhatsApp: 678 123 456" en texto plano sin link wa.me.
         if (extracted?.mobilePhone && !c.phone) {
           c.phone = extracted.mobilePhone
         }
