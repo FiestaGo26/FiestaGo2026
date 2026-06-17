@@ -6,6 +6,13 @@ import { emailProviderOutreach } from '@/lib/resend'
 import { osmSearch, osmSupportsCategory } from '@/lib/osm-search'
 import { ddgSearch } from '@/lib/ddg-search'
 import { extractEmailFromWeb } from '@/lib/extract-email'
+import { hasValidWhatsapp } from '@/lib/whatsapp'
+
+// MODO ESTRICTO: solo guardamos leads que tengan WhatsApp utilizable
+// (móvil ES 6XX/7XX o wa.me/api.whatsapp extraído de la web). Es la
+// única vía de captación real que estamos usando — guardar leads sin
+// WhatsApp solo ensucia BD y desperdicia ciclos del scraper.
+const ONLY_WHATSAPP = true
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -111,6 +118,7 @@ export async function POST(req: NextRequest) {
     let saved = 0
     let emailsSent = 0
     let skippedDup = 0
+    let skippedNoWa = 0
 
     // Teléfonos guardados en ESTA ejecución — para no insertar 2 candidatos
     // OSM distintos que en realidad son el mismo negocio con el mismo número.
@@ -126,6 +134,21 @@ export async function POST(req: NextRequest) {
         log(`   ⨯ ${c.name} · dup teléfono in-batch (${c.phone})`)
         skippedDup++
         continue
+      }
+
+      // MODO ESTRICTO: pre-filtro antes de scrape. Si NO tiene teléfono móvil
+      // a la mano Y NO tiene web (donde podríamos extraer wa.me), descartar
+      // sin gastar el scraper. Si tiene web, le damos una oportunidad: el
+      // scraper puede sacar el wa.me en el siguiente paso.
+      if (ONLY_WHATSAPP) {
+        const preCheckPasses =
+          hasValidWhatsapp({ phone: c.phone }) ||
+          !!c.website  // tiene web → puede salir wa.me al scrapear
+        if (!preCheckPasses) {
+          log(`   ⨯ ${c.name} · sin móvil y sin web (descarta pre-scrape)`)
+          skippedNoWa++
+          continue
+        }
       }
 
       // Solo scraping si tiene web y no tiene ya email.
@@ -148,8 +171,16 @@ export async function POST(req: NextRequest) {
           if ((dbExisting || 0) > 0) { skippedDup++; continue }
         }
 
-        // Filtro mínimo: tiene que tener email, teléfono, IG, form URL o WA URL.
-        if (!c.email && !c.phone && !c.instagram && !contactFormUrl && !whatsappUrl) {
+        // MODO ESTRICTO: tras el scrape, solo guardamos si tiene WhatsApp
+        // real (wa.me extraído o móvil ES). Si la web no tenía wa.me y el
+        // teléfono no es móvil, descarta.
+        if (ONLY_WHATSAPP && !hasValidWhatsapp({ phone: c.phone, whatsapp_url: whatsappUrl })) {
+          log(`   ⨯ ${c.name} · sin WhatsApp tras scrape (web sin wa.me, sin móvil)`)
+          skippedNoWa++
+          continue
+        }
+        // (modo no estricto): filtro mínimo legacy — al menos UNA vía
+        if (!ONLY_WHATSAPP && !c.email && !c.phone && !c.instagram && !contactFormUrl && !whatsappUrl) {
           log(`   ⨯ ${c.name} · sin canal accionable`)
           continue
         }
@@ -178,6 +209,15 @@ export async function POST(req: NextRequest) {
         }
       } else if (c.email || c.phone || c.instagram) {
         // Tiene contacto directo desde OSM — saltarse el scrape, guardar ya.
+
+        // MODO ESTRICTO: si OSM nos da teléfono fijo (no móvil) sin web, no
+        // hay chance de que tenga WhatsApp. Descartar.
+        if (ONLY_WHATSAPP && !hasValidWhatsapp({ phone: c.phone })) {
+          log(`   ⨯ ${c.name} · OSM trae solo fijo/email/IG sin móvil (sin WA)`)
+          skippedNoWa++
+          continue
+        }
+
         const orParts: string[] = []
         if (c.email)     orParts.push(`email.eq.${c.email}`)
         if (c.website)   orParts.push(`website.eq.${c.website}`)
@@ -197,8 +237,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    log(`✅ ${saved} guardados · ${emailsSent} emails auto-enviados · ${skippedDup} duplicados · ${scraped} webs scraped`)
-    return NextResponse.json({ saved, emailsSent, skippedDup, scraped, logs })
+    log(`✅ ${saved} guardados · ${emailsSent} emails auto · ${skippedDup} duplicados · ${skippedNoWa} sin WhatsApp · ${scraped} webs scraped`)
+    return NextResponse.json({ saved, emailsSent, skippedDup, skippedNoWa, scraped, logs })
   } catch (err: any) {
     log(`❌ ${err.message}`)
     return NextResponse.json({ error: err.message, logs }, { status: 500 })

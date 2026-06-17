@@ -76,6 +76,49 @@ export class InvalidPhoneError extends Error {
   }
 }
 
+/**
+ * Heurística estricta para "este número CASI seguro tiene WhatsApp".
+ * WhatsApp solo funciona de forma fiable en móviles. En España los móviles
+ * empiezan por 6 o 7. Los fijos (8/9) NO tienen WhatsApp salvo verificación
+ * Business especial (muy raro en proveedores pequeños).
+ *
+ * Devuelve true para:
+ *   · 9 dígitos empezando por 6 o 7
+ *   · 11 dígitos 34 + 6/7
+ *   · números internacionales razonables E.164 (asumimos móvil si encaja)
+ * Devuelve false para fijos ES (8/9 nacionales) y todo lo basura.
+ */
+export function isMobilePhoneES(raw: string | null | undefined): boolean {
+  if (!raw) return false
+  const digits = String(raw).replace(/[^\d]/g, '')
+  if (!digits) return false
+  if (digits.length === 9 && /^[67]/.test(digits)) return true
+  if (digits.length === 11 && digits.startsWith('34') && /^[67]/.test(digits.slice(2))) return true
+  // Internacional no-ES: asumimos móvil si es E.164 razonable (8-15 dígitos,
+  // no empieza por 0/1 ni por 34 con dígito raro).
+  if (digits.length >= 10 && digits.length <= 15 && !/^[01]/.test(digits)) {
+    if (digits.startsWith('34')) return false  // ES ya cubierto arriba
+    return true
+  }
+  return false
+}
+
+/**
+ * Devuelve true si el lead tiene al menos UNA vía WhatsApp clara:
+ *   · Un wa.me/api.whatsapp link extraído de su web propia, o
+ *   · Un teléfono que parece móvil (= alta probabilidad de WA).
+ */
+export function hasValidWhatsapp(opts: {
+  phone?: string | null
+  outreach_whatsapp?: string | null
+  whatsapp_url?: string | null
+}): boolean {
+  if (opts.whatsapp_url && /wa\.me|api\.whatsapp\.com/i.test(opts.whatsapp_url)) return true
+  if (isMobilePhoneES(opts.outreach_whatsapp)) return true
+  if (isMobilePhoneES(opts.phone)) return true
+  return false
+}
+
 // ─── Envío de texto libre (solo válido dentro de la ventana de 24h) ──────────
 export async function sendText(to: string, body: string): Promise<string> {
   if (!isValidPhoneE164ES(to)) throw new InvalidPhoneError(to)
