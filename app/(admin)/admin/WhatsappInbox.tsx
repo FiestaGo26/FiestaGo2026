@@ -154,6 +154,31 @@ export default function WhatsappInbox() {
   const [adhocPhone, setAdhocPhone] = useState('')
   const [adhocName,  setAdhocName]  = useState('')
 
+  // ── Limpieza: borrar de la bandeja proveedores cuyo número no es WA real.
+  //    No borra el provider, solo anula phone/outreach_whatsapp y los marca
+  //    como whatsapp_invalid → caen del filtro de la pestaña.
+  function doCleanupInvalid() {
+    if (!window.confirm(
+      '¿Limpiar de la bandeja los proveedores cuyo número no sea un WhatsApp válido?\n\n' +
+      'Se les vaciará el campo de teléfono y dejarán de aparecer aquí. ' +
+      'La ficha del proveedor se mantiene (email, nombre, etc.).'
+    )) return
+    startTransition(async () => {
+      const res = await fetch('/api/admin/whatsapp', {
+        method: 'POST',
+        headers: adminHeaders(),
+        body: JSON.stringify({ op: 'cleanup_invalid' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        toast.success(`${data.cleaned || 0} limpiados de ${data.total || 0}`)
+        await load()
+      } else {
+        toast.error(data.error || 'Error')
+      }
+    })
+  }
+
   function doAdhocOutreach() {
     if (!adhocPhone.trim()) { toast.error('Introduce un teléfono'); return }
     startTransition(async () => {
@@ -225,6 +250,17 @@ export default function WhatsappInbox() {
               fontFamily: 'IBM Plex Mono, monospace',
             }}>
             {pending ? '⏳' : '💬 ENVIAR'}
+          </button>
+          <button onClick={doCleanupInvalid} disabled={pending}
+            title="Quita de la bandeja los proveedores cuyo número no es un WhatsApp válido"
+            style={{
+              padding: '8px 12px', borderRadius: 8,
+              border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.muted,
+              fontSize: 11, fontWeight: 700, cursor: pending ? 'not-allowed' : 'pointer',
+              fontFamily: 'IBM Plex Mono, monospace',
+            }}>
+            🧹 LIMPIAR INVÁLIDOS
           </button>
         </div>
       </div>

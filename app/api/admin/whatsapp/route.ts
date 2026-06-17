@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { normalizePhone, sendTemplate, sendText, isValidPhoneE164ES, InvalidPhoneError } from '@/lib/whatsapp'
+import { normalizePhone, sendTemplate, sendText, isValidPhoneE164ES, hasValidWhatsapp, InvalidPhoneError } from '@/lib/whatsapp'
 import { generateOpeningMessage, buildOutreachDescriptor, countPlazasConSelloRestantes } from '@/lib/fiestago-agent'
 
 export const runtime = 'nodejs'
@@ -74,6 +74,51 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient()
+
+  // ── Op especial: limpiar de la bandeja los proveedores cuyo "número" no es
+  //    un WhatsApp real (IDs de redes sociales, fijos sin móvil, números
+  //    truncados, etc.). NO borra el provider — solo anula los campos
+  //    phone/outreach_whatsapp y marca whatsapp_invalid=true, de forma que
+  //    deja de aparecer en la bandeja pero conserva email/nombre por si vale
+  //    para otro canal.
+  if (op === 'cleanup_invalid') {
+    const { data: rows, error: loadErr } = await supabase
+      .from('providers')
+      .select('id, name, phone, outreach_whatsapp, whatsapp_url')
+      .or('phone.not.is.null,outreach_whatsapp.not.is.null')
+      .limit(2000)
+    if (loadErr) return NextResponse.json({ error: loadErr.message }, { status: 500 })
+
+    const toClean = (rows || []).filter((p: any) =>
+      !hasValidWhatsapp({
+        phone:             p.phone,
+        outreach_whatsapp: p.outreach_whatsapp,
+        whatsapp_url:      p.whatsapp_url,
+      })
+    )
+    if (toClean.length === 0) {
+      return NextResponse.json({ ok: true, cleaned: 0, total: rows?.length || 0 })
+    }
+
+    const ids = toClean.map((p: any) => p.id)
+    const { error: updErr } = await supabase
+      .from('providers')
+      .update({
+        phone:                   null,
+        outreach_whatsapp:       null,
+        whatsapp_invalid:        true,
+        whatsapp_invalid_reason: 'Limpieza manual: no es un WhatsApp válido',
+      })
+      .in('id', ids)
+    if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+
+    return NextResponse.json({
+      ok: true,
+      cleaned: toClean.length,
+      total: rows?.length || 0,
+      names:  toClean.slice(0, 10).map((p: any) => p.name),
+    })
+  }
 
   // ── Op especial: enviar plantilla a un número arbitrario sin provider_id ──
   // Acepta { phone, name } → si existe ya un proveedor con ese tel lo reusa,
