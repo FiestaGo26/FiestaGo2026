@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/constants'
 import { buildEmailDraft, buildDmDraft } from '@/lib/outreach'
 import { emailProviderOutreach } from '@/lib/resend'
+import { hasValidWhatsapp } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -239,6 +240,14 @@ Formato — SOLO este JSON, sin texto extra:
       const instagram = p.instagram || null
       const phone = p.phone || null
       const contactable = !!(email || phone || website || instagram)
+
+      // MODO ESTRICTO: solo guardamos si tiene WhatsApp utilizable. Si no
+      // tiene móvil pero sí web, dejamos pasar — extract-email luego
+      // intentará sacar wa.me de la web.
+      if (!hasValidWhatsapp({ phone }) && !website) {
+        log(`✗ ${p.name} · sin móvil ni web — descartado (modo WhatsApp)`)
+        continue
+      }
 
       // Dedupe BD: email, instagram o website.
       const orParts: string[] = []

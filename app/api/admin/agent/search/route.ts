@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { searchPlaces, extractCity, extractPhone, extractWebsite, extractEmail } from '@/lib/here-places'
 import { CATEGORIES } from '@/lib/constants'
+import { hasValidWhatsapp } from '@/lib/whatsapp'
 
 // POST /api/admin/agent/search
 //
@@ -61,6 +62,14 @@ export async function POST(req: NextRequest) {
     const website = extractWebsite(place)
     const email   = extractEmail(place)
     const placeCity = extractCity(place) || city
+
+    // MODO ESTRICTO: solo guardamos si tiene WhatsApp utilizable (móvil
+    // ES 6XX/7XX) o web (donde podríamos extraer wa.me con el scraper).
+    // HERE Maps casi nunca da wa.me directo, así que esto es lo razonable.
+    if (!hasValidWhatsapp({ phone }) && !website) {
+      skipped.push({ place_id: place.id, name: place.title, reason: 'sin móvil ni web (sin vía a WhatsApp)' })
+      continue
+    }
 
     newRows.push({
       name:               place.title || '(sin nombre)',

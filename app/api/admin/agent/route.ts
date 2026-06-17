@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { CATEGORIES } from '@/lib/constants'
 import { buildEmailDraft, buildDmDraft, buildWhatsAppDraft } from '@/lib/outreach'
+import { hasValidWhatsapp } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -245,6 +246,7 @@ Formato — SOLO este JSON, sin texto extra:
 
     const saved: any[] = []
     let skippedDup = 0
+    let skippedNoWa = 0
     for (const p of providers) {
       if (saved.length >= count) break  // hemos llegado al target
       const email = p.email || null
@@ -254,6 +256,15 @@ Formato — SOLO este JSON, sin texto extra:
       const website = (websiteRaw && !isSocial) ? websiteRaw : null
       const instagram = p.instagram || null
       const contactable = !!(email || phone || website || instagram)
+
+      // MODO ESTRICTO: solo guardamos si tiene WhatsApp utilizable (móvil
+      // ES 6XX/7XX). Si Claude no devuelve teléfono pero sí web, igual lo
+      // dejamos pasar — el extract-email lo scrapea luego en busca de wa.me.
+      if (!hasValidWhatsapp({ phone }) && !website) {
+        log(`   ⨯ ${p.name} · sin móvil y sin web (sin vía a WhatsApp)`)
+        skippedNoWa++
+        continue
+      }
 
       // Dedupe final contra BD (email, instagram o website).
       const orParts: string[] = []
@@ -304,7 +315,8 @@ Formato — SOLO este JSON, sin texto extra:
     }
 
     log(``)
-    if (skippedDup > 0) log(`♻️  ${skippedDup} duplicados saltados (ya estaban)`)
+    if (skippedDup > 0)  log(`♻️  ${skippedDup} duplicados saltados (ya estaban)`)
+    if (skippedNoWa > 0) log(`🚫 ${skippedNoWa} descartados por no tener vía a WhatsApp`)
     log(`🎉 ${saved.length} proveedores guardados como pendientes`)
     log(`📋 Apruébalos desde el panel para enviar el outreach`)
 
@@ -315,6 +327,7 @@ Formato — SOLO este JSON, sin texto extra:
         found:    providers.length,
         saved:    saved.length,
         skippedDup,
+        skippedNoWa,
         withEmail:     saved.filter((p: any) => p.email).length,
         withInstagram: saved.filter((p: any) => p.instagram).length,
         web: saved.length,
