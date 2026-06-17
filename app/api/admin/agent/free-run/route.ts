@@ -152,7 +152,10 @@ export async function POST(req: NextRequest) {
       }
 
       // Solo scraping si tiene web y no tiene ya email.
-      if (c.website && !c.email && scraped < count * 2) {
+      // CAP estricto: máx `count` scrapes por petición (cada uno tarda 2-6s
+      // por el fetch externo). Con count=5 son ~30s en el peor caso, dentro
+      // del límite de Netlify Functions (~26s en Pro, hasta 60s en Background).
+      if (c.website && !c.email && scraped < count) {
         scraped++
         const extracted = await extractEmailFromWeb(c.website)
         if (extracted?.email) c.email = extracted.email

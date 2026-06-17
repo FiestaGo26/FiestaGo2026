@@ -33,7 +33,7 @@ const BLOCKLIST = [
   /lorem@/i, /ipsum@/i, /^foo@/i, /^bar@/i, /^baz@/i,
 ]
 
-async function fetchPage(url: string, timeoutMs: number = 6000): Promise<string | null> {
+async function fetchPage(url: string, timeoutMs: number = 4000): Promise<string | null> {
   const controller = new AbortController()
   const tick = setTimeout(() => controller.abort(), timeoutMs)
   try {
@@ -202,7 +202,7 @@ export async function extractEmailFromWeb(
   if (!foundEmail || !contactFormUrl || !whatsappUrl) {
     const contactLinks = findContactLinks(home, url)
     for (const link of contactLinks.slice(0, 2)) {
-      const sub = await fetchPage(link, 5000)
+      const sub = await fetchPage(link, 3500)
       if (!sub) continue
       if (!foundEmail) {
         const subMailtos = sub.match(/mailto:([a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g) || []

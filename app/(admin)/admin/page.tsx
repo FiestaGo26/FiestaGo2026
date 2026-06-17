@@ -480,16 +480,34 @@ export default function AdminPage() {
           count:    agentCfg.count,
         }),
       })
-      const data = await res.json()
-      if (data.logs) setAgentLogs(l => [...l, ...data.logs])
-      if (!res.ok) {
-        setAgentLogs(l => [...l, `❌ Error: ${data.error || 'desconocido'}`])
-      } else {
+
+      // Si la respuesta NO es JSON (Netlify devuelve HTML cuando hay timeout
+      // del runtime), intentamos parsear y si falla mostramos un mensaje
+      // útil en vez del JSON parse error.
+      const rawText = await res.text()
+      let data: any = null
+      try { data = JSON.parse(rawText) } catch { /* no es JSON */ }
+
+      if (!data) {
+        // Probable timeout de Netlify (~26s). El agente puede haber guardado
+        // algo igualmente — refrescamos por si acaso.
         setAgentLogs(l => [...l, '',
-          `✅ ${data.saved || 0} guardados · ${data.emailsSent || 0} emails auto-enviados · ${data.skippedDup || 0} duplicados · ${data.scraped || 0} webs scraped`,
-          `📋 Apruébalos desde la pestaña Proveedores → 🆕 Sin contactar`,
+          `⏱ El agente tardó demasiado y Netlify cortó la conexión.`,
+          `   (Probable: muchas webs lentas. Prueba con count menor o reintenta.)`,
+          `🔄 Refrescando lista por si algo se guardó...`,
         ])
         fetchProviders()
+      } else {
+        if (data.logs) setAgentLogs(l => [...l, ...data.logs])
+        if (!res.ok) {
+          setAgentLogs(l => [...l, `❌ Error: ${data.error || 'desconocido'}`])
+        } else {
+          setAgentLogs(l => [...l, '',
+            `✅ ${data.saved || 0} guardados · ${data.emailsSent || 0} emails auto-enviados · ${data.skippedDup || 0} duplicados${typeof data.skippedNoWa === 'number' ? ` · ${data.skippedNoWa} sin WhatsApp` : ''} · ${data.scraped || 0} webs scraped`,
+            `📋 Apruébalos desde la pestaña Proveedores → 🆕 Sin contactar`,
+          ])
+          fetchProviders()
+        }
       }
     } catch (err: any) {
       setAgentLogs(l => [...l, `❌ Error de red: ${err.message}`])
