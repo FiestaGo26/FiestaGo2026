@@ -74,11 +74,17 @@ export async function POST(req: NextRequest) {
       log(`🌍 OSM · sin cobertura para "${category}" — salto a DDG`)
     }
 
-    // 2. DDG como complemento (siempre si OSM devolvió < count*2).
-    // Rotamos entre 8 plantillas de query — elegimos 3 al azar — para que
-    // sucesivos lotes de la misma (categoría, ciudad) no traigan siempre
-    // los mismos resultados.
-    if (candidates.length < count * 2) {
+    // 2. DDG SIEMPRE (incluso si OSM trajo suficientes). OSM tiene
+    // negocios geográficos físicos (muchas tiendas viejunas sin móvil ni
+    // web). DDG trae los profesionales con presencia online (más
+    // probabilidad de tener móvil/wa.me). Mezclar las 2 fuentes da
+    // diversidad real.
+    //
+    // Rotamos entre 8 plantillas de query — elegimos 3 al azar — para
+    // que sucesivos lotes de la misma (categoría, ciudad) no traigan
+    // siempre los mismos resultados. Sin embargo, si OSM ya trae mucho,
+    // recortamos a 2 queries para ahorrar tiempo.
+    {
       const queryPool = [
         `${cat.query || cat.label} ${city}`,
         `${cat.label.split(' ')[0]} ${city} bodas eventos`,
@@ -89,9 +95,10 @@ export async function POST(req: NextRequest) {
         `${cat.label.split(' ')[0]} ${city} barrio`,
         `${cat.label.toLowerCase()} económico ${city}`,
       ]
-      const queries = queryPool.sort(() => Math.random() - 0.5).slice(0, 3)
+      const numQueries = candidates.length >= count * 2 ? 2 : 3
+      const queries = queryPool.sort(() => Math.random() - 0.5).slice(0, numQueries)
       for (const q of queries) {
-        if (candidates.length >= count * 3) break
+        if (candidates.length >= count * 5) break
         log(`🦆 DDG · "${q}"`)
         const ddg = await ddgSearch(q, 10)
         log(`   ${ddg.length} resultados`)
@@ -154,7 +161,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    log(`📦 ${candidates.length} candidatos únicos tras shuffle + pre-dedupe`)
+    // Priorizar candidates con móvil conocido (OSM 6XX/7XX) sobre los que
+    // requieren scrape (DDG). El sort es estable en JS, así que los empates
+    // mantienen el orden aleatorio del shuffle.
+    candidates.sort((a, b) => {
+      const aHasMobile = !!a.phone && /^(?:34)?[67]/.test(a.phone.replace(/[^\d]/g, ''))
+      const bHasMobile = !!b.phone && /^(?:34)?[67]/.test(b.phone.replace(/[^\d]/g, ''))
+      if (aHasMobile && !bHasMobile) return -1
+      if (!aHasMobile && bHasMobile) return 1
+      return 0
+    })
+
+    const withMobile = candidates.filter(c => c.phone && /^(?:34)?[67]/.test(c.phone.replace(/[^\d]/g, ''))).length
+    log(`📦 ${candidates.length} candidatos únicos · ${withMobile} con móvil · ${candidates.length - withMobile} requieren scrape`)
 
     // 3. Enriquecer con scraping de web (cap a count*2 visitas para no
     //    pasarnos del timeout de 60s).
