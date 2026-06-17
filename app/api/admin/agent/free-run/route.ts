@@ -75,12 +75,21 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. DDG como complemento (siempre si OSM devolvió < count*2).
+    // Rotamos entre 8 plantillas de query — elegimos 3 al azar — para que
+    // sucesivos lotes de la misma (categoría, ciudad) no traigan siempre
+    // los mismos resultados.
     if (candidates.length < count * 2) {
-      const queries = [
+      const queryPool = [
         `${cat.query || cat.label} ${city}`,
         `${cat.label.split(' ')[0]} ${city} bodas eventos`,
         `mejores ${cat.label.toLowerCase()} ${city}`,
+        `${cat.label.toLowerCase()} ${city} contacto whatsapp`,
+        `${cat.label.toLowerCase()} ${city} reseñas`,
+        `${cat.query || cat.label} ${city} pequeño negocio`,
+        `${cat.label.split(' ')[0]} ${city} barrio`,
+        `${cat.label.toLowerCase()} económico ${city}`,
       ]
+      const queries = queryPool.sort(() => Math.random() - 0.5).slice(0, 3)
       for (const q of queries) {
         if (candidates.length >= count * 3) break
         log(`🦆 DDG · "${q}"`)
@@ -110,7 +119,42 @@ export async function POST(req: NextRequest) {
       return true
     })
 
-    log(`📦 ${candidates.length} candidatos únicos`)
+    // ALEATORIZAR para no traer siempre los mismos en lotes sucesivos
+    // (Fisher-Yates shuffle). OSM y DDG devuelven resultados con orden
+    // estable — sin esto, el cap de scrape se gasta siempre en los
+    // mismos N primeros.
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[candidates[i], candidates[j]] = [candidates[j], candidates[i]]
+    }
+
+    // PRE-DEDUPE contra BD: sacar de candidates los que ya existen por
+    // website o phone exactos. Ahorra gastar el cap de scrapes en
+    // proveedores que sabemos ya están en la lista.
+    if (candidates.length > 0) {
+      const websites = candidates.map(c => c.website).filter(Boolean) as string[]
+      const phones   = candidates.map(c => c.phone).filter(Boolean)   as string[]
+      const orParts: string[] = []
+      if (websites.length > 0) orParts.push(`website.in.(${websites.map(w => `"${w}"`).join(',')})`)
+      if (phones.length   > 0) orParts.push(`phone.in.(${phones.map(p => `"${p}"`).join(',')})`)
+      if (orParts.length > 0) {
+        const { data: existing } = await supabase
+          .from('providers')
+          .select('website, phone')
+          .or(orParts.join(','))
+        const existingWebsites = new Set((existing || []).map((r: any) => r.website).filter(Boolean))
+        const existingPhones   = new Set((existing || []).map((r: any) => r.phone).filter(Boolean))
+        const before = candidates.length
+        candidates = candidates.filter(c =>
+          !(c.website && existingWebsites.has(c.website)) &&
+          !(c.phone   && existingPhones.has(c.phone))
+        )
+        const removed = before - candidates.length
+        if (removed > 0) log(`♻️  ${removed} eliminados pre-procesado (ya en BD)`)
+      }
+    }
+
+    log(`📦 ${candidates.length} candidatos únicos tras shuffle + pre-dedupe`)
 
     // 3. Enriquecer con scraping de web (cap a count*2 visitas para no
     //    pasarnos del timeout de 60s).

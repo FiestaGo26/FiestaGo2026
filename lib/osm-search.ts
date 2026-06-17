@@ -138,7 +138,7 @@ export async function osmSearch(categoryId: string, city: string): Promise<OsmPr
 (
   ${filterBlock}
 );
-out body 50;`
+out body 150;`
 
   // Probar endpoints en orden (failover).
   let data: any = null
