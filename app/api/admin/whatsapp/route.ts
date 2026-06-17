@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { normalizePhone, sendTemplate, sendText, isValidPhoneE164ES, hasValidWhatsapp, InvalidPhoneError } from '@/lib/whatsapp'
+import { normalizePhone, sendTemplate, sendText, isValidPhoneE164ES, isMobilePhoneES, InvalidPhoneError } from '@/lib/whatsapp'
 import { generateOpeningMessage, buildOutreachDescriptor, countPlazasConSelloRestantes } from '@/lib/fiestago-agent'
 
 export const runtime = 'nodejs'
@@ -28,11 +28,13 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: true })
     .limit(2000)
 
-  // 2) Proveedores candidatos: tienen número y los ordenamos por encaje del agente.
+  // 2) Proveedores candidatos: tienen número Y no están marcados como
+  //    WhatsApp inválido. Los ordenamos por encaje del agente.
   const { data: candidates } = await supabase
     .from('providers')
     .select(PROVIDER_COLS)
     .or('phone.not.is.null,outreach_whatsapp.not.is.null')
+    .not('whatsapp_invalid', 'is', true)
     .order('agent_fit_score', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
     .limit(60)
@@ -89,34 +91,54 @@ export async function POST(req: NextRequest) {
       .limit(2000)
     if (loadErr) return NextResponse.json({ error: loadErr.message }, { status: 500 })
 
-    const toClean = (rows || []).filter((p: any) =>
-      !hasValidWhatsapp({
-        phone:             p.phone,
-        outreach_whatsapp: p.outreach_whatsapp,
-        whatsapp_url:      p.whatsapp_url,
-      })
-    )
-    if (toClean.length === 0) {
+    // Validación POR CAMPO. Si phone es bogus pero outreach_whatsapp es OK,
+    // solo nulleamos phone — no descartamos al proveedor entero. Si todos
+    // los campos son bogus → marcamos whatsapp_invalid=true para que el
+    // GET lo excluya de la bandeja.
+    const byPatch = new Map<string, { patch: Record<string, any>; ids: string[] }>()
+    let cleaned = 0
+    for (const p of (rows || []) as any[]) {
+      const phoneOk    = isMobilePhoneES(p.phone)
+      const outreachOk = isMobilePhoneES(p.outreach_whatsapp)
+      const waOk       = !!p.whatsapp_url && /wa\.me|api\.whatsapp\.com/i.test(p.whatsapp_url)
+      if (phoneOk && outreachOk) continue                      // todo OK
+      if (phoneOk && !p.outreach_whatsapp && !p.whatsapp_url) continue  // solo phone OK
+      if (outreachOk && !p.phone) continue                     // solo outreach OK
+
+      const patch: Record<string, any> = {}
+      if (!phoneOk    && p.phone)             patch.phone             = null
+      if (!outreachOk && p.outreach_whatsapp) patch.outreach_whatsapp = null
+      if (!phoneOk && !outreachOk && !waOk) {
+        patch.whatsapp_invalid        = true
+        patch.whatsapp_invalid_reason = 'Limpieza manual: no es un WhatsApp válido'
+      }
+      if (Object.keys(patch).length === 0) continue
+      cleaned++
+
+      const sig = JSON.stringify(patch)
+      const bucket = byPatch.get(sig) || { patch, ids: [] }
+      bucket.ids.push(p.id)
+      byPatch.set(sig, bucket)
+    }
+
+    if (cleaned === 0) {
       return NextResponse.json({ ok: true, cleaned: 0, total: rows?.length || 0 })
     }
 
-    const ids = toClean.map((p: any) => p.id)
-    const { error: updErr } = await supabase
-      .from('providers')
-      .update({
-        phone:                   null,
-        outreach_whatsapp:       null,
-        whatsapp_invalid:        true,
-        whatsapp_invalid_reason: 'Limpieza manual: no es un WhatsApp válido',
-      })
-      .in('id', ids)
-    if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+    // Batch por firma de patch (~3-4 updates totales en lugar de N).
+    const buckets = Array.from(byPatch.values())
+    for (const { patch, ids } of buckets) {
+      const { error: updErr } = await supabase
+        .from('providers')
+        .update(patch)
+        .in('id', ids)
+      if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       ok: true,
-      cleaned: toClean.length,
+      cleaned,
       total: rows?.length || 0,
-      names:  toClean.slice(0, 10).map((p: any) => p.name),
     })
   }
 
