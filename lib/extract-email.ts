@@ -86,6 +86,35 @@ function findContactLinks(html: string, baseUrl: string): string[] {
   return Array.from(new Set(candidates)).slice(0, 3)
 }
 
+// Busca un MÓVIL ES (9 dígitos empezando por 6 ó 7) en el HTML.
+// Cubre formatos comunes: "678 123 456", "+34 678 123 456",
+// "tel:+34678123456", "WhatsApp: 678123456".
+// Devuelve el número en formato E.164 (sin +) o null.
+export function findMobilePhoneES(html: string): string | null {
+  // Patrones de captura. Priorizamos tel: explícito.
+  const patterns: RegExp[] = [
+    /tel:\+?34\s*([67]\d{2}\s*\d{2,3}\s*\d{2,3}\s*\d{0,2})/i,
+    /tel:\+?([67]\d{8})/i,
+    // "+34 678 12 34 56" o "+34 678 123 456"
+    /\+\s*34\s*([67]\d{2}[\s\-.]?\d{2,3}[\s\-.]?\d{2,3}[\s\-.]?\d{0,2})/,
+    // "WhatsApp: 678 123 456" o "Móvil: 678123456"
+    /(?:whats?app|m[oó]vil|tel[eé]fono|tel\.|tlf\.?|llamar?)[\s:.]*\+?(?:34)?[\s.]*([67]\d{2}[\s\-.]?\d{2,3}[\s\-.]?\d{2,3})/i,
+    // Genérico al final: "678 123 456" suelto. Mayor riesgo de falso
+    // positivo (fecha, código postal), pero el filtro posterior lo valida.
+    /(?<![\d.,])([67]\d{2}[\s\-.]?\d{2,3}[\s\-.]?\d{2,3})(?!\d)/,
+  ]
+  for (const pat of patterns) {
+    const m = html.match(pat)
+    if (m && m[1]) {
+      const digits = m[1].replace(/[^\d]/g, '')
+      if (digits.length === 9 && /^[67]/.test(digits)) {
+        return '34' + digits
+      }
+    }
+  }
+  return null
+}
+
 // Detecta enlaces de WhatsApp en el HTML de la web del proveedor.
 // Acepta: wa.me/34<digits>, api.whatsapp.com/send?phone=…,
 // whatsapp://send?phone=… y construye la URL canónica wa.me con
@@ -150,12 +179,14 @@ function findContactFormUrl(homeHtml: string, baseUrl: string): string | null {
 }
 
 /**
- * Intenta extraer email + URL del formulario de contacto + WhatsApp de una web.
- * Devuelve { email, source, contactFormUrl, whatsappUrl } o null si no hay
- * nada útil. Cualquiera de los campos puede ser null individualmente.
+ * Intenta extraer email + URL del formulario de contacto + WhatsApp +
+ * móvil ES de una web. Devuelve { email, source, contactFormUrl,
+ * whatsappUrl, mobilePhone } o null si no hay nada útil. Cualquiera de
+ * los campos puede ser null individualmente.
  *   - email/source: 'home' | 'contact-page' | 'mailto'
  *   - contactFormUrl: URL absoluta del form (o de la subpágina /contacto)
  *   - whatsappUrl: URL wa.me canónica si la web embebe un enlace WhatsApp
+ *   - mobilePhone: móvil ES (6XX/7XX) en formato E.164 sin '+' (e.g. "34678123456")
  */
 export async function extractEmailFromWeb(
   url: string,
@@ -164,6 +195,7 @@ export async function extractEmailFromWeb(
   source:         string | null
   contactFormUrl: string | null
   whatsappUrl:    string | null
+  mobilePhone:    string | null
 } | null> {
   if (!url || !/^https?:\/\//i.test(url)) return null
 
@@ -193,13 +225,15 @@ export async function extractEmailFromWeb(
     }
   }
 
-  // 2. URL del formulario de contacto + WhatsApp directo embebido.
+  // 2. URL del formulario de contacto + WhatsApp directo embebido +
+  //    móvil ES en el cuerpo del HTML.
   let contactFormUrl = findContactFormUrl(home, url)
   let whatsappUrl    = findWhatsAppUrl(home)
+  let mobilePhone    = findMobilePhoneES(home)
 
   // 3. Si falta algo, seguir hasta 2 links de contacto buscando email +
-  //    verificando si la subpágina tiene formulario + WhatsApp.
-  if (!foundEmail || !contactFormUrl || !whatsappUrl) {
+  //    verificando si la subpágina tiene formulario + WhatsApp + móvil.
+  if (!foundEmail || !contactFormUrl || !whatsappUrl || !mobilePhone) {
     const contactLinks = findContactLinks(home, url)
     for (const link of contactLinks.slice(0, 2)) {
       const sub = await fetchPage(link, 3500)
@@ -230,9 +264,14 @@ export async function extractEmailFromWeb(
         const wa = findWhatsAppUrl(sub)
         if (wa) whatsappUrl = wa
       }
+      // Buscar móvil ES también en subpágina si no se encontró en home
+      if (!mobilePhone) {
+        const mob = findMobilePhoneES(sub)
+        if (mob) mobilePhone = mob
+      }
     }
   }
 
-  if (!foundEmail && !contactFormUrl && !whatsappUrl) return null
-  return { email: foundEmail, source: emailSource, contactFormUrl, whatsappUrl }
+  if (!foundEmail && !contactFormUrl && !whatsappUrl && !mobilePhone) return null
+  return { email: foundEmail, source: emailSource, contactFormUrl, whatsappUrl, mobilePhone }
 }

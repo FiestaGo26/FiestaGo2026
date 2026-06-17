@@ -222,6 +222,14 @@ export async function POST(req: NextRequest) {
         scraped++
         const extracted = await extractEmailFromWeb(c.website)
         if (extracted?.email) c.email = extracted.email
+        // Si el scraper extrajo un MÓVIL ES (6XX/7XX) del cuerpo de la web,
+        // úsalo como teléfono del candidato si no tenía ya uno utilizable.
+        // Esto es lo que convierte la mayoría de webs DDG en leads con WA:
+        // muchas webs profesionales escriben "WhatsApp: 678 123 456" en
+        // texto plano sin link wa.me.
+        if (extracted?.mobilePhone && !c.phone) {
+          c.phone = extracted.mobilePhone
+        }
         const contactFormUrl = extracted?.contactFormUrl || null
         const whatsappUrl    = extracted?.whatsappUrl    || null
 

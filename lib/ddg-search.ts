@@ -24,16 +24,48 @@ type DdgResult = {
 // Dominios que descartamos porque son directorios/agregadores, no
 // negocios individuales. Lo que queremos es la WEB del proveedor.
 const DIRECTORY_BLOCKLIST = [
+  // Directorios bodas/eventos
   'bodas.net', 'bodaclick.com', 'zankyou.es', 'matrimonio.com',
+  'casamientos.es', 'fiesta.es', 'top10boda.com', 'top10valencia.com',
+  'tubodaperfecta.com', 'misbodas.com', 'guiabodas.es',
+  // Directorios genéricos
   'yelp.com', 'yelp.es', 'tripadvisor.com', 'tripadvisor.es',
+  'paginasamarillas.es', 'foursquare.com', 'maps.google',
+  'g.page', 'bing.com',
+  // Redes sociales y mensajería
   'facebook.com', 'instagram.com', 'tiktok.com', 'youtube.com',
   'linkedin.com', 'twitter.com', 'x.com', 'pinterest.com',
-  'paginasamarillas.es', 'foursquare.com', 'maps.google',
-  'g.page', 'wa.me', 'whatsapp.com',
-  'wikipedia.org', 'wikidata.org',
+  'wa.me', 'whatsapp.com',
+  // Enciclopedias / contenido
+  'wikipedia.org', 'wikidata.org', 'reddit.com', 'quora.com',
+  'forocoches.com', 'enfemenino.com',
+  // Marketplaces / clasificados
   'amazon.es', 'aliexpress.com', 'milanuncios.com',
-  'wallapop.com', 'idealista.com',
+  'wallapop.com', 'idealista.com', 'fotocasa.es', 'pisos.com',
+  // Plataformas de freelancers (no son negocios establecidos)
+  'fiverr.com', 'malt.es', 'upwork.com',
 ]
+
+// Patrones en el TÍTULO que indican que el resultado es una lista o
+// directorio, no la web de un proveedor individual. Si el título contiene
+// alguno de estos, descartamos el resultado aunque el dominio no esté
+// en la blocklist.
+const DIRECTORY_TITLE_PATTERNS = [
+  /\btop\s*\d/i,                          // "Top 10 fotógrafos..."
+  /\blos?\s+(\d+|mejores?)\b/i,           // "Los 10 mejores..." / "Los mejores..."
+  /\bmejores?\s+(\w+\s+){0,3}\b/i,        // "Mejores fotógrafos en..." (al inicio)
+  /\bprecios?\s+y\s+reseñas?/i,           // "Precios y reseñas"
+  /\bcomparativa\b/i,                     // "Comparativa de..."
+  /\b(ranking|listado|directorio)\b/i,    // Ranking/Listado
+  /\b(contratar|presupuesto)\b.+\bvalencia|madrid|barcelona|sevilla/i,
+                                          // "Contratar X en Valencia" → suele ser agregador
+  /\bencuentra\s+\w+\b/i,                 // "Encuentra fotógrafo..."
+]
+
+function looksLikeDirectoryTitle(title: string): boolean {
+  if (!title) return false
+  return DIRECTORY_TITLE_PATTERNS.some(p => p.test(title))
+}
 
 async function fetchHtml(url: string, timeoutMs: number = 8000): Promise<string | null> {
   const controller = new AbortController()
@@ -100,6 +132,9 @@ export async function ddgSearch(query: string, limit: number = 15): Promise<DdgR
 
     if (!realUrl.startsWith('http')) continue
     if (isDirectoryDomain(realUrl)) continue
+    // Filtro por TÍTULO: "Top 10 fotógrafos…", "Los mejores…",
+    // "Precios y reseñas" — son listas, no proveedores reales.
+    if (looksLikeDirectoryTitle(title)) continue
 
     results.push({ title, url: realUrl, snippet })
     if (results.length >= limit) break
