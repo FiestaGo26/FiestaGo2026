@@ -56,6 +56,18 @@ export function osmSupportsCategory(categoryId: string): boolean {
   return !!filters && filters.length > 0
 }
 
+// Nodos OSM tagged como craft=photographer pero que en realidad son
+// labs / tiendas de revelado / fotomatones (no fotógrafos profesionales).
+// El tagging OSM es noisy en esta categoría. Filtramos por patrón de
+// nombre — un nombre que contenga "Kodak", "Carnet", "Automático" es
+// inequívocamente una tienda de revelado, no un fotógrafo de bodas.
+function looksLikePrintShop(name: string): boolean {
+  if (!name) return false
+  return /\b(kodak|fotomat[oó]n|fotomaton|carnet|autom[aá]tico|24\s*\/\s*7|express|rolega|gran\s+ang(u|ul)la?)\b/i.test(name)
+    || /^foto\s*(s)?\s+(carnet|autom[aá]tic|automatico|24)/i.test(name)
+    || /^fotolab/i.test(name)
+}
+
 async function fetchJson(url: string, body: string, timeoutMs: number = 25_000): Promise<any | null> {
   const controller = new AbortController()
   const tick = setTimeout(() => controller.abort(), timeoutMs)
@@ -152,6 +164,7 @@ out body 150;`
 
   return (data.elements as any[])
     .filter(el => el.tags?.name)
+    .filter(el => !looksLikePrintShop(el.tags.name as string))
     .map(el => {
       const t = el.tags
       const phoneRaw = t['contact:phone'] || t.phone || null

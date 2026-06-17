@@ -44,6 +44,12 @@ const DIRECTORY_BLOCKLIST = [
   'wallapop.com', 'idealista.com', 'fotocasa.es', 'pisos.com',
   // Plataformas de freelancers (no son negocios establecidos)
   'fiverr.com', 'malt.es', 'upwork.com',
+  // Marketplaces de servicios fotográficos / agregadores
+  'fotio.es', 'sortlist.com', 'bidsmart.com',
+  // Periódicos / revistas locales — atraen "Los X mejores" en SEO
+  'lasprovincias.es', 'levante-emv.com', 'valenciaplaza.com',
+  'elpais.com', 'elmundo.es', 'abc.es', '20minutos.es',
+  'lavanguardia.com', 'elperiodico.com',
 ]
 
 // Patrones en el TÍTULO que indican que el resultado es una lista o
@@ -51,19 +57,50 @@ const DIRECTORY_BLOCKLIST = [
 // listicles INEQUÍVOCOS — un fotógrafo legítimo puede tener "mejores
 // fotógrafos de Valencia" en su meta SEO sin ser un directorio.
 const DIRECTORY_TITLE_PATTERNS = [
-  /^\s*top\s*\d/i,                          // empieza por "Top 10..."
+  /^\s*top\s*\d/i,                          // "Top 10..."
   /\blos?\s+\d+\s+mejores?\b/i,             // "Los 10 mejores..."
   /\blas?\s+\d+\s+mejores?\b/i,             // "Las 10 mejores..."
-  /^\s*los?\s+mejores?\s+\w+/i,             // título que empieza por "Los mejores..."
+  /^\s*los?\s+mejores?\s+\w+/i,             // "Los mejores..."
   /\bprecios?\s+y\s+rese[nñ]as?\b/i,        // "Precios y reseñas"
-  /\bcomparativa\s+de\b/i,                  // "Comparativa de..."
-  /\b(ranking|listado|directorio)\s+de\b/i, // "Ranking de..."
-  /\bencuentra\s+(el\s+mejor|tu|los?)\b/i,  // "Encuentra el mejor / tu fotógrafo"
+  /\bcomparativa\s+de\b/i,
+  /\b(ranking|listado|directorio)\s+de\b/i,
+  /\bencuentra\s+(el\s+mejor|tu|los?)\b/i,
+  // Contenido turístico/editorial — artículos de revista, no proveedores.
+  // Estos eran los falsos positivos del ultimo lote ("Los 6 lugares más
+  // fotogénicos…", "Las mejores localizaciones para sesiones de fotos…").
+  /\blugares?\s+(m[aá]s\s+)?fotog[eé]nicos?\b/i,
+  /\bsitios?\s+instagrameables\b/i,
+  /\blocalizaciones?\s+para\s+(sesiones?|fotos?|hacer)\b/i,
+  /\bpara\s+tu\s+instagram\b/i,
+  /\bvist[ao]s?\s+por\s+\d+\s+fot[oó]graf/i,
+  /\bzonas?\s+perfectas?\s+para\b/i,
+  /\bsitios?\s+para\s+tener\s+un\s+recuerdo\b/i,
+  /\bpor\s+qu[eé]\s+(elegir|contratar)\b/i,  // "¿Por qué elegir un fotógrafo?"
+  /\bgu[ií]a\s+(de|para|completa)\b/i,        // "Guía de fotografía..."
+  /\bsesiones?\s+de\s+fotos?\s+urbanas\b/i,
 ]
 
 function looksLikeDirectoryTitle(title: string): boolean {
   if (!title) return false
   return DIRECTORY_TITLE_PATTERNS.some(p => p.test(title))
+}
+
+// URLs típicas de artículo/blog/noticia, no de página de proveedor.
+// Tras descartar dominios agregadores, los resultados que sobreviven y
+// son magazines/blogs tienen rutas como /blog/, /noticia/, /guia/,
+// /2024/03/articulo-x. La página de un fotógrafo individual rara vez
+// vive en esas rutas.
+function isLikelyArticleUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const path = u.pathname.toLowerCase()
+    if (/\/(blog|noticias?|art[íi]culo|reportaje|magazine|revista|news|post|gu[íi]a)(\/|$)/.test(path)) return true
+    if (/\/20\d{2}\/\d{1,2}\//.test(path)) return true       // /2024/03/...
+    if (/-\d{4}-\d{2}-\d{2}(\/|$)/.test(path)) return true   // slugs con fecha
+    return false
+  } catch {
+    return false
+  }
 }
 
 async function fetchHtml(url: string, timeoutMs: number = 8000): Promise<string | null> {
@@ -150,6 +187,9 @@ export async function ddgSearchVerbose(query: string, limit: number = 15): Promi
     rawCount++
     if (isDirectoryDomain(realUrl)) { domainFiltered++; continue }
     if (looksLikeDirectoryTitle(title)) { titleFiltered++; continue }
+    // Bloquear artículos/blogs/noticias por URL — son contenido
+    // editorial sobre el sector, no webs de proveedores.
+    if (isLikelyArticleUrl(realUrl)) { titleFiltered++; continue }
 
     results.push({ title, url: realUrl, snippet })
     if (results.length >= limit) break

@@ -72,15 +72,23 @@ export async function POST(req: NextRequest) {
     // para que sucesivos lotes de la misma (categoría, ciudad) no
     // traigan siempre los mismos resultados. 2 queries en paralelo
     // mantienen latencia ~10s (en vez de 20s secuencial).
+    // Query pool BIAS HACIA INTENT PROFESIONAL: contratar / reservar /
+    // presupuesto / estudio. Las queries anteriores ("barrio", "reseñas",
+    // "económico") atraían contenido editorial (revistas, blogs, guías
+    // turísticas) en vez de webs de proveedores. Estas todas suenan a
+    // alguien buscando contratar el servicio.
+    const cw = cat.query || cat.label
+    const cl = cat.label.toLowerCase()
+    const cf = cat.label.split(' ')[0]
     const queryPool = [
-      `${cat.query || cat.label} ${city}`,
-      `${cat.label.split(' ')[0]} ${city} bodas eventos`,
-      `mejores ${cat.label.toLowerCase()} ${city}`,
-      `${cat.label.toLowerCase()} ${city} contacto whatsapp`,
-      `${cat.label.toLowerCase()} ${city} reseñas`,
-      `${cat.query || cat.label} ${city} pequeño negocio`,
-      `${cat.label.split(' ')[0]} ${city} barrio`,
-      `${cat.label.toLowerCase()} económico ${city}`,
+      `${cw} ${city} bodas`,
+      `${cf} ${city} bodas eventos`,
+      `estudio ${cl} ${city}`,
+      `${cl} profesional ${city}`,
+      `${cl} ${city} contratar presupuesto`,
+      `${cl} ${city} reservar`,
+      `${cw} freelance ${city}`,
+      `${cl} ${city} contacto`,
     ]
     const ddgQueries = queryPool.sort(() => Math.random() - 0.5).slice(0, 2)
     log(`🌍 OSM + 🦆 DDG (paralelo): "${ddgQueries.join('" · "')}"`)
