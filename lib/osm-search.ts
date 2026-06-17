@@ -34,7 +34,9 @@ type OsmProvider = {
 // completa que se inyecta en la query. Si está vacío, OSM no es la
 // fuente adecuada para esa categoría (mejor usar DDG/PA).
 const CATEGORY_FILTERS: Record<string, string[]> = {
-  foto:       ['node["craft"="photographer"]', 'node["office"="photographer"]', 'node["shop"="photo"]'],
+  // OJO: shop=photo son labs/Kodak/foto-carnet, NO fotógrafos de boda.
+  // Mantenemos solo craft/office=photographer (profesionales).
+  foto:       ['node["craft"="photographer"]', 'node["office"="photographer"]'],
   catering:   ['node["cuisine"="catering"]', 'node["craft"="catering"]', 'node["amenity"="restaurant"]["catering"="yes"]'],
   espacios:   ['node["amenity"="events_venue"]', 'node["amenity"="conference_centre"]', 'node["leisure"="hall_of_fame"]'],
   musica:     [], // OSM no marca DJs — usar DDG

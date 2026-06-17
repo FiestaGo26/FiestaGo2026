@@ -47,19 +47,18 @@ const DIRECTORY_BLOCKLIST = [
 ]
 
 // Patrones en el TÍTULO que indican que el resultado es una lista o
-// directorio, no la web de un proveedor individual. Si el título contiene
-// alguno de estos, descartamos el resultado aunque el dominio no esté
-// en la blocklist.
+// directorio, no la web de un proveedor individual. Solo bloqueamos
+// listicles INEQUÍVOCOS — un fotógrafo legítimo puede tener "mejores
+// fotógrafos de Valencia" en su meta SEO sin ser un directorio.
 const DIRECTORY_TITLE_PATTERNS = [
-  /\btop\s*\d/i,                          // "Top 10 fotógrafos..."
-  /\blos?\s+(\d+|mejores?)\b/i,           // "Los 10 mejores..." / "Los mejores..."
-  /\bmejores?\s+(\w+\s+){0,3}\b/i,        // "Mejores fotógrafos en..." (al inicio)
-  /\bprecios?\s+y\s+reseñas?/i,           // "Precios y reseñas"
-  /\bcomparativa\b/i,                     // "Comparativa de..."
-  /\b(ranking|listado|directorio)\b/i,    // Ranking/Listado
-  /\b(contratar|presupuesto)\b.+\bvalencia|madrid|barcelona|sevilla/i,
-                                          // "Contratar X en Valencia" → suele ser agregador
-  /\bencuentra\s+\w+\b/i,                 // "Encuentra fotógrafo..."
+  /^\s*top\s*\d/i,                          // empieza por "Top 10..."
+  /\blos?\s+\d+\s+mejores?\b/i,             // "Los 10 mejores..."
+  /\blas?\s+\d+\s+mejores?\b/i,             // "Las 10 mejores..."
+  /^\s*los?\s+mejores?\s+\w+/i,             // título que empieza por "Los mejores..."
+  /\bprecios?\s+y\s+rese[nñ]as?\b/i,        // "Precios y reseñas"
+  /\bcomparativa\s+de\b/i,                  // "Comparativa de..."
+  /\b(ranking|listado|directorio)\s+de\b/i, // "Ranking de..."
+  /\bencuentra\s+(el\s+mejor|tu|los?)\b/i,  // "Encuentra el mejor / tu fotógrafo"
 ]
 
 function looksLikeDirectoryTitle(title: string): boolean {
@@ -111,16 +110,33 @@ function isDirectoryDomain(url: string): boolean {
  * Búsqueda en DuckDuckGo HTML. Devuelve hasta `limit` resultados que
  * NO son directorios (esos los filtramos para que solo queden webs de
  * negocios individuales).
+ *
+ * Devuelve también un objeto con stats de diagnóstico para que el
+ * llamante pueda loguear qué se descartó y por qué (útil cuando DDG
+ * "devuelve 0" — saber si es por captcha, dominios bloqueados o títulos).
  */
 export async function ddgSearch(query: string, limit: number = 15): Promise<DdgResult[]> {
+  const r = await ddgSearchVerbose(query, limit)
+  return r.results
+}
+
+export type DdgStats = {
+  results:        DdgResult[]
+  rawCount:       number
+  domainFiltered: number
+  titleFiltered:  number
+  fetchedHtml:    boolean
+}
+
+export async function ddgSearchVerbose(query: string, limit: number = 15): Promise<DdgStats> {
   const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=es-es`
   const html = await fetchHtml(url, 10_000)
-  if (!html) return []
+  if (!html) return { results: [], rawCount: 0, domainFiltered: 0, titleFiltered: 0, fetchedHtml: false }
 
-  // Parsear bloques de resultado. La versión HTML de DDG usa
-  // <a class="result__a" href="..."> para el título y <a class="result__snippet">
-  // para el snippet. La URL en el href está envuelta en /l/?uddg=...
   const results: DdgResult[] = []
+  let rawCount = 0
+  let domainFiltered = 0
+  let titleFiltered = 0
   const blockRegex = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi
 
   let m: RegExpExecArray | null
@@ -131,16 +147,15 @@ export async function ddgSearch(query: string, limit: number = 15): Promise<DdgR
     const snippet = m[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()
 
     if (!realUrl.startsWith('http')) continue
-    if (isDirectoryDomain(realUrl)) continue
-    // Filtro por TÍTULO: "Top 10 fotógrafos…", "Los mejores…",
-    // "Precios y reseñas" — son listas, no proveedores reales.
-    if (looksLikeDirectoryTitle(title)) continue
+    rawCount++
+    if (isDirectoryDomain(realUrl)) { domainFiltered++; continue }
+    if (looksLikeDirectoryTitle(title)) { titleFiltered++; continue }
 
     results.push({ title, url: realUrl, snippet })
     if (results.length >= limit) break
   }
 
-  return results
+  return { results, rawCount, domainFiltered, titleFiltered, fetchedHtml: true }
 }
 
 export type { DdgResult }

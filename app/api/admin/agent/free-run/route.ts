@@ -4,7 +4,7 @@ import { CATEGORIES } from '@/lib/constants'
 import { buildEmailDraft, buildDmDraft, buildWhatsAppDraft } from '@/lib/outreach'
 import { emailProviderOutreach } from '@/lib/resend'
 import { osmSearch, osmSupportsCategory } from '@/lib/osm-search'
-import { ddgSearch } from '@/lib/ddg-search'
+import { ddgSearchVerbose } from '@/lib/ddg-search'
 import { extractEmailFromWeb } from '@/lib/extract-email'
 import { hasValidWhatsapp } from '@/lib/whatsapp'
 
@@ -100,9 +100,13 @@ export async function POST(req: NextRequest) {
       for (const q of queries) {
         if (candidates.length >= count * 5) break
         log(`🦆 DDG · "${q}"`)
-        const ddg = await ddgSearch(q, 10)
-        log(`   ${ddg.length} resultados`)
-        for (const r of ddg) {
+        const v = await ddgSearchVerbose(q, 10)
+        if (!v.fetchedHtml) {
+          log(`   ⚠ DDG no respondió (timeout/captcha)`)
+        } else {
+          log(`   ${v.results.length} pasan filtro · ${v.rawCount} crudos · ${v.domainFiltered} dominio dir · ${v.titleFiltered} título dir`)
+        }
+        for (const r of v.results) {
           candidates.push({
             name: r.title.replace(/\s+-\s+.*$/, '').trim().slice(0, 80),
             phone: null,
