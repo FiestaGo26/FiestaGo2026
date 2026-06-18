@@ -1482,7 +1482,9 @@ export default function AdminPage() {
                 <div style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:9, fontWeight:700, color:'#06B6D4',
                   letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:14 }}>▸ Configurar agente</div>
 
-                {[['Categoría','category','select',CATEGORIES.map(c=>({v:c.id,l:`${c.icon} ${c.label}`}))],
+                {[['Categoría','category','select',
+                    CATEGORIES.map(c=>({v:c.id,l:`${(c as any).hot ? '🔥 ' : '❄️ '}${c.icon} ${c.label}`}))
+                  ],
                   ['Ciudad','city','select',[{v:'Madrid',l:'Madrid'},{v:'Barcelona',l:'Barcelona'},{v:'Valencia',l:'Valencia'},{v:'Sevilla',l:'Sevilla'},{v:'Bilbao',l:'Bilbao'},{v:'Málaga',l:'Málaga'}]],
                 ].map(([lbl,field,type,opts]:any) => (
                   <div key={field} style={{ marginBottom:12 }}>

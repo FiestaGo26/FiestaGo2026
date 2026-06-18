@@ -1,38 +1,62 @@
+// Marca de "categoría caliente" para el agente de captación: las que
+// venden naturalmente a bodas/eventos vs. las frías (negocios físicos
+// que sirven a particulares). Las frías (joyería, papelería) tienden a
+// no responder al WhatsApp porque no es su público — joyerías hacen
+// alianzas vía cliente final, papelerías comerciales no hacen bodas.
+//
+// Evidencia del lote 2026-06-18 (21 outbounds):
+//   · joyería  : 7/7 leído sin responder (100% frío)
+//   · papelería: 5/8 leído sin responder + 1 failed
+//   · animación: 1 humano interesado (Trapisonda)
+//   · música/foto/pastel (lotes previos): humanos reales en cada uno
 export const CATEGORIES = [
   { id:'foto',       icon:'📷', label:'Fotografía & Video',      color:'#C0392B', query:'fotógrafo bodas eventos',
+    hot:true,
     hashtags:['fotografobodas','weddingphotographer','fotografoevento'],
     tiktokTags:['fotografobodas','weddingphotography','bodas'] },
   { id:'catering',   icon:'🍽️', label:'Catering & Banquetes',   color:'#C8860A', query:'catering eventos bodas',
+    hot:true,
     hashtags:['cateringbodas','cateringevento','banqueteboda'],
     tiktokTags:['cateringbodas','cateringeventos'] },
   { id:'espacios',   icon:'🏛️', label:'Espacios & Fincas',      color:'#3D7A52', query:'finca salón eventos bodas',
+    hot:true,
     hashtags:['fincabodas','saloneventos','weddingvenue'],
     tiktokTags:['fincabodas','salondebodas'] },
   { id:'musica',     icon:'🎵', label:'Música & DJ',             color:'#8E44AD', query:'DJ bodas eventos música',
+    hot:true,
     hashtags:['djbodas','musicabodas','djboda'],
     tiktokTags:['djbodas','musicabodas'] },
   { id:'flores',     icon:'💐', label:'Flores & Decoración',     color:'#CB4A8A', query:'floristería decoración bodas',
+    hot:true,
     hashtags:['floristeriabodas','decoracionbodas'],
     tiktokTags:['floristeria','bodas'] },
   { id:'pastel',     icon:'🎂', label:'Tartas & Repostería',     color:'#A0522D', query:'pastelería tarta bodas',
+    hot:true,
     hashtags:['tartaboda','pastelbodas','weddingcake'],
     tiktokTags:['tartaboda','weddingcake'] },
   { id:'belleza',    icon:'💄', label:'Belleza & Estilismo',     color:'#9333EA', query:'maquillaje peluquería novias',
+    hot:true,
     hashtags:['maquillajenovia','peluqueriaboda'],
     tiktokTags:['maquillajenovia','bridalmakeup'] },
   { id:'animacion',  icon:'🎪', label:'Animación & Shows',       color:'#1A6EA8', query:'animación eventos espectáculos',
+    hot:true,
     hashtags:['animacioneventos','animacioninfantil'],
     tiktokTags:['animacion','photocall'] },
   { id:'transporte', icon:'🚗', label:'Transporte & Limusinas',  color:'#148A72', query:'limusina transporte bodas',
+    hot:true,
     hashtags:['limusinaboda','cochesboda'],
     tiktokTags:['limusinaboda','weddingcar'] },
-  { id:'papeleria',  icon:'✉️', label:'Papelería & Detalles',   color:'#7D6608', query:'papelería invitaciones bodas',
-    hashtags:['invitacionesboda','papeleriaboda'],
-    tiktokTags:['invitacionesboda','papelerianupcial'] },
   { id:'planner',    icon:'📋', label:'Wedding & Event Planner', color:'#1F4E79', query:'wedding planner organizador bodas',
+    hot:true,
     hashtags:['weddingplanner','organizadorabodas'],
     tiktokTags:['weddingplanner','organizadorabodas'] },
+  // ─── FRÍAS: ICP es el cliente final, no celebra eventos como proveedor ──
+  { id:'papeleria',  icon:'✉️', label:'Papelería & Detalles',   color:'#7D6608', query:'papelería invitaciones bodas',
+    hot:false,
+    hashtags:['invitacionesboda','papeleriaboda'],
+    tiktokTags:['invitacionesboda','papelerianupcial'] },
   { id:'joyeria',    icon:'💍', label:'Joyería & Accesorios',   color:'#B7410E', query:'joyería alianzas anillos bodas',
+    hot:false,
     hashtags:['joyeriaboda','alianzasboda'],
     tiktokTags:['joyeriaboda','alianzas'] },
 ] as const
