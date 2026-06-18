@@ -108,12 +108,25 @@ export function isMobilePhoneES(raw: string | null | undefined): boolean {
  *   · Un wa.me/api.whatsapp link extraído de su web propia, o
  *   · Un teléfono que parece móvil (= alta probabilidad de WA).
  */
+// Extrae el número detrás de una URL wa.me / api.whatsapp.com.
+// Devuelve digits puros o null si no parece tener un número.
+export function extractPhoneFromWaUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  const m = url.match(/wa\.me\/\+?(\d{8,15})|phone=\+?(\d{8,15})/i)
+  const digits = m?.[1] || m?.[2] || ''
+  return digits || null
+}
+
 export function hasValidWhatsapp(opts: {
   phone?: string | null
   outreach_whatsapp?: string | null
   whatsapp_url?: string | null
 }): boolean {
-  if (opts.whatsapp_url && /wa\.me|api\.whatsapp\.com/i.test(opts.whatsapp_url)) return true
+  // wa.me URL: NO basta con que la cadena contenga "wa.me". Hay que
+  // validar que el número detrás sea un móvil utilizable; si no, ese link
+  // genera fallo 131026 en Meta o cae en un buzón cualquiera.
+  const waPhone = extractPhoneFromWaUrl(opts.whatsapp_url)
+  if (waPhone && isMobilePhoneES(waPhone)) return true
   if (isMobilePhoneES(opts.outreach_whatsapp)) return true
   if (isMobilePhoneES(opts.phone)) return true
   return false

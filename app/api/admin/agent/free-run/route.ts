@@ -6,7 +6,7 @@ import { emailProviderOutreach } from '@/lib/resend'
 import { osmSearch, osmSupportsCategory } from '@/lib/osm-search'
 import { ddgSearchVerbose } from '@/lib/ddg-search'
 import { extractEmailFromWeb } from '@/lib/extract-email'
-import { hasValidWhatsapp } from '@/lib/whatsapp'
+import { hasValidWhatsapp, extractPhoneFromWaUrl, isMobilePhoneES } from '@/lib/whatsapp'
 
 // MODO ESTRICTO: solo guardamos leads que tengan WhatsApp utilizable
 // (móvil ES 6XX/7XX o wa.me/api.whatsapp extraído de la web). Es la
@@ -90,8 +90,13 @@ export async function POST(req: NextRequest) {
       `${cw} freelance ${city}`,
       `${cl} ${city} contacto`,
     ]
-    const ddgQueries = queryPool.sort(() => Math.random() - 0.5).slice(0, 2)
-    log(`🌍 OSM + 🦆 DDG (paralelo): "${ddgQueries.join('" · "')}"`)
+    // Nº de queries DDG escalado con count: queremos ~3-5x candidatos sobre
+    // count porque muchos se filtran por (a) ya en BD, (b) sin WhatsApp,
+    // (c) duplicado in-batch. Con count=5 → 3 queries, count=10 → 5,
+    // count=15 → 7. Las 2 OSM son gratis y van en paralelo igual.
+    const ddgQueryCount = Math.min(queryPool.length, Math.max(2, Math.ceil(count / 2) + 1))
+    const ddgQueries = queryPool.sort(() => Math.random() - 0.5).slice(0, ddgQueryCount)
+    log(`🌍 OSM + 🦆 DDG x${ddgQueries.length} (paralelo): "${ddgQueries.join('" · "')}"`)
 
     const osmPromise = osmSupportsCategory(category)
       ? osmSearch(category, city).catch(() => [])
@@ -184,19 +189,18 @@ export async function POST(req: NextRequest) {
     const withMobile = candidates.filter(c => c.phone && /^(?:34)?[67]/.test(c.phone.replace(/[^\d]/g, ''))).length
     log(`📦 ${candidates.length} candidatos únicos · ${withMobile} con móvil · ${candidates.length - withMobile} requieren scrape`)
 
-    // 3. PRE-SCRAPE EN PARALELO. Identificamos los candidatos que tienen
-    // web y necesitan scrape, y los visitamos en paralelo con concurrencia
-    // 4 (4 fetchs simultáneos). Con cap `count * 2` y ~5s por fetch, esto
-    // baja de ~50s secuencial a ~10-15s.
+    // 3. PRE-SCRAPE EN PARALELO. Cap = count * 3 porque muchos scrapes
+    // resultan en candidatos descartados (sin móvil, wa.me bogus, etc.).
+    // Concurrencia 5 para mantener latencia ~10-15s incluso con count=10.
     type Scraped = { email: string|null; contactFormUrl: string|null; whatsappUrl: string|null; mobilePhone: string|null } | null
     const scrapeCache = new Map<string, Scraped>()
     const toScrape = candidates
       .filter(c => c.website && !c.email)
-      .slice(0, count * 2)
+      .slice(0, count * 3)
     if (toScrape.length > 0) {
       const t0 = Date.now()
       let idx = 0
-      const concurrency = 4
+      const concurrency = 5
       await Promise.all(Array.from({ length: Math.min(concurrency, toScrape.length) }, async () => {
         while (true) {
           const i = idx++
@@ -263,6 +267,21 @@ export async function POST(req: NextRequest) {
         }
         const contactFormUrl = extracted?.contactFormUrl || null
         const whatsappUrl    = extracted?.whatsappUrl    || null
+
+        // Si el scrape devolvió wa.me y NO tenemos móvil aún, promover el
+        // número del wa.me al campo phone (siempre que sea móvil real).
+        // Así el lead se guarda con un teléfono utilizable, no solo el link.
+        if (!c.phone && whatsappUrl) {
+          const waPhone = extractPhoneFromWaUrl(whatsappUrl)
+          if (waPhone && isMobilePhoneES(waPhone)) c.phone = waPhone
+        }
+        // Si el phone existente es BOGUS (no móvil) y wa.me tiene uno
+        // bueno, lo reemplazamos. El bogus venía del scraper genérico.
+        if (c.phone && !isMobilePhoneES(c.phone)) {
+          const waPhone = extractPhoneFromWaUrl(whatsappUrl)
+          if (waPhone && isMobilePhoneES(waPhone)) c.phone = waPhone
+          else c.phone = null
+        }
 
         // Dedupe BD por email/website/teléfono.
         const orParts: string[] = []
@@ -342,8 +361,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    log(`✅ ${saved} guardados · ${emailsSent} emails auto · ${skippedDup} duplicados · ${skippedNoWa} sin WhatsApp · ${scraped} webs scraped`)
-    return NextResponse.json({ saved, emailsSent, skippedDup, skippedNoWa, scraped, logs })
+    log(`✅ ${saved}/${count} guardados · ${emailsSent} emails auto · ${skippedDup} duplicados · ${skippedNoWa} sin WhatsApp · ${scraped} webs scraped`)
+    if (saved < count) {
+      log(`⚠️  No llegamos al target (${saved}/${count}). El pool DDG/OSM se agotó o todos los candidatos restantes ya estaban en BD o sin WhatsApp. Prueba a relanzar — el shuffle traerá resultados distintos.`)
+    }
+    return NextResponse.json({ saved, target: count, emailsSent, skippedDup, skippedNoWa, scraped, logs })
   } catch (err: any) {
     log(`❌ ${err.message}`)
     return NextResponse.json({ error: err.message, logs }, { status: 500 })
