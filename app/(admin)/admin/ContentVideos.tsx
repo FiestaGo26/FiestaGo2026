@@ -85,6 +85,21 @@ export default function ContentVideos() {
   }
   useEffect(() => { load() }, [])
 
+  // Auto-refresh cada 20s si hay algún vídeo en processing/pending.
+  // Llama a /poll-now (que polea HeyGen y actualiza BD) y luego recarga
+  // la lista. Se detiene cuando todos están completed/failed.
+  useEffect(() => {
+    const inFlight = videos.some(v => v.heygen_status === 'processing' || v.heygen_status === 'pending')
+    if (!inFlight) return
+    const id = setInterval(async () => {
+      try {
+        await fetch('/api/admin/content/poll-now', { method: 'POST', headers: adminHeaders() })
+      } catch {}
+      await load()
+    }, 20_000)
+    return () => clearInterval(id)
+  }, [videos])
+
   function generateNow() {
     if (!window.confirm('¿Forzar generación de un vídeo nuevo HOY? (reemplaza el existente)')) return
     startTransition(async () => {
