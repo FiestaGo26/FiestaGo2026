@@ -63,6 +63,8 @@ const PILLAR_LABEL: Record<string, string> = {
 
 export default function ContentVideos() {
   const [videos, setVideos]   = useState<Video[]>([])
+  const [mode, setMode]       = useState<string>('providers')
+  const [pillarToday, setPillarToday] = useState<{ id: string; label: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [pending, startTransition] = useTransition()
 
@@ -73,6 +75,8 @@ export default function ContentVideos() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error')
       setVideos(data.videos || [])
+      setMode(data.mode || 'providers')
+      setPillarToday(data.pillarToday || null)
     } catch (e: any) {
       toast.error(e?.message || 'Error al cargar')
     } finally {
@@ -147,8 +151,23 @@ export default function ContentVideos() {
         display:'flex', alignItems:'center', justifyContent:'space-between',
         marginBottom:16, gap:12, flexWrap:'wrap'
       }}>
-        <div style={{ fontSize:13, color:C.muted }}>
-          Vídeos diarios para Reels / TikTok / Shorts. Cron a las 08:00 (Madrid). HeyGen + Claude.
+        <div style={{ fontSize:13, color:C.muted, display:'flex', flexDirection:'column', gap:4 }}>
+          <div>Vídeos diarios para Reels / TikTok / Shorts. Cron 08:00 Madrid. HeyGen + Claude.</div>
+          <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap', fontSize:11 }}>
+            <span style={{
+              padding:'2px 8px', borderRadius:5,
+              background: mode === 'providers' ? `${C.amber}22` : `${C.cyan}22`,
+              color:      mode === 'providers' ? C.amber : C.cyan,
+              fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em',
+            }}>
+              Modo: {mode === 'providers' ? '🎯 Captación proveedores' : '💍 Captación clientes'}
+            </span>
+            {pillarToday && (
+              <span style={{ color:C.faint }}>
+                · Pilar de hoy: <span style={{ color:C.muted }}>{pillarToday.label}</span>
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={pollNow} disabled={pending}

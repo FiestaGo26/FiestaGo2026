@@ -30,8 +30,133 @@ export type Pillar = {
   hashtagsBase: string[]
 }
 
-// Pilares por día. dayOfWeek sigue convención JS (0=domingo, 1=lunes,…).
-export const PILLARS: Pillar[] = [
+// ─── MODO "PROVEEDORES" · captación B2B ────────────────────────────────────
+// Los primeros vídeos van enfocados a captar proveedores (objetivo: llenar
+// las 100 plazas con Sello de Calidad). Una vez lleno el sello, cambias
+// CONTENT_MODE=clients en Netlify y empieza a rotar el set de cliente.
+//
+// Todos los CTAs van al registro de proveedor. Tono: directo, vendedor de
+// oportunidad, FOMO honesto. Hashtags B2B/profesionales del sector.
+export const PILLARS_PROVIDERS: Pillar[] = [
+  {
+    id:        'lunes_diferencial',
+    dayOfWeek: 1,
+    label:     'Por qué FiestaGo vs otros',
+    topicBag: [
+      'Por qué FiestaGo es distinto a bodas.net para tu negocio',
+      'Marketplaces de bodas: dónde están los clientes que pagan',
+      'Lo que ningún otro marketplace de eventos te ofrece',
+      'Por qué bodas.net no te trae clientes (y nosotros sí)',
+      'La diferencia entre estar en un directorio y estar en un marketplace',
+      'Por qué los proveedores se cambian de bodas.net a FiestaGo',
+    ],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'date de alta gratis',
+    hashtagsBase: ['proveedoresboda','marketplaceboda','fotografoboda','djboda','cateringboda','animacionevento'],
+  },
+  {
+    id:        'martes_sello',
+    dayOfWeek: 2,
+    label:     'Sello de Calidad (FOMO)',
+    topicBag: [
+      'Solo quedan {N} plazas con Sello de Calidad en FiestaGo',
+      'El Sello de Calidad de FiestaGo: por qué te convierte 3x más',
+      'Cómo ser uno de los 100 proveedores con sello en 2026',
+      'Las parejas eligen primero al proveedor con sello: por qué',
+      'Sello de Calidad: qué pide FiestaGo y qué da a cambio',
+      'Quedan {N} plazas: por qué los primeros 100 importan tanto',
+    ],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'reserva tu plaza',
+    hashtagsBase: ['sellocalidadFiestaGo','proveedoresboda','marketplaceboda','bodasespaña'],
+  },
+  {
+    id:        'miercoles_economico',
+    dayOfWeek: 3,
+    label:     '0% comisión — cobras 100%',
+    topicBag: [
+      'Cero comisión: por qué en FiestaGo cobras tu precio íntegro siempre',
+      'Por qué el cliente paga el 8% y tú cobras el 100%',
+      'Sin cuotas, sin permanencia, sin comisión: cuánto te cuesta FiestaGo',
+      'Cuánto te cuesta estar en FiestaGo: 0€. Lee bien',
+      'Otros marketplaces te cobran 15-20%. Nosotros 0%. Por qué',
+      'El modelo económico de FiestaGo explicado en 30 segundos',
+    ],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'date de alta gratis',
+    hashtagsBase: ['proveedoresboda','marketplaceboda','sinComision','bodasespaña','fotografoboda'],
+  },
+  {
+    id:        'jueves_proteccion',
+    dayOfWeek: 4,
+    label:     'Protección al proveedor',
+    topicBag: [
+      'Si un cliente no te paga: cómo te protege FiestaGo',
+      'Pago en escrow: el dinero del cliente está esperándote',
+      'Si el cliente cancela 1 semana antes, cómo cobras tu trabajo',
+      'Por qué trabajar con FiestaGo elimina el riesgo de impago',
+      'La Garantía de Éxito también te protege a ti, no solo al cliente',
+      'Cómo FiestaGo media cuando un cliente pide cambios abusivos',
+    ],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'únete a FiestaGo',
+    hashtagsBase: ['proveedoresboda','marketplaceboda','proteccionproveedor','escrow','bodasespaña'],
+  },
+  {
+    id:        'viernes_volumen',
+    dayOfWeek: 5,
+    label:     'Volumen / oportunidad',
+    topicBag: [
+      'Una sola boda extra al mes: cuánto suma a fin de año',
+      'Por qué llegar el primero a un marketplace nuevo te da ventaja perpetua',
+      'El error de esperar a que la plataforma crezca antes de entrar',
+      'Cuántas parejas están buscando proveedor en tu zona ahora mismo',
+      'Por qué los primeros 100 proveedores van a dominar FiestaGo',
+      'Una boda extra al año = +1.500-5.000€ según tu categoría',
+    ],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'date de alta hoy',
+    hashtagsBase: ['proveedoresboda','marketplaceboda','crecenegocio','bodasespaña','primeros100'],
+  },
+  {
+    id:        'sabado_como_alta',
+    dayOfWeek: 6,
+    label:     'Cómo dar de alta (CTA fuerte)',
+    topicBag: [
+      'Darte de alta en FiestaGo: 60 segundos paso a paso',
+      'Qué necesitas para empezar a recibir clientes en FiestaGo',
+      'Lo único que te pedimos en el alta de proveedor',
+      'Cómo se ve tu perfil de FiestaGo en 1 minuto',
+      'Alta como proveedor: tan fácil como un perfil de Instagram',
+      'Empieza hoy, recibe tu primera solicitud esta semana',
+    ],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'empieza el alta ya',
+    hashtagsBase: ['proveedoresboda','altagratis','marketplaceboda','bodasespaña'],
+  },
+  {
+    id:        'domingo_urgencia',
+    dayOfWeek: 0,
+    label:     'Urgencia mixta · sello + clientes',
+    topicBag: [
+      'Esta semana entran proveedores nuevos a FiestaGo: no te quedes fuera',
+      'Quedan {N} plazas con sello: el reloj corre',
+      'Cada día fuera de FiestaGo = una solicitud que se va con otro',
+      'Antes de cerrar el mes, hazte un perfil en FiestaGo',
+      'La diferencia entre estar dentro y seguir mirando desde fuera',
+      'Quedan {N} plazas con sello. ¿Vas a esperar a que se agoten?',
+    ],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'no lo dejes para mañana',
+    hashtagsBase: ['proveedoresboda','sellocalidadFiestaGo','marketplaceboda','urgenciaboda','bodasespaña'],
+  },
+]
+
+// ─── MODO "CLIENTES" · captación B2C (para más adelante) ──────────────────
+// Cuando se llenen las 100 plazas con sello, cambia CONTENT_MODE=clients
+// en Netlify y el cron empezará a rotar este set, enfocado a atraer
+// parejas que organizan boda / familias con evento.
+export const PILLARS_CLIENTS: Pillar[] = [
   {
     id:        'lunes_tip',
     dayOfWeek: 1,
@@ -148,11 +273,24 @@ export const PILLARS: Pillar[] = [
   },
 ]
 
-// Devuelve el pilar correspondiente al día de hoy en Europe/Madrid.
+// Modo activo: 'providers' (default) o 'clients'. Se lee de CONTENT_MODE
+// en cada cron. Cambiar de modo = cambiar env var en Netlify, redeploy y
+// el siguiente cron usará el set correcto.
+export type ContentMode = 'providers' | 'clients'
+export function activeMode(): ContentMode {
+  const m = (process.env.CONTENT_MODE || 'providers').trim().toLowerCase()
+  return m === 'clients' ? 'clients' : 'providers'
+}
+
+export const PILLARS = PILLARS_PROVIDERS  // compatibilidad con código viejo
+
+// Devuelve el pilar correspondiente al día de hoy en Europe/Madrid según
+// el modo activo (providers por defecto, clients cuando se llene el sello).
 export function pickPillarForToday(now: Date = new Date()): Pillar {
   const madridDay = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Madrid' }))
   const dow = madridDay.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6
-  return PILLARS.find(p => p.dayOfWeek === dow) || PILLARS[0]
+  const set = activeMode() === 'clients' ? PILLARS_CLIENTS : PILLARS_PROVIDERS
+  return set.find(p => p.dayOfWeek === dow) || set[0]
 }
 
 // Elige un topic del bag, evitando el último que usamos en BD (anti-repetición).
