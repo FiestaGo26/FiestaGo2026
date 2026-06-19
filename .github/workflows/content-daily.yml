@@ -1,0 +1,77 @@
+name: Vídeo diario para RRSS (HeyGen)
+
+# Genera un Reel/TikTok/Short de 30s con avatar HeyGen + voz clonada +
+# guion redactado por Claude. Coste mensual ~€35 HeyGen + ~€3 Claude API.
+#
+# Pipeline:
+#   1. /api/cron/content-daily-generate → Claude redacta guion + arranca
+#      HeyGen, devuelve immediato con status=processing.
+#   2. Polling cada ~60s al endpoint /content-daily-poll hasta que
+#      HeyGen termine (~1-3 min para 30s de vídeo). Cuando completa,
+#      guarda video_url en BD y notifica por WhatsApp al admin.
+#
+# Cron único 06:00 UTC = 08:00 Madrid verano / 07:00 invierno.
+# Si quieres mover la hora cambia el cron (https://crontab.guru/).
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:        # Permite lanzarlo a mano desde GitHub UI
+
+jobs:
+  generate-and-poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 1. Generar guion + arrancar HeyGen
+        env:
+          SITE_URL:    ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+          RESPONSE=$(curl -sS -X POST "$SITE_URL/api/cron/content-daily-generate" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -d '{}' \
+            -w "\nHTTP_CODE:%{http_code}" \
+            --max-time 75 || true)
+          HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+          echo "$BODY"
+          echo "HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ Generación falló — abortando polling"
+            exit 1
+          fi
+
+      - name: 2. Polling HeyGen (intentos cada 60s, hasta 6 min)
+        env:
+          SITE_URL:    ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+          for i in 1 2 3 4 5 6; do
+            echo "⏳ Espera 60s antes del intento $i…"
+            sleep 60
+            echo "────────────────────────────────"
+            echo "Polling intento $i"
+            echo "────────────────────────────────"
+            RESPONSE=$(curl -sS -X POST "$SITE_URL/api/cron/content-daily-poll" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              -d '{}' \
+              -w "\nHTTP_CODE:%{http_code}" \
+              --max-time 75 || true)
+            HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+            BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+            echo "$BODY"
+            echo "HTTP $HTTP_CODE"
+            # Si todas las pendientes están "completed" o "failed", podemos
+            # cortar antes. Detectamos buscando que no haya "processing" en la
+            # respuesta. (Heurística simple — si no, seguimos los 6 intentos.)
+            if echo "$BODY" | grep -q '"status":"completed"' && ! echo "$BODY" | grep -q '"status":"processing"'; then
+              echo "✅ Vídeo del día completado, salimos"
+              exit 0
+            fi
+          done
+          echo "⚠️ Polling agotó intentos. El próximo polling manual o el cron de mañana lo cogerá."

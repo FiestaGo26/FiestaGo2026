@@ -7,6 +7,7 @@ import type { Provider, Notification } from '@/lib/supabase'
 import { CATEGORIES, getPhoto } from '@/lib/constants'
 import { buildWebFormDraft } from '@/lib/outreach'
 import WhatsappInbox from './WhatsappInbox'
+import ContentVideos from './ContentVideos'
 
 const ADMIN_PASS = typeof window !== 'undefined'
   ? localStorage.getItem('fg_admin_pass') || '' : ''
@@ -991,6 +992,7 @@ export default function AdminPage() {
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
     { id:'agent',        icon:'🤖', label:'Agente IA' },
     { id:'marketing',    icon:'📣', label:'Marketing', badge: socialStats.pending || 0 },
+    { id:'content',      icon:'🎬', label:'Contenido' },
     { id:'galerias',     icon:'📸', label:'Eventos reales' },
     { id:'whatsapp',     icon:'💬', label:'WhatsApp' },
     { id:'settings',     icon:'⚙️', label:'Ajustes' },
@@ -2372,6 +2374,7 @@ export default function AdminPage() {
 
           {/* ══ WHATSAPP ══ */}
           {section === 'whatsapp' && <WhatsappInbox />}
+          {section === 'content'  && <ContentVideos />}
         </div>
       </main>
 
