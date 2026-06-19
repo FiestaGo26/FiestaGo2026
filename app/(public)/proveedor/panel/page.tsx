@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { CATEGORIES, CANCELLATION_POLICIES } from '@/lib/constants'
 import { precioCliente, formatEuro } from '@/lib/pricing'
+import QuotesTab from './QuotesTab'
 
 type ServiceMedia = {
   id: string
@@ -77,6 +78,7 @@ const TABS = [
   { id:'stats',        icon:'📈', label:'Estadísticas'   },
   { id:'profile',      icon:'✏️', label:'Mi perfil'      },
   { id:'services',     icon:'💼', label:'Mis servicios'  },
+  { id:'quotes',       icon:'🧾', label:'Presupuestos IA' },
   { id:'availability', icon:'📅', label:'Disponibilidad' },
   { id:'bookings',     icon:'📋', label:'Reservas'       },
   { id:'earnings',     icon:'💶', label:'Cobros'         },
@@ -1694,6 +1696,12 @@ function ProveedorPanelInner() {
         )}
 
         {/* AVAILABILITY */}
+        {tab==='quotes' && provider?.id && (
+          <div className="max-w-4xl">
+            <QuotesTab providerId={provider.id} />
+          </div>
+        )}
+
         {tab==='availability' && (
           <div className="max-w-md">
             <h1 className="font-serif text-2xl font-black text-ink mb-2">Disponibilidad</h1>
