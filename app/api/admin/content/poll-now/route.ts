@@ -10,12 +10,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
   const cronSecret = process.env.CRON_SECRET || ''
+  const adminPass  = req.headers.get('x-admin-password') || ''
   const baseUrl = process.env.SITE_URL || `https://${req.headers.get('host')}`
   const res = await fetch(`${baseUrl}/api/cron/content-daily-poll`, {
     method: 'POST',
     headers: {
-      'Content-Type':  'application/json',
-      'x-cron-secret': cronSecret,
+      'Content-Type':    'application/json',
+      'x-cron-secret':   cronSecret,
+      'x-admin-password': adminPass,
     },
     body: JSON.stringify({}),
   })
