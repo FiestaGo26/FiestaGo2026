@@ -39,9 +39,15 @@ export type HeyGenVideoStatus = {
 // Arranca la generación de un vídeo. Devuelve video_id de HeyGen para
 // hacer polling después. Dimensiones por defecto 720x1280 (9:16, ideal
 // para Reel/TikTok/Short).
+//
+// Voz tuneable por env var para iterar sin redeploy:
+//   HEYGEN_VOICE_SPEED   — 0.5-2.0, default 1.0. Más bajo suena más natural.
+//   HEYGEN_VOICE_PITCH   — -50 a 50, default 0.
+//   HEYGEN_VOICE_EMOTION — neutral | serious | happy | soothing | broadcaster
+//                          default 'broadcaster' (más claro y profesional)
 export async function generateVideo(opts: {
   script:       string
-  speed?:       number     // 0.5-2.0, por defecto 1.0
+  speed?:       number     // 0.5-2.0, override de env
   width?:       number     // por defecto 720
   height?:      number     // por defecto 1280 (9:16)
   background?:  string     // hex color, por defecto #f6f6f6
@@ -50,6 +56,18 @@ export async function generateVideo(opts: {
   const width  = opts.width  ?? 720
   const height = opts.height ?? 1280
   const bg     = opts.background ?? process.env.HEYGEN_BACKGROUND ?? '#f6f6f6'
+  const speed  = opts.speed ?? Number(process.env.HEYGEN_VOICE_SPEED || '1.0')
+  const pitch  = Number(process.env.HEYGEN_VOICE_PITCH || '0')
+  const emotion = process.env.HEYGEN_VOICE_EMOTION || 'broadcaster'
+
+  const voicePayload: any = {
+    type:       'text',
+    input_text: opts.script,
+    voice_id:   voiceId,
+    speed,
+  }
+  if (pitch)   voicePayload.pitch   = pitch
+  if (emotion) voicePayload.emotion = emotion
 
   const body = {
     video_inputs: [{
@@ -58,12 +76,7 @@ export async function generateVideo(opts: {
         avatar_id:    avatarId,
         avatar_style: 'normal',
       },
-      voice: {
-        type:       'text',
-        input_text: opts.script,
-        voice_id:   voiceId,
-        speed:      opts.speed ?? 1.0,
-      },
+      voice: voicePayload,
       background: {
         type:  'color',
         value: bg,
