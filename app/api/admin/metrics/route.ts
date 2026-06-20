@@ -101,6 +101,48 @@ export async function GET(req: NextRequest) {
     ? (slaRespected / closedIncidents.length) * 100
     : 100
 
+  // ───── Quote Generator hook (medición del lift) ─────
+  // Estrategia: agrupamos por provider_id sobre whatsapp_messages
+  // y miramos cuáles recibieron al menos un outbound con
+  // mentions_quote_gen=true. Comparamos su tasa de self-registration
+  // contra la del grupo de control (proveedores contactados que NO
+  // recibieron el gancho).
+  const { data: hookRowsRaw } = await supabase
+    .from('whatsapp_messages')
+    .select('provider_id, mentions_quote_gen, direction')
+    .eq('direction', 'outbound')
+    .not('provider_id', 'is', null)
+
+  const hookedSet = new Set<string>()  // proveedores que recibieron el gancho ≥ 1 vez
+  const contactedByWaSet = new Set<string>()  // proveedores con cualquier outbound
+  let hookMsgsTotal = 0
+  for (const row of (hookRowsRaw || [])) {
+    if (!row.provider_id) continue
+    contactedByWaSet.add(row.provider_id)
+    if (row.mentions_quote_gen) {
+      hookedSet.add(row.provider_id)
+      hookMsgsTotal++
+    }
+  }
+
+  const providerById = new Map(providers.map((p: any) => [p.id, p]))
+  let hookedSelfReg = 0
+  hookedSet.forEach(pid => {
+    const p = providerById.get(pid) as any
+    if (p?.self_registered) hookedSelfReg++
+  })
+  let controlSelfReg = 0
+  let controlSize    = 0
+  contactedByWaSet.forEach(pid => {
+    if (hookedSet.has(pid)) return
+    controlSize++
+    const p = providerById.get(pid) as any
+    if (p?.self_registered) controlSelfReg++
+  })
+  const hookedConversion  = hookedSet.size  > 0 ? (hookedSelfReg  / hookedSet.size)  * 100 : 0
+  const controlConversion = controlSize     > 0 ? (controlSelfReg / controlSize)     * 100 : 0
+  const liftPp = hookedConversion - controlConversion
+
   // ───── Clientes / socios ─────
   const { count: customersCount } = await supabase
     .from('bookings')
@@ -134,6 +176,16 @@ export async function GET(req: NextRequest) {
     },
     customers: {
       bookingEmails: customersCount || 0,
+    },
+    quoteGenHook: {
+      msgsTotal:          hookMsgsTotal,
+      hookedProviders:    hookedSet.size,
+      hookedSelfReg,
+      hookedConversion:   Math.round(hookedConversion  * 10) / 10,
+      controlProviders:   controlSize,
+      controlSelfReg,
+      controlConversion:  Math.round(controlConversion * 10) / 10,
+      liftPp:             Math.round(liftPp * 10) / 10,
     },
   })
 }

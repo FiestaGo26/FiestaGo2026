@@ -13,7 +13,7 @@ import {
   transcribeAudio,
   type WhatsappStatusEvent,
 } from '@/lib/whatsapp'
-import { generateReply, countPlazasConSelloRestantes, type AgentTurn } from '@/lib/fiestago-agent'
+import { generateReply, countPlazasConSelloRestantes, mentionsQuoteGen, type AgentTurn } from '@/lib/fiestago-agent'
 
 // El webhook recibe datos externos (Meta) y llama a Claude → forzamos runtime
 // Node.js y ejecución dinámica.
@@ -323,6 +323,7 @@ async function handleInbound(supabase: any, msg: any) {
     body: reply,
     status: 'sent',
     provider_id: provider.id,
+    mentions_quote_gen: mentionsQuoteGen(reply),
   })
 }
 

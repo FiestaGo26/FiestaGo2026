@@ -203,6 +203,20 @@ export function buildOutreachDescriptor(opts: {
   return city ? `${noun} en ${city}` : noun
 }
 
+// Detecta si un mensaje saliente menciona el Quote Generator IA.
+// Se usa para trackear en BD (whatsapp_messages.mentions_quote_gen) y
+// medir cuánto lift de conversión aporta el gancho. Conservador: solo
+// devuelve true si hay señal clara — no queremos falsos positivos.
+export function mentionsQuoteGen(text: string): boolean {
+  if (!text) return false
+  const t = text.toLowerCase()
+  return (
+    t.includes('quote generator') ||
+    (t.includes('presupuesto') && (t.includes(' ia') || t.includes(' ai') || t.includes('10 seg') || t.includes('10 s') || t.includes('30 seg') || t.includes('inteligencia artificial'))) ||
+    (t.includes('brief') && t.includes('presupuesto'))
+  )
+}
+
 // Genera el siguiente mensaje del agente dado el historial.
 // `history` es la conversación en orden cronológico:
 //   - role 'user'      = mensajes del proveedor (entrantes)

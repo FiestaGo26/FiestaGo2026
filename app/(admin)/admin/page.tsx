@@ -3059,6 +3059,7 @@ function MetricsPanel({ metrics, loading, onRefresh }: {
   const p = metrics.providers
   const b = metrics.bookings
   const i = metrics.incidents
+  const qg = metrics.quoteGenHook
 
   const card = (title: string, big: string, small?: string, color: string = '#F0F4FF') => (
     <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
@@ -3097,6 +3098,49 @@ function MetricsPanel({ metrics, loading, onRefresh }: {
         {card('Aprobados',       p.approved.toString(), `${p.pending} pendientes`)}
         {card('Verificados',     p.verified.toString(), 'con DNI/CIF/RC', '#10B981')}
       </div>
+
+      {/* ──── GANCHO QUOTE GENERATOR IA ──── */}
+      {qg && (qg.hookedProviders > 0 || qg.controlProviders > 0) && (
+        <>
+          <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase',
+            letterSpacing:'0.1em', marginBottom:10, marginTop:6 }}>
+            🧾 Gancho Quote Generator IA
+            <span style={{ marginLeft:8, fontSize:10, color:'#6B7280', textTransform:'none', letterSpacing:0, fontWeight:500 }}>
+              lift de conversión cuando el cerebro usa el bonus de la IA
+            </span>
+          </h2>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10, marginBottom:24 }}>
+            {card(
+              'Mensajes con gancho',
+              qg.msgsTotal.toString(),
+              `enviado a ${qg.hookedProviders} proveedores`,
+              '#A78BFA',
+            )}
+            {card(
+              'Conversión CON gancho',
+              `${qg.hookedConversion}%`,
+              `${qg.hookedSelfReg} de ${qg.hookedProviders} se autoregistraron`,
+              '#10B981',
+            )}
+            {card(
+              'Conversión SIN gancho',
+              `${qg.controlConversion}%`,
+              `${qg.controlSelfReg} de ${qg.controlProviders} (control)`,
+              '#94A3B8',
+            )}
+            {card(
+              'LIFT',
+              `${qg.liftPp >= 0 ? '+' : ''}${qg.liftPp} pp`,
+              qg.liftPp > 0
+                ? '✅ el gancho sube la conversión'
+                : qg.liftPp < 0
+                  ? '⚠️ el gancho NO ayuda (revisar timing)'
+                  : 'sin diferencia significativa',
+              qg.liftPp > 5 ? '#10B981' : qg.liftPp < 0 ? '#EF4444' : '#F59E0B',
+            )}
+          </div>
+        </>
+      )}
 
       {/* Canal de contacto */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:24 }}>
