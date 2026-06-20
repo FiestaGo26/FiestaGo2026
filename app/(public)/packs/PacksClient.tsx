@@ -68,11 +68,20 @@ export default function PacksClient({
             <span className="text-ink/40 ml-1 shrink-0 pointer-events-none" aria-hidden="true">▾</span>
           </label>
 
-          <label className="flex items-center bg-stone-100 rounded-xl px-3 py-2.5">
+          <label className="flex items-center bg-stone-100 rounded-xl px-3 py-2.5 cursor-pointer">
             <span className="text-base mr-2 shrink-0" aria-hidden="true">📅</span>
             <input type="date" min={today} value={date} onChange={e => setDate(e.target.value)}
+              onClick={(e) => {
+                const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void }
+                try { el.showPicker?.() } catch {}
+              }}
+              onFocus={(e) => {
+                const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void }
+                try { el.showPicker?.() } catch {}
+              }}
               placeholder="Fecha"
-              className={`flex-1 bg-transparent border-0 outline-none text-sm font-sans min-w-0 ${date ? 'text-ink font-semibold' : 'text-ink/50'}`}
+              className={`flex-1 bg-transparent border-0 outline-none text-base font-sans min-w-0 cursor-pointer ${date ? 'text-ink font-semibold' : 'text-ink/50'}`}
+              style={{ fontSize: 16 }}
               aria-label="Fecha del evento"/>
           </label>
         </div>

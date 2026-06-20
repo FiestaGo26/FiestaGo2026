@@ -192,6 +192,38 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
   label: string; value: string; onChange: (v: string) => void
   placeholder?: string; type?: string
 }) {
+  // Para date: envolvemos el input en un label clickable + forzamos
+  // showPicker() al hacer foco. Esto soluciona el caso (sobre todo
+  // Safari iOS) en el que el usuario toca el campo y "no pasa nada".
+  if (type === 'date') {
+    return (
+      <div style={{ marginBottom: 12 }}>
+        <label style={lbl}>{label}</label>
+        <label style={{
+          ...inputSty, display: 'flex', alignItems: 'center', gap: 8,
+          cursor: 'pointer', padding: '0 11px',
+        }}>
+          <span style={{ fontSize: 16 }} aria-hidden="true">📅</span>
+          <input type="date"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            onClick={(e) => {
+              const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void }
+              try { el.showPicker?.() } catch {}
+            }}
+            onFocus={(e) => {
+              const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void }
+              try { el.showPicker?.() } catch {}
+            }}
+            style={{
+              flex: 1, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: 16, padding: '10px 0', minWidth: 0, color: '#1F2937',
+              fontFamily: 'inherit', cursor: 'pointer',
+            }}/>
+        </label>
+      </div>
+    )
+  }
   return (
     <div style={{ marginBottom: 12 }}>
       <label style={lbl}>{label}</label>
