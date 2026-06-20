@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   // ───── Proveedores ─────
   const { data: providersRaw } = await supabase
     .from('providers')
-    .select('id, status, category, city, contactable, outreach_sent, contacted_via, self_registered, created_at, verified, verification_status')
+    .select('id, status, category, city, contactable, outreach_sent, contacted_via, self_registered, created_at, verified, verification_status, quote_gen_bucket')
 
   const providers = providersRaw || []
   const byStatus: Record<string, number> = {}
@@ -143,6 +143,19 @@ export async function GET(req: NextRequest) {
   const controlConversion = controlSize     > 0 ? (controlSelfReg / controlSize)     * 100 : 0
   const liftPp = hookedConversion - controlConversion
 
+  // ───── A/B limpio (50/50 aleatorio por bucket) ─────
+  // A diferencia del bloque "hooked vs not-hooked" (que está sesgado
+  // porque el cerebro elige cuándo usar el gancho), aquí comparamos
+  // grupos asignados aleatoriamente al primer turno: treatment = el
+  // cerebro PUEDE usar el gancho, control = lo tiene prohibido.
+  const inTreatment = providers.filter((p: any) => p.quote_gen_bucket === 'treatment')
+  const inControl   = providers.filter((p: any) => p.quote_gen_bucket === 'control')
+  const treatmentSelfReg = inTreatment.filter((p: any) => p.self_registered).length
+  const controlBucketSelfReg = inControl.filter((p: any) => p.self_registered).length
+  const treatmentConv = inTreatment.length > 0 ? (treatmentSelfReg     / inTreatment.length) * 100 : 0
+  const controlConv   = inControl.length   > 0 ? (controlBucketSelfReg / inControl.length)   * 100 : 0
+  const abLiftPp = treatmentConv - controlConv
+
   // ───── Clientes / socios ─────
   const { count: customersCount } = await supabase
     .from('bookings')
@@ -186,6 +199,16 @@ export async function GET(req: NextRequest) {
       controlSelfReg,
       controlConversion:  Math.round(controlConversion * 10) / 10,
       liftPp:             Math.round(liftPp * 10) / 10,
+      // A/B aleatorizado (limpio):
+      ab: {
+        treatmentSize:    inTreatment.length,
+        treatmentSelfReg,
+        treatmentConv:    Math.round(treatmentConv * 10) / 10,
+        controlSize:      inControl.length,
+        controlSelfReg:   controlBucketSelfReg,
+        controlConv:      Math.round(controlConv * 10) / 10,
+        liftPp:           Math.round(abLiftPp * 10) / 10,
+      },
     },
   })
 }

@@ -3099,45 +3099,69 @@ function MetricsPanel({ metrics, loading, onRefresh }: {
         {card('Verificados',     p.verified.toString(), 'con DNI/CIF/RC', '#10B981')}
       </div>
 
-      {/* ──── GANCHO QUOTE GENERATOR IA ──── */}
-      {qg && (qg.hookedProviders > 0 || qg.controlProviders > 0) && (
+      {/* ──── A/B GANCHO QUOTE GENERATOR — aleatorizado limpio ──── */}
+      {qg?.ab && (qg.ab.treatmentSize > 0 || qg.ab.controlSize > 0) && (
         <>
           <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase',
             letterSpacing:'0.1em', marginBottom:10, marginTop:6 }}>
-            🧾 Gancho Quote Generator IA
+            🧪 A/B Quote Generator IA (aleatorizado 50/50)
             <span style={{ marginLeft:8, fontSize:10, color:'#6B7280', textTransform:'none', letterSpacing:0, fontWeight:500 }}>
-              lift de conversión cuando el cerebro usa el bonus de la IA
+              lectura limpia · treatment = el cerebro PUEDE usar el gancho; control = lo tiene prohibido
             </span>
           </h2>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10, marginBottom:24 }}>
             {card(
-              'Mensajes con gancho',
-              qg.msgsTotal.toString(),
-              `enviado a ${qg.hookedProviders} proveedores`,
-              '#A78BFA',
-            )}
-            {card(
-              'Conversión CON gancho',
-              `${qg.hookedConversion}%`,
-              `${qg.hookedSelfReg} de ${qg.hookedProviders} se autoregistraron`,
+              'Treatment (gancho ON)',
+              `${qg.ab.treatmentConv}%`,
+              `${qg.ab.treatmentSelfReg} de ${qg.ab.treatmentSize} autoregistros`,
               '#10B981',
             )}
             {card(
-              'Conversión SIN gancho',
-              `${qg.controlConversion}%`,
-              `${qg.controlSelfReg} de ${qg.controlProviders} (control)`,
+              'Control (gancho OFF)',
+              `${qg.ab.controlConv}%`,
+              `${qg.ab.controlSelfReg} de ${qg.ab.controlSize} autoregistros`,
               '#94A3B8',
             )}
             {card(
-              'LIFT',
-              `${qg.liftPp >= 0 ? '+' : ''}${qg.liftPp} pp`,
-              qg.liftPp > 0
-                ? '✅ el gancho sube la conversión'
-                : qg.liftPp < 0
-                  ? '⚠️ el gancho NO ayuda (revisar timing)'
-                  : 'sin diferencia significativa',
-              qg.liftPp > 5 ? '#10B981' : qg.liftPp < 0 ? '#EF4444' : '#F59E0B',
+              'LIFT A/B',
+              `${qg.ab.liftPp >= 0 ? '+' : ''}${qg.ab.liftPp} pp`,
+              qg.ab.liftPp > 5
+                ? '✅ el gancho funciona (sigue mostrándolo)'
+                : qg.ab.liftPp < -2
+                  ? '⚠️ el gancho perjudica (revisar prompt)'
+                  : 'sin diferencia significativa todavía',
+              qg.ab.liftPp > 5 ? '#10B981' : qg.ab.liftPp < -2 ? '#EF4444' : '#F59E0B',
             )}
+            {card(
+              'Muestra',
+              `${qg.ab.treatmentSize + qg.ab.controlSize}`,
+              (qg.ab.treatmentSize + qg.ab.controlSize) < 200
+                ? '⚠️ <200 — datos prematuros'
+                : '✅ ya hay señal',
+              (qg.ab.treatmentSize + qg.ab.controlSize) < 200 ? '#F59E0B' : '#94A3B8',
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ──── Bloque observacional (sesgado) — útil para ver USO real del cerebro ──── */}
+      {qg && (qg.hookedProviders > 0 || qg.controlProviders > 0) && (
+        <>
+          <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase',
+            letterSpacing:'0.1em', marginBottom:10, marginTop:6 }}>
+            🧾 Uso del gancho por el cerebro (observacional · sesgado por timing)
+          </h2>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10, marginBottom:24 }}>
+            {card('Mensajes con gancho', qg.msgsTotal.toString(),
+              `enviado a ${qg.hookedProviders} proveedores`, '#A78BFA')}
+            {card('Conversión CON gancho', `${qg.hookedConversion}%`,
+              `${qg.hookedSelfReg} de ${qg.hookedProviders}`, '#10B981')}
+            {card('Conversión SIN gancho', `${qg.controlConversion}%`,
+              `${qg.controlSelfReg} de ${qg.controlProviders}`, '#94A3B8')}
+            {card('Lift observado',
+              `${qg.liftPp >= 0 ? '+' : ''}${qg.liftPp} pp`,
+              'ojo: no es A/B aleatorio',
+              qg.liftPp > 5 ? '#10B981' : qg.liftPp < 0 ? '#EF4444' : '#F59E0B')}
           </div>
         </>
       )}

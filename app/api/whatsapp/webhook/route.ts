@@ -247,6 +247,15 @@ async function handleInbound(supabase: any, msg: any) {
   // 5) El agente genera la respuesta. Calculamos las plazas con sello
   //    una sola vez y se las pasamos al cerebro (cupo de 100 - aprobados).
   const plazasConSello = await countPlazasConSelloRestantes()
+
+  // A/B: asignamos bucket si no lo tiene (50/50). El bucket controla si el
+  // cerebro puede usar el principio #10 (gancho Quote Generator IA).
+  let bucket = provider.quote_gen_bucket as 'treatment' | 'control' | null
+  if (!bucket) {
+    bucket = Math.random() < 0.5 ? 'treatment' : 'control'
+    await supabase.from('providers').update({ quote_gen_bucket: bucket }).eq('id', provider.id)
+  }
+
   let reply: string
   try {
     reply = await generateReply({
@@ -257,6 +266,7 @@ async function handleInbound(supabase: any, msg: any) {
         social_handle: provider.social_handle,
       },
       plazasConSello,
+      quoteGenAllowed: bucket === 'treatment',
       history,
     })
   } catch (err: any) {
@@ -343,7 +353,7 @@ async function findProviderByPhone(supabase: any, normalized: string) {
   {
     const { data } = await supabase
       .from('providers')
-      .select('id, name, category, city, social_handle, phone, outreach_whatsapp')
+      .select('id, name, category, city, social_handle, phone, outreach_whatsapp, quote_gen_bucket')
       .or(`phone.ilike.%${last9}%,outreach_whatsapp.ilike.%${last9}%`)
       .limit(1)
     if (data?.[0]) return data[0]
@@ -365,7 +375,7 @@ async function findProviderByPhone(supabase: any, normalized: string) {
     if (out?.provider_id) {
       const { data: prov } = await supabase
         .from('providers')
-        .select('id, name, category, city, social_handle, phone, outreach_whatsapp')
+        .select('id, name, category, city, social_handle, phone, outreach_whatsapp, quote_gen_bucket')
         .eq('id', out.provider_id)
         .single()
       if (prov) return prov

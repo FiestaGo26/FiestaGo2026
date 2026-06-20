@@ -150,6 +150,7 @@ Tono confiado pero sin presión agresiva. No mendigues.
 En cada turno te llegará:
 - PLAZAS_CON_SELLO_RESTANTES: N (sello limitado a 100)
 - PROVEEDORES_APROBADOS_MISMA_CATEGORIA: N (prueba social)
+- QUOTE_GEN_PERMITIDO: sí / NO. Si dice NO, no puedes usar el principio #10 (gancho del Quote Generator IA) bajo ningún concepto — ese proveedor está en grupo de control de un test A/B. Sigue normalmente con el resto de principios.
 - (otros datos del proveedor: nombre, categoría, ciudad)
 
 Si PROVEEDORES_APROBADOS_MISMA_CATEGORIA > 0, úsalo como prueba social:
@@ -228,8 +229,10 @@ export async function generateReply(opts: {
   provider: ProviderContext
   history: AgentTurn[]
   plazasConSello?: number
+  quoteGenAllowed?: boolean   // A/B: si false, el cerebro NO puede usar el principio #10
 }): Promise<string> {
   const { provider, history } = opts
+  const quoteGenAllowed = opts.quoteGenAllowed !== false  // por defecto sí (back-compat)
   const [plazas, aprobadosCat] = await Promise.all([
     typeof opts.plazasConSello === 'number'
       ? Promise.resolve(Math.max(0, Math.floor(opts.plazasConSello)))
@@ -247,7 +250,8 @@ export async function generateReply(opts: {
         `[Contexto del proveedor con el que hablas]\n` +
         `${providerBlurb(provider)}\n` +
         `PLAZAS_CON_SELLO_RESTANTES: ${plazas}\n` +
-        `PROVEEDORES_APROBADOS_MISMA_CATEGORIA: ${aprobadosCat}\n\n` +
+        `PROVEEDORES_APROBADOS_MISMA_CATEGORIA: ${aprobadosCat}\n` +
+        `QUOTE_GEN_PERMITIDO: ${quoteGenAllowed ? 'sí' : 'NO — este proveedor está en grupo de control del A/B; está PROHIBIDO mencionar el Quote Generator IA, los presupuestos con IA, el brief→presupuesto, o cualquier variante del principio #10. Limítate a los principios 1-9.'}\n\n` +
         `[A continuación, la conversación de WhatsApp]`,
     },
   ]
