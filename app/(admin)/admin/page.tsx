@@ -1120,6 +1120,65 @@ export default function AdminPage() {
                 </div>
               )}
 
+              {/* Solicitudes de PACK pendientes (necesitan acción manual del admin) */}
+              {(() => {
+                const packPendings = bookings.filter(
+                  b => b.status === 'pending' && b.packs && !b.providers
+                )
+                if (packPendings.length === 0) return null
+                return (
+                  <div style={{
+                    background:'#A78BFA0F', border:'1px solid #A78BFA66', borderRadius:14,
+                    padding:'16px 18px', marginBottom:20,
+                    boxShadow:'0 0 20px rgba(167,139,250,0.15)',
+                  }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:'#C4B5FD' }}>
+                        🎁 {packPendings.length} solicitud{packPendings.length!==1?'es':''} de pack pendiente{packPendings.length!==1?'s':''} — contacta al cliente
+                      </div>
+                      <button onClick={()=>setSection('bookings')}
+                        style={{ fontSize:11, padding:'4px 11px', borderRadius:7, border:'1px solid #A78BFA',
+                          background:'transparent', color:'#C4B5FD', cursor:'pointer' }}>
+                        Ver todas →
+                      </button>
+                    </div>
+                    {packPendings.slice(0, 3).map(b => {
+                      const dateF = new Date(b.event_date).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit' })
+                      return (
+                        <div key={b.id} style={{
+                          display:'flex', alignItems:'center', gap:11, background:'#111827',
+                          borderRadius:9, padding:'9px 12px', marginBottom:6,
+                        }}>
+                          <div style={{ fontSize:22 }}>{b.packs?.emoji || '🎁'}</div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:700, color:'#F0F4FF' }}>
+                              {b.client_name} <span style={{ color:'#9CA3AF', fontWeight:400 }}>· {b.packs?.name}</span>
+                            </div>
+                            <div style={{ fontSize:11, color:'#4B5563' }}>
+                              📅 {dateF} · 💸 {(b.total_amount || 0).toLocaleString()}€ · {ago(b.created_at)}
+                            </div>
+                          </div>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <a href={`mailto:${b.client_email}?subject=${encodeURIComponent('Tu solicitud en FiestaGo · ' + (b.packs?.name || ''))}`}
+                              style={{ padding:'5px 10px', borderRadius:7, background:'#3B82F622', color:'#60A5FA',
+                                fontSize:11, fontWeight:700, textDecoration:'none' }}>
+                              ✉
+                            </a>
+                            {b.client_phone && (
+                              <a href={`https://wa.me/${b.client_phone.replace(/[^\d]/g,'')}`} target="_blank"
+                                style={{ padding:'5px 10px', borderRadius:7, background:'#25D36622', color:'#25D366',
+                                  fontSize:11, fontWeight:700, textDecoration:'none' }}>
+                                💬
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
               {/* Category breakdown */}
               <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:18 }}>
                 <div style={{ fontSize:13, fontWeight:700, color:'#F0F4FF', marginBottom:14 }}>Proveedores por categoría</div>
@@ -1664,12 +1723,34 @@ export default function AdminPage() {
                                       : b.status === 'confirmed' ? '#10B981'
                                       : b.status === 'cancelled' ? '#EF4444' : '#6B7280'
                     const dateF = new Date(b.event_date).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' })
+                    // Es una SOLICITUD DE PACK (sin proveedor asignado, hay que
+                    // contactar al cliente y asignar proveedores a mano).
+                    const isPackInquiry = !!b.packs && !b.providers
                     return (
-                      <div key={b.id} style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:18 }}>
-                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10, gap:8 }}>
+                      <div key={b.id} style={{
+                        background: isPackInquiry ? '#1F1531' : '#111827',
+                        border:     isPackInquiry ? '1px solid #A78BFA' : '1px solid #1F2937',
+                        borderRadius:14, padding:18, position:'relative',
+                      }}>
+                        {/* Badge muy visible para distinguir solicitudes de pack */}
+                        {isPackInquiry && (
+                          <div style={{
+                            position:'absolute', top:-9, left:14,
+                            background:'linear-gradient(135deg, #A78BFA, #8B5CF6)',
+                            color:'#fff', fontSize:9, fontWeight:800,
+                            padding:'3px 10px', borderRadius:20,
+                            letterSpacing:'0.12em', textTransform:'uppercase',
+                            boxShadow:'0 2px 8px rgba(167,139,250,0.45)',
+                          }}>
+                            🎁 Solicitud de Pack
+                          </div>
+                        )}
+
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:10, gap:8, marginTop: isPackInquiry ? 6 : 0 }}>
                           <div style={{ minWidth:0, flex:1 }}>
-                            <div style={{ fontSize:11, color:'#6B7280', marginBottom:3, textTransform:'uppercase', letterSpacing:'0.08em' }}>
-                              {b.providers?.name || b.packs?.name || 'Sin proveedor'}
+                            <div style={{ fontSize:11, color: isPackInquiry ? '#C4B5FD' : '#6B7280', marginBottom:3, textTransform:'uppercase', letterSpacing:'0.08em', display:'flex', alignItems:'center', gap:6 }}>
+                              {b.packs?.emoji && <span style={{ fontSize:14 }}>{b.packs.emoji}</span>}
+                              <span>{b.providers?.name || b.packs?.name || 'Sin proveedor'}</span>
                             </div>
                             <div style={{ fontSize:15, fontWeight:700, color:'#F9FAFB' }}>
                               {b.client_name}
@@ -1695,8 +1776,25 @@ export default function AdminPage() {
                             "{b.message}"
                           </div>
                         )}
+
+                        {isPackInquiry && b.status === 'pending' && (
+                          <div style={{
+                            background:'rgba(167,139,250,0.08)', border:'1px dashed rgba(167,139,250,0.4)',
+                            borderRadius:8, padding:'8px 12px', marginTop:10, fontSize:11, color:'#C4B5FD', lineHeight:1.5,
+                          }}>
+                            👉 <strong>Acción manual:</strong> contacta al cliente, asigna proveedores y cierra detalles. Luego confirma aquí.
+                          </div>
+                        )}
+
                         {b.status === 'pending' && (
                           <div style={{ display:'flex', gap:8, marginTop:12 }}>
+                            {b.client_email && (
+                              <a href={`mailto:${b.client_email}?subject=${encodeURIComponent(`Tu solicitud en FiestaGo${b.packs?.name ? ' · ' + b.packs.name : ''}`)}`}
+                                style={{ flex:1, background:'#3B82F6', color:'#fff', textDecoration:'none',
+                                  textAlign:'center', padding:'8px 12px', borderRadius:8, fontSize:11, fontWeight:600 }}>
+                                ✉ Contactar
+                              </a>
+                            )}
                             <button onClick={() => updateBookingStatus(b.id, 'confirmed')}
                               style={{ flex:1, background:'#10B981', color:'#fff', border:'none', padding:'8px 12px', borderRadius:8, fontSize:11, fontWeight:600, cursor:'pointer' }}>
                               ✓ Confirmar
