@@ -9,6 +9,7 @@ import { precioCliente, formatEuro } from '@/lib/pricing'
 import QuotesTab from './QuotesTab'
 import QuickRepliesTab from './QuickRepliesTab'
 import GmbTab from './GmbTab'
+import WelcomeModal from './WelcomeModal'
 
 type ServiceMedia = {
   id: string
@@ -953,6 +954,13 @@ function ProveedorPanelInner() {
 
   return (
     <div className="flex min-h-screen bg-cream">
+      {!isAdminView && provider?.id && (provider as any)?.status === 'approved' && (
+        <WelcomeModal
+          providerId={provider.id}
+          providerName={provider.name}
+          onGoTab={setTab}
+        />
+      )}
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-stone-200 flex flex-col fixed top-0 left-0 bottom-0">
         <div className="p-5 border-b border-stone-200">

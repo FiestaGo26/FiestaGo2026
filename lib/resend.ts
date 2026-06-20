@@ -105,17 +105,40 @@ export async function emailProviderWelcome(provider: any) {
     `Enhorabuena ${provider.name}!`,
     ``,
     `Tu perfil ha sido aprobado y ya está visible en FiestaGo.`,
-    `A partir de ahora recibirás solicitudes de clientes que celebran sus eventos en ${provider.city}.`,
     ``,
-    `LO QUE GANAS POR SER PARTE DE FIESTAGO:`,
+    `═══ LO QUE YA TIENES DESBLOQUEADO HOY ═══`,
     ``,
-    `🎁 Primera venta sin comisión — cobras al 100% tu primera transacción.`,
-    `💸 Solo 8% después — la comisión más baja del sector. Sin cuotas.`,
-    `📅 Calendario inteligente — marca días libres, bloqueamos fechas reservadas.`,
-    `🚀 Clientes cualificados — solicitudes serias con fecha y datos completos.`,
-    `🛡 Pago seguro — cliente paga primero, tú cobras tras el servicio.`,
-    `📣 Marketing gratis — te promocionamos en IG y TikTok @fiestagospain.`,
-    `🏆 Sello de calidad gratis — visible junto a tu perfil si mantienes 4,5/5.`,
+    `Un pack de herramientas que si las pagases sueltas te costarían entre`,
+    `265€ y 605€ AL MES. Tuyas gratis para siempre, aunque todavía no haya`,
+    `llegado ninguna reserva.`,
+    ``,
+    `🧾 PRESUPUESTOS PROFESIONALES EN 10 SEGUNDOS`,
+    `   Pega el mensaje del cliente y la IA te escribe el presupuesto completo`,
+    `   con desglose, condiciones y total. Le pasas un link al cliente por`,
+    `   WhatsApp y él lo ve bonito en su móvil.`,
+    `   → Te ahorras 30-45 min por presupuesto (≈ 20-40€/mes en ChatGPT+Proposify)`,
+    ``,
+    `💬 PLANTILLAS WHATSAPP PARA RESPONDER EN 2 CLICS`,
+    `   Nueve plantillas ya escritas para cada momento (consulta, presupuesto,`,
+    `   confirmación, seguimiento, agradecimiento). Editas, rellenas datos del`,
+    `   cliente y abres WhatsApp con el mensaje listo.`,
+    `   → Te ahorras 5-10 min por cliente (≈ 15-30€/mes en apps tipo Respond.io)`,
+    ``,
+    `📍 POSTS PARA TU GOOGLE BUSINESS ESCRITOS POR IA`,
+    `   Le dices un tema y la IA te escribe el post optimizado para aparecer`,
+    `   más alto cuando alguien busque "[tu servicio] en ${provider.city || 'tu ciudad'}".`,
+    `   → Te ahorras 20-30 min por post (≈ 150-400€/mes en community manager)`,
+    ``,
+    `Y además todo lo del marketplace en sí:`,
+    `   🎁 Primera venta sin comisión — cobras al 100%.`,
+    `   💸 Solo 8% después — sin cuotas, sin permanencia.`,
+    `   📅 Calendario inteligente con sync a Google Calendar.`,
+    `   🚀 Clientes cualificados con datos completos.`,
+    `   🛡 Pago seguro y Garantía de Éxito incluida.`,
+    `   🏆 Sello de calidad gratis si mantienes 4,5/5.`,
+    `   📣 Marketing en IG y TikTok @fiestagospain.`,
+    ``,
+    `Ver todo lo que se incluye: https://fiestago.es/proveedor/valor`,
     ``,
     `BONUS — TRAE A UN COMPAÑERO Y SUBE`,
     `Si invitas a otro profesional y se registra, los dos apareceréis automáticamente`,
@@ -175,21 +198,36 @@ export async function emailProviderWelcome(provider: any) {
           </p>
         </td></tr>
 
-        <!-- Beneficios (sección dorada destacada) -->
+        <!-- Highlight del valor en herramientas (la joya nueva) -->
         <tr><td style="padding:8px 36px 0;">
+          <div style="background:linear-gradient(135deg,#1A1612 0%,#2D2823 100%);color:#fff;border-radius:12px;padding:26px;text-align:center;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#FFB59A;margin-bottom:10px;">
+              ✨ Tu pack de herramientas IA desbloqueado
+            </div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:30px;font-weight:500;color:#fff;margin-bottom:8px;line-height:1.15;">
+              Valor equivalente: <span style="color:#E8553E;">265-605€/mes</span>
+            </div>
+            <div style="font-size:13px;color:#E5DDD3;line-height:1.55;max-width:440px;margin:0 auto;">
+              Si pagases estas herramientas sueltas, te costarían eso al mes.
+              Para ti, <strong style="color:#fff;">gratis y para siempre</strong>.
+            </div>
+            <a href="https://fiestago.es/proveedor/valor" style="display:inline-block;margin-top:14px;font-size:11px;color:#FFB59A;text-decoration:underline;letter-spacing:0.06em;">
+              Ver desglose completo →
+            </a>
+          </div>
+        </td></tr>
+
+        <!-- Las 3 herramientas IA del panel -->
+        <tr><td style="padding:18px 36px 0;">
           <div style="background:linear-gradient(135deg,#FFF7ED 0%,#FFEDE1 100%);border:1px solid #FFE1CC;border-radius:12px;padding:24px;">
             <div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;margin-bottom:18px;">
-              Lo que ganas siendo parte de FiestaGo
+              ⚡ Herramientas IA del panel
             </div>
-
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
               ${[
-                ['🎁', 'Primera venta sin comisión',     'Tu primera transacción la cobras al 100%. Sin costes.'],
-                ['💸', 'Solo 8% después',                'La comisión más baja del sector. Sin cuotas ni permanencia.'],
-                ['📅', 'Calendario inteligente',         'Marca tus días libres. Bloqueamos automáticamente las fechas ya reservadas.'],
-                ['🚀', 'Clientes cualificados',          'Solo recibes solicitudes serias, con fecha y datos completos.'],
-                ['🛡', 'Pago seguro',                    'El cliente paga primero. Tú cobras tras el servicio.'],
-                ['📣', 'Marketing gratis para ti',       'Te promocionamos en Instagram y TikTok @fiestagospain sin coste.'],
+                ['🧾', 'Presupuestos IA en 10 segundos',         'Pega el mensaje del cliente y la IA te escribe el presupuesto completo, listo para mandar por WhatsApp con un link.<br/><strong style="color:#10B981;">↳ Ahorras 30-45 min/presupuesto · vale 20-40€/mes</strong>'],
+                ['💬', 'Plantillas WhatsApp en 2 clics',         '9 plantillas ya escritas para cada momento del cliente (consulta, presupuesto, confirmación, seguimiento). Editables, con IA para crear nuevas.<br/><strong style="color:#10B981;">↳ Ahorras 5-10 min/cliente · vale 15-30€/mes</strong>'],
+                ['📍', 'Posts Google Business escritos por IA',  'Le dices un tema y la IA te escribe el post optimizado para que aparezcas más alto en búsquedas locales en ' + safeCity + '.<br/><strong style="color:#10B981;">↳ Ahorras 20-30 min/post · vale 150-400€/mes</strong>'],
               ].map(([icon, title, desc]) => `
                 <tr><td style="padding:10px 0;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -198,6 +236,37 @@ export async function emailProviderWelcome(provider: any) {
                       <td valign="top">
                         <div style="font-size:15px;font-weight:700;color:#1A1612;margin-bottom:3px;line-height:1.3;">${title}</div>
                         <div style="font-size:13px;color:#5C534A;line-height:1.5;">${desc}</div>
+                      </td>
+                    </tr>
+                  </table>
+                </td></tr>
+              `).join('')}
+            </table>
+          </div>
+        </td></tr>
+
+        <!-- Beneficios del marketplace en sí -->
+        <tr><td style="padding:14px 36px 0;">
+          <div style="background:#FFFFFF;border:1px solid #ECE3D2;border-radius:12px;padding:22px;">
+            <div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#5C534A;margin-bottom:14px;">
+              🌐 Y además, el marketplace
+            </div>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+              ${[
+                ['🎁', 'Primera venta sin comisión',    'Tu primera transacción la cobras al 100%.'],
+                ['💸', 'Solo 8% después',               'La comisión más baja del sector. Sin cuotas.'],
+                ['📅', 'Calendario inteligente',        'Bloqueamos automáticamente las fechas reservadas.'],
+                ['🚀', 'Clientes cualificados',         'Solo solicitudes serias, con fecha y datos completos.'],
+                ['🛡', 'Pago seguro + Garantía Éxito',  'El cliente paga primero. Tú cobras tras el servicio.'],
+                ['📣', 'Marketing gratis',              'Te promocionamos en IG y TikTok @fiestagospain.'],
+              ].map(([icon, title, desc]) => `
+                <tr><td style="padding:7px 0;">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                    <tr>
+                      <td valign="top" width="32" style="font-size:18px;line-height:1;padding-right:10px;">${icon}</td>
+                      <td valign="top">
+                        <div style="font-size:13px;font-weight:700;color:#1A1612;line-height:1.3;display:inline;">${title}</div>
+                        <span style="font-size:12px;color:#5C534A;line-height:1.5;"> — ${desc}</span>
                       </td>
                     </tr>
                   </table>
@@ -237,10 +306,11 @@ export async function emailProviderWelcome(provider: any) {
           </div>
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
             ${[
-              ['1', 'Accede a tu panel y completa tu perfil'],
-              ['2', 'Sube tus servicios con fotos y precio cerrado'],
-              ['3', 'Marca tu disponibilidad en el calendario'],
-              ['4', '¡Espera a tu primera reserva! 🎊'],
+              ['1', 'Entra al panel y prueba el <strong>🧾 Quote Generator IA</strong> con tu próximo cliente'],
+              ['2', 'Personaliza las <strong>💬 plantillas de WhatsApp</strong> con tu tono'],
+              ['3', 'Genera tu primer post de <strong>📍 Google Business</strong> con IA'],
+              ['4', 'Completa tu perfil con fotos, servicios y disponibilidad'],
+              ['5', '¡Recibe tus primeras reservas del marketplace! 🎊'],
             ].map(([n, t]) => `
               <tr><td style="padding:8px 0;border-bottom:1px solid #F2EDE2;font-size:14px;color:#1A1612;line-height:1.5;">
                 <span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;background:#1A1612;color:#fff;border-radius:50%;font-size:11px;font-weight:700;margin-right:12px;">${n}</span>
