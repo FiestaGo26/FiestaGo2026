@@ -7,6 +7,8 @@ import toast from 'react-hot-toast'
 import { CATEGORIES, CANCELLATION_POLICIES } from '@/lib/constants'
 import { precioCliente, formatEuro } from '@/lib/pricing'
 import QuotesTab from './QuotesTab'
+import QuickRepliesTab from './QuickRepliesTab'
+import GmbTab from './GmbTab'
 
 type ServiceMedia = {
   id: string
@@ -79,6 +81,8 @@ const TABS = [
   { id:'profile',      icon:'✏️', label:'Mi perfil'      },
   { id:'services',     icon:'💼', label:'Mis servicios'  },
   { id:'quotes',       icon:'🧾', label:'Presupuestos IA' },
+  { id:'wa-replies',   icon:'💬', label:'Plantillas WhatsApp' },
+  { id:'gmb',          icon:'📍', label:'Google Business' },
   { id:'availability', icon:'📅', label:'Disponibilidad' },
   { id:'bookings',     icon:'📋', label:'Reservas'       },
   { id:'earnings',     icon:'💶', label:'Cobros'         },
@@ -1699,6 +1703,18 @@ function ProveedorPanelInner() {
         {tab==='quotes' && provider?.id && (
           <div className="max-w-4xl">
             <QuotesTab providerId={provider.id} />
+          </div>
+        )}
+
+        {tab==='wa-replies' && provider?.id && (
+          <div className="max-w-4xl">
+            <QuickRepliesTab providerId={provider.id} />
+          </div>
+        )}
+
+        {tab==='gmb' && provider?.id && (
+          <div className="max-w-4xl">
+            <GmbTab providerId={provider.id} />
           </div>
         )}
 
