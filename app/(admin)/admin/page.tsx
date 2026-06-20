@@ -3060,6 +3060,7 @@ function MetricsPanel({ metrics, loading, onRefresh }: {
   const b = metrics.bookings
   const i = metrics.incidents
   const qg = metrics.quoteGenHook
+  const ta = metrics.toolsAdoption
 
   const card = (title: string, big: string, small?: string, color: string = '#F0F4FF') => (
     <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
@@ -3098,6 +3099,86 @@ function MetricsPanel({ metrics, loading, onRefresh }: {
         {card('Aprobados',       p.approved.toString(), `${p.pending} pendientes`)}
         {card('Verificados',     p.verified.toString(), 'con DNI/CIF/RC', '#10B981')}
       </div>
+
+      {/* ──── ADOPCIÓN HERRAMIENTAS IA DEL PANEL ──── */}
+      {ta && ta.approvedTotal > 0 && (
+        <>
+          <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase',
+            letterSpacing:'0.1em', marginBottom:10, marginTop:6 }}>
+            🛠️ Adopción Herramientas IA del panel
+            <span style={{ marginLeft:8, fontSize:10, color:'#6B7280', textTransform:'none', letterSpacing:0, fontWeight:500 }}>
+              denominador: {ta.approvedTotal} proveedores aprobados
+            </span>
+          </h2>
+
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginBottom:14 }}>
+            {[ta.quotes, ta.quickReplies, ta.gmb].map((tool: any, idx: number) => {
+              const icon = ['🧾','💬','📍'][idx]
+              const colors = ['#A78BFA','#25D366','#4285F4']
+              return (
+                <div key={tool.label} style={{
+                  background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16,
+                }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline',
+                    marginBottom:8 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:'#9CA3AF',
+                      textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                      {icon} {tool.label}
+                    </div>
+                    <div style={{ fontSize:10, color:'#6B7280' }}>{tool.totalUses} usos</div>
+                  </div>
+                  <div style={{ fontSize:28, fontWeight:700, color:colors[idx],
+                    fontFamily:'IBM Plex Mono,monospace', lineHeight:1 }}>
+                    {tool.adoptionRate}%
+                  </div>
+                  <div style={{ fontSize:11, color:'#9CA3AF', marginTop:4 }}>
+                    {tool.adopters} / {ta.approvedTotal} aprobados la han usado
+                  </div>
+                  <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #1F2937',
+                    display:'flex', justifyContent:'space-between', fontSize:11, color:'#9CA3AF' }}>
+                    <span>📅 7d: <strong style={{ color:'#F9FAFB' }}>{tool.active7}</strong></span>
+                    <span>📅 30d: <strong style={{ color:'#F9FAFB' }}>{tool.active30}</strong></span>
+                    <span>⌀ <strong style={{ color:'#F9FAFB' }}>{tool.avgUsesPerAdopter}</strong>/usuario</span>
+                  </div>
+                  {tool.top && tool.top.length > 0 && (
+                    <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #1F2937' }}>
+                      <div style={{ fontSize:9, fontWeight:700, color:'#6B7280',
+                        textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+                        Top usuarios
+                      </div>
+                      {tool.top.slice(0,3).map((u: any) => (
+                        <div key={u.provider_id} style={{
+                          display:'flex', justifyContent:'space-between', fontSize:11,
+                          color:'#9CA3AF', padding:'2px 0',
+                        }}>
+                          <span style={{
+                            whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                            maxWidth:'70%',
+                          }}>{u.name}</span>
+                          <span style={{ color:colors[idx], fontWeight:600 }}>{u.uses}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Power users cross-tool */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10, marginBottom:24 }}>
+            {card(
+              'Activación tools',
+              `${ta.powerUsers.activationRate}%`,
+              `${ta.powerUsers.totalActive} usan al menos 1 herramienta`,
+              ta.powerUsers.activationRate > 50 ? '#10B981' : ta.powerUsers.activationRate > 20 ? '#F59E0B' : '#EF4444',
+            )}
+            {card('Usan 1 herramienta',  ta.powerUsers.using1Tool.toString(),  'casual')}
+            {card('Usan 2 herramientas', ta.powerUsers.using2Tools.toString(), 'engaged')}
+            {card('Usan las 3 ✨',        ta.powerUsers.using3Tools.toString(), 'power users', '#A78BFA')}
+          </div>
+        </>
+      )}
 
       {/* ──── A/B GANCHO QUOTE GENERATOR — aleatorizado limpio ──── */}
       {qg?.ab && (qg.ab.treatmentSize > 0 || qg.ab.controlSize > 0) && (

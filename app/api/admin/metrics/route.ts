@@ -156,6 +156,123 @@ export async function GET(req: NextRequest) {
   const controlConv   = inControl.length   > 0 ? (controlBucketSelfReg / inControl.length)   * 100 : 0
   const abLiftPp = treatmentConv - controlConv
 
+  // ───── Adopción de herramientas IA del panel del proveedor ─────
+  // Denominador = proveedores aprobados (los pending no entran al panel).
+  // Por cada herramienta medimos:
+  //   - adopción: % de aprobados que la han usado ≥1 vez
+  //   - activos 7d / 30d: usaron la herramienta en esa ventana
+  //   - top 5 por uso total
+  // Más un cross-tool "power users" (usan ≥2 herramientas / las 3).
+  const approvedProviders = providers.filter((p: any) => p.status === 'approved')
+  const approvedSet = new Set(approvedProviders.map((p: any) => p.id))
+  const approvedTotal = approvedProviders.length
+
+  const now = Date.now()
+  const SEVEN_D  = 7  * 24 * 3600 * 1000
+  const THIRTY_D = 30 * 24 * 3600 * 1000
+
+  // Quote Generator: cada row de provider_quotes = un uso
+  const { data: quotesRaw } = await supabase
+    .from('provider_quotes')
+    .select('provider_id, created_at')
+  const quotesByProv = new Map<string, { total: number; last7: number; last30: number }>()
+  for (const q of (quotesRaw || [])) {
+    if (!q.provider_id || !approvedSet.has(q.provider_id)) continue
+    const age = now - new Date(q.created_at).getTime()
+    const cur = quotesByProv.get(q.provider_id) || { total: 0, last7: 0, last30: 0 }
+    cur.total++
+    if (age <= SEVEN_D)  cur.last7++
+    if (age <= THIRTY_D) cur.last30++
+    quotesByProv.set(q.provider_id, cur)
+  }
+
+  // Quick Replies: usamos sum(use_count) como señal de "usadas"
+  // (no contamos solo "tener plantillas" porque se siembran por defecto).
+  const { data: qrRaw } = await supabase
+    .from('provider_quick_replies')
+    .select('provider_id, use_count, updated_at')
+  const qrByProv = new Map<string, { total: number; last7: number; last30: number }>()
+  for (const r of (qrRaw || [])) {
+    if (!r.provider_id || !approvedSet.has(r.provider_id)) continue
+    const used = r.use_count || 0
+    if (used === 0) continue
+    const age = now - new Date(r.updated_at).getTime()
+    const cur = qrByProv.get(r.provider_id) || { total: 0, last7: 0, last30: 0 }
+    cur.total += used
+    if (age <= SEVEN_D)  cur.last7  += used
+    if (age <= THIRTY_D) cur.last30 += used
+    qrByProv.set(r.provider_id, cur)
+  }
+
+  // GMB posts
+  const { data: gmbRaw } = await supabase
+    .from('provider_gmb_posts')
+    .select('provider_id, created_at')
+  const gmbByProv = new Map<string, { total: number; last7: number; last30: number }>()
+  for (const g of (gmbRaw || [])) {
+    if (!g.provider_id || !approvedSet.has(g.provider_id)) continue
+    const age = now - new Date(g.created_at).getTime()
+    const cur = gmbByProv.get(g.provider_id) || { total: 0, last7: 0, last30: 0 }
+    cur.total++
+    if (age <= SEVEN_D)  cur.last7++
+    if (age <= THIRTY_D) cur.last30++
+    gmbByProv.set(g.provider_id, cur)
+  }
+
+  const providerName = new Map(providers.map((p: any) => [p.id, p.name]))
+  function summarize(byProv: Map<string, { total: number; last7: number; last30: number }>, label: string) {
+    const adopters = byProv.size
+    let totalUses = 0
+    let active7   = 0
+    let active30  = 0
+    const top: Array<{ provider_id: string; name: string; uses: number }> = []
+    byProv.forEach((v, pid) => {
+      totalUses += v.total
+      if (v.last7  > 0) active7++
+      if (v.last30 > 0) active30++
+      top.push({ provider_id: pid, name: providerName.get(pid) as string || '?', uses: v.total })
+    })
+    top.sort((a, b) => b.uses - a.uses)
+    return {
+      label,
+      adopters,
+      adoptionRate: approvedTotal > 0 ? Math.round((adopters / approvedTotal) * 1000) / 10 : 0,
+      totalUses,
+      avgUsesPerAdopter: adopters > 0 ? Math.round((totalUses / adopters) * 10) / 10 : 0,
+      active7,
+      active30,
+      top: top.slice(0, 5),
+    }
+  }
+
+  // Power users (cross-tool)
+  const toolsByProv = new Map<string, number>()
+  ;[quotesByProv, qrByProv, gmbByProv].forEach(m => {
+    m.forEach((_, pid) => toolsByProv.set(pid, (toolsByProv.get(pid) || 0) + 1))
+  })
+  let users1Tool = 0, users2Tools = 0, users3Tools = 0
+  toolsByProv.forEach(n => {
+    if (n >= 3) users3Tools++
+    else if (n === 2) users2Tools++
+    else users1Tool++
+  })
+
+  const toolsAdoption = {
+    approvedTotal,
+    quotes:        summarize(quotesByProv, 'Quote Generator'),
+    quickReplies:  summarize(qrByProv,     'Plantillas WhatsApp'),
+    gmb:           summarize(gmbByProv,    'Google Business'),
+    powerUsers: {
+      using1Tool:  users1Tool,
+      using2Tools: users2Tools,
+      using3Tools: users3Tools,
+      totalActive: toolsByProv.size,
+      activationRate: approvedTotal > 0
+        ? Math.round((toolsByProv.size / approvedTotal) * 1000) / 10
+        : 0,
+    },
+  }
+
   // ───── Clientes / socios ─────
   const { count: customersCount } = await supabase
     .from('bookings')
@@ -190,6 +307,7 @@ export async function GET(req: NextRequest) {
     customers: {
       bookingEmails: customersCount || 0,
     },
+    toolsAdoption,
     quoteGenHook: {
       msgsTotal:          hookMsgsTotal,
       hookedProviders:    hookedSet.size,
