@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { formatEuro } from '@/lib/pricing'
 
@@ -12,11 +12,13 @@ import { formatEuro } from '@/lib/pricing'
 // y cerrar con el cliente.
 
 export default function PackInquiryButton({
-  packId, packName, packPrice,
+  packId, packName, packPrice, prefillCity, prefillDate,
 }: {
-  packId:    string
-  packName:  string
-  packPrice: number
+  packId:       string
+  packName:     string
+  packPrice:    number
+  prefillCity?: string
+  prefillDate?: string
 }) {
   const [open,    setOpen]    = useState(false)
   const [sending, setSending] = useState(false)
@@ -25,10 +27,22 @@ export default function PackInquiryButton({
   const [name,    setName]    = useState('')
   const [email,   setEmail]   = useState('')
   const [phone,   setPhone]   = useState('')
-  const [date,    setDate]    = useState('')
-  const [city,    setCity]    = useState('')
+  const [date,    setDate]    = useState(prefillDate || '')
+  const [city,    setCity]    = useState(prefillCity || '')
   const [guests,  setGuests]  = useState('')
   const [message, setMessage] = useState('')
+
+  // Si el usuario cambia ciudad/fecha en la barra de filtros DESPUÉS
+  // de haber abierto el modal una vez, queremos que la próxima vez
+  // que lo abra coja los nuevos valores (solo si los campos siguen
+  // vacíos — no pisamos lo que ya hubiera tecleado).
+  useEffect(() => {
+    if (open) {
+      if (prefillCity && !city) setCity(prefillCity)
+      if (prefillDate && !date) setDate(prefillDate)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()

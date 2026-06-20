@@ -1,9 +1,6 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase'
-import { getPhoto } from '@/lib/constants'
-import { precioCliente, formatEuro } from '@/lib/pricing'
-import PackInquiryButton from './PackInquiryButton'
+import PacksClient from './PacksClient'
 
 export const metadata = {
   title: 'Packs · FiestaGo',
@@ -11,25 +8,39 @@ export const metadata = {
 }
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 async function getActivePacks() {
-  const supabase = createAdminClient()
-  const { data } = await supabase
-    .from('packs')
-    .select('*')
-    .eq('status', 'active')
-    .order('sort_order')
-  return data || []
+  try {
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
+      .from('packs')
+      .select('*')
+      .eq('status', 'active')
+      .order('sort_order')
+    if (error) {
+      console.error('[packs/page] supabase error:', error.message)
+      return []
+    }
+    return data || []
+  } catch (err: any) {
+    console.error('[packs/page] fetch error:', err?.message)
+    return []
+  }
 }
 
-export default async function PacksPage() {
+export default async function PacksPage({
+  searchParams,
+}: {
+  searchParams: { ciudad?: string; fecha?: string; categoria?: string }
+}) {
   const packs = await getActivePacks()
 
   return (
     <main className="bg-cream min-h-screen">
 
       {/* ─── HERO ─── */}
-      <section className="relative pt-24 md:pt-28 pb-12 md:pb-16">
+      <section className="relative pt-24 md:pt-28 pb-10 md:pb-14">
         <div className="max-w-5xl mx-auto px-6 text-center">
           <p className="text-xs font-bold tracking-[0.25em] uppercase text-coral mb-4">
             Sin presupuestos · Sin esperas
@@ -39,110 +50,36 @@ export default async function PacksPage() {
             <span className="italic font-light">precio claro</span>
           </h1>
           <p className="text-base md:text-lg text-ink/65 max-w-2xl mx-auto leading-relaxed">
-            Cumpleaños, bodas, comuniones, eventos corporativos. Un único contacto, un único precio, todo coordinado.
-            Si algo falla, te respondemos con la Garantía de Éxito.
+            Cumpleaños, bodas, comuniones, eventos corporativos. Un único contacto, un único precio,
+            todo coordinado. Si algo falla, te respondemos con la Garantía de Éxito.
           </p>
         </div>
       </section>
 
-      {/* ─── LISTADO DE PACKS ─── */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-          {packs.map((pack: any) => {
-            const priceClient = precioCliente(Number(pack.price_base))
-            return (
-              <article key={pack.id}
-                className="bg-white border border-stone-200 rounded-3xl overflow-hidden flex flex-col">
-
-                {/* Foto */}
-                <div className="relative aspect-[4/3] bg-stone-100">
-                  <Image
-                    src={getPhoto(pack.photo_seed || 'party', 0, 800, 600)}
-                    alt={pack.name}
-                    fill className="object-cover"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"/>
-                  {pack.highlight && (
-                    <div className="absolute top-3 left-3 bg-coral text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full">
-                      {pack.highlight}
-                    </div>
-                  )}
-                </div>
-
-                {/* Cuerpo */}
-                <div className="p-5 md:p-6 flex-1 flex flex-col">
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="text-3xl shrink-0 leading-none">{pack.emoji}</span>
-                    <div className="min-w-0">
-                      <h2 className="font-serif text-xl text-ink font-bold leading-tight">
-                        {pack.name}
-                      </h2>
-                      {pack.duration && (
-                        <div className="text-xs text-ink/50 mt-1">
-                          ⏱ {pack.duration}
-                          {pack.max_guests && <> · 👥 hasta {pack.max_guests} invitados</>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-ink/70 leading-relaxed mb-4">
-                    {pack.description}
-                  </p>
-
-                  {pack.includes && pack.includes.length > 0 && (
-                    <ul className="space-y-1.5 mb-5">
-                      {pack.includes.slice(0, 5).map((it: string) => (
-                        <li key={it} className="flex items-start gap-2 text-xs text-ink/70 leading-snug">
-                          <span className="text-coral shrink-0 mt-0.5">✓</span>
-                          <span>{it}</span>
-                        </li>
-                      ))}
-                      {pack.includes.length > 5 && (
-                        <li className="text-xs text-ink/45 italic pl-5">
-                          + {pack.includes.length - 5} más…
-                        </li>
-                      )}
-                    </ul>
-                  )}
-
-                  {/* Precio + CTA */}
-                  <div className="mt-auto pt-4 border-t border-stone-200">
-                    <div className="flex items-baseline justify-between mb-3">
-                      <div>
-                        <div className="text-xs text-ink/50 uppercase tracking-wider mb-0.5">
-                          Desde
-                        </div>
-                        <div className="font-serif text-2xl font-bold text-ink">
-                          {formatEuro(priceClient)}
-                        </div>
-                        {pack.price_note && (
-                          <div className="text-[10px] text-ink/45 mt-0.5">
-                            {pack.price_note}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-ink/45 text-right max-w-[100px] leading-snug">
-                        🛡 Garantía<br/>de Éxito<br/>incluida
-                      </div>
-                    </div>
-
-                    <PackInquiryButton
-                      packId={pack.id}
-                      packName={pack.name}
-                      packPrice={priceClient}/>
-                  </div>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-
-        {packs.length === 0 && (
-          <div className="text-center py-16 text-ink/50">
-            No hay packs disponibles ahora mismo.
+      {/* ─── FILTROS + LISTADO (cliente) ─── */}
+      {packs.length === 0 ? (
+        <section className="max-w-3xl mx-auto px-6 pb-24 text-center">
+          <div className="bg-white border border-stone-200 rounded-3xl p-10 md:p-14">
+            <div className="text-5xl mb-5">🎁</div>
+            <h2 className="font-serif text-2xl md:text-3xl text-ink mb-4">
+              No hay packs publicados ahora mismo
+            </h2>
+            <p className="text-sm md:text-base text-ink/60 leading-relaxed mb-6 max-w-md mx-auto">
+              Estamos preparando nuevos packs. Mientras tanto, puedes contarnos qué celebras y
+              te montamos un presupuesto a medida en menos de 24h.
+            </p>
+            <Link href="/contacto"
+              className="inline-block bg-coral text-white font-bold px-7 py-3.5 rounded-xl text-sm hover:bg-coral-dark transition-colors shadow-coral">
+              Cuéntanos qué celebras →
+            </Link>
           </div>
-        )}
-      </section>
+        </section>
+      ) : (
+        <PacksClient
+          packs={packs}
+          initialCity={searchParams.ciudad || ''}
+          initialDate={searchParams.fecha || ''}/>
+      )}
 
       {/* ─── BLOQUE CONFIANZA ─── */}
       <section className="bg-ink text-white">
