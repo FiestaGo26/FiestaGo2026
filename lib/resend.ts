@@ -494,6 +494,33 @@ FiestaGo (sistema automático)`
   return sendEmail({ to: adminEmail, subject, text })
 }
 
+// Solicitud de reserva sobre un PACK (sin proveedor asignado todavía).
+// El admin se encarga de asignarle proveedores y cerrar el lead.
+export async function emailAdminPackInquiry(booking: any, pack: any) {
+  const adminEmail = process.env.ADMIN_EMAIL || 'contacto@fiestago.es'
+  const subject = `🎁 Solicitud de pack · ${pack?.name || 'Pack'} · ${bookingDateF(booking.event_date)}`
+  const text = `Nueva solicitud sobre un PACK en FiestaGo.
+
+PACK:      ${pack?.emoji || ''} ${pack?.name || '—'}
+Precio:    ${(pack?.price_base || 0).toLocaleString()}€${pack?.price_note ? ' (' + pack.price_note + ')' : ''}
+
+Cliente:   ${booking.client_name}
+Email:     ${booking.client_email}
+Teléfono:  ${booking.client_phone || '—'}
+Fecha:     ${bookingDateF(booking.event_date)}
+Ciudad:    ${booking.city || '—'}
+Invitados: ${booking.guests ?? '—'}
+
+Mensaje del cliente:
+${booking.message || '—'}
+
+Acción: contacta al cliente y asigna proveedores en https://fiestago.es/admin
+
+Saludos,
+FiestaGo (sistema automático)`
+  return sendEmail({ to: adminEmail, subject, text })
+}
+
 export async function emailProviderNewBooking(booking: any, provider: any) {
   if (!provider?.email) return { ok: false, error: 'Proveedor sin email' }
 

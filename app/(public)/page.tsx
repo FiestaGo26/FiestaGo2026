@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { getPhoto, CATEGORIES } from '@/lib/constants'
 import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import SearchBar from './_components/SearchBar'
+import InspirationAccordion from './_components/InspirationAccordion'
 
 async function getPacks() {
   const supabase = createAdminClient()
@@ -205,32 +206,20 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ─────────── INSPIRACIÓN (3 collections) ─────────── */}
-      <section className="max-w-7xl mx-auto px-6 pt-16 md:pt-20">
-        <div className="mb-10">
+      {/* ─────────── ¿QUÉ QUIERES CELEBRAR? (panel desplegable) ─────────── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-14 md:pt-20">
+        <div className="text-center mb-8 md:mb-10 px-2">
+          <p className="text-xs font-bold tracking-[0.25em] uppercase text-coral mb-3">
+            Empieza aquí
+          </p>
           <h2 className="font-serif text-3xl md:text-4xl text-ink leading-tight tracking-tight">
-            Inspiración <span className="italic font-light">para tu próxima fiesta</span>
+            ¿Qué quieres <span className="italic font-light">celebrar?</span>
           </h2>
+          <p className="text-sm md:text-base text-ink/55 mt-3 max-w-md mx-auto leading-relaxed">
+            Elige el tipo de evento y te enseñamos lo mejor que tenemos para ti.
+          </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-          {COLLECTIONS.map(c => (
-            <Link key={c.id} href={c.href}
-              className="group block">
-              <div className="relative aspect-[4/5] rounded-3xl overflow-hidden bg-stone-100">
-                <Image src={getPhoto(c.seed, 0, 600, 750)} alt={c.title} fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"/>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
-                <div className="absolute bottom-6 left-6 right-6 text-white">
-                  <h3 className="font-serif text-2xl md:text-3xl leading-tight mb-2">{c.title}</h3>
-                  <p className="text-sm text-white/85 leading-snug">{c.hint}</p>
-                  <span className="text-xs font-semibold tracking-widest uppercase mt-3 inline-block border-b border-white pb-0.5">
-                    Explorar →
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <InspirationAccordion items={COLLECTIONS} />
       </section>
 
       {/* ─────────── SERVICIOS DESTACADOS ─────────── */}

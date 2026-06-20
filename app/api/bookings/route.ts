@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { calcCommission } from '@/lib/constants'
-import { emailAdminNewBooking, emailProviderNewBooking, emailClientBookingReceived } from '@/lib/resend'
+import { emailAdminNewBooking, emailAdminPackInquiry, emailProviderNewBooking, emailClientBookingReceived } from '@/lib/resend'
 import { requireClientAuth } from '@/lib/auth'
 
 export const runtime = 'nodejs'
@@ -137,6 +137,20 @@ export async function POST(req: NextRequest) {
             console.error('emailProviderNewBooking:', err?.message))
           emailClientBookingReceived(data, prov).catch(err =>
             console.error('emailClientBookingReceived:', err?.message))
+        }
+      } catch { /* no-op */ }
+    } else if (pack_id) {
+      // Solicitud de pack sin proveedor asignado: el admin recibe la
+      // notificación para asignar manualmente proveedores.
+      try {
+        const { data: pack } = await supabase
+          .from('packs')
+          .select('id, name, slug, emoji, price_base, price_note')
+          .eq('id', pack_id)
+          .single()
+        if (pack) {
+          emailAdminPackInquiry(data, pack).catch(err =>
+            console.error('emailAdminPackInquiry:', err?.message))
         }
       } catch { /* no-op */ }
     }
