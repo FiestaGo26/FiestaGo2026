@@ -8,7 +8,6 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
-import { countPlazasConSelloRestantes } from '@/lib/fiestago-agent'
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8'
 
@@ -31,124 +30,126 @@ export type Pillar = {
 }
 
 // ─── MODO "PROVEEDORES" · captación B2B ────────────────────────────────────
-// Los primeros vídeos van enfocados a captar proveedores (objetivo: llenar
-// las 100 plazas con Sello de Calidad). Una vez lleno el sello, cambias
-// CONTENT_MODE=clients en Netlify y empieza a rotar el set de cliente.
+// Los vídeos van enfocados a captar proveedores. El ángulo es VALOR puro:
+// que el proveedor escuche 20 segundos y diga "esto me interesa, me apunto".
+// NADA de escasez ni "quedan X plazas" — el proveedor se apunta porque ve
+// claro el valor inmediato (herramientas IA gratis + 0% comisión + Garantía
+// + clientes), no porque le metamos prisa artificial.
 //
-// Todos los CTAs van al registro de proveedor. Tono: directo, vendedor de
-// oportunidad, FOMO honesto. Hashtags B2B/profesionales del sector.
+// Estructura: 7 pilares = 7 días de la semana. Cada día destaca UN ángulo
+// específico del valor para no saturar ni repetir.
 export const PILLARS_PROVIDERS: Pillar[] = [
   {
-    id:        'lunes_diferencial',
+    id:        'lunes_pack_ia',
     dayOfWeek: 1,
-    label:     'Por qué FiestaGo vs otros',
+    label:     'Pack de herramientas IA gratis',
     topicBag: [
-      'Por qué FiestaGo es distinto a bodas.net para tu negocio',
-      'Marketplaces de bodas: dónde están los clientes que pagan',
-      'Lo que ningún otro marketplace de eventos te ofrece',
-      'Por qué bodas.net no te trae clientes (y nosotros sí)',
-      'La diferencia entre estar en un directorio y estar en un marketplace',
-      'Por qué los proveedores se cambian de bodas.net a FiestaGo',
+      'Tres herramientas IA que te llevas gratis al darte de alta en FiestaGo',
+      'El pack que pagado suelto cuesta 265-605€/mes y aquí es gratis',
+      'Lo que te ahorra una semana al mes en tareas que odias',
+      'Por qué FiestaGo no es un marketplace cualquiera: las herramientas IA',
+      'Quote Generator IA, plantillas WhatsApp y posts Google: tuyas gratis',
+      'Si no usas FiestaGo, estás pagando software que tienes gratis',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'date de alta gratis',
-    hashtagsBase: ['proveedoresboda','marketplaceboda','fotografoboda','djboda','cateringboda','animacionevento'],
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'desbloquéalo gratis hoy',
+    hashtagsBase: ['proveedoresboda','iaparafotografos','herramientasboda','fotografoboda','djboda','cateringboda'],
   },
   {
-    id:        'martes_sello',
+    id:        'martes_quote_generator',
     dayOfWeek: 2,
-    label:     'Sello de Calidad (FOMO)',
+    label:     'Quote Generator IA',
     topicBag: [
-      'Solo quedan {N} plazas con Sello de Calidad en FiestaGo',
-      'El Sello de Calidad de FiestaGo: por qué te convierte 3x más',
-      'Cómo ser uno de los 100 proveedores con sello en 2026',
-      'Las parejas eligen primero al proveedor con sello: por qué',
-      'Sello de Calidad: qué pide FiestaGo y qué da a cambio',
-      'Quedan {N} plazas: por qué los primeros 100 importan tanto',
+      'Presupuestos profesionales en 10 segundos desde el WhatsApp del cliente',
+      'Lo que te llevaba 30-45 minutos, ahora son 10 segundos con IA',
+      'Pegar el brief del cliente y tener el presupuesto listo para mandar',
+      'Cómo cerrar bodas mientras tu competencia sigue escribiendo presupuestos',
+      'Por qué dejar de hacer presupuestos a mano cambia tu negocio',
+      'Quote Generator IA: cómo funciona en 30 segundos',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'reserva tu plaza',
-    hashtagsBase: ['sellocalidadFiestaGo','proveedoresboda','marketplaceboda','bodasespaña'],
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'pruébalo gratis hoy',
+    hashtagsBase: ['proveedoresboda','presupuestoboda','iaeventos','automatizacion','fotografoboda'],
   },
   {
-    id:        'miercoles_economico',
+    id:        'miercoles_comision_cero',
     dayOfWeek: 3,
     label:     '0% comisión — cobras 100%',
     topicBag: [
       'Cero comisión: por qué en FiestaGo cobras tu precio íntegro siempre',
-      'Por qué el cliente paga el 8% y tú cobras el 100%',
+      'El cliente paga un 8% extra que financia la Garantía. Tú cobras el 100%',
       'Sin cuotas, sin permanencia, sin comisión: cuánto te cuesta FiestaGo',
-      'Cuánto te cuesta estar en FiestaGo: 0€. Lee bien',
       'Otros marketplaces te cobran 15-20%. Nosotros 0%. Por qué',
       'El modelo económico de FiestaGo explicado en 30 segundos',
+      'Cuánto cobras tú vs cuánto cobran ellos: la diferencia real',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'date de alta gratis',
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'cobra el 100% desde hoy',
     hashtagsBase: ['proveedoresboda','marketplaceboda','sinComision','bodasespaña','fotografoboda'],
   },
   {
-    id:        'jueves_proteccion',
+    id:        'jueves_plantillas_wa',
     dayOfWeek: 4,
-    label:     'Protección al proveedor',
+    label:     'Plantillas WhatsApp con IA',
     topicBag: [
-      'Si un cliente no te paga: cómo te protege FiestaGo',
-      'Pago en escrow: el dinero del cliente está esperándote',
-      'Si el cliente cancela 1 semana antes, cómo cobras tu trabajo',
-      'Por qué trabajar con FiestaGo elimina el riesgo de impago',
-      'La Garantía de Éxito también te protege a ti, no solo al cliente',
-      'Cómo FiestaGo media cuando un cliente pide cambios abusivos',
+      'Contesta a tus clientes en 2 clics con las plantillas de FiestaGo',
+      '9 respuestas profesionales pre-escritas para cada momento del cliente',
+      'Cuánto tiempo pierdes contestando lo mismo cada semana',
+      'IA que escribe la plantilla que necesitas en 5 segundos',
+      'Por qué responder rápido cierra el doble de bodas que responder bien',
+      'Tu WhatsApp profesional, organizado y sin tener que escribir cada respuesta',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'únete a FiestaGo',
-    hashtagsBase: ['proveedoresboda','marketplaceboda','proteccionproveedor','escrow','bodasespaña'],
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'pruébalo gratis hoy',
+    hashtagsBase: ['proveedoresboda','whatsappbusiness','automatizacionwhatsapp','fotografoboda','djboda'],
   },
   {
-    id:        'viernes_volumen',
+    id:        'viernes_google_business',
     dayOfWeek: 5,
-    label:     'Volumen / oportunidad',
+    label:     'Posts Google Business IA',
     topicBag: [
-      'Una sola boda extra al mes: cuánto suma a fin de año',
-      'Por qué llegar el primero a un marketplace nuevo te da ventaja perpetua',
-      'El error de esperar a que la plataforma crezca antes de entrar',
-      'Cuántas parejas están buscando proveedor en tu zona ahora mismo',
-      'Por qué los primeros 100 proveedores van a dominar FiestaGo',
-      'Una boda extra al año = +1.500-5.000€ según tu categoría',
+      'Aparece arriba cuando alguien busca tu servicio en Google con IA',
+      'Posts de Google Business escritos automáticamente por IA para ti',
+      'Cómo dominar las búsquedas locales sin contratar un community manager',
+      'Por qué un post semanal en Google triplica tus consultas',
+      'IA que sabe qué keywords te traen clientes en tu ciudad',
+      'El community manager que no te cobra 300€ al mes',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'date de alta hoy',
-    hashtagsBase: ['proveedoresboda','marketplaceboda','crecenegocio','bodasespaña','primeros100'],
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'pruébalo gratis hoy',
+    hashtagsBase: ['proveedoresboda','googlebusiness','seolocal','marketingfotografos','iaparaeventos'],
   },
   {
-    id:        'sabado_como_alta',
+    id:        'sabado_garantia',
     dayOfWeek: 6,
-    label:     'Cómo dar de alta (CTA fuerte)',
+    label:     'Garantía de Éxito + Pago en escrow',
     topicBag: [
-      'Darte de alta en FiestaGo: 60 segundos paso a paso',
-      'Qué necesitas para empezar a recibir clientes en FiestaGo',
-      'Lo único que te pedimos en el alta de proveedor',
-      'Cómo se ve tu perfil de FiestaGo en 1 minuto',
-      'Alta como proveedor: tan fácil como un perfil de Instagram',
-      'Empieza hoy, recibe tu primera solicitud esta semana',
+      'Si el cliente cancela, cómo FiestaGo te protege a ti',
+      'Pago en escrow: el dinero del cliente espera retenido hasta tu evento',
+      'Por qué trabajar con FiestaGo elimina el riesgo de impago',
+      'La Garantía de Éxito te protege a ti, no solo al cliente',
+      'Cómo FiestaGo media cuando un cliente pide cambios abusivos',
+      'Tu trabajo blindado: el día del evento sí o sí cobras',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'empieza el alta ya',
-    hashtagsBase: ['proveedoresboda','altagratis','marketplaceboda','bodasespaña'],
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'trabaja sin riesgos',
+    hashtagsBase: ['proveedoresboda','proteccionproveedor','escrow','bodasespaña','seguridadboda'],
   },
   {
-    id:        'domingo_urgencia',
+    id:        'domingo_pack_completo',
     dayOfWeek: 0,
-    label:     'Urgencia mixta · sello + clientes',
+    label:     'Pack completo · 265-605€/mes en valor',
     topicBag: [
-      'Esta semana entran proveedores nuevos a FiestaGo: no te quedes fuera',
-      'Quedan {N} plazas con sello: el reloj corre',
-      'Cada día fuera de FiestaGo = una solicitud que se va con otro',
-      'Antes de cerrar el mes, hazte un perfil en FiestaGo',
-      'La diferencia entre estar dentro y seguir mirando desde fuera',
-      'Quedan {N} plazas con sello. ¿Vas a esperar a que se agoten?',
+      'Lo que te llevas el día que te das de alta en FiestaGo',
+      'Aunque no te llegue ni un cliente, ya hoy tienes valor',
+      'El stack productivo que multiplica tu margen en bodas',
+      'Por qué los proveedores que ya están dentro no se van',
+      'Pack completo de FiestaGo: presupuestos, WhatsApp, Google, reservas',
+      'Lo que pagarías suelto vs lo que pagas en FiestaGo (gratis)',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'no lo dejes para mañana',
-    hashtagsBase: ['proveedoresboda','sellocalidadFiestaGo','marketplaceboda','urgenciaboda','bodasespaña'],
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'desbloquéalo en 60 segundos',
+    hashtagsBase: ['proveedoresboda','marketplaceboda','herramientasboda','bodasespaña','iaeventos'],
   },
 ]
 
@@ -242,19 +243,19 @@ export const PILLARS_CLIENTS: Pillar[] = [
     hashtagsBase: ['datosboda','bodasespaña','presupuestoboda','planificarboda'],
   },
   {
-    id:        'sabado_sello',
+    id:        'sabado_proveedor_valor',
     dayOfWeek: 6,
-    label:     'Captación de proveedor — Sello de Calidad',
+    label:     'Mensaje al proveedor que se cruza el Reel',
     topicBag: [
-      'Proveedores de bodas: quedan {N} plazas con Sello de Calidad',
-      'Por qué el sello convierte 3x más en FiestaGo',
-      'Las parejas eligen primero a quien tiene sello',
-      'Sello de Calidad: qué pide FiestaGo para dártelo',
-      'Cómo ser uno de los 100 proveedores con sello en 2026',
+      'Si eres proveedor de bodas, esto te ahorra horas cada semana',
+      'Tres herramientas IA gratis para fotógrafos, DJs y catering',
+      'Por qué cobrar el 100% de tu trabajo cambia el negocio',
+      'Cómo dejar de hacer presupuestos a mano y vender más',
+      'El stack productivo gratis para proveedores de eventos',
     ],
-    ctaUrl:       'https://fiestago.es/registro-proveedor',
-    ctaShort:     'apúntate al sello',
-    hashtagsBase: ['proveedoresboda','marketplaceboda','sellocalidadFiestaGo','proveedoreseventos'],
+    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaShort:     'mira lo que te llevas',
+    hashtagsBase: ['proveedoresboda','herramientasboda','iaparafotografos','marketplaceboda','proveedoreseventos'],
   },
   {
     id:        'domingo_calculadora',
@@ -310,47 +311,56 @@ export type GeneratedContent = {
 
 const SCRIPT_SYSTEM = `Eres copywriter de vídeos verticales para redes sociales (Instagram Reels, TikTok, YouTube Shorts) de FiestaGo, marketplace de celebraciones en España (bodas, comuniones, cumpleaños, eventos).
 
-Tu trabajo es escribir el GUION HABLADO de un vídeo de 20 segundos que dirá un avatar AI a cámara. El objetivo del vídeo es CAPTAR PROVEEDORES — que un fotógrafo, DJ, catering, etc. lo vea y se dé de alta hoy en https://fiestago.es/registro-proveedor.
+Tu trabajo es escribir el GUION HABLADO de un vídeo de 20 segundos que dirá un avatar AI a cámara. El objetivo es CAPTAR PROVEEDORES — que un fotógrafo, DJ, catering, etc. lo vea y se dé de alta hoy en https://fiestago.es/registro-proveedor por el VALOR REAL que se lleva el día 1, no por miedo a perder algo.
 
-═══ REGLA DE ORO: HOOK DE PÉRDIDA EN LOS PRIMEROS 3 SEGUNDOS ═══
+═══ REGLA DE ORO: VALOR INMEDIATO Y CONCRETO QUE ENGANCHA EN 3s ═══
 
-Los primeros 8-10 palabras DECIDEN si el proveedor se queda mirando o pasa al siguiente vídeo. Tienen que doler. Tiene que sentir que está perdiendo algo AHORA si no actúa. La pérdida vence al beneficio 2:1 en venta.
+Los primeros 8-10 palabras DECIDEN si el proveedor se queda mirando o pasa al siguiente vídeo. Tienen que ABRIR LOS OJOS con un dato concreto: una cifra (€/mes, minutos ahorrados, horas a la semana), una herramienta nueva, o un beneficio tangible.
 
-HOOKS QUE FUNCIONAN (ejemplos para inspirarte, no copies literal):
-- "Cada semana fuera de FiestaGo es una boda menos para ti."
-- "Si tu competencia ya está dentro y tú no, esto te va a doler."
-- "En seis meses los proveedores fuera de FiestaGo lo van a notar."
-- "Estás dejando dinero encima de la mesa y ni te enteras."
-- "Tus colegas del sector ya se están apuntando. Tú sigues mirando."
-- "Lo que pierdes por no estar en FiestaGo no se ve hasta que es tarde."
-- "Cada día sin estar aquí, otro proveedor se lleva lo que era tuyo."
-- "¿Cuántas bodas vas a dejar pasar este año por no estar dentro?"
+NUNCA uses escasez artificial. PROHIBIDO mencionar "plazas que quedan", "los primeros 100", "antes de que se agote", "el reloj corre", "no te quedes fuera". Eso es lenguaje viejo y suena a vendedor desesperado. El proveedor se apunta porque ve VALOR, no porque le metamos prisa falsa.
+
+HOOKS QUE FUNCIONAN (ejemplos para inspirarte, NO copies literal):
+- "Tres herramientas IA gratis al darte de alta. Vale más de 265€ al mes."
+- "Lo que te llevaba 45 minutos hacer un presupuesto, ahora son 10 segundos."
+- "Cobras el 100% de tu precio. El cliente paga el 8% extra. Sin comisión."
+- "Contestas a clientes en dos clics con plantillas pre-escritas."
+- "Aparece arriba en Google cuando buscan fotógrafo en tu ciudad."
+- "Tu trabajo en bodas blindado: si el cliente cancela, tú cobras igual."
+- "Pegas el WhatsApp del cliente y la IA te escribe el presupuesto."
+- "El community manager que no te cobra 300€ al mes."
 
 HOOKS QUE NO FUNCIONAN (no los uses NUNCA):
 - "Hola, soy de FiestaGo y..." → moriste en 1 segundo
+- "Quedan X plazas..." → escasez prohibida en este nuevo enfoque
+- "Si tu competencia ya está dentro..." → ataque al miedo, prohibido
+- "Estás dejando dinero encima de la mesa" → manipulación, prohibido
 - "¿Sabías que FiestaGo es un marketplace..." → corporate puro
-- "Hoy te voy a contar..." → educacional, no urgente
-- "Si eres fotógrafo de bodas..." → segmentas y pierdes al resto
+- "Hoy te voy a contar..." → educacional, no atrae
 - "Bienvenido al canal..." → no es un canal, es un Reel
 
 ═══ ESTRUCTURA DEL GUION (20 SEGUNDOS) ═══
 
-1. HOOK (0-3s, ≤10 palabras): pérdida tangible. Genera incomodidad.
-2. AGRAVA EL DOLOR (3-8s, 1 frase): concretiza lo que está pasando ahora. Ejemplo: "Mientras dudas, hay parejas eligiendo a otros como tú."
-3. SOLUCIÓN (8-15s, 1 frase): qué es FiestaGo en términos de qué resuelve, NO en términos de qué es. Ejemplo: "FiestaGo te pone delante de esas parejas. Alta gratis, sin comisión."
-4. CTA (15-20s, 1 frase muy corta): acción concreta + el dato del sello. Ejemplo: "Quedan {plazas} plazas con sello. Apúntate hoy."
+1. HOOK DE VALOR (0-3s, ≤10 palabras): un dato concreto que sorprende. Cifra, herramienta, o ahorro tangible.
+2. AMPLÍA EL VALOR (3-10s, 1-2 frases): cómo funciona ese beneficio en su día a día. Ejemplos:
+   - "Pegas el mensaje del cliente. La IA escribe el presupuesto. Te lo lleva un link por WhatsApp."
+   - "Contestas en dos clics: nombre, fecha, listo. Como si lo hubieras escrito tú."
+3. AHORRO O DIFERENCIA (10-16s, 1 frase): traduce a euros/minutos/clientes. "Pagado suelto serían 30€ al mes. Aquí cero."
+4. CTA POSITIVO (16-20s, 1 frase muy corta): acción concreta + REGISTRARSE GRATIS. Ejemplo:
+   - "Date de alta gratis en fiestago.es. 60 segundos."
+   - "Pruébalo gratis hoy: fiestago.es/proveedor/valor."
 
 ═══ REGLAS DURAS ═══
 
 - Longitud: 45-55 palabras EXACTAS. Cuenta antes de devolver.
 - Español de España. Tuteo. Cero "vosotros" formal, di "tú" siempre — más íntimo y directo.
 - Sin emojis (lo dice un humano, no se ven).
-- Sin tecnicismos, sin "marketplace de celebraciones" repetido. Como si se lo dijeras a un colega del sector en la barra de un bar.
+- Sin tecnicismos. Como si se lo dijeras a un colega del sector en la barra de un bar.
 - NUNCA empieces con "Hola", "Bienvenidos", "Hoy te traigo".
 - Usa frases cortas (máx 10 palabras por frase). Punto a punto. Sin párrafos.
 - NO listas numeradas habladas. Encadena natural.
 - No menciones "FiestaGo" más de 2 veces.
-- El CTA es siempre "ir al link / darte de alta hoy / apúntate ya" — nunca "más info" ni "echa un vistazo".
+- El CTA siempre invita a "darte de alta gratis hoy / probarlo gratis" — nunca "más info" ni "echa un vistazo".
+- PROHIBIDO mencionar plazas, sello como escasez, ni urgencia artificial.
 
 ═══ CAPTION + HASHTAGS ═══
 
@@ -368,25 +378,20 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin bloques markdown:
 }`
 
 // Genera el guion + caption + hashtags para un pilar + topic dados.
-// Incluye plazas con sello en el contexto para que el pilar de sábado
-// (captación de proveedor) tenga datos reales.
+// Sin contexto de plazas/escasez: el enfoque es valor real.
 export async function generateContent(opts: {
   pillar: Pillar
   topic:  string
 }): Promise<GeneratedContent> {
   const { pillar, topic } = opts
-  const plazas = await countPlazasConSelloRestantes()
-
-  // Sustituir {N} en el topic con plazas reales (para pilar sábado)
-  const topicResolved = topic.replace(/\{N\}/g, String(plazas))
 
   const userMsg =
     `[Pilar de hoy] ${pillar.label}\n` +
-    `[Tema concreto] ${topicResolved}\n` +
+    `[Tema concreto] ${topic}\n` +
     `[CTA final del guion] ${pillar.ctaShort} (${pillar.ctaUrl})\n` +
     `[Hashtags base sugeridos] ${pillar.hashtagsBase.join(', ')}\n` +
-    `[Contexto FiestaGo] Marketplace de bodas/eventos en España. Alta gratis para proveedores. El cliente paga 8% por Garantía de Éxito. Quedan ${plazas} plazas con Sello de Calidad.\n\n` +
-    `Genera el guion (30s), caption y hashtags. JSON puro.`
+    `[Contexto FiestaGo] Marketplace de bodas/eventos en España. Alta gratis para proveedores, sin cuotas ni comisión. El cliente paga 8% extra que financia la Garantía de Éxito; el proveedor cobra su precio íntegro. Al darse de alta, el proveedor desbloquea un pack de herramientas IA gratis (Quote Generator, plantillas WhatsApp, posts Google Business) que pagadas sueltas costarían entre 265€ y 605€ al mes.\n\n` +
+    `Genera el guion (20s), caption y hashtags. JSON puro. Recuerda: hook de VALOR, prohibido mencionar plazas/escasez.`
 
   const resp = await client().messages.create({
     model:      MODEL,
