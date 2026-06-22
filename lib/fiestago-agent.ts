@@ -256,6 +256,95 @@ export function buildOutreachDescriptor(opts: {
   return city ? `${noun} en ${city}` : noun
 }
 
+// ─── Respuestas HARDCODED a los 3 botones de la plantilla ───────────────
+// Cuando el primer turno del proveedor es exactamente "Me apunto",
+// "Cuéntame más" o "No me interesa" (textos literales de los botones
+// quick-reply de fiestago_perdida_clientes_v1), devolvemos un script
+// determinista en vez de llamar al cerebro LLM. Razón:
+//   - 100% controlado: el modelo no puede fusionar otros principios.
+//   - Gratis: sin coste de tokens Anthropic.
+//   - Instantáneo: <50ms vs 2-4s del cerebro.
+//   - El script del "Cuéntame más" cuenta TODO el pack de herramientas
+//     IA con cifras (265-605€/mes) y emojis exactos — el diferenciador
+//     real que el cerebro tendía a ignorar en favor de ROI/sello.
+
+const CATEGORY_HUMAN: Record<string, string> = {
+  foto:       'fotografía',
+  catering:   'catering',
+  espacios:   'espacios y fincas',
+  musica:     'música y DJ',
+  flores:     'flores y decoración',
+  pastel:     'repostería',
+  belleza:    'belleza',
+  animacion:  'animación',
+  transporte: 'transporte',
+  papeleria:  'papelería',
+  planner:    'wedding planner',
+  joyeria:    'joyería',
+}
+
+// Cómo se busca esa categoría en su ciudad (lenguaje del cliente).
+const CATEGORY_SEARCH: Record<string, string> = {
+  foto:       'fotógrafo de bodas',
+  catering:   'catering para eventos',
+  espacios:   'fincas y salones para celebraciones',
+  musica:     'DJ para bodas',
+  flores:     'floristería para bodas',
+  pastel:     'tartas y repostería para eventos',
+  belleza:    'maquillaje y peluquería para novias',
+  animacion:  'animación para eventos',
+  transporte: 'transporte para bodas',
+  papeleria:  'papelería de bodas',
+  planner:    'wedding planner',
+  joyeria:    'joyería y alianzas',
+}
+
+export function getButtonReply(
+  inboundText: string,
+  provider: ProviderContext,
+): string | null {
+  const name = provider.name || 'hola'
+  const city = provider.city || 'tu zona'
+  const catHuman  = (provider.category && CATEGORY_HUMAN[provider.category])  || 'tu sector'
+  const catSearch = (provider.category && CATEGORY_SEARCH[provider.category]) || 'profesionales como tú'
+
+  // Normalización agresiva: minúsculas, sin acentos, sin espacios extra,
+  // sin signos de puntuación. Pilla "cuéntame", "cuentame", "Cuéntame mas",
+  // "cuéntame más.", etc.
+  const norm = inboundText
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quita acentos
+    .replace(/[^\w\s]/g, '')                            // quita puntuación
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (norm === 'me apunto' || norm === 'si me apunto' || norm === 'apuntame' || norm === 'apuntate') {
+    return `¡Perfecto ${name}! Te aseguramos uno de los primeros puestos en ${city} para ${catHuman}. El alta son 60 segundos: https://fiestago.es/registro-proveedor — ¿lo haces ahora o esta tarde cuando termines?`
+  }
+
+  if (norm === 'cuentame mas' || norm === 'cuentame' || norm === 'mas info' || norm === 'mas informacion' || norm === 'cuentame mas info' || norm === 'quiero saber mas') {
+    return `Mira ${name}, te lo cuento rápido:
+
+En ${city} cada semana hay parejas y familias buscando ${catSearch} aquí en FiestaGo — solo ven a los que están dados de alta, así que quienes están dentro reciben las consultas.
+
+Pero AUNQUE no te llegara ni una sola reserva del marketplace, el día que te das de alta desbloqueas gratis un pack de herramientas IA que si las pagases sueltas te costarían entre 265€ y 605€ AL MES:
+
+🧾 Presupuestos profesionales en 10 segundos desde el mensaje del cliente (lo que te llevaba 30-45 min, ahora 30 segundos)
+💬 Plantillas de WhatsApp para responder a clientes en 2 clics
+📍 Posts de Google Business escritos por IA para aparecer más alto cuando buscan ${catSearch} en ${city}
+
+Comisión 0% para ti (el cliente paga un 8% extra que financia la Garantía de Éxito — tú cobras tu precio íntegro).
+
+Alta en 60 segundos: https://fiestago.es/registro-proveedor — ¿lo haces hoy o esta noche cuando termines?`
+  }
+
+  if (norm === 'no me interesa' || norm === 'no gracias' || norm === 'no' || norm === 'paso' || norm === 'no me interesa gracias') {
+    return `Sin problema ${name}, gracias por el tiempo. Si más adelante cambias de opinión, el alta tarda 60 segundos en https://fiestago.es/registro-proveedor. ¡Mucho éxito!`
+  }
+
+  return null
+}
+
 // Detecta si un mensaje saliente menciona el gancho de las herramientas
 // IA (Quote Generator / plantillas WhatsApp / GMB posts / valor 265-605€).
 // Se usa para trackear (whatsapp_messages.mentions_quote_gen) y medir

@@ -13,7 +13,7 @@ import {
   transcribeAudio,
   type WhatsappStatusEvent,
 } from '@/lib/whatsapp'
-import { generateReply, countPlazasConSelloRestantes, mentionsQuoteGen, type AgentTurn } from '@/lib/fiestago-agent'
+import { generateReply, countPlazasConSelloRestantes, mentionsQuoteGen, getButtonReply, type AgentTurn } from '@/lib/fiestago-agent'
 
 // El webhook recibe datos externos (Meta) y llama a Claude → forzamos runtime
 // Node.js y ejecución dinámica.
@@ -244,8 +244,26 @@ async function handleInbound(supabase: any, msg: any) {
       text: r.body as string,
     }))
 
-  // 5) El agente genera la respuesta. Calculamos las plazas con sello
-  //    una sola vez y se las pasamos al cerebro (cupo de 100 - aprobados).
+  // 5) SHORTCUT — si el inbound actual es uno de los 3 botones de la
+  //    plantilla y es el PRIMER turno del proveedor (responde al
+  //    cold-open), saltamos el cerebro y devolvemos un script
+  //    determinista. Más rápido, gratis, sin riesgo de que el modelo
+  //    fusione otros principios y omita el bloque IA.
+  //    Solo aplica al primer turno: si ya hay historial conversacional,
+  //    el cerebro entra normalmente.
+  const previousInbounds = history.filter(h => h.role === 'user').length
+  const isFirstInbound = previousInbounds === 1   // contando el actual
+  const currentInboundText = history.filter(h => h.role === 'user').slice(-1)[0]?.text || ''
+  const hardcodedReply = isFirstInbound
+    ? getButtonReply(currentInboundText, {
+        name:     provider.name,
+        category: provider.category,
+        city:     provider.city,
+      })
+    : null
+
+  // 5b) Si no hubo shortcut, el cerebro IA genera la respuesta.
+  //     Calculamos las plazas con sello (cupo de 100 - aprobados).
   const plazasConSello = await countPlazasConSelloRestantes()
 
   // A/B: asignamos bucket si no lo tiene (50/50). El bucket controla si el
@@ -257,31 +275,35 @@ async function handleInbound(supabase: any, msg: any) {
   }
 
   let reply: string
-  try {
-    reply = await generateReply({
-      provider: {
-        name: provider.name,
-        category: provider.category,
-        city: provider.city,
-        social_handle: provider.social_handle,
-      },
-      plazasConSello,
-      quoteGenAllowed: bucket === 'treatment',
-      history,
-    })
-  } catch (err: any) {
-    console.error('[whatsapp webhook] Claude generateReply falló:', err?.message)
-    await supabase.from('whatsapp_messages').insert({
-      wa_message_id: null,
-      direction: 'outbound',
-      from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
-      to_number: fromNumber,
-      type: 'text',
-      body: `[ERROR Claude] ${String(err?.message || err).slice(0, 500)}`,
-      status: 'failed_claude',
-      provider_id: provider.id,
-    })
-    return
+  if (hardcodedReply) {
+    reply = hardcodedReply
+  } else {
+    try {
+      reply = await generateReply({
+        provider: {
+          name: provider.name,
+          category: provider.category,
+          city: provider.city,
+          social_handle: provider.social_handle,
+        },
+        plazasConSello,
+        quoteGenAllowed: bucket === 'treatment',
+        history,
+      })
+    } catch (err: any) {
+      console.error('[whatsapp webhook] Claude generateReply falló:', err?.message)
+      await supabase.from('whatsapp_messages').insert({
+        wa_message_id: null,
+        direction: 'outbound',
+        from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+        to_number: fromNumber,
+        type: 'text',
+        body: `[ERROR Claude] ${String(err?.message || err).slice(0, 500)}`,
+        status: 'failed_claude',
+        provider_id: provider.id,
+      })
+      return
+    }
   }
 
   if (!reply) {
