@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     .not('whatsapp_invalid', 'is', true)
     .order('agent_fit_score', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
-    .limit(60)
+    .limit(200)
 
   // 3) Proveedores referenciados por mensajes pero que no estén entre los
   //    candidatos (para que toda conversación tenga su ficha).
