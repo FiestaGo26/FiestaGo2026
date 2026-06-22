@@ -8,6 +8,7 @@ import { CATEGORIES, getPhoto } from '@/lib/constants'
 import { buildWebFormDraft } from '@/lib/outreach'
 import WhatsappInbox from './WhatsappInbox'
 import ContentVideos from './ContentVideos'
+import EnvCheckCard from './EnvCheckCard'
 
 const ADMIN_PASS = typeof window !== 'undefined'
   ? localStorage.getItem('fg_admin_pass') || '' : ''
@@ -1067,6 +1068,7 @@ export default function AdminPage() {
           {/* ══ DASHBOARD ══ */}
           {section === 'dashboard' && (
             <div>
+              <EnvCheckCard />
               <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
                 {[
                   { label:'Total proveedores', value:stats.total,    icon:'🏪', color:'#3B82F6' },
