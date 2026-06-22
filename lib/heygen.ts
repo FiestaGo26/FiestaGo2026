@@ -58,7 +58,15 @@ export async function generateVideo(opts: {
   const bg     = opts.background ?? process.env.HEYGEN_BACKGROUND ?? '#f6f6f6'
   const speed  = opts.speed ?? Number(process.env.HEYGEN_VOICE_SPEED || '1.0')
   const pitch  = Number(process.env.HEYGEN_VOICE_PITCH || '0')
-  const emotion = process.env.HEYGEN_VOICE_EMOTION || 'broadcaster'
+  // HeyGen exige la emoción capitalizada (TitleCase) y validada contra
+  // su enum: Excited | Friendly | Serious | Soothing | Broadcaster | Angry.
+  // Normalizamos defensivamente para que cualquier capitalización
+  // (broadcaster / BROADCASTER / Broadcaster) funcione, y fallback a
+  // Broadcaster si el valor no está en la lista permitida.
+  const ALLOWED_EMOTIONS = ['Excited', 'Friendly', 'Serious', 'Soothing', 'Broadcaster', 'Angry']
+  const rawEmotion = (process.env.HEYGEN_VOICE_EMOTION || 'Broadcaster').trim()
+  const titleCased = rawEmotion.charAt(0).toUpperCase() + rawEmotion.slice(1).toLowerCase()
+  const emotion = ALLOWED_EMOTIONS.includes(titleCased) ? titleCased : 'Broadcaster'
 
   const voicePayload: any = {
     type:       'text',
