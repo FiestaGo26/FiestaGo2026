@@ -71,7 +71,7 @@ export default function ContentVideos() {
   async function load() {
     setLoading(true)
     try {
-      const res  = await fetch('/api/admin/content/list', { headers: adminHeaders() })
+      const res  = await fetch('/api/admin/content/list', { headers: adminHeaders(), cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Error')
       setVideos(data.videos || [])

@@ -24,5 +24,10 @@ export async function GET(req: NextRequest) {
     videos: data || [],
     mode:   activeMode(),
     pillarToday: { id: pillarToday.id, label: pillarToday.label },
+  }, {
+    // Sin caché: el panel necesita siempre el estado más reciente
+    // (especialmente cuando un vídeo está en processing y queremos
+    // ver el cambio a completed sin recargar la página).
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
   })
 }
