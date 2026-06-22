@@ -292,6 +292,14 @@ export type WhatsappInboundMessage = {
     | string
   text?:    { body: string }
   button?:  { text?: string; payload?: string }
+  // Cloud API moderna: cuando el usuario pulsa un botón quick-reply de
+  // una plantilla, llega como type='interactive' con button_reply.title
+  // (el texto visible del botón) y .id (payload).
+  interactive?: {
+    type?:          'button_reply' | 'list_reply' | string
+    button_reply?:  { id?: string; title?: string }
+    list_reply?:    { id?: string; title?: string; description?: string }
+  }
   audio?:   { id: string; mime_type?: string; voice?: boolean }
   image?:   { id: string; mime_type?: string; caption?: string; sha256?: string }
   video?:   { id: string; mime_type?: string; caption?: string }
@@ -351,6 +359,14 @@ export function extractStatusEvents(payload: any): WhatsappStatusEvent[] {
 export function messageText(msg: WhatsappInboundMessage): string {
   if (msg.type === 'text')   return msg.text?.body ?? ''
   if (msg.type === 'button') return msg.button?.text ?? msg.button?.payload ?? ''
+  // Botones quick-reply de plantillas modernas (interactive.button_reply)
+  // y respuestas a listas (list_reply). Devolvemos el TÍTULO visible del
+  // botón pulsado — el cerebro lo procesa como cualquier texto entrante.
+  if (msg.type === 'interactive') {
+    if (msg.interactive?.button_reply?.title) return msg.interactive.button_reply.title
+    if (msg.interactive?.list_reply?.title)   return msg.interactive.list_reply.title
+    return msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || ''
+  }
   if (msg.type === 'image' && msg.image?.caption)       return msg.image.caption
   if (msg.type === 'video' && msg.video?.caption)       return msg.video.caption
   if (msg.type === 'document' && msg.document?.caption) return msg.document.caption
