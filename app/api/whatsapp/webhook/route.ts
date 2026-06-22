@@ -338,23 +338,50 @@ async function handleInbound(supabase: any, msg: any) {
 }
 
 // Busca un proveedor cuyo phone u outreach_whatsapp contenga los últimos 9
-// dígitos del número entrante. Estrategia escalonada:
-//   1. ilike directo (sirve si el phone está como "+34 619 654 293").
-//   2. Si falla: normalizar TODOS los phone a solo dígitos y comparar
-//      sustring. Pilla casos donde el phone tiene espacios/paréntesis raros.
-//   3. Si SIGUE fallando: buscar el outbound más reciente con to_number =
-//      from_number y reusar su provider_id. Pilla casos donde el proveedor
-//      respondió desde un número que NO está en su ficha (p.ej. responde
-//      con su móvil personal aunque su ficha tenga el fijo).
+// dígitos del número entrante. Estrategia escalonada (en orden de fiabilidad):
+//   0. NUEVO: ¿Hay un outbound reciente nuestro hacia este mismo número?
+//      Si sí, el provider_id de ese outbound es la fuente MÁS fiable (es a
+//      quien le abrimos la ventana de 24h). Esto evita confusiones cuando
+//      hay 2+ providers en BD con el mismo phone (duplicados antiguos vs
+//      ficha nueva — pasó con Mariano TEST y Estudio Lumen).
+//   1. ilike directo en providers, ordenado por created_at DESC (el nuevo
+//      gana sobre el antiguo en caso de empate de número).
+//   2. Fallback adicional: outbound antiguo si los anteriores fallan.
 async function findProviderByPhone(supabase: any, normalized: string) {
   const last9 = normalized.slice(-9)
 
-  // 1. ilike directo
+  // 0. Provider del último outbound a este número (PRIORIDAD)
+  //    Cubre el caso típico: acabamos de mandar la plantilla a Estudio
+  //    Lumen y el usuario responde — el outbound más reciente nos dice
+  //    que es ESE provider, no otro con el mismo phone.
+  {
+    const { data: out } = await supabase
+      .from('whatsapp_messages')
+      .select('provider_id, created_at')
+      .eq('direction', 'outbound')
+      .eq('to_number', normalized)
+      .not('provider_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (out?.provider_id) {
+      const { data: prov } = await supabase
+        .from('providers')
+        .select('id, name, category, city, social_handle, phone, outreach_whatsapp, quote_gen_bucket')
+        .eq('id', out.provider_id)
+        .maybeSingle()
+      if (prov) return prov
+    }
+  }
+
+  // 1. ilike directo, ordenado por created_at DESC (provider más reciente
+  //    primero, para que el "nuevo" gane si hay duplicados antiguos).
   {
     const { data } = await supabase
       .from('providers')
       .select('id, name, category, city, social_handle, phone, outreach_whatsapp, quote_gen_bucket')
       .or(`phone.ilike.%${last9}%,outreach_whatsapp.ilike.%${last9}%`)
+      .order('created_at', { ascending: false })
       .limit(1)
     if (data?.[0]) return data[0]
   }
