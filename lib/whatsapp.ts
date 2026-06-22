@@ -234,13 +234,29 @@ export async function sendTemplate(
   let res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
   let data = await res.json()
 
-  // Auto-retry defensivo: si Meta devuelve "param count mismatch" (132000)
-  // porque la plantilla esperaba 0 params y le mandamos N, reintenta sin
-  // params. Hace el sistema resistente a configuración incorrecta de
-  // WHATSAPP_TEMPLATE_HAS_PARAMS y a actualizaciones de plantillas en Meta.
+  // Auto-retry defensivo bidireccional ante el error 132000 (param count
+  // mismatch). Cubre los dos casos:
+  //   (a) Plantilla espera 0 y mandamos N → reintenta sin components.
+  //   (b) Plantilla espera N y mandamos 0 → reintenta CON components,
+  //       siempre que tengamos bodyParams disponibles. Esto pilla el
+  //       caso típico de tener WHATSAPP_TEMPLATE_HAS_PARAMS=false en
+  //       Netlify de una plantilla antigua y haber cambiado a una nueva
+  //       que sí requiere params.
   const errMsg = JSON.stringify(data?.error ?? data ?? {})
-  if (!res.ok && /132000|number of localizable_params|expected number of params/i.test(errMsg)) {
-    payload = buildPayload(false)
+  const isParamMismatch =
+    !res.ok &&
+    /132000|number of localizable_params|expected number of params/i.test(errMsg)
+
+  if (isParamMismatch) {
+    // ¿La primera tentativa incluyó components?
+    const firstHadComponents = !templateHasNoParams && !!opts.bodyParams?.length
+    if (firstHadComponents) {
+      // (a) Mandamos params, plantilla no los quería → retry sin.
+      payload = buildPayload(false)
+    } else if (opts.bodyParams && opts.bodyParams.length) {
+      // (b) No mandamos params, plantilla los quería → retry con.
+      payload = buildPayload(true)
+    }
     res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) })
     data = await res.json()
   }
