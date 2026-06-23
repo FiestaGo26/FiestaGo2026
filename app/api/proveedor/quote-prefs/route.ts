@@ -1,27 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
+import { loadOrInitPrefs } from '@/lib/quote-prefs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-// Helper que devuelve las prefs del proveedor, creando la fila por defecto
-// si no existe (idempotente). Lo exportamos para reusar desde el generador
-// del presupuesto sin duplicar lógica.
-export async function loadOrInitPrefs(supabase: any, providerId: string) {
-  const { data } = await supabase
-    .from('provider_quote_prefs')
-    .select('*')
-    .eq('provider_id', providerId)
-    .maybeSingle()
-  if (data) return data
-  const { data: inserted } = await supabase
-    .from('provider_quote_prefs')
-    .insert({ provider_id: providerId })
-    .select('*')
-    .single()
-  return inserted
-}
 
 // GET /api/proveedor/quote-prefs?providerId=XXX
 export async function GET(req: NextRequest) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
 import { generateQuote, renderQuoteHtml, type ProviderQuoteContext } from '@/lib/quote-generator'
-import { loadOrInitPrefs } from '@/app/api/proveedor/quote-prefs/route'
+import { loadOrInitPrefs } from '@/lib/quote-prefs'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
