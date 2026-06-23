@@ -1710,7 +1710,7 @@ function ProveedorPanelInner() {
         {/* AVAILABILITY */}
         {tab==='quotes' && provider?.id && (
           <div className="max-w-4xl">
-            <QuotesTab providerId={provider.id} />
+            <QuotesTab providerId={provider.id} onGoTab={setTab} />
           </div>
         )}
 

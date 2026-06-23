@@ -46,7 +46,10 @@ const STATUS_COLOR: Record<string, string> = {
   rejected: '#EF4444',
 }
 
-export default function QuotesTab({ providerId }: { providerId: string }) {
+export default function QuotesTab({ providerId, onGoTab }: {
+  providerId: string
+  onGoTab?: (tab: string) => void
+}) {
   const [quotes, setQuotes]   = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [pending, startTransition] = useTransition()
@@ -154,7 +157,7 @@ export default function QuotesTab({ providerId }: { providerId: string }) {
 
       {/* Preferencias de la IA — la IA usa esto + tus servicios + tus
           últimos presupuestos como ground truth en cada generación. */}
-      <QuotePrefsCard providerId={providerId} />
+      <QuotePrefsCard providerId={providerId} onGoTab={onGoTab} />
 
       {/* Formulario */}
       <div style={{
