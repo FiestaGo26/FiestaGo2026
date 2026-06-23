@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import toast from 'react-hot-toast'
 import { formatEuro } from '@/lib/pricing'
+import QuotePrefsCard from './QuotePrefsCard'
 
 // ─── Pestaña Presupuestos IA · panel del proveedor ──────────────────────
 // El proveedor:
@@ -150,6 +151,10 @@ export default function QuotesTab({ providerId }: { providerId: string }) {
           Luego lo compartes por WhatsApp con un link.
         </div>
       </div>
+
+      {/* Preferencias de la IA — la IA usa esto + tus servicios + tus
+          últimos presupuestos como ground truth en cada generación. */}
+      <QuotePrefsCard providerId={providerId} />
 
       {/* Formulario */}
       <div style={{

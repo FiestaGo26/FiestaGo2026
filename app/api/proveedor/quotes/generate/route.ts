@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
-import { generateQuote, renderQuoteHtml } from '@/lib/quote-generator'
+import { generateQuote, renderQuoteHtml, type ProviderQuoteContext } from '@/lib/quote-generator'
+import { loadOrInitPrefs } from '@/app/api/proveedor/quote-prefs/route'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -41,12 +42,67 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // ─── Cargamos en paralelo todo lo que la IA va a usar como ground truth ───
+    //   1. Servicios reales del proveedor (con precios) → usa esos precios
+    //      literales si el brief encaja con uno.
+    //   2. Preferencias del proveedor (señal %, conditions, includes/excludes,
+    //      estilo, notas de pricing).
+    //   3. Últimos 3 presupuestos para mantener consistencia.
+    const [servicesRes, prefs, recentRes] = await Promise.all([
+      supabase
+        .from('provider_services')
+        .select('name, description, price, price_unit, duration, status')
+        .eq('provider_id', providerId)
+        .eq('status', 'active')
+        .order('sort_order', { ascending: true })
+        .limit(20),
+      loadOrInitPrefs(supabase, providerId),
+      supabase
+        .from('provider_quotes')
+        .select('created_at, brief, total_amount, quote_html')
+        .eq('provider_id', providerId)
+        .order('created_at', { ascending: false })
+        .limit(3),
+    ])
+
+    // Re-derivamos items de los últimos presupuestos extrayendo del HTML
+    // (no guardamos el JSON estructurado en BD por simplicidad — el HTML
+    // pintado es la fuente de verdad). Aquí basta con un snippet del brief
+    // + total; los items detallados los dejamos al cerebro inferir.
+    const recentQuotes = (recentRes.data || []).map((q: any) => ({
+      created_at:    q.created_at as string,
+      brief_snippet: (q.brief || '').slice(0, 200),
+      items:         [] as Array<{ concept: string; quantity: number; unitPrice: number }>,
+      total:         Number(q.total_amount || 0),
+    }))
+
+    const context: ProviderQuoteContext = {
+      services: (servicesRes.data || []).map((s: any) => ({
+        name:        s.name,
+        description: s.description,
+        price:       s.price != null ? Number(s.price) : null,
+        price_unit:  s.price_unit,
+        duration:    s.duration,
+      })),
+      prefs: prefs ? {
+        deposit_pct:        prefs.deposit_pct,
+        validity_days:      prefs.validity_days,
+        default_includes:   prefs.default_includes   || [],
+        default_excludes:   prefs.default_excludes   || [],
+        default_conditions: prefs.default_conditions || [],
+        language_style:     prefs.language_style,
+        pricing_notes:      prefs.pricing_notes,
+      } : undefined,
+      recentQuotes,
+    }
+
     const quote = await generateQuote({
       brief,
       provider: provider as any,
       eventDate:  body.event_date  || null,
       eventCity:  body.event_city  || null,
       guestCount: body.guest_count || null,
+      context,
     })
 
     // Insertar primero (sin HTML) para obtener public_id real

@@ -55,18 +55,25 @@ export type GeneratedQuote = {
 const SYSTEM = `Eres un asistente experto en redactar presupuestos profesionales para proveedores de bodas y eventos en España (fotografía, catering, espacios, música/DJ, flores, repostería, belleza, animación, transporte, papelería, planners, joyería).
 
 Recibes:
-- Un BRIEF libre del cliente (puede venir de texto, transcripción de audio, o foto/imagen interpretada).
-- Datos del PROVEEDOR (nombre, categoría, ciudad, precio base orientativo).
+- Un BRIEF libre del cliente (texto, transcripción de audio, o foto/imagen interpretada).
+- Datos del PROVEEDOR (nombre, categoría, ciudad).
+- SUS SERVICIOS REALES con precios (si los tiene definidos en su panel).
+- SUS PREFERENCIAS de presupuesto (% señal, validez, qué siempre incluye, qué excluye, condiciones por defecto, estilo, notas de pricing).
+- Sus 3 ÚLTIMOS PRESUPUESTOS generados (para mantener consistencia).
 - Datos del EVENTO (fecha, ciudad, nº invitados, si los hay).
 
 Devuelves un PRESUPUESTO ESTRUCTURADO en JSON con:
 - "items": array con cada concepto. Cada item tiene concept (corto), detail (1 línea), quantity, unitPrice (EUR, precio del proveedor sin comisiones), subtotal.
-- "conditions": array de strings con condiciones generales razonables para esta categoría (anticipo, plazo, política de cancelación, qué incluye, qué NO incluye, tiempos de entrega...). 4-8 condiciones.
+- "conditions": array de strings con condiciones generales (anticipo, plazo, política de cancelación, qué incluye, qué NO incluye, tiempos de entrega...). 4-8 condiciones.
 - "internalNotes": texto en 1-2 frases con sugerencias internas para el proveedor (qué preguntar al cliente antes de cerrar, qué riesgo ves, dónde puedes subir el precio si el cliente acepta sin negociar...).
 
-Reglas:
-- Si el brief NO especifica algo crítico (nº de horas, nº de invitados, fecha), HAZ una estimación razonable basada en el contexto del sector y MENCIÓNALO en internalNotes ("Asumí 6h de cobertura — confirma con el cliente").
-- Los precios deben ser realistas para España 2026 y la categoría dada. Si no tienes price_base, usa estos rangos orientativos:
+═══ JERARQUÍA DE FUENTES DE PRECIO (de más a menos prioritario) ═══
+
+1. SUS SERVICIOS REALES con precio definido en el panel → si hay un servicio que encaja con el brief, USA ESE PRECIO LITERAL. No lo modifiques ni redondees. Es su precio actual y vigente.
+2. SUS ÚLTIMOS PRESUPUESTOS → si en presupuestos anteriores cobró X por un item parecido, mantén X (consistencia con clientes recurrentes).
+3. SUS PREFERENCIAS (default_includes, default_excludes, pricing_notes) → ground truth para construir items y condiciones.
+4. Su precio base orientativo si lo facilitó.
+5. RANGOS GENÉRICOS (solo si NO hay ninguna de las anteriores):
    · Foto/Vídeo: 1.200-2.500€ paquete completo boda · 80-150€/h
    · Catering: 60-95€/comensal · 35-55€ cóctel
    · Música/DJ: 800-1.500€ ceremonia + banquete
@@ -76,9 +83,30 @@ Reglas:
    · Belleza (novia): 250-500€ peinado + maquillaje
    · Transporte: 250-500€ servicio bodas
    · Planner: 1.500-5.000€ planning completo · 800€ day-of
+
+═══ CONSTRUCCIÓN DE CONDICIONES ═══
+
+- Empieza por SUS default_conditions (verbatim, no las reescribas).
+- Añade una condición con el % de señal exacto de su deposit_pct.
+- Añade una condición con su validity_days exacto.
+- Si en sus default_includes hay items relevantes al brief, mete una condición "El presupuesto INCLUYE: X, Y, Z".
+- Si en sus default_excludes hay cosas relevantes, mete "NO INCLUYE: X, Y" para evitar malentendidos.
+- Cierra con condiciones operativas estándar (forma de pago, cancelación) si no las cubrieron sus defaults.
+
+═══ ESTILO DE REDACCIÓN ═══
+
+Adapta el tono al campo language_style del proveedor:
+- 'cercano' (default): tú, frases naturales, "te incluimos / te llevamos". Sin "rogamos" ni "estimado cliente".
+- 'profesional': usted, frases pulidas, ligeramente más formal.
+- 'muy_formal': usted, terminología técnica, formato tipo empresa grande.
+
+═══ REGLAS DURAS ═══
+
 - Items detallados, NO una sola línea "servicio completo X €". Mínimo 3 items.
-- Condiciones realistas y JUSTAS (no abusivas). Anticipo típico 30-50%. Cancelación: gratis hasta X días, perdida tras Y.
-- Español de España. Profesional pero cercano.
+- Si el brief NO especifica algo crítico (nº horas, invitados, fecha), HAZ una estimación razonable y MENCIÓNALO en internalNotes.
+- Si usaste un servicio del catálogo del proveedor, MENCIÓNALO en internalNotes ("Item X cogido de tu catálogo de servicios al precio actual").
+- Si te apartaste del precio del último presupuesto similar, EXPLÍCALO en internalNotes.
+- Español de España.
 
 FORMATO DE RESPUESTA — devuelve ÚNICAMENTE el JSON, sin texto adicional, sin markdown:
 {
@@ -87,14 +115,82 @@ FORMATO DE RESPUESTA — devuelve ÚNICAMENTE el JSON, sin texto adicional, sin 
   "internalNotes": "..."
 }`
 
+export type ProviderQuoteContext = {
+  services?: Array<{
+    name:        string
+    description: string | null
+    price:       number | null
+    price_unit:  string | null
+    duration:    string | null
+  }>
+  prefs?: {
+    deposit_pct:        number
+    validity_days:      number
+    default_includes:   string[]
+    default_excludes:   string[]
+    default_conditions: string[]
+    language_style:     string
+    pricing_notes:      string | null
+  }
+  recentQuotes?: Array<{
+    created_at:    string
+    brief_snippet: string
+    items: Array<{ concept: string; quantity: number; unitPrice: number }>
+    total: number
+  }>
+}
+
 export async function generateQuote(opts: {
   brief:       string
   provider:    QuoteProvider
   eventDate?:  string | null
   eventCity?:  string | null
   guestCount?: number | null
+  context?:    ProviderQuoteContext   // servicios reales + prefs + últimos presupuestos
 }): Promise<GeneratedQuote> {
-  const { brief, provider } = opts
+  const { brief, provider, context } = opts
+
+  // Bloque de servicios reales del proveedor (si los tiene).
+  const servicesBlock = context?.services && context.services.length > 0
+    ? `\n[SUS SERVICIOS REALES con precio actual — USA ESTOS PRECIOS LITERALES si encajan con el brief]\n` +
+      context.services
+        .filter(s => s.price != null)
+        .slice(0, 20)
+        .map(s =>
+          `· ${s.name}${s.duration ? ' (' + s.duration + ')' : ''}: ` +
+          `${formatEuro(s.price!)}${s.price_unit ? ' ' + s.price_unit : ''}` +
+          `${s.description ? ' — ' + s.description.slice(0, 120) : ''}`
+        )
+        .join('\n') + '\n'
+    : ''
+
+  // Bloque de preferencias (siempre que existan).
+  const prefsBlock = context?.prefs
+    ? `\n[SUS PREFERENCIAS de presupuesto]\n` +
+      `Señal/anticipo: ${context.prefs.deposit_pct}%\n` +
+      `Validez del presupuesto: ${context.prefs.validity_days} días\n` +
+      `Estilo: ${context.prefs.language_style}\n` +
+      (context.prefs.default_includes.length > 0
+        ? `Siempre incluye: ${context.prefs.default_includes.join(' · ')}\n` : '') +
+      (context.prefs.default_excludes.length > 0
+        ? `Nunca incluye (cobra aparte): ${context.prefs.default_excludes.join(' · ')}\n` : '') +
+      (context.prefs.default_conditions.length > 0
+        ? `Condiciones que SIEMPRE añade verbatim:\n` +
+          context.prefs.default_conditions.map(c => `  - ${c}`).join('\n') + '\n'
+        : '') +
+      (context.prefs.pricing_notes
+        ? `Notas de pricing (aplícalas):\n${context.prefs.pricing_notes}\n` : '')
+    : ''
+
+  // Bloque de últimos presupuestos para mantener consistencia.
+  const recentBlock = context?.recentQuotes && context.recentQuotes.length > 0
+    ? `\n[SUS ÚLTIMOS PRESUPUESTOS — mantén consistencia de precios y tono]\n` +
+      context.recentQuotes.slice(0, 3).map((q, i) =>
+        `Presupuesto #${i + 1} (${q.created_at.slice(0, 10)}, total ${formatEuro(q.total)}):\n` +
+        `  Brief: "${q.brief_snippet.slice(0, 140)}…"\n` +
+        `  Items: ${q.items.slice(0, 5).map(it => `${it.concept} (${it.quantity}×${formatEuro(it.unitPrice)})`).join(', ')}`
+      ).join('\n')
+    : ''
 
   const userMsg =
     `[BRIEF del cliente]\n${brief}\n\n` +
@@ -102,8 +198,11 @@ export async function generateQuote(opts: {
     `Nombre: ${provider.name}\n` +
     `Categoría: ${provider.category || '(sin especificar)'}\n` +
     `Ciudad base: ${provider.city || '(sin especificar)'}\n` +
-    `Precio base orientativo: ${provider.price_base ? formatEuro(provider.price_base) + ' ' + (provider.price_unit || '') : 'no facilitado'}\n\n` +
-    `[Evento]\n` +
+    `Precio base orientativo: ${provider.price_base ? formatEuro(provider.price_base) + ' ' + (provider.price_unit || '') : 'no facilitado'}\n` +
+    servicesBlock +
+    prefsBlock +
+    recentBlock +
+    `\n[Evento]\n` +
     `Fecha: ${opts.eventDate || 'sin confirmar'}\n` +
     `Ciudad: ${opts.eventCity || provider.city || 'sin confirmar'}\n` +
     `Invitados: ${opts.guestCount || 'sin confirmar'}\n\n` +
