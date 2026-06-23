@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 // ─── Pestaña Plantillas WhatsApp ───────────────────────────────────────
@@ -40,8 +40,6 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
   const [loading,  setLoading]  = useState(true)
   const [editing,  setEditing]  = useState<Tpl | null>(null)
   const [usingTpl, setUsingTpl] = useState<Tpl | null>(null)
-  const [aiOpen,   setAiOpen]   = useState(false)
-  const [pending, startTransition] = useTransition()
 
   async function load() {
     setLoading(true)
@@ -121,9 +119,6 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setAiOpen(true)} style={btnSecondary}>
-            ✨ Crear con IA
-          </button>
           <button onClick={() => setEditing({ id: '', label: '', body: '', category: 'consulta', use_count: 0 })}
             style={btnPrimary}>
             + Nueva plantilla
@@ -176,11 +171,6 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
         <UseModal tpl={usingTpl}
           onClose={() => setUsingTpl(null)}
           onUsed={() => markUsed(usingTpl.id)}/>
-      )}
-      {aiOpen && (
-        <AiModal providerId={providerId}
-          onClose={() => setAiOpen(false)}
-          onGenerated={(draft) => { setAiOpen(false); setEditing({ id: '', use_count: 0, ...draft }) }}/>
       )}
     </div>
   )
@@ -317,53 +307,6 @@ function UseModal({ tpl, onClose, onUsed }: { tpl: Tpl; onClose: () => void; onU
           background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
         }}>
           💬 Abrir WhatsApp
-        </button>
-      </div>
-    </Modal>
-  )
-}
-
-function AiModal({ providerId, onClose, onGenerated }: {
-  providerId: string
-  onClose: () => void
-  onGenerated: (t: { label: string; body: string; category: string | null }) => void
-}) {
-  const [prompt, setPrompt]  = useState('')
-  const [pending, startTransition] = useTransition()
-
-  function go() {
-    if (prompt.trim().length < 5) { toast.error('Describe más la situación'); return }
-    startTransition(async () => {
-      try {
-        const r = await fetch('/api/proveedor/quick-replies/generate', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ providerId, prompt }),
-        })
-        const d = await r.json()
-        if (!r.ok) throw new Error(d.error || 'Error')
-        onGenerated({ label: d.label, body: d.body, category: d.category })
-      } catch (e: any) {
-        toast.error(e?.message || 'Error')
-      }
-    })
-  }
-
-  return (
-    <Modal title="✨ Crear plantilla con IA" onClose={onClose}>
-      <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 12, marginTop: 0 }}>
-        Describe en una frase cuándo usarías esta respuesta. La IA te genera el texto
-        listo para editar y guardar.
-      </p>
-      <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
-        rows={4}
-        placeholder="Ej: cuando alguien me pide descuento por ser pareja amiga"
-        style={{ ...inputSty, fontFamily: 'inherit', resize: 'vertical', minHeight: 80 }}/>
-      <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button onClick={onClose} style={btnSecondary}>Cancelar</button>
-        <button onClick={go} disabled={pending} style={btnPrimary}>
-          {pending ? '⏳ Generando…' : '✨ Generar'}
         </button>
       </div>
     </Modal>
