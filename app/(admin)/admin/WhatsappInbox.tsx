@@ -179,6 +179,48 @@ export default function WhatsappInbox() {
     })
   }
 
+  // Reenvía la plantilla de follow-up a los proveedores contactados por WA
+  // que NO han respondido en 7+ días. Primero dry-run para enseñar a quién
+  // impactaría, y solo si el admin confirma se lanza el envío real.
+  function doFollowupWa() {
+    startTransition(async () => {
+      // Dry-run primero — ver candidatos sin gastar nada.
+      const dry = await fetch('/api/admin/whatsapp/followup', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ dry_run: true, days_since_first: 7, limit: 200 }),
+      })
+      const dryData = await dry.json().catch(() => ({}))
+      if (!dry.ok) {
+        toast.error(dryData.error || 'Error al previsualizar')
+        return
+      }
+      const eligible = dryData.eligible || 0
+      if (eligible === 0) {
+        toast(`Sin candidatos · ${dryData.candidates || 0} contactados, ${dryData.respondedOut || 0} ya respondieron`)
+        return
+      }
+      const preview = (dryData.preview || []).slice(0, 5).map((p: any) => `· ${p.name} (${p.city})`).join('\n')
+      const more = eligible > 5 ? `\n…y ${eligible - 5} más` : ''
+      if (!window.confirm(
+        `Vas a reenviar la plantilla de WhatsApp a ${eligible} proveedor${eligible > 1 ? 'es' : ''} que NO respondieron al primer toque (>7 días).\n\n` +
+        `Primeros candidatos:\n${preview}${more}\n\n` +
+        `Continuar?`
+      )) return
+
+      const send = await fetch('/api/admin/whatsapp/followup', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ days_since_first: 7, limit: 200 }),
+      })
+      const sendData = await send.json().catch(() => ({}))
+      if (!send.ok) {
+        toast.error(sendData.error || 'Error al enviar')
+        return
+      }
+      toast.success(`Follow-ups enviados: ${sendData.sent} · fallidos: ${sendData.failed} · saltados: ${sendData.skipped}`)
+      await load()
+    })
+  }
+
   function doAdhocOutreach() {
     if (!adhocPhone.trim()) { toast.error('Introduce un teléfono'); return }
     startTransition(async () => {
@@ -250,6 +292,17 @@ export default function WhatsappInbox() {
               fontFamily: 'IBM Plex Mono, monospace',
             }}>
             {pending ? '⏳' : '💬 ENVIAR'}
+          </button>
+          <button onClick={doFollowupWa} disabled={pending}
+            title="Reenvía la plantilla de WhatsApp a los proveedores que recibieron el primer toque hace 7+ días y NO han respondido. Primero te muestra a quién va a impactar."
+            style={{
+              padding: '8px 12px', borderRadius: 8,
+              border: `1px solid ${C.accent}`,
+              background: `${C.accent}15`, color: C.accent,
+              fontSize: 11, fontWeight: 700, cursor: pending ? 'not-allowed' : 'pointer',
+              fontFamily: 'IBM Plex Mono, monospace',
+            }}>
+            📤 REENVIAR A NO RESPONDEDORES
           </button>
           <button onClick={doCleanupInvalid} disabled={pending}
             title="Quita de la bandeja los proveedores cuyo número no es un WhatsApp válido"
