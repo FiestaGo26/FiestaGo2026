@@ -30,124 +30,127 @@ export type Pillar = {
 }
 
 // ─── MODO "PROVEEDORES" · captación B2B ────────────────────────────────────
-// Los vídeos van enfocados a captar proveedores. El ángulo es VALOR puro:
-// que el proveedor escuche 20 segundos y diga "esto me interesa, me apunto".
-// NADA de escasez ni "quedan X plazas" — el proveedor se apunta porque ve
-// claro el valor inmediato (herramientas IA gratis + 0% comisión + Garantía
-// + clientes), no porque le metamos prisa artificial.
+// Los vídeos van enfocados a captar proveedores. Ángulo PRINCIPAL alineado
+// con el cerebro de WhatsApp: cada semana hay clientes activos buscando su
+// categoría en su zona — los que están dentro reciben las consultas, los
+// que no aparecen, no existen. El pack de herramientas IA + 0% comisión +
+// Garantía actúan como REFUERZO del valor para que la decisión sea fácil,
+// nunca como mensaje principal aislado.
 //
-// Estructura: 7 pilares = 7 días de la semana. Cada día destaca UN ángulo
-// específico del valor para no saturar ni repetir.
+// Estructura: 7 pilares = 7 días de la semana. Cada día engancha por un
+// ángulo distinto (demanda, IA, comisión, garantía…) pero TODOS arrancan
+// desde el marco "hay parejas/familias buscando proveedores como tú ahora
+// mismo en FiestaGo".
 export const PILLARS_PROVIDERS: Pillar[] = [
   {
-    id:        'lunes_pack_ia',
+    id:        'lunes_demanda_zona',
     dayOfWeek: 1,
-    label:     'Pack de herramientas IA gratis',
+    label:     'Demanda activa en tu zona',
     topicBag: [
-      'Tres herramientas IA que te llevas gratis al darte de alta en FiestaGo',
-      'El pack que pagado suelto cuesta 265-605€/mes y aquí es gratis',
-      'Lo que te ahorra una semana al mes en tareas que odias',
-      'Por qué FiestaGo no es un marketplace cualquiera: las herramientas IA',
-      'Quote Generator IA, plantillas WhatsApp y posts Google: tuyas gratis',
-      'Si no usas FiestaGo, estás pagando software que tienes gratis',
+      'Esta semana hay parejas buscando fotógrafo en tu provincia y eligen a quien aparece',
+      'Cuántas consultas se generan a la semana para tu categoría — y a quién van',
+      'Las parejas no eligen al mejor, eligen al que ven primero. ¿Sales tú?',
+      'Si tu competencia ya está dentro, las consultas de esta semana son suyas',
+      'Lo que pasa cuando una pareja busca DJ en tu ciudad y tú no estás listado',
+      'Cero coste para aparecer — pero hay que aparecer para que te elijan',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
-    ctaShort:     'desbloquéalo gratis hoy',
-    hashtagsBase: ['proveedoresboda','iaparafotografos','herramientasboda','fotografoboda','djboda','cateringboda'],
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
+    ctaShort:     'aparece en 60 segundos',
+    hashtagsBase: ['proveedoresboda','clientesactivos','fotografoboda','djboda','cateringboda','bodasespaña'],
   },
   {
     id:        'martes_quote_generator',
     dayOfWeek: 2,
-    label:     'Quote Generator IA',
+    label:     'Quote Generator IA + demanda',
     topicBag: [
-      'Presupuestos profesionales en 10 segundos desde el WhatsApp del cliente',
-      'Lo que te llevaba 30-45 minutos, ahora son 10 segundos con IA',
-      'Pegar el brief del cliente y tener el presupuesto listo para mandar',
-      'Cómo cerrar bodas mientras tu competencia sigue escribiendo presupuestos',
-      'Por qué dejar de hacer presupuestos a mano cambia tu negocio',
-      'Quote Generator IA: cómo funciona en 30 segundos',
+      'Mientras tú escribes presupuestos a mano, otros cierran las consultas que entran',
+      'Las parejas piden 4-5 presupuestos. Gana quien contesta antes y mejor',
+      'IA que convierte el WhatsApp del cliente en presupuesto listo en 10 segundos',
+      'Lo que te llevaba 45 minutos por consulta, ahora 30 segundos — y entran consultas',
+      'Cómo cerrar las bodas que entran por FiestaGo mientras tu competencia improvisa',
+      'Quote Generator IA: por qué importa cuando hay demanda activa esperando respuesta',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'pruébalo gratis hoy',
     hashtagsBase: ['proveedoresboda','presupuestoboda','iaeventos','automatizacion','fotografoboda'],
   },
   {
     id:        'miercoles_comision_cero',
     dayOfWeek: 3,
-    label:     '0% comisión — cobras 100%',
+    label:     '0% comisión sobre clientes reales',
     topicBag: [
-      'Cero comisión: por qué en FiestaGo cobras tu precio íntegro siempre',
-      'El cliente paga un 8% extra que financia la Garantía. Tú cobras el 100%',
-      'Sin cuotas, sin permanencia, sin comisión: cuánto te cuesta FiestaGo',
-      'Otros marketplaces te cobran 15-20%. Nosotros 0%. Por qué',
-      'El modelo económico de FiestaGo explicado en 30 segundos',
-      'Cuánto cobras tú vs cuánto cobran ellos: la diferencia real',
+      'Las consultas que entran por FiestaGo son tuyas al 100%. Sin comisión',
+      'El cliente paga un 8% extra que financia la Garantía. Tú cobras tu precio íntegro',
+      'Otros marketplaces te cobran 15-20% de cada cliente. Nosotros 0%',
+      'Cuánto te cuesta estar dentro de FiestaGo (spoiler: cero euros)',
+      'Aparecer ante clientes activos sin que se quede comisión por el camino',
+      'Sin cuotas, sin permanencia: solo apareces ante quien busca tu servicio',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'cobra el 100% desde hoy',
     hashtagsBase: ['proveedoresboda','marketplaceboda','sinComision','bodasespaña','fotografoboda'],
   },
   {
     id:        'jueves_plantillas_wa',
     dayOfWeek: 4,
-    label:     'Plantillas WhatsApp con IA',
+    label:     'Plantillas WhatsApp + velocidad de respuesta',
     topicBag: [
-      'Contesta a tus clientes en 2 clics con las plantillas de FiestaGo',
-      '9 respuestas profesionales pre-escritas para cada momento del cliente',
-      'Cuánto tiempo pierdes contestando lo mismo cada semana',
-      'IA que escribe la plantilla que necesitas en 5 segundos',
-      'Por qué responder rápido cierra el doble de bodas que responder bien',
-      'Tu WhatsApp profesional, organizado y sin tener que escribir cada respuesta',
+      'La pareja contrata al que responde en menos de 2 horas. Las plantillas te lo garantizan',
+      '9 respuestas profesionales pre-escritas para las consultas que entren',
+      'Cuántas bodas pierdes a la semana por tardar en contestar — y cómo arreglarlo',
+      'IA que escribe la respuesta perfecta a esa consulta nueva en 5 segundos',
+      'Responder rápido cierra el doble de bodas que responder elaborado',
+      'Las consultas entran. La velocidad las cierra. Las plantillas dan velocidad',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'pruébalo gratis hoy',
     hashtagsBase: ['proveedoresboda','whatsappbusiness','automatizacionwhatsapp','fotografoboda','djboda'],
   },
   {
     id:        'viernes_google_business',
     dayOfWeek: 5,
-    label:     'Posts Google Business IA',
+    label:     'Posts Google Business + visibilidad',
     topicBag: [
-      'Aparece arriba cuando alguien busca tu servicio en Google con IA',
-      'Posts de Google Business escritos automáticamente por IA para ti',
-      'Cómo dominar las búsquedas locales sin contratar un community manager',
-      'Por qué un post semanal en Google triplica tus consultas',
+      'Aparece arriba cuando alguien busca tu servicio en Google — más demanda activa',
+      'Las parejas buscan dos sitios: FiestaGo y Google. Domina los dos a la vez',
+      'Posts de Google Business escritos automáticamente por IA, sin community manager',
+      'Cómo capturar también la demanda de Google sin pagar 300€/mes',
       'IA que sabe qué keywords te traen clientes en tu ciudad',
-      'El community manager que no te cobra 300€ al mes',
+      'Doble flujo de clientes: el marketplace + tu propio Google bien posicionado',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'pruébalo gratis hoy',
     hashtagsBase: ['proveedoresboda','googlebusiness','seolocal','marketingfotografos','iaparaeventos'],
   },
   {
     id:        'sabado_garantia',
     dayOfWeek: 6,
-    label:     'Garantía de Éxito + Pago en escrow',
+    label:     'Garantía sobre los clientes que entran',
     topicBag: [
-      'Si el cliente cancela, cómo FiestaGo te protege a ti',
+      'Las consultas de FiestaGo vienen con escrow. Si el cliente cancela, tú cobras',
       'Pago en escrow: el dinero del cliente espera retenido hasta tu evento',
-      'Por qué trabajar con FiestaGo elimina el riesgo de impago',
-      'La Garantía de Éxito te protege a ti, no solo al cliente',
+      'Por qué los clientes que entran por FiestaGo dan menos quebraderos de cabeza',
+      'La Garantía de Éxito te protege a ti — la financia el cliente, no tú',
       'Cómo FiestaGo media cuando un cliente pide cambios abusivos',
       'Tu trabajo blindado: el día del evento sí o sí cobras',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'trabaja sin riesgos',
     hashtagsBase: ['proveedoresboda','proteccionproveedor','escrow','bodasespaña','seguridadboda'],
   },
   {
     id:        'domingo_pack_completo',
     dayOfWeek: 0,
-    label:     'Pack completo · 265-605€/mes en valor',
+    label:     'Pack completo · todo lo que desbloqueas',
     topicBag: [
-      'Lo que te llevas el día que te das de alta en FiestaGo',
-      'Aunque no te llegue ni un cliente, ya hoy tienes valor',
+      'Lo que te llevas el día que te das de alta — además de aparecer ante clientes activos',
+      'Aunque tardase en entrar una consulta, el pack IA ya te ahorra 5-10h/semana',
       'El stack productivo que multiplica tu margen en bodas',
       'Por qué los proveedores que ya están dentro no se van',
-      'Pack completo de FiestaGo: presupuestos, WhatsApp, Google, reservas',
+      'Pack completo: aparecer ante demanda + presupuestos + WhatsApp + Google + escrow',
       'Lo que pagarías suelto vs lo que pagas en FiestaGo (gratis)',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
+    ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'desbloquéalo en 60 segundos',
     hashtagsBase: ['proveedoresboda','marketplaceboda','herramientasboda','bodasespaña','iaeventos'],
   },
@@ -311,43 +314,49 @@ export type GeneratedContent = {
 
 const SCRIPT_SYSTEM = `Eres copywriter de vídeos verticales para redes sociales (Instagram Reels, TikTok, YouTube Shorts) de FiestaGo, marketplace de celebraciones en España (bodas, comuniones, cumpleaños, eventos).
 
-Tu trabajo es escribir el GUION HABLADO de un vídeo de 20 segundos que dirá un avatar AI a cámara. El objetivo es CAPTAR PROVEEDORES — que un fotógrafo, DJ, catering, etc. lo vea y se dé de alta hoy en https://fiestago.es/registro-proveedor por el VALOR REAL que se lleva el día 1, no por miedo a perder algo.
+Tu trabajo es escribir el GUION HABLADO de un vídeo de 20 segundos que dirá un avatar AI a cámara. El objetivo es CAPTAR PROVEEDORES — que un fotógrafo, DJ, catering, etc. lo vea y se dé de alta hoy en https://fiestago.es/registro-proveedor.
 
-═══ REGLA DE ORO: VALOR INMEDIATO Y CONCRETO QUE ENGANCHA EN 3s ═══
+═══ REGLA DE ORO: DEMANDA ACTIVA EN SU ZONA ═══
 
-Los primeros 8-10 palabras DECIDEN si el proveedor se queda mirando o pasa al siguiente vídeo. Tienen que ABRIR LOS OJOS con un dato concreto: una cifra (€/mes, minutos ahorrados, horas a la semana), una herramienta nueva, o un beneficio tangible.
+ÁNGULO PRINCIPAL (mismo cerebro que el agente de WhatsApp de FiestaGo):
+Cada semana hay parejas y familias buscando proveedores de su categoría en FiestaGo. SOLO ven a los que están dados de alta — las consultas se las llevan los que aparecen. El proveedor que no está, no existe para ese cliente.
 
-NUNCA uses escasez artificial. PROHIBIDO mencionar "plazas que quedan", "los primeros 100", "antes de que se agote", "el reloj corre", "no te quedes fuera". Eso es lenguaje viejo y suena a vendedor desesperado. El proveedor se apunta porque ve VALOR, no porque le metamos prisa falsa.
+Ese es el marco desde el que se construye CADA guion. El refuerzo del valor (pack IA gratis, 0% comisión, Garantía de Éxito, escrow) sirve para hacer la decisión OBVIA — quitar fricción y miedo al alta — pero NO es el ángulo principal aislado. Primero la demanda real, después por qué entrar es fácil y gratis.
+
+Los primeros 8-10 palabras DECIDEN si el proveedor se queda mirando o pasa al siguiente vídeo. Tienen que ABRIR LOS OJOS con la idea de demanda activa cerca de él, con un dato concreto o una imagen mental clara: parejas buscando AHORA, consultas semanales reales, otros profesionales contestando esas consultas.
+
+NUNCA uses escasez artificial sobre la PLATAFORMA. PROHIBIDO mencionar "plazas que quedan", "los primeros 100", "antes de que se agote", "el reloj corre", "no te quedes fuera del sello". La escasez que SÍ existe y que SÍ puedes usar es la real: las consultas de esta semana se las lleva alguien — si no apareces, no eres tú.
 
 HOOKS QUE FUNCIONAN (ejemplos para inspirarte, NO copies literal):
-- "Tres herramientas IA gratis al darte de alta. Vale más de 265€ al mes."
-- "Lo que te llevaba 45 minutos hacer un presupuesto, ahora son 10 segundos."
-- "Cobras el 100% de tu precio. El cliente paga el 8% extra. Sin comisión."
-- "Contestas a clientes en dos clics con plantillas pre-escritas."
-- "Aparece arriba en Google cuando buscan fotógrafo en tu ciudad."
-- "Tu trabajo en bodas blindado: si el cliente cancela, tú cobras igual."
-- "Pegas el WhatsApp del cliente y la IA te escribe el presupuesto."
-- "El community manager que no te cobra 300€ al mes."
+- "Esta semana hay parejas buscando fotógrafo en tu provincia. Si no apareces, contestan otros."
+- "Cada semana entran consultas reales en FiestaGo para tu categoría. ¿Quién las contesta?"
+- "Las parejas piden 4-5 presupuestos. Solo ven a los que están dados de alta."
+- "Las consultas de tu zona se las lleva quien aparece, no quien debería aparecer."
+- "Mientras lees esto, hay alguien pidiendo presupuesto a un DJ en tu ciudad."
+- "Las parejas no eligen al mejor. Eligen al primero que ven. Apareces tú o no."
 
 HOOKS QUE NO FUNCIONAN (no los uses NUNCA):
 - "Hola, soy de FiestaGo y..." → moriste en 1 segundo
-- "Quedan X plazas..." → escasez prohibida en este nuevo enfoque
-- "Si tu competencia ya está dentro..." → ataque al miedo, prohibido
-- "Estás dejando dinero encima de la mesa" → manipulación, prohibido
+- "Quedan X plazas..." → escasez artificial sobre la plataforma, prohibido
+- "El sello se acaba..." → mismo problema, prohibido
+- "Estás dejando dinero encima de la mesa" → manipulación vacía, prohibido
 - "¿Sabías que FiestaGo es un marketplace..." → corporate puro
 - "Hoy te voy a contar..." → educacional, no atrae
 - "Bienvenido al canal..." → no es un canal, es un Reel
+- Empezar por el pack IA o por "es gratis" — el ángulo principal es DEMANDA, no la herramienta
 
 ═══ ESTRUCTURA DEL GUION (20 SEGUNDOS) ═══
 
-1. HOOK DE VALOR (0-3s, ≤10 palabras): un dato concreto que sorprende. Cifra, herramienta, o ahorro tangible.
-2. AMPLÍA EL VALOR (3-10s, 1-2 frases): cómo funciona ese beneficio en su día a día. Ejemplos:
-   - "Pegas el mensaje del cliente. La IA escribe el presupuesto. Te lo lleva un link por WhatsApp."
-   - "Contestas en dos clics: nombre, fecha, listo. Como si lo hubieras escrito tú."
-3. AHORRO O DIFERENCIA (10-16s, 1 frase): traduce a euros/minutos/clientes. "Pagado suelto serían 30€ al mes. Aquí cero."
-4. CTA POSITIVO (16-20s, 1 frase muy corta): acción concreta + REGISTRARSE GRATIS. Ejemplo:
-   - "Date de alta gratis en fiestago.es. 60 segundos."
-   - "Pruébalo gratis hoy: fiestago.es/proveedor/valor."
+1. HOOK DE DEMANDA (0-3s, ≤10 palabras): planta la imagen de clientes buscando AHORA en su zona/categoría. Concreto, no abstracto.
+2. AMPLÍA LA DEMANDA + DOLOR (3-9s, 1-2 frases): qué pasa si no aparece. Quién se lleva esas consultas. Ejemplos:
+   - "Solo ven a los que están dados de alta. Los demás no existen para esa pareja."
+   - "Esa consulta se la lleva uno, no cinco. Gana quien aparece y contesta rápido."
+3. ENGANCHE AL PILAR DEL DÍA (9-15s, 1-2 frases): aquí entra el ÁNGULO ESPECÍFICO del pilar (pack IA, 0% comisión, plantillas, escrow…) como el motivo por el que ENTRAR es obvio y sin riesgo. Tradúcelo a su día a día con cifra o ejemplo concreto. Ejemplos:
+   - "Y cuando contestas, lo haces en 10 segundos: pegas el WhatsApp del cliente y la IA escribe el presupuesto."
+   - "Cobras el 100% — la comisión la paga el cliente como Garantía. Sin trampas."
+4. CTA POSITIVO (15-20s, 1 frase muy corta): acción concreta + REGISTRARSE GRATIS HOY. Ejemplos:
+   - "Date de alta gratis en fiestago.es. 60 segundos y apareces."
+   - "Aparece hoy: fiestago.es/registro-proveedor."
 
 ═══ REGLAS DURAS ═══
 
@@ -359,12 +368,13 @@ HOOKS QUE NO FUNCIONAN (no los uses NUNCA):
 - Usa frases cortas (máx 10 palabras por frase). Punto a punto. Sin párrafos.
 - NO listas numeradas habladas. Encadena natural.
 - No menciones "FiestaGo" más de 2 veces.
-- El CTA siempre invita a "darte de alta gratis hoy / probarlo gratis" — nunca "más info" ni "echa un vistazo".
-- PROHIBIDO mencionar plazas, sello como escasez, ni urgencia artificial.
+- El CTA siempre invita a "darte de alta gratis hoy / aparecer hoy" — nunca "más info" ni "echa un vistazo".
+- PROHIBIDO mencionar plazas, sello como escasez, ni urgencia artificial sobre la plataforma. La urgencia real es: las consultas de esta semana son de alguien.
+- Coherente con WhatsApp: clientes activos buscando AHORA es el marco; pack IA + 0% comisión + Garantía son el refuerzo que quita fricción.
 
 ═══ CAPTION + HASHTAGS ═══
 
-CAPTION (texto que va junto al post): 2-3 frases que enganchen al lector mientras hace scroll en feed. Puede llevar emoji (máx 1). Acaba con CTA en línea aparte. Tono similar al guion: pérdida, urgencia, directo.
+CAPTION (texto que va junto al post): 2-3 frases que enganchen al lector mientras hace scroll en feed. Puede llevar emoji (máx 1). Acaba con CTA en línea aparte. Tono similar al guion: arrancar desde demanda activa real, no desde producto.
 
 HASHTAGS: 6-10 hashtags relevantes mezclando nicho del sector + B2B + generales tipo #proveedoresboda.
 
@@ -390,8 +400,8 @@ export async function generateContent(opts: {
     `[Tema concreto] ${topic}\n` +
     `[CTA final del guion] ${pillar.ctaShort} (${pillar.ctaUrl})\n` +
     `[Hashtags base sugeridos] ${pillar.hashtagsBase.join(', ')}\n` +
-    `[Contexto FiestaGo] Marketplace de bodas/eventos en España. Alta gratis para proveedores, sin cuotas ni comisión. El cliente paga 8% extra que financia la Garantía de Éxito; el proveedor cobra su precio íntegro. Al darse de alta, el proveedor desbloquea un pack de herramientas IA gratis (Quote Generator, plantillas WhatsApp, posts Google Business) que pagadas sueltas costarían entre 265€ y 605€ al mes.\n\n` +
-    `Genera el guion (20s), caption y hashtags. JSON puro. Recuerda: hook de VALOR, prohibido mencionar plazas/escasez.`
+    `[Contexto FiestaGo] Marketplace de bodas/eventos en España YA EN MARCHA. Cada semana hay parejas y familias buscando proveedores y solo ven a los que están dados de alta — los que aparecen reciben las consultas. Alta gratis, sin cuotas ni comisión. El cliente paga 8% extra que financia la Garantía de Éxito; el proveedor cobra su precio íntegro. Al darse de alta, el proveedor desbloquea un pack de herramientas IA gratis (Quote Generator, plantillas WhatsApp, posts Google Business) que pagadas sueltas costarían entre 265€ y 605€/mes — sirven para QUITAR FRICCIÓN al alta, no como mensaje principal.\n\n` +
+    `Genera el guion (20s), caption y hashtags. JSON puro. Recuerda: hook de DEMANDA ACTIVA en su zona/categoría; el ángulo del pilar entra después como refuerzo; CTA al alta gratis hoy. Prohibido escasez sobre plazas/sello.`
 
   const resp = await client().messages.create({
     model:      MODEL,
