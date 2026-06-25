@@ -30,33 +30,36 @@ export type Pillar = {
 }
 
 // ─── MODO "PROVEEDORES" · captación B2B ────────────────────────────────────
-// Los vídeos van enfocados a captar proveedores. Ángulo PRINCIPAL alineado
-// con el cerebro de WhatsApp: cada semana hay clientes activos buscando su
-// categoría en su zona — los que están dentro reciben las consultas, los
-// que no aparecen, no existen. El pack de herramientas IA + 0% comisión +
-// Garantía actúan como REFUERZO del valor para que la decisión sea fácil,
-// nunca como mensaje principal aislado.
+// Los vídeos van enfocados a captar proveedores de TODAS las celebraciones
+// (bodas, comuniones, bautizos, cumpleaños, despedidas, fiestas privadas,
+// eventos empresariales). Ángulo PRINCIPAL alineado con el cerebro de
+// WhatsApp: cada semana hay clientes activos buscando su categoría en su
+// zona — los que están dentro reciben las consultas, los que no aparecen,
+// no existen. El pack de herramientas IA + 0% comisión + Garantía actúan
+// como REFUERZO del valor para que la decisión sea fácil, nunca como
+// mensaje principal aislado.
 //
 // Estructura: 7 pilares = 7 días de la semana. Cada día engancha por un
 // ángulo distinto (demanda, IA, comisión, garantía…) pero TODOS arrancan
-// desde el marco "hay parejas/familias buscando proveedores como tú ahora
-// mismo en FiestaGo".
+// desde el marco "hay clientes — parejas, familias, empresas — buscando
+// proveedores como tú ahora mismo en FiestaGo".
 export const PILLARS_PROVIDERS: Pillar[] = [
   {
     id:        'lunes_demanda_zona',
     dayOfWeek: 1,
     label:     'Demanda activa en tu zona',
     topicBag: [
-      'Esta semana hay parejas buscando fotógrafo en tu provincia y eligen a quien aparece',
-      'Cuántas consultas se generan a la semana para tu categoría — y a quién van',
-      'Las parejas no eligen al mejor, eligen al que ven primero. ¿Sales tú?',
+      'Esta semana hay clientes buscando tu categoría en tu provincia — bodas, comuniones, cumpleaños, eventos de empresa',
+      'Cuántas consultas semanales se generan en tu zona para tu servicio — y a quién van',
+      'Los clientes no eligen al mejor, eligen al que ven primero. ¿Sales tú?',
       'Si tu competencia ya está dentro, las consultas de esta semana son suyas',
-      'Lo que pasa cuando una pareja busca DJ en tu ciudad y tú no estás listado',
+      'Lo que pasa cuando alguien busca catering para un bautizo en tu ciudad y tú no estás listado',
+      'Bodas, comuniones, despedidas, fiestas de empresa — todos esos clientes buscan en FiestaGo',
       'Cero coste para aparecer — pero hay que aparecer para que te elijan',
     ],
     ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'aparece en 60 segundos',
-    hashtagsBase: ['proveedoresboda','clientesactivos','fotografoboda','djboda','cateringboda','bodasespaña'],
+    hashtagsBase: ['proveedoreseventos','celebraciones','clientesactivos','eventosespaña','fiestasprivadas','eventosempresariales'],
   },
   {
     id:        'martes_quote_generator',
@@ -64,15 +67,15 @@ export const PILLARS_PROVIDERS: Pillar[] = [
     label:     'Quote Generator IA + demanda',
     topicBag: [
       'Mientras tú escribes presupuestos a mano, otros cierran las consultas que entran',
-      'Las parejas piden 4-5 presupuestos. Gana quien contesta antes y mejor',
+      'El cliente pide 4-5 presupuestos. Gana quien contesta antes y mejor',
       'IA que convierte el WhatsApp del cliente en presupuesto listo en 10 segundos',
-      'Lo que te llevaba 45 minutos por consulta, ahora 30 segundos — y entran consultas',
-      'Cómo cerrar las bodas que entran por FiestaGo mientras tu competencia improvisa',
+      'Lo que te llevaba 45 minutos por consulta, ahora 30 segundos — sea boda, cumpleaños o evento de empresa',
+      'Cómo cerrar los eventos que entran por FiestaGo mientras tu competencia improvisa',
       'Quote Generator IA: por qué importa cuando hay demanda activa esperando respuesta',
     ],
     ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'pruébalo gratis hoy',
-    hashtagsBase: ['proveedoresboda','presupuestoboda','iaeventos','automatizacion','fotografoboda'],
+    hashtagsBase: ['proveedoreseventos','presupuestoeventos','iaeventos','automatizacion','celebraciones'],
   },
   {
     id:        'miercoles_comision_cero',
@@ -88,23 +91,23 @@ export const PILLARS_PROVIDERS: Pillar[] = [
     ],
     ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'cobra el 100% desde hoy',
-    hashtagsBase: ['proveedoresboda','marketplaceboda','sinComision','bodasespaña','fotografoboda'],
+    hashtagsBase: ['proveedoreseventos','marketplaceeventos','sinComision','eventosespaña','celebraciones'],
   },
   {
     id:        'jueves_plantillas_wa',
     dayOfWeek: 4,
     label:     'Plantillas WhatsApp + velocidad de respuesta',
     topicBag: [
-      'La pareja contrata al que responde en menos de 2 horas. Las plantillas te lo garantizan',
+      'El cliente contrata al que responde en menos de 2 horas. Las plantillas te lo garantizan',
       '9 respuestas profesionales pre-escritas para las consultas que entren',
-      'Cuántas bodas pierdes a la semana por tardar en contestar — y cómo arreglarlo',
+      'Cuántos eventos pierdes a la semana por tardar en contestar — y cómo arreglarlo',
       'IA que escribe la respuesta perfecta a esa consulta nueva en 5 segundos',
-      'Responder rápido cierra el doble de bodas que responder elaborado',
+      'Responder rápido cierra el doble de eventos que responder elaborado',
       'Las consultas entran. La velocidad las cierra. Las plantillas dan velocidad',
     ],
     ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'pruébalo gratis hoy',
-    hashtagsBase: ['proveedoresboda','whatsappbusiness','automatizacionwhatsapp','fotografoboda','djboda'],
+    hashtagsBase: ['proveedoreseventos','whatsappbusiness','automatizacionwhatsapp','celebraciones','eventosespaña'],
   },
   {
     id:        'viernes_google_business',
@@ -112,15 +115,15 @@ export const PILLARS_PROVIDERS: Pillar[] = [
     label:     'Posts Google Business + visibilidad',
     topicBag: [
       'Aparece arriba cuando alguien busca tu servicio en Google — más demanda activa',
-      'Las parejas buscan dos sitios: FiestaGo y Google. Domina los dos a la vez',
+      'Los clientes buscan en dos sitios: FiestaGo y Google. Domina los dos a la vez',
       'Posts de Google Business escritos automáticamente por IA, sin community manager',
       'Cómo capturar también la demanda de Google sin pagar 300€/mes',
-      'IA que sabe qué keywords te traen clientes en tu ciudad',
+      'IA que sabe qué keywords te traen clientes en tu ciudad — bodas, comuniones, cumpleaños, empresas',
       'Doble flujo de clientes: el marketplace + tu propio Google bien posicionado',
     ],
     ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'pruébalo gratis hoy',
-    hashtagsBase: ['proveedoresboda','googlebusiness','seolocal','marketingfotografos','iaparaeventos'],
+    hashtagsBase: ['proveedoreseventos','googlebusiness','seolocal','marketingeventos','iaparaeventos'],
   },
   {
     id:        'sabado_garantia',
@@ -128,15 +131,15 @@ export const PILLARS_PROVIDERS: Pillar[] = [
     label:     'Garantía sobre los clientes que entran',
     topicBag: [
       'Las consultas de FiestaGo vienen con escrow. Si el cliente cancela, tú cobras',
-      'Pago en escrow: el dinero del cliente espera retenido hasta tu evento',
+      'Pago en escrow: el dinero del cliente espera retenido hasta el día del evento',
       'Por qué los clientes que entran por FiestaGo dan menos quebraderos de cabeza',
       'La Garantía de Éxito te protege a ti — la financia el cliente, no tú',
       'Cómo FiestaGo media cuando un cliente pide cambios abusivos',
-      'Tu trabajo blindado: el día del evento sí o sí cobras',
+      'Tu trabajo blindado: el día del evento sí o sí cobras (sea boda, cumple o evento de empresa)',
     ],
     ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'trabaja sin riesgos',
-    hashtagsBase: ['proveedoresboda','proteccionproveedor','escrow','bodasespaña','seguridadboda'],
+    hashtagsBase: ['proveedoreseventos','proteccionproveedor','escrow','eventosespaña','seguridadeventos'],
   },
   {
     id:        'domingo_pack_completo',
@@ -145,14 +148,14 @@ export const PILLARS_PROVIDERS: Pillar[] = [
     topicBag: [
       'Lo que te llevas el día que te das de alta — además de aparecer ante clientes activos',
       'Aunque tardase en entrar una consulta, el pack IA ya te ahorra 5-10h/semana',
-      'El stack productivo que multiplica tu margen en bodas',
+      'El stack productivo que multiplica tu margen en cualquier tipo de celebración',
       'Por qué los proveedores que ya están dentro no se van',
       'Pack completo: aparecer ante demanda + presupuestos + WhatsApp + Google + escrow',
       'Lo que pagarías suelto vs lo que pagas en FiestaGo (gratis)',
     ],
     ctaUrl:       'https://fiestago.es/registro-proveedor',
     ctaShort:     'desbloquéalo en 60 segundos',
-    hashtagsBase: ['proveedoresboda','marketplaceboda','herramientasboda','bodasespaña','iaeventos'],
+    hashtagsBase: ['proveedoreseventos','marketplaceeventos','herramientaseventos','celebraciones','iaeventos'],
   },
 ]
 
@@ -312,14 +315,14 @@ export type GeneratedContent = {
   hashtags: string[]
 }
 
-const SCRIPT_SYSTEM = `Eres copywriter de vídeos verticales para redes sociales (Instagram Reels, TikTok, YouTube Shorts) de FiestaGo, marketplace de celebraciones en España (bodas, comuniones, cumpleaños, eventos).
+const SCRIPT_SYSTEM = `Eres copywriter de vídeos verticales para redes sociales (Instagram Reels, TikTok, YouTube Shorts) de FiestaGo, marketplace de celebraciones en España. FiestaGo cubre TODO tipo de eventos: bodas, comuniones, bautizos, cumpleaños, despedidas de soltero/a, fiestas privadas, eventos y fiestas de empresa. NO es solo bodas — el contenido tiene que reflejarlo.
 
-Tu trabajo es escribir el GUION HABLADO de un vídeo de 20 segundos que dirá un avatar AI a cámara. El objetivo es CAPTAR PROVEEDORES — que un fotógrafo, DJ, catering, etc. lo vea y se dé de alta hoy en https://fiestago.es/registro-proveedor.
+Tu trabajo es escribir el GUION HABLADO de un vídeo de 20 segundos que dirá un avatar AI a cámara. El objetivo es CAPTAR PROVEEDORES — que un fotógrafo, DJ, catering, espacio, animación, etc. lo vea y se dé de alta hoy en https://fiestago.es/registro-proveedor.
 
 ═══ REGLA DE ORO: DEMANDA ACTIVA EN SU ZONA ═══
 
 ÁNGULO PRINCIPAL (mismo cerebro que el agente de WhatsApp de FiestaGo):
-Cada semana hay parejas y familias buscando proveedores de su categoría en FiestaGo. SOLO ven a los que están dados de alta — las consultas se las llevan los que aparecen. El proveedor que no está, no existe para ese cliente.
+Cada semana hay clientes — parejas, familias y empresas — buscando proveedores de su categoría en FiestaGo para celebrar bodas, comuniones, cumpleaños, despedidas, eventos privados o eventos de empresa. SOLO ven a los que están dados de alta — las consultas se las llevan los que aparecen. El proveedor que no está, no existe para ese cliente.
 
 Ese es el marco desde el que se construye CADA guion. El refuerzo del valor (pack IA gratis, 0% comisión, Garantía de Éxito, escrow) sirve para hacer la decisión OBVIA — quitar fricción y miedo al alta — pero NO es el ángulo principal aislado. Primero la demanda real, después por qué entrar es fácil y gratis.
 
@@ -328,12 +331,13 @@ Los primeros 8-10 palabras DECIDEN si el proveedor se queda mirando o pasa al si
 NUNCA uses escasez artificial sobre la PLATAFORMA. PROHIBIDO mencionar "plazas que quedan", "los primeros 100", "antes de que se agote", "el reloj corre", "no te quedes fuera del sello". La escasez que SÍ existe y que SÍ puedes usar es la real: las consultas de esta semana se las lleva alguien — si no apareces, no eres tú.
 
 HOOKS QUE FUNCIONAN (ejemplos para inspirarte, NO copies literal):
-- "Esta semana hay parejas buscando fotógrafo en tu provincia. Si no apareces, contestan otros."
+- "Esta semana hay clientes buscando fotógrafo en tu provincia — bodas, comuniones, eventos de empresa. Si no apareces, contestan otros."
 - "Cada semana entran consultas reales en FiestaGo para tu categoría. ¿Quién las contesta?"
-- "Las parejas piden 4-5 presupuestos. Solo ven a los que están dados de alta."
+- "El cliente pide 4-5 presupuestos. Solo ve a los que están dados de alta."
 - "Las consultas de tu zona se las lleva quien aparece, no quien debería aparecer."
-- "Mientras lees esto, hay alguien pidiendo presupuesto a un DJ en tu ciudad."
-- "Las parejas no eligen al mejor. Eligen al primero que ven. Apareces tú o no."
+- "Mientras lees esto, hay alguien pidiendo presupuesto a un DJ en tu ciudad para un cumpleaños."
+- "Bodas, bautizos, despedidas, fiestas de empresa: todos esos clientes buscan en FiestaGo."
+- "El cliente no elige al mejor. Elige al primero que ve. Apareces tú o no."
 
 HOOKS QUE NO FUNCIONAN (no los uses NUNCA):
 - "Hola, soy de FiestaGo y..." → moriste en 1 segundo
