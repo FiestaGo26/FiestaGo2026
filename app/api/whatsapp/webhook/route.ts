@@ -244,6 +244,56 @@ async function handleInbound(supabase: any, msg: any) {
       text: r.body as string,
     }))
 
+  // 4b) DEFENSAS contra bucles de autoresponder. Si el bot remoto manda
+  //     mensajes rápido o el cerebro responde a su propio bucle, podemos
+  //     emitir decenas de respuestas en minutos y quemar el quality
+  //     rating de la cuenta de WhatsApp Business (Meta nos rate-limita o
+  //     suspende). Tres frenos:
+  //
+  //     a) COOLDOWN 60s — si ya respondimos hace <60s al mismo provider,
+  //        no respondemos otra vez. Cubre duplicados instantáneos del
+  //        bot remoto y pings rápidos.
+  //
+  //     b) CAP 5 respuestas/hora — máximo 5 outbounds del cerebro por
+  //        provider en 1 hora. Pasado el cap, marcamos al provider con
+  //        un tag de revisión y dejamos de responder.
+  //
+  //     c) MAX 2 "mensaje automático" — si ya soltamos el aviso de bot
+  //        2 veces en una hora, el de enfrente es bot seguro y no vamos
+  //        a sacar nada insistiendo.
+  const nowMs = Date.now()
+  const outboundsRecientes = (rows ?? [])
+    .filter((r: any) => r.direction === 'outbound' && r.body)
+    .map((r: any) => ({ body: r.body as string, ts: new Date(r.created_at).getTime() }))
+
+  const ultimoOutboundMs = outboundsRecientes.length
+    ? outboundsRecientes[outboundsRecientes.length - 1].ts
+    : 0
+  if (ultimoOutboundMs > 0 && nowMs - ultimoOutboundMs < 60_000) {
+    console.log(`[whatsapp webhook] cooldown activo (último outbound hace ${Math.round((nowMs - ultimoOutboundMs) / 1000)}s) — provider ${provider.id} (${provider.name})`)
+    return
+  }
+
+  const outboundsUltimaHora = outboundsRecientes.filter((o: { body: string; ts: number }) => nowMs - o.ts < 3_600_000)
+  if (outboundsUltimaHora.length >= 5) {
+    console.warn(`[whatsapp webhook] cap horario (${outboundsUltimaHora.length} respuestas última hora) — provider ${provider.id} (${provider.name}) marcado para revisión`)
+    await supabase.from('providers')
+      .update({ tag: 'WhatsApp · cap respuestas alcanzado, revisar' })
+      .eq('id', provider.id)
+    return
+  }
+
+  const vecesQueAvisamosBot = outboundsUltimaHora
+    .filter((o: { body: string; ts: number }) => /mensaje autom[áa]tico/i.test(o.body))
+    .length
+  if (vecesQueAvisamosBot >= 2) {
+    console.warn(`[whatsapp webhook] ya avisamos ${vecesQueAvisamosBot}x que es bot — provider ${provider.id} (${provider.name}) marcado para revisión`)
+    await supabase.from('providers')
+      .update({ tag: 'WhatsApp · autoresponder confirmado, revisar' })
+      .eq('id', provider.id)
+    return
+  }
+
   // 5) SHORTCUT — si el inbound actual es uno de los 3 botones de la
   //    plantilla y es el PRIMER turno del proveedor (responde al
   //    cold-open), saltamos el cerebro y devolvemos un script
@@ -306,12 +356,18 @@ async function handleInbound(supabase: any, msg: any) {
     }
   }
 
-  if (!reply) {
+  // Blindaje contra respuestas degradadas del cerebro: vacío, demasiado
+  // corto, o solo emojis/símbolos sin letras. Vimos al cerebro colapsar
+  // y responder "👍" en bucles con autoresponders — eso no se envía nunca.
+  const replyClean = (reply || '').trim()
+  const tieneLetras = /[a-zñáéíóúü]/i.test(replyClean)
+  if (!replyClean || replyClean.length < 15 || !tieneLetras) {
+    console.warn(`[whatsapp webhook] respuesta degradada del cerebro (len=${replyClean.length}): "${replyClean.slice(0, 80)}" — provider ${provider.id}`)
     await supabase.from('whatsapp_messages').insert({
       direction: 'outbound', from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
       to_number: fromNumber, type: 'text',
-      body: '[ERROR Claude] devolvió respuesta vacía',
-      status: 'failed_empty', provider_id: provider.id,
+      body: `[ERROR Claude] respuesta degradada (${replyClean.length} chars): "${replyClean.slice(0, 200)}"`,
+      status: 'failed_degraded', provider_id: provider.id,
     })
     return
   }
