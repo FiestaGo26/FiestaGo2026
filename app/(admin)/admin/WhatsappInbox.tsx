@@ -25,7 +25,64 @@ type InboxProvider = {
   agent_fit_score: number | null
   whatsapp_invalid: boolean | null
   whatsapp_invalid_reason: string | null
+  tag: string | null
 }
+
+// Estado conversacional derivado del proveedor + sus mensajes. Sirve para
+// pintar el badge en la lista, filtrar por solapas y destacar el cuadro
+// de respuesta cuando hay ventana abierta.
+type ConvState =
+  | 'sin_contactar'
+  | 'enviado_sin_leer'
+  | 'leyo_sin_responder'
+  | 'viva_24h'      // tiene inbound dentro de la ventana de 24h → puede contestar texto libre
+  | 'viva_fuera'    // contestó pero ya pasaron >24h → solo plantilla
+  | 'no_interesa'   // pulsó "No me interesa"
+  | 'bot_confirmado'
+  | 'cap_alcanzado'
+  | 'invalido'
+
+function classifyConv(p: InboxProvider, msgs: InboxMessage[]): ConvState {
+  if (p.whatsapp_invalid === true) return 'invalido'
+  if ((p.tag || '').toLowerCase().includes('autoresponder')) return 'bot_confirmado'
+  if ((p.tag || '').toLowerCase().includes('cap respuestas')) return 'cap_alcanzado'
+
+  const inbounds = msgs.filter(m => m.direction === 'inbound')
+  const outbounds = msgs.filter(m => m.direction === 'outbound')
+  const dijoNo = inbounds.some(m => (m.body || '').trim() === 'No me interesa')
+  if (dijoNo) return 'no_interesa'
+
+  if (inbounds.length === 0) {
+    if (outbounds.length === 0) return 'sin_contactar'
+    const algunLeido = outbounds.some(m => m.status === 'read')
+    return algunLeido ? 'leyo_sin_responder' : 'enviado_sin_leer'
+  }
+
+  const lastIn = lastInboundTime(msgs)
+  if (lastIn != null && Date.now() - lastIn < 24 * 60 * 60 * 1000) return 'viva_24h'
+  return 'viva_fuera'
+}
+
+// Etiqueta visible + color de cada estado.
+const STATE_META: Record<ConvState, { label: string; color: string; bg: string; emoji: string; priority: number }> = {
+  viva_24h:          { label: 'VIVA · 24h',       color: '#10B981', bg: '#10B98122', emoji: '🟢', priority: 0 },
+  viva_fuera:        { label: 'VIVA · >24h',      color: '#F59E0B', bg: '#F59E0B22', emoji: '💬', priority: 1 },
+  leyo_sin_responder:{ label: 'LEÍDO',            color: '#3B82F6', bg: '#3B82F622', emoji: '👁️', priority: 2 },
+  enviado_sin_leer:  { label: 'ENVIADO',          color: '#9CA3AF', bg: '#9CA3AF22', emoji: '📨', priority: 3 },
+  sin_contactar:     { label: 'SIN CONTACTAR',    color: '#9CA3AF', bg: '#9CA3AF22', emoji: '·',  priority: 4 },
+  bot_confirmado:    { label: 'BOT',              color: '#A78BFA', bg: '#A78BFA22', emoji: '🤖', priority: 5 },
+  cap_alcanzado:     { label: 'CAP RESPUESTAS',   color: '#A78BFA', bg: '#A78BFA22', emoji: '🚦', priority: 5 },
+  no_interesa:       { label: 'NO INTERESA',      color: '#6B7280', bg: '#6B728022', emoji: '🚫', priority: 6 },
+  invalido:          { label: 'INVÁLIDO',         color: '#EF4444', bg: '#EF444422', emoji: '⚠️', priority: 7 },
+}
+
+type FilterTab = 'todos' | 'vivas' | 'pendientes' | 'cerrados'
+const FILTER_TABS: { id: FilterTab; label: string; matches: (s: ConvState) => boolean }[] = [
+  { id: 'todos',     label: 'Todos',          matches: () => true },
+  { id: 'vivas',     label: '🟢 Vivas',       matches: s => s === 'viva_24h' || s === 'viva_fuera' },
+  { id: 'pendientes',label: '📨 Pendientes',  matches: s => s === 'enviado_sin_leer' || s === 'leyo_sin_responder' },
+  { id: 'cerrados',  label: '🚫 Cerrados',    matches: s => s === 'no_interesa' || s === 'bot_confirmado' || s === 'cap_alcanzado' || s === 'invalido' },
+]
 
 // Validador cliente-side espejo de lib/whatsapp isValidPhoneE164ES.
 // Evita mostrar el botón "enviar" cuando el número claramente no es válido,
@@ -71,6 +128,7 @@ export default function WhatsappInbox() {
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, startTransition] = useTransition()
+  const [filterTab, setFilterTab] = useState<FilterTab>('vivas')
 
   async function load() {
     setLoading(true)
@@ -108,6 +166,42 @@ export default function WhatsappInbox() {
   const thread = selectedId ? byProvider.get(selectedId) ?? [] : []
   const lastInboundAt = lastInboundTime(thread)
   const within24h = lastInboundAt != null && Date.now() - lastInboundAt < 24 * 60 * 60 * 1000
+
+  // Estado conversacional por provider (memoizado): se calcula una vez por
+  // render para no rehacerlo en cada item de la lista. Usado por:
+  // (a) badge en lista, (b) filtro por solapas, (c) orden por prioridad,
+  // (d) destaque del cuadro de respuesta.
+  const stateByProvider = useMemo(() => {
+    const m = new Map<string, ConvState>()
+    for (const p of providers) m.set(p.id, classifyConv(p, byProvider.get(p.id) ?? []))
+    return m
+  }, [providers, byProvider])
+
+  const visibleProviders = useMemo(() => {
+    const match = FILTER_TABS.find(t => t.id === filterTab)?.matches ?? (() => true)
+    return providers
+      .filter(p => match(stateByProvider.get(p.id) || 'sin_contactar'))
+      .sort((a, b) => {
+        const pa = STATE_META[stateByProvider.get(a.id) || 'sin_contactar'].priority
+        const pb = STATE_META[stateByProvider.get(b.id) || 'sin_contactar'].priority
+        if (pa !== pb) return pa - pb
+        // Dentro del mismo estado, los más recientes primero
+        const lastA = byProvider.get(a.id)?.slice(-1)[0]?.created_at || ''
+        const lastB = byProvider.get(b.id)?.slice(-1)[0]?.created_at || ''
+        return lastB.localeCompare(lastA)
+      })
+  }, [providers, stateByProvider, byProvider, filterTab])
+
+  // Conteos por tab — los muestro en cada pestaña para que el admin sepa
+  // dónde está el trabajo sin tener que cambiar de solapa.
+  const counts = useMemo(() => {
+    const c: Record<FilterTab, number> = { todos: 0, vivas: 0, pendientes: 0, cerrados: 0 }
+    for (const p of providers) {
+      const s = stateByProvider.get(p.id) || 'sin_contactar'
+      for (const tab of FILTER_TABS) if (tab.matches(s)) c[tab.id]++
+    }
+    return c
+  }, [providers, stateByProvider])
 
   async function post(op: string, extra?: Record<string, any>) {
     if (!selected) return { ok: false }
@@ -370,7 +464,7 @@ export default function WhatsappInbox() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
         {/* Lista de proveedores */}
         <div
           style={{
@@ -379,59 +473,108 @@ export default function WhatsappInbox() {
             borderRadius: 14,
             overflow: 'hidden',
             maxHeight: '72vh',
-            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          {loading && <div style={{ padding: 16, fontSize: 13, color: C.faint }}>Cargando…</div>}
-          {!loading && providers.length === 0 && (
-            <div style={{ padding: 16, fontSize: 13, color: C.faint }}>
-              No hay proveedores con número.
-            </div>
-          )}
-          {providers.map((p) => {
-            const t = byProvider.get(p.id) ?? []
-            const last = t[t.length - 1]
-            const isSel = p.id === selectedId
-            return (
-              <button
-                key={p.id}
-                onClick={() => {
-                  setSelectedId(p.id)
-                  setDraft('')
-                }}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '12px 14px',
-                  borderBottom: `1px solid ${C.border}`,
-                  background: isSel ? `${C.accent}18` : 'transparent',
-                  border: 'none',
-                  borderLeft: isSel ? `3px solid ${C.accent}` : '3px solid transparent',
-                  cursor: 'pointer',
-                  display: 'block',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.name || 'Sin nombre'}
+          {/* Solapas de filtro arriba de la lista */}
+          <div style={{
+            display: 'flex',
+            borderBottom: `1px solid ${C.border}`,
+            background: C.bg,
+            flexShrink: 0,
+          }}>
+            {FILTER_TABS.map(tab => {
+              const active = filterTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setFilterTab(tab.id)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 6px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: active ? C.card : 'transparent',
+                    color: active ? C.text : C.muted,
+                    border: 'none',
+                    borderBottom: active ? `2px solid ${C.green}` : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontFamily: 'IBM Plex Mono, monospace',
+                  }}
+                  title={`${counts[tab.id]} en este filtro`}
+                >
+                  {tab.label}
+                  <span style={{ marginLeft: 4, color: active ? C.green : C.faint, fontWeight: 800 }}>
+                    {counts[tab.id]}
                   </span>
-                  {(p.contacted_via === 'whatsapp' || t.length > 0) && (
-                    <span style={{ fontSize: 10, fontWeight: 800, color: C.green, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {t.length > 0 ? `${t.length} msg` : 'enviado'}
+                </button>
+              )
+            })}
+          </div>
+
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {loading && <div style={{ padding: 16, fontSize: 13, color: C.faint }}>Cargando…</div>}
+            {!loading && visibleProviders.length === 0 && (
+              <div style={{ padding: 16, fontSize: 13, color: C.faint }}>
+                No hay proveedores en este filtro.
+              </div>
+            )}
+            {visibleProviders.map((p) => {
+              const t = byProvider.get(p.id) ?? []
+              const last = t[t.length - 1]
+              const isSel = p.id === selectedId
+              const state = stateByProvider.get(p.id) || 'sin_contactar'
+              const meta = STATE_META[state]
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setSelectedId(p.id)
+                    setDraft('')
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '12px 14px',
+                    borderBottom: `1px solid ${C.border}`,
+                    background: isSel ? `${C.accent}18` : 'transparent',
+                    border: 'none',
+                    borderLeft: isSel ? `3px solid ${C.accent}` : `3px solid ${meta.color}`,
+                    cursor: 'pointer',
+                    display: 'block',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {p.name || 'Sin nombre'}
                     </span>
-                  )}
-                </div>
-                <div style={{ fontSize: 11, color: C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {[p.category, p.city].filter(Boolean).join(' · ') || '—'}
-                </div>
-                {last?.body && (
-                  <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
-                    {last.body}
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      color: meta.color,
+                      background: meta.bg,
+                      padding: '2px 6px',
+                      borderRadius: 6,
+                      letterSpacing: '0.04em',
+                      whiteSpace: 'nowrap',
+                      fontFamily: 'IBM Plex Mono, monospace',
+                    }}>
+                      {meta.emoji} {meta.label}
+                    </span>
                   </div>
-                )}
-              </button>
-            )
-          })}
+                  <div style={{ fontSize: 11, color: C.faint, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[p.category, p.city].filter(Boolean).join(' · ') || '—'}
+                  </div>
+                  {last?.body && (
+                    <div style={{ fontSize: 11, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
+                      {last.direction === 'inbound' ? '↙ ' : '↗ '}{last.body}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Conversación */}
@@ -548,39 +691,64 @@ export default function WhatsappInbox() {
                   </button>
                 </div>
 
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  rows={3}
-                  placeholder={
-                    within24h
-                      ? 'Escribe un mensaje…'
-                      : 'Texto libre solo disponible si el proveedor ha respondido en las últimas 24h (regla de WhatsApp).'
-                  }
-                  style={{
-                    width: '100%', fontSize: 13, background: C.bg, color: C.text,
-                    border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px',
-                    outline: 'none', resize: 'vertical', fontFamily: 'inherit',
-                  }}
-                />
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: C.faint }}>
-                    {within24h
-                      ? 'Ventana de 24h abierta: puedes enviar texto libre.'
-                      : 'Fuera de la ventana de 24h: usa la plantilla.'}
-                  </span>
-                  <button
-                    disabled={pending || !within24h || !draft.trim()}
-                    onClick={doSend}
+                <div style={{
+                  borderRadius: 12,
+                  padding: 12,
+                  background: within24h ? `${C.green}10` : 'transparent',
+                  border: within24h ? `1px solid ${C.green}55` : `1px solid transparent`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                }}>
+                  {within24h && (
+                    <div style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: C.green,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      fontFamily: 'IBM Plex Mono, monospace',
+                    }}>
+                      🟢 CONVERSACIÓN ABIERTA · responde aquí ahora (ventana 24h)
+                    </div>
+                  )}
+                  <textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    rows={4}
+                    placeholder={
+                      within24h
+                        ? 'Escribe tu respuesta personal aquí…'
+                        : 'Texto libre solo disponible si el proveedor ha respondido en las últimas 24h.'
+                    }
                     style={{
-                      fontSize: 13, fontWeight: 700, background: C.text, color: '#000',
-                      padding: '8px 16px', borderRadius: 10, border: 'none',
-                      cursor: 'pointer',
-                      opacity: pending || !within24h || !draft.trim() ? 0.4 : 1,
+                      width: '100%', fontSize: 13, background: C.bg, color: C.text,
+                      border: `1px solid ${within24h ? C.green + '88' : C.border}`,
+                      borderRadius: 10, padding: '10px 12px',
+                      outline: 'none', resize: 'vertical', fontFamily: 'inherit',
                     }}
-                  >
-                    Enviar texto
-                  </button>
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ fontSize: 11, color: within24h ? C.green : C.faint }}>
+                      {within24h
+                        ? `Última respuesta hace ${humanAgo(lastInboundAt!)}.`
+                        : 'Fuera de la ventana de 24h: solo se permite la plantilla.'}
+                    </span>
+                    <button
+                      disabled={pending || !within24h || !draft.trim()}
+                      onClick={doSend}
+                      style={{
+                        fontSize: 13, fontWeight: 700,
+                        background: within24h && draft.trim() ? C.green : C.text,
+                        color: '#000',
+                        padding: '10px 20px', borderRadius: 10, border: 'none',
+                        cursor: pending || !within24h || !draft.trim() ? 'not-allowed' : 'pointer',
+                        opacity: pending || !within24h || !draft.trim() ? 0.4 : 1,
+                      }}
+                    >
+                      📤 Enviar texto
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
@@ -600,4 +768,17 @@ function lastInboundTime(thread: InboxMessage[]): number | null {
     }
   }
   return t
+}
+
+// Formatea una distancia temporal en pasado al estilo "5 min" / "2 h" / "1 d".
+// Usado en el badge "Última respuesta hace X" del cuadro de envío.
+function humanAgo(ts: number): string {
+  const diff = Date.now() - ts
+  const mins = Math.floor(diff / 60_000)
+  if (mins < 1) return 'segundos'
+  if (mins < 60) return `${mins} min`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs} h`
+  const days = Math.floor(hrs / 24)
+  return `${days} d`
 }

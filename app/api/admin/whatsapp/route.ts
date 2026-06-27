@@ -11,7 +11,7 @@ function checkAdminAuth(req: NextRequest) {
 }
 
 const PROVIDER_COLS =
-  'id, name, category, city, phone, outreach_whatsapp, outreach_sent, contacted_via, agent_fit_score, whatsapp_invalid, whatsapp_invalid_reason'
+  'id, name, category, city, phone, outreach_whatsapp, outreach_sent, contacted_via, agent_fit_score, whatsapp_invalid, whatsapp_invalid_reason, tag'
 
 // ─── GET: datos de la bandeja (proveedores con número + todos los mensajes) ──
 export async function GET(req: NextRequest) {
