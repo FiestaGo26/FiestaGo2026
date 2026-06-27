@@ -179,6 +179,47 @@ export default function WhatsappInbox() {
     })
   }
 
+  // Manda el PRIMER WhatsApp en bulk a los proveedores que nunca fueron
+  // contactados. Lote por defecto 50. Mismo patrón que doFollowupWa:
+  // dry-run primero, confirmación con preview, envío real si OK.
+  function doOutreachBulk() {
+    startTransition(async () => {
+      const dry = await fetch('/api/admin/whatsapp/outreach-bulk', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ dry_run: true, limit: 50 }),
+      })
+      const dryData = await dry.json().catch(() => ({}))
+      if (!dry.ok) {
+        toast.error(dryData.error || 'Error al previsualizar')
+        return
+      }
+      const eligible = dryData.eligible || 0
+      if (eligible === 0) {
+        toast('Sin candidatos — todos los pendientes ya fueron contactados')
+        return
+      }
+      const preview = (dryData.preview || []).slice(0, 5).map((p: any) => `· ${p.name} (${p.city})`).join('\n')
+      const more = eligible > 5 ? `\n…y ${eligible - 5} más en este lote` : ''
+      if (!window.confirm(
+        `Vas a mandar la plantilla del primer toque a ${eligible} proveedor${eligible > 1 ? 'es' : ''} que NUNCA fueron contactados.\n\n` +
+        `Primeros del lote:\n${preview}${more}\n\n` +
+        `Continuar?`
+      )) return
+
+      const send = await fetch('/api/admin/whatsapp/outreach-bulk', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ limit: 50 }),
+      })
+      const sendData = await send.json().catch(() => ({}))
+      if (!send.ok) {
+        toast.error(sendData.error || 'Error al enviar')
+        return
+      }
+      toast.success(`Primer toque enviado: ${sendData.sent} · fallidos: ${sendData.failed} · saltados: ${sendData.skipped}`)
+      await load()
+    })
+  }
+
   // Reenvía la plantilla de follow-up a los proveedores contactados por WA
   // que NO han respondido en 7+ días. Primero dry-run para enseñar a quién
   // impactaría, y solo si el admin confirma se lanza el envío real.
@@ -292,6 +333,17 @@ export default function WhatsappInbox() {
               fontFamily: 'IBM Plex Mono, monospace',
             }}>
             {pending ? '⏳' : '💬 ENVIAR'}
+          </button>
+          <button onClick={doOutreachBulk} disabled={pending}
+            title="Manda en bulk la plantilla del primer toque a 50 proveedores que NUNCA fueron contactados. Primero te muestra a quién va a impactar."
+            style={{
+              padding: '8px 12px', borderRadius: 8,
+              border: `1px solid ${C.green}`,
+              background: `${C.green}15`, color: C.green,
+              fontSize: 11, fontWeight: 700, cursor: pending ? 'not-allowed' : 'pointer',
+              fontFamily: 'IBM Plex Mono, monospace',
+            }}>
+            📨 PRIMER TOQUE A 50 NUEVOS
           </button>
           <button onClick={doFollowupWa} disabled={pending}
             title="Reenvía la plantilla de WhatsApp a los proveedores que recibieron el primer toque hace 7+ días y NO han respondido. Primero te muestra a quién va a impactar."
