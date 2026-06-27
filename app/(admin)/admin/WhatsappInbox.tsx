@@ -130,6 +130,18 @@ export default function WhatsappInbox() {
   const [pending, startTransition] = useTransition()
   const [filterTab, setFilterTab] = useState<FilterTab>('vivas')
 
+  // Layout responsive: en móvil mostramos lista O conversación (no las
+  // dos columnas a la vez). Si no hay selectedId → solo lista. Si hay →
+  // solo conversación con header "← Volver".
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
   async function load() {
     setLoading(true)
     try {
@@ -464,16 +476,21 @@ export default function WhatsappInbox() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, alignItems: 'start' }}>
-        {/* Lista de proveedores */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '340px 1fr',
+        gap: 16,
+        alignItems: 'start',
+      }}>
+        {/* Lista de proveedores · en móvil se oculta cuando hay conversación abierta */}
         <div
           style={{
             background: C.card,
             border: `1px solid ${C.border}`,
             borderRadius: 14,
             overflow: 'hidden',
-            maxHeight: '72vh',
-            display: 'flex',
+            maxHeight: isMobile ? 'calc(100vh - 200px)' : '72vh',
+            display: isMobile && selectedId ? 'none' : 'flex',
             flexDirection: 'column',
           }}
         >
@@ -577,15 +594,15 @@ export default function WhatsappInbox() {
           </div>
         </div>
 
-        {/* Conversación */}
+        {/* Conversación · en móvil ocupa todo, en escritorio columna derecha */}
         <div
           style={{
             background: C.card,
             border: `1px solid ${C.border}`,
             borderRadius: 14,
-            display: 'flex',
+            display: isMobile && !selectedId ? 'none' : 'flex',
             flexDirection: 'column',
-            minHeight: '72vh',
+            minHeight: isMobile ? 'calc(100vh - 140px)' : '72vh',
           }}
         >
           {!selected ? (
@@ -594,11 +611,21 @@ export default function WhatsappInbox() {
             </div>
           ) : (
             <>
-              <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}` }}>
-                <div style={{ fontWeight: 700, color: C.text }}>{selected.name || 'Sin nombre'}</div>
-                <div style={{ fontSize: 11, color: C.faint }}>
-                  {[selected.category, selected.city].filter(Boolean).join(' · ')} ·{' '}
-                  {selected.outreach_whatsapp || selected.phone || 'sin número'}
+              <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display:'flex', alignItems:'center', gap:10 }}>
+                {isMobile && (
+                  <button onClick={() => setSelectedId(null)}
+                    aria-label="Volver a la lista"
+                    style={{ background:'transparent', border:`1px solid ${C.border}`, color:C.text,
+                      padding:'4px 10px', borderRadius:8, fontSize:14, cursor:'pointer', lineHeight:1, flexShrink:0 }}>
+                    ← Lista
+                  </button>
+                )}
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{ fontWeight: 700, color: C.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{selected.name || 'Sin nombre'}</div>
+                  <div style={{ fontSize: 11, color: C.faint, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {[selected.category, selected.city].filter(Boolean).join(' · ')} ·{' '}
+                    {selected.outreach_whatsapp || selected.phone || 'sin número'}
+                  </div>
                 </div>
               </div>
 

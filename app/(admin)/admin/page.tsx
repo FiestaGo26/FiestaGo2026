@@ -156,6 +156,20 @@ export default function AdminPage() {
   const [openIncident,      setOpenIncident]      = useState<any | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
+  // ── Layout responsive ──────────────────────────────────────────────
+  // El sidebar de 220px fijo dejaba ~170px de contenido en iPhone. En
+  // móvil lo ocultamos por defecto y se abre con la hamburguesa del
+  // topbar. SSR-safe: arranca false y se ajusta en useEffect.
+  const [isMobile,      setIsMobile]      = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
   const supabase = createClient()
 
   // ── AUTH ────────────────────────────────────────────────────────────────
@@ -1007,16 +1021,25 @@ export default function AdminPage() {
 
   return (
     <div className="flex min-h-screen" style={{ background:'#080B12', color:'#F0F4FF', fontFamily:'DM Sans,sans-serif' }}>
-      {/* SIDEBAR */}
+      {/* Overlay oscuro detrás del sidebar en móvil cuando está abierto */}
+      {isMobile && mobileNavOpen && (
+        <div onClick={() => setMobileNavOpen(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:99 }} />
+      )}
+
+      {/* SIDEBAR — escritorio: siempre visible. Móvil: oculto, se abre con
+          hamburguesa del topbar. */}
       <aside style={{ width:220, background:'#0D1117', borderRight:'1px solid #1F2937',
-        display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:100 }}>
+        display:'flex', flexDirection:'column', position:'fixed', top:0, left:0, bottom:0, zIndex:100,
+        transform: isMobile && !mobileNavOpen ? 'translateX(-100%)' : 'translateX(0)',
+        transition: 'transform 0.2s ease' }}>
         <div style={{ padding:'20px 18px 14px', borderBottom:'1px solid #1F2937' }}>
           <img src="/logo.svg" alt="FiestaGo" style={{ height:56, width:'auto', display:'block', borderRadius:'50%' }} />
           <div style={{ fontSize:10, fontWeight:700, color:'#F43F5E', letterSpacing:'0.1em', textTransform:'uppercase', marginTop:2 }}>Admin Panel</div>
         </div>
-        <nav style={{ padding:'12px 10px', flex:1 }}>
+        <nav style={{ padding:'12px 10px', flex:1, overflowY:'auto' }}>
           {NAV.map(item => (
-            <button key={item.id} onClick={() => { setSection(item.id); if(item.id==='notifications') markNotifsRead(); }}
+            <button key={item.id} onClick={() => { setSection(item.id); if(item.id==='notifications') markNotifsRead(); setMobileNavOpen(false); }}
               style={{ width:'100%', display:'flex', alignItems:'center', gap:9, padding:'8px 11px',
                 borderRadius:10, border:'none', cursor:'pointer', textAlign:'left', marginBottom:3,
                 background: section===item.id ? '#F43F5E22' : 'transparent',
@@ -1046,30 +1069,43 @@ export default function AdminPage() {
       </aside>
 
       {/* MAIN */}
-      <main style={{ marginLeft:220, flex:1 }}>
+      <main style={{ marginLeft: isMobile ? 0 : 220, flex:1, minWidth:0 }}>
         {/* Topbar */}
-        <div style={{ background:'#0D1117', borderBottom:'1px solid #1F2937', padding:'0 24px',
+        <div style={{ background:'#0D1117', borderBottom:'1px solid #1F2937',
+          padding: isMobile ? '0 12px' : '0 24px',
           height:56, display:'flex', alignItems:'center', justifyContent:'space-between',
-          position:'sticky', top:0, zIndex:50 }}>
-          <div style={{ fontSize:15, fontWeight:700, color:'#F0F4FF' }}>
-            {NAV.find(n=>n.id===section)?.label}
+          position:'sticky', top:0, zIndex:50, gap: 8 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0, flex:1 }}>
+            {isMobile && (
+              <button onClick={() => setMobileNavOpen(true)}
+                aria-label="Abrir menú"
+                style={{ background:'transparent', border:'1px solid #1F2937', color:'#F0F4FF',
+                  padding:'6px 10px', borderRadius:8, fontSize:18, cursor:'pointer', lineHeight:1 }}>
+                ☰
+              </button>
+            )}
+            <div style={{ fontSize:15, fontWeight:700, color:'#F0F4FF', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+              {NAV.find(n=>n.id===section)?.label}
+            </div>
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
             {unread > 0 && (
               <div style={{ fontSize:12, color:'#10B981', background:'#10B98111', border:'1px solid #10B98133',
                 padding:'3px 11px', borderRadius:20 }}>
-                🔔 {unread} nueva{unread!==1?'s':''}
+                🔔 {unread}
               </div>
             )}
-            <a href="/" target="_blank"
-              style={{ fontSize:12, padding:'5px 12px', borderRadius:8, border:'1px solid #1F2937',
-                background:'transparent', color:'#9CA3AF', cursor:'pointer', textDecoration:'none' }}>
-              Ver marketplace ↗
-            </a>
+            {!isMobile && (
+              <a href="/" target="_blank"
+                style={{ fontSize:12, padding:'5px 12px', borderRadius:8, border:'1px solid #1F2937',
+                  background:'transparent', color:'#9CA3AF', cursor:'pointer', textDecoration:'none' }}>
+                Ver marketplace ↗
+              </a>
+            )}
           </div>
         </div>
 
-        <div style={{ padding:24 }}>
+        <div style={{ padding: isMobile ? 12 : 24 }}>
 
           {/* ══ DASHBOARD ══ */}
           {section === 'dashboard' && (
