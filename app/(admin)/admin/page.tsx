@@ -175,9 +175,14 @@ export default function AdminPage() {
           const n = payload.new as Notification
           setNotifs(prev => [n, ...prev])
           setUnread(u => u + 1)
-          // Browser notification
-          if (Notification.permission === 'granted') {
-            new Notification('FiestaGo Admin', { body: n.title, icon: '/favicon.ico' })
+          // Browser notification. La Web Notifications API NO existe en
+          // Safari iOS (salvo PWA en iOS 16.4+), así que el guard es
+          // crítico — sin él, acceder a Notification.permission lanza
+          // ReferenceError y revienta el panel entero en iPhone.
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try {
+              new Notification('FiestaGo Admin', { body: n.title, icon: '/favicon.ico' })
+            } catch { /* no-op: algunos navegadores requieren gesture */ }
           }
         })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'providers' },
@@ -186,9 +191,10 @@ export default function AdminPage() {
         })
       .subscribe()
 
-    // Request browser notification permission
-    if (Notification.permission === 'default') {
-      Notification.requestPermission()
+    // Request browser notification permission. Guard contra Safari iOS,
+    // donde la API Notification no existe globalmente.
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      try { Notification.requestPermission() } catch { /* no-op */ }
     }
 
     return () => { supabase.removeChannel(channel) }
