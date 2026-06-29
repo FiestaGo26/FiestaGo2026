@@ -78,7 +78,10 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get('category')
   const city     = searchParams.get('city')
   const search   = searchParams.get('search')
-  const limit    = parseInt(searchParams.get('limit') || '500')
+  // El panel admin filtra cliente-side, así que necesitamos traer TODA la
+  // base. Subido a 5000 desde 500 cuando la BD pasó de los 800 providers.
+  // Cuando se acerque a 3-4k tocará paginar de verdad.
+  const limit    = parseInt(searchParams.get('limit') || '5000')
 
   let query = supabase
     .from('providers').select('*').order('created_at', { ascending: false }).limit(limit)
