@@ -30,6 +30,10 @@ export async function GET(req: NextRequest) {
 
   // 2) Proveedores candidatos: tienen número Y no están marcados como
   //    WhatsApp inválido. Los ordenamos por encaje del agente.
+  //    Limit subido de 200 → 2000 para que la bandeja muestre TODOS los
+  //    candidatos con número, no solo los 200 mejor puntuados. El front
+  //    filtra cliente-side por solapas (vivas/pendientes/cerrados), así
+  //    que necesita toda la base disponible.
   const { data: candidates } = await supabase
     .from('providers')
     .select(PROVIDER_COLS)
@@ -37,7 +41,7 @@ export async function GET(req: NextRequest) {
     .not('whatsapp_invalid', 'is', true)
     .order('agent_fit_score', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
-    .limit(200)
+    .limit(2000)
 
   // 3) Proveedores referenciados por mensajes pero que no estén entre los
   //    candidatos (para que toda conversación tenga su ficha).
