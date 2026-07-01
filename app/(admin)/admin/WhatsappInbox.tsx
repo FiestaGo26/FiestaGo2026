@@ -288,6 +288,48 @@ export default function WhatsappInbox() {
   // Manda el PRIMER WhatsApp en bulk a los proveedores que nunca fueron
   // contactados. Lote por defecto 50. Mismo patrón que doFollowupWa:
   // dry-run primero, confirmación con preview, envío real si OK.
+  // Tercer toque a los SILENTES (nunca respondieron): plantilla nueva
+  // con ángulo de prueba social. Dry-run primero, confirmación, envío.
+  function doFollowup2() {
+    startTransition(async () => {
+      const dry = await fetch('/api/admin/whatsapp/followup2', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ dry_run: true, days_since_last: 2, limit: 25 }),
+      })
+      const dryData = await dry.json().catch(() => ({}))
+      if (!dry.ok) {
+        toast.error(dryData.error || 'Error al previsualizar')
+        return
+      }
+      const eligibles = dryData.eligibles || 0
+      if (eligibles === 0) {
+        toast(`Sin candidatos silentes en este momento.`)
+        return
+      }
+      const preview = (dryData.preview || []).slice(0, 5)
+        .map((p: any) => `· ${p.name} (${p.city}) → prueba: ${p.prueba_social}`)
+        .join('\n')
+      const more = eligibles > 5 ? `\n…y ${eligibles - 5} más en este lote` : ''
+      if (!window.confirm(
+        `Vas a mandar la 3ª plantilla (prueba social) a ${eligibles} proveedor${eligibles > 1 ? 'es' : ''} silente${eligibles > 1 ? 's' : ''} (nunca respondieron al 1er ni al 2º toque).\n\n` +
+        `Primeros del lote y qué nombre real usaremos como prueba social:\n${preview}${more}\n\n` +
+        `Continuar?`
+      )) return
+
+      const send = await fetch('/api/admin/whatsapp/followup2', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ days_since_last: 2, limit: 25 }),
+      })
+      const sendData = await send.json().catch(() => ({}))
+      if (!send.ok) {
+        toast.error(sendData.error || 'Error al enviar')
+        return
+      }
+      toast.success(`3º toque enviado: ${sendData.sent} · fallidos: ${sendData.failed} · saltados: ${sendData.skipped}`)
+      await load()
+    })
+  }
+
   function doOutreachBulk() {
     startTransition(async () => {
       const dry = await fetch('/api/admin/whatsapp/outreach-bulk', {
@@ -461,6 +503,17 @@ export default function WhatsappInbox() {
               fontFamily: 'IBM Plex Mono, monospace',
             }}>
             📤 REENVIAR A NO RESPONDEDORES
+          </button>
+          <button onClick={doFollowup2} disabled={pending}
+            title="Tercer toque: plantilla de prueba social a los SILENTES (recibieron 1er + 2º toque y nunca contestaron). Dry-run primero."
+            style={{
+              padding: '8px 12px', borderRadius: 8,
+              border: `1px solid #A855F7`,
+              background: `#A855F715`, color: '#C084FC',
+              fontSize: 11, fontWeight: 700, cursor: pending ? 'not-allowed' : 'pointer',
+              fontFamily: 'IBM Plex Mono, monospace',
+            }}>
+            🎯 3º TOQUE PRUEBA SOCIAL
           </button>
           <button onClick={doCleanupInvalid} disabled={pending}
             title="Quita de la bandeja los proveedores cuyo número no es un WhatsApp válido"
