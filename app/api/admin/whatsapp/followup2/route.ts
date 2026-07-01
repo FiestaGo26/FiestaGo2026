@@ -13,10 +13,18 @@ function checkAuth(req: NextRequest) {
   return false
 }
 
-// Fallback si no encontramos ningún proveedor real cercano para el {{2}}.
-// Son los 2 proveedores reales dados de alta esta semana en Valencia,
-// perfectamente creíbles para casi cualquier receptor.
-const FALLBACK_PROOF = 'Selen Botto Fotografía y Chocova Pastelería'
+// Cuando NO tenemos ningún proveedor aprobado de la categoría del receptor
+// (ni misma ciudad ni cualquier otra), evitamos meter un nombre real de otra
+// categoría — es "prueba social" que no lo es, chirría y baja conversión
+// ("¿qué me importa que una pastelera se haya dado de alta si yo vendo
+// espacios?"). Usamos una frase genérica adaptada:
+//   - Si conocemos la ciudad → "otros profesionales de eventos en {ciudad}"
+//   - Si no                  → "otros profesionales del sector"
+function genericProof(city: string | null | undefined): string {
+  const clean = (city || '').trim()
+  if (clean) return `otros profesionales de eventos en ${clean}`
+  return 'otros profesionales del sector'
+}
 
 // Cuerpo LITERAL de la plantilla aprobada (prueba_social_proveedores_v1),
 // solo para renderizar preview del dry-run. La plantilla real vive en
@@ -236,39 +244,41 @@ export async function POST(req: NextRequest) {
 }
 
 // Elige el nombre a poner en {{2}} para un candidato. Prioridad:
-//   1. Otro provider approved de su MISMA ciudad + categoría (máxima
-//      credibilidad — un vecino real de su gremio).
-//   2. Otro approved de su misma CATEGORÍA (cualquier ciudad).
-//   3. Otro approved de su misma CIUDAD (cualquier categoría).
-//   4. Fallback fijo con los 2 más recientes de Valencia.
+//   1. Otro provider approved de su MISMA ciudad + categoría (mismo gremio local).
+//   2. Otro approved de su misma CATEGORÍA (mismo gremio nacional).
+//   3. Frase genérica del sector (evitamos meter un nombre de otra categoría
+//      que chirría — un fotógrafo no se motiva porque una pastelera esté dentro).
 //
+// Cuando hay VARIOS matches en la BD, elegimos uno al azar de los últimos 10
+// para diversificar los mensajes de un lote y no saturar un solo nombre.
 // Excluimos siempre al propio candidato para no autorreferenciarlo.
 async function pickProofName(supabase: any, p: { id: string; city: string | null; category: string | null }): Promise<string> {
-  const tryQuery = async (filters: (q: any) => any): Promise<string | null> => {
+  const pickRandom = async (filters: (q: any) => any): Promise<string | null> => {
     let q = supabase
       .from('providers')
       .select('name')
       .eq('status', 'approved')
       .neq('id', p.id)
       .order('created_at', { ascending: false })
-      .limit(1)
+      .limit(10)
     q = filters(q)
     const { data } = await q
-    const first = (data as any[] | null)?.[0]
-    return first?.name?.trim() || null
+    const rows = (data as any[] | null) || []
+    if (!rows.length) return null
+    const pick = rows[Math.floor(Math.random() * rows.length)]
+    return pick?.name?.trim() || null
   }
 
+  // 1) Mismo gremio en su ciudad — máxima credibilidad.
   if (p.city && p.category) {
-    const hit = await tryQuery(q => q.eq('city', p.city).eq('category', p.category))
+    const hit = await pickRandom(q => q.eq('city', p.city).eq('category', p.category))
     if (hit) return hit
   }
+  // 2) Mismo gremio en cualquier ciudad — sigue siendo prueba social válida.
   if (p.category) {
-    const hit = await tryQuery(q => q.eq('category', p.category))
+    const hit = await pickRandom(q => q.eq('category', p.category))
     if (hit) return hit
   }
-  if (p.city) {
-    const hit = await tryQuery(q => q.eq('city', p.city))
-    if (hit) return hit
-  }
-  return FALLBACK_PROOF
+  // 3) Sin match de categoría → frase genérica adaptada.
+  return genericProof(p.city)
 }
