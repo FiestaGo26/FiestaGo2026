@@ -130,6 +130,14 @@ export default function WhatsappInbox() {
   const [pending, startTransition] = useTransition()
   const [filterTab, setFilterTab] = useState<FilterTab>('vivas')
 
+  // Modal del 3er toque (plantilla prueba social). window.confirm() nativo
+  // trunca textos largos en Safari/Chrome, así que necesitamos DOM real
+  // para mostrar los 5 mensajes renderizados enteros.
+  const [followup2Modal, setFollowup2Modal] = useState<{
+    eligibles: number
+    preview: any[]
+  } | null>(null)
+
   // Layout responsive: en móvil mostramos lista O conversación (no las
   // dos columnas a la vez). Si no hay selectedId → solo lista. Si hay →
   // solo conversación con header "← Volver".
@@ -289,7 +297,8 @@ export default function WhatsappInbox() {
   // contactados. Lote por defecto 50. Mismo patrón que doFollowupWa:
   // dry-run primero, confirmación con preview, envío real si OK.
   // Tercer toque a los SILENTES (nunca respondieron): plantilla nueva
-  // con ángulo de prueba social. Dry-run primero, confirmación, envío.
+  // con ángulo de prueba social. Dry-run primero → modal con los mensajes
+  // renderizados enteros → envío.
   function doFollowup2() {
     startTransition(async () => {
       const dry = await fetch('/api/admin/whatsapp/followup2', {
@@ -303,29 +312,22 @@ export default function WhatsappInbox() {
       }
       const eligibles = dryData.eligibles || 0
       if (eligibles === 0) {
-        toast(`Sin candidatos silentes en este momento.`)
+        toast('Sin candidatos silentes en este momento.')
         return
       }
-      const preview = (dryData.preview || []).slice(0, 5)
-      // Bloque tipo "recibirá X → texto real"
-      const previewBlock = preview
-        .map((p: any, i: number) =>
-          `${i + 1}. ${p.name} (${p.city} · ${p.category})\n` +
-          `   → "${p.mensaje_renderizado}"`
-        )
-        .join('\n\n')
-      const more = eligibles > 5 ? `\n\n…y ${eligibles - 5} más en este lote (mismo formato).` : ''
-      if (!window.confirm(
-        `Vas a mandar la 3ª plantilla (prueba social) a ${eligibles} proveedor${eligibles > 1 ? 'es' : ''} silente${eligibles > 1 ? 's' : ''} (nunca respondieron al 1er ni al 2º toque).\n\n` +
-        `Estos son los primeros 5 mensajes REALES que se van a enviar:\n\n${previewBlock}${more}\n\n` +
-        `¿Continuar?`
-      )) return
+      setFollowup2Modal({ eligibles, preview: dryData.preview || [] })
+    })
+  }
 
+  // Confirma el envío desde el modal del 3er toque.
+  function confirmFollowup2() {
+    startTransition(async () => {
       const send = await fetch('/api/admin/whatsapp/followup2', {
         method: 'POST', headers: adminHeaders(),
         body: JSON.stringify({ days_since_last: 2, limit: 25 }),
       })
       const sendData = await send.json().catch(() => ({}))
+      setFollowup2Modal(null)
       if (!send.ok) {
         toast.error(sendData.error || 'Error al enviar')
         return
@@ -444,6 +446,89 @@ export default function WhatsappInbox() {
 
   return (
     <div>
+      {/* Modal del 3er toque · prueba social */}
+      {followup2Modal && (
+        <div onClick={() => !pending && setFollowup2Modal(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+            zIndex: 200, display: 'grid', placeItems: 'center', padding: 16,
+            overflowY: 'auto',
+          }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{
+              background: C.card, border: `1px solid ${C.border}`,
+              borderRadius: 14, padding: 20,
+              maxWidth: 720, width: '100%',
+              maxHeight: '90vh', overflowY: 'auto',
+              color: C.text,
+            }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#C084FC', marginBottom: 6 }}>
+              🎯 3º toque · Plantilla prueba social
+            </div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.5 }}>
+              Vas a mandar la plantilla a <strong style={{ color: C.text }}>{followup2Modal.eligibles}</strong> proveedor{followup2Modal.eligibles > 1 ? 'es' : ''} silente{followup2Modal.eligibles > 1 ? 's' : ''} — nunca respondieron al 1er ni al 2º toque.
+              <br/>
+              Este lote enviará {Math.min(25, followup2Modal.eligibles)} mensajes ahora (los mejor puntuados). Pulsa el botón otra vez para el siguiente lote.
+            </div>
+
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: '0.06em',
+              textTransform: 'uppercase', marginBottom: 8 }}>
+              Estos son los primeros 5 mensajes REALES que se enviarán
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+              {followup2Modal.preview.slice(0, 5).map((p: any, i: number) => (
+                <div key={p.id || i} style={{
+                  border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+                  background: C.bg,
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+                    {i + 1}. {p.name}
+                    <span style={{ color: C.faint, fontWeight: 400, marginLeft: 6 }}>
+                      · {p.category} · {p.city}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#C084FC', marginBottom: 8 }}>
+                    Prueba social usada en {'{{2}}'}: <strong>{p.prueba_social}</strong>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.text, background: '#0B1220',
+                    padding: 10, borderRadius: 8, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    {p.mensaje_renderizado}
+                  </div>
+                </div>
+              ))}
+              {followup2Modal.eligibles > 5 && (
+                <div style={{ fontSize: 11, color: C.faint, textAlign: 'center' }}>
+                  … y {followup2Modal.eligibles - 5} más con el mismo formato (nombre + prueba social propia).
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button onClick={() => setFollowup2Modal(null)} disabled={pending}
+                style={{
+                  background: 'transparent', color: C.text,
+                  border: `1px solid ${C.border}`, padding: '10px 18px',
+                  borderRadius: 10, fontSize: 13, fontWeight: 700,
+                  cursor: pending ? 'not-allowed' : 'pointer',
+                }}>
+                Cancelar
+              </button>
+              <button onClick={confirmFollowup2} disabled={pending}
+                style={{
+                  background: '#A855F7', color: '#fff',
+                  border: 'none', padding: '10px 22px',
+                  borderRadius: 10, fontSize: 13, fontWeight: 800,
+                  cursor: pending ? 'not-allowed' : 'pointer',
+                  opacity: pending ? 0.5 : 1,
+                }}>
+                {pending ? '⏳ Enviando…' : `📤 Enviar a ${Math.min(25, followup2Modal.eligibles)}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>
           Inicia la conversación con la plantilla de captación. Cuando el proveedor responda, el
