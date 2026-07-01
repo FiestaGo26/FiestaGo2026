@@ -18,6 +18,16 @@ function checkAuth(req: NextRequest) {
 // perfectamente creíbles para casi cualquier receptor.
 const FALLBACK_PROOF = 'Selen Botto Fotografía y Chocova Pastelería'
 
+// Cuerpo LITERAL de la plantilla aprobada (prueba_social_proveedores_v1),
+// solo para renderizar preview del dry-run. La plantilla real vive en
+// Meta y es lo que se envía — este string se mantiene sincronizado a mano.
+const TEMPLATE_BODY_PREVIEW =
+  'Hola {{1}} 👋 Esta semana se han dado de alta en FiestaGo nuevos proveedores en tu zona como {{2}}. Mientras tanto siguen entrando consultas a los que aparecen. Si quieres una de esas plazas: https://fiestago.es/registro-proveedor — 60 segundos, gratis, sin compromiso.'
+
+function renderPreview(name: string, proof: string): string {
+  return TEMPLATE_BODY_PREVIEW.replace('{{1}}', name).replace('{{2}}', proof)
+}
+
 // POST /api/admin/whatsapp/followup2
 // body opcional: {
 //   days_since_last?: number = 2,
@@ -123,16 +133,20 @@ export async function POST(req: NextRequest) {
     .filter(p => p.phone || p.outreach_whatsapp)
     .slice(0, limit)
 
-  // 4) Dry-run: sólo devolvemos la lista con el {{2}} que se usaría.
+  // 4) Dry-run: sólo devolvemos la lista con el {{2}} que se usaría y el
+  //    body renderizado (para que el admin vea el mensaje EXACTO antes
+  //    de comprometer envíos).
   if (dryRun) {
-    // Calculamos el {{2}} para los primeros 10 del preview, para que el
-    // admin vea la personalización real antes de comprometer envíos.
     const preview = await Promise.all(
-      eligibles.slice(0, 10).map(async p => ({
-        id: p.id, name: p.name, category: p.category, city: p.city,
-        phone: p.phone || p.outreach_whatsapp,
-        prueba_social: await pickProofName(supabase, p),
-      })),
+      eligibles.slice(0, 10).map(async p => {
+        const proof = await pickProofName(supabase, p)
+        return {
+          id: p.id, name: p.name, category: p.category, city: p.city,
+          phone: p.phone || p.outreach_whatsapp,
+          prueba_social: proof,
+          mensaje_renderizado: renderPreview(p.name || 'hola', proof),
+        }
+      }),
     )
     return NextResponse.json({
       candidatos_crudos: candidatosCrudos.length,

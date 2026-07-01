@@ -307,13 +307,18 @@ export default function WhatsappInbox() {
         return
       }
       const preview = (dryData.preview || []).slice(0, 5)
-        .map((p: any) => `· ${p.name} (${p.city}) → prueba: ${p.prueba_social}`)
-        .join('\n')
-      const more = eligibles > 5 ? `\n…y ${eligibles - 5} más en este lote` : ''
+      // Bloque tipo "recibirá X → texto real"
+      const previewBlock = preview
+        .map((p: any, i: number) =>
+          `${i + 1}. ${p.name} (${p.city} · ${p.category})\n` +
+          `   → "${p.mensaje_renderizado}"`
+        )
+        .join('\n\n')
+      const more = eligibles > 5 ? `\n\n…y ${eligibles - 5} más en este lote (mismo formato).` : ''
       if (!window.confirm(
         `Vas a mandar la 3ª plantilla (prueba social) a ${eligibles} proveedor${eligibles > 1 ? 'es' : ''} silente${eligibles > 1 ? 's' : ''} (nunca respondieron al 1er ni al 2º toque).\n\n` +
-        `Primeros del lote y qué nombre real usaremos como prueba social:\n${preview}${more}\n\n` +
-        `Continuar?`
+        `Estos son los primeros 5 mensajes REALES que se van a enviar:\n\n${previewBlock}${more}\n\n` +
+        `¿Continuar?`
       )) return
 
       const send = await fetch('/api/admin/whatsapp/followup2', {
