@@ -262,8 +262,15 @@ async function handleInbound(supabase: any, msg: any) {
   //        2 veces en una hora, el de enfrente es bot seguro y no vamos
   //        a sacar nada insistiendo.
   const nowMs = Date.now()
+  // Solo cuentan como "respuestas del cerebro" los outbounds de texto:
+  // las plantillas del outreach/follow-up NO son respuestas del cerebro,
+  // son tomas de contacto en frío. Si las contásemos, cada plantilla
+  // enviada activaría un cooldown de 60s que anularía la respuesta del
+  // cerebro al primer inbound del proveedor (autoresponder rápido o
+  // clic en botón "Cuéntame más"/"Me apunto" en <60s). Ese bug hizo
+  // que se perdieran conversaciones calientes.
   const outboundsRecientes = (rows ?? [])
-    .filter((r: any) => r.direction === 'outbound' && r.body)
+    .filter((r: any) => r.direction === 'outbound' && r.body && r.type !== 'template')
     .map((r: any) => ({ body: r.body as string, ts: new Date(r.created_at).getTime() }))
 
   const ultimoOutboundMs = outboundsRecientes.length
