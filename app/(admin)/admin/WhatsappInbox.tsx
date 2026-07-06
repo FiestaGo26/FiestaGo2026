@@ -138,6 +138,12 @@ export default function WhatsappInbox() {
     preview: any[]
   } | null>(null)
 
+  // Modal del recordatorio a "Me apunto" + víctimas del cooldown-bug.
+  const [reminderModal, setReminderModal] = useState<{
+    eligibles: number
+    preview: any[]
+  } | null>(null)
+
   // Layout responsive: en móvil mostramos lista O conversación (no las
   // dos columnas a la vez). Si no hay selectedId → solo lista. Si hay →
   // solo conversación con header "← Volver".
@@ -319,6 +325,45 @@ export default function WhatsappInbox() {
     })
   }
 
+  // Recordatorio a "Me apunto" pendientes + víctimas del cooldown-bug de
+  // "Cuéntame más". Plantilla recordatorio_apuntados_v1. Cap 1.
+  function doReminderApuntados() {
+    startTransition(async () => {
+      const dry = await fetch('/api/admin/whatsapp/remind-apuntados', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ dry_run: true, limit: 25 }),
+      })
+      const dryData = await dry.json().catch(() => ({}))
+      if (!dry.ok) {
+        toast.error(dryData.error || 'Error al previsualizar')
+        return
+      }
+      const eligibles = dryData.eligibles || 0
+      if (eligibles === 0) {
+        toast('Sin candidatos que recordar en este momento.')
+        return
+      }
+      setReminderModal({ eligibles, preview: dryData.preview || [] })
+    })
+  }
+
+  function confirmReminderApuntados() {
+    startTransition(async () => {
+      const send = await fetch('/api/admin/whatsapp/remind-apuntados', {
+        method: 'POST', headers: adminHeaders(),
+        body: JSON.stringify({ limit: 25 }),
+      })
+      const sendData = await send.json().catch(() => ({}))
+      setReminderModal(null)
+      if (!send.ok) {
+        toast.error(sendData.error || 'Error al enviar')
+        return
+      }
+      toast.success(`Recordatorios enviados: ${sendData.sent} · fallidos: ${sendData.failed} · saltados: ${sendData.skipped}`)
+      await load()
+    })
+  }
+
   // Confirma el envío desde el modal del 3er toque.
   function confirmFollowup2() {
     startTransition(async () => {
@@ -446,6 +491,86 @@ export default function WhatsappInbox() {
 
   return (
     <div>
+      {/* Modal del recordatorio a "Me apunto" pendientes */}
+      {reminderModal && (
+        <div onClick={() => !pending && setReminderModal(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+            zIndex: 200, display: 'grid', placeItems: 'center', padding: 16,
+            overflowY: 'auto',
+          }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{
+              background: C.card, border: `1px solid ${C.border}`,
+              borderRadius: 14, padding: 20,
+              maxWidth: 720, width: '100%',
+              maxHeight: '90vh', overflowY: 'auto',
+              color: C.text,
+            }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#F59E0B', marginBottom: 6 }}>
+              ⏰ Recordatorio · Me apunto + Cuéntame más sin cerrar
+            </div>
+            <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.5 }}>
+              Vas a mandar la plantilla `recordatorio_apuntados_v1` a <strong style={{ color: C.text }}>{reminderModal.eligibles}</strong> proveedor{reminderModal.eligibles > 1 ? 'es' : ''} que mostraron interés (pulsaron Me apunto o Cuéntame más) pero no cerraron el alta y están fuera de la ventana de 24h.
+              <br/>
+              Se enviarán {Math.min(25, reminderModal.eligibles)} en este lote. Cap 1 por proveedor — no volverán a recibir esta plantilla.
+            </div>
+
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.faint, letterSpacing: '0.06em',
+              textTransform: 'uppercase', marginBottom: 8 }}>
+              Primeros 5 mensajes reales
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+              {reminderModal.preview.slice(0, 5).map((p: any, i: number) => (
+                <div key={p.id || i} style={{
+                  border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+                  background: C.bg,
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+                    {i + 1}. {p.name}
+                    <span style={{ color: C.faint, fontWeight: 400, marginLeft: 6 }}>
+                      · {p.category} · {p.city}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.text, background: '#0B1220',
+                    padding: 10, borderRadius: 8, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    {p.mensaje_renderizado}
+                  </div>
+                </div>
+              ))}
+              {reminderModal.eligibles > 5 && (
+                <div style={{ fontSize: 11, color: C.faint, textAlign: 'center' }}>
+                  … y {reminderModal.eligibles - 5} más con el mismo formato.
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button onClick={() => setReminderModal(null)} disabled={pending}
+                style={{
+                  background: 'transparent', color: C.text,
+                  border: `1px solid ${C.border}`, padding: '10px 18px',
+                  borderRadius: 10, fontSize: 13, fontWeight: 700,
+                  cursor: pending ? 'not-allowed' : 'pointer',
+                }}>
+                Cancelar
+              </button>
+              <button onClick={confirmReminderApuntados} disabled={pending}
+                style={{
+                  background: '#F59E0B', color: '#000',
+                  border: 'none', padding: '10px 22px',
+                  borderRadius: 10, fontSize: 13, fontWeight: 800,
+                  cursor: pending ? 'not-allowed' : 'pointer',
+                  opacity: pending ? 0.5 : 1,
+                }}>
+                {pending ? '⏳ Enviando…' : `📤 Enviar a ${Math.min(25, reminderModal.eligibles)}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal del 3er toque · prueba social */}
       {followup2Modal && (
         <div onClick={() => !pending && setFollowup2Modal(null)}
@@ -604,6 +729,17 @@ export default function WhatsappInbox() {
               fontFamily: 'IBM Plex Mono, monospace',
             }}>
             🎯 3º TOQUE PRUEBA SOCIAL
+          </button>
+          <button onClick={doReminderApuntados} disabled={pending}
+            title="Recordatorio a los que pulsaron 'Me apunto' o 'Cuéntame más' pero no cerraron. Cap 1 por proveedor. Dry-run primero."
+            style={{
+              padding: '8px 12px', borderRadius: 8,
+              border: `1px solid #F59E0B`,
+              background: `#F59E0B15`, color: '#FBBF24',
+              fontSize: 11, fontWeight: 700, cursor: pending ? 'not-allowed' : 'pointer',
+              fontFamily: 'IBM Plex Mono, monospace',
+            }}>
+            ⏰ RECORDAR APUNTADOS
           </button>
           <button onClick={doCleanupInvalid} disabled={pending}
             title="Quita de la bandeja los proveedores cuyo número no es un WhatsApp válido"
