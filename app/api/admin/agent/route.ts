@@ -5,7 +5,7 @@ import { buildEmailDraft, buildDmDraft, buildWhatsAppDraft } from '@/lib/outreac
 import { hasValidWhatsapp } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
-export const maxDuration = 30
+export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
 function checkAdminAuth(req: NextRequest) {
@@ -26,9 +26,12 @@ const SEARCH_ANGLES = [
   'que trabajan también en pueblos y áreas alrededor de la ciudad',
 ]
 
-async function claudeWebSearch(prompt: string, maxUses: number = 4, attempt: number = 0): Promise<string> {
+async function claudeWebSearch(prompt: string, maxUses: number = 10, attempt: number = 0): Promise<string> {
   const controller = new AbortController()
-  const tick = setTimeout(() => controller.abort(), 27_000)
+  // Subido a 55s (dentro del budget de 60s del endpoint) para dar aire a la
+  // búsqueda web con más max_uses. Antes era 27s y las peticiones se
+  // abortaban a menudo antes de que Claude terminase.
+  const tick = setTimeout(() => controller.abort(), 55_000)
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -38,8 +41,11 @@ async function claudeWebSearch(prompt: string, maxUses: number = 4, attempt: num
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 3500,
+        // Sonnet 5 devuelve más resultados válidos y menos duplicados que
+        // Haiku, a un coste 3-4x mayor pero por lote de 6-10 proveedores
+        // sigue siendo <0,10€. Compensa.
+        model: 'claude-sonnet-5',
+        max_tokens: 8000,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxUses }],
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -80,8 +86,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}))
-    let { category = 'foto', city = 'Madrid', count = 2 } = body
-    count = Math.min(Math.max(parseInt(String(count)) || 2, 1), 3)
+    let { category = 'foto', city = 'Madrid', count = 5 } = body
+    // Cap subido de 3 → 10. Antes descartábamos proveedores válidos por
+    // este cap y el admin solo veía 1-3 por lote. Con Sonnet y max_uses=10
+    // el modelo devuelve fácilmente 8-10 sin duplicados.
+    count = Math.min(Math.max(parseInt(String(count)) || 5, 1), 10)
     const cat = CATEGORIES.find(c => c.id === category)
     if (!cat) return NextResponse.json({ error: 'Categoría inválida', logs }, { status: 400 })
 
@@ -117,8 +126,9 @@ export async function POST(req: NextRequest) {
     log(`🎯 Ángulo: ${angle}`)
     log(`🚫 Excluyendo ${existingNames.length} ya conocidos del prompt`)
 
-    // 3. Overprovision: pedimos 3× para que tras filtrar sobrevivan
-    const overprovision = Math.min(count * 3, 9)
+    // 3. Overprovision: pedimos 3× para que tras filtrar sobrevivan.
+    //    Cap subido de 9 → 30 para acompañar el nuevo count max=10.
+    const overprovision = Math.min(count * 3, 30)
 
     // Rotar QUÉ 20 nombres metemos en el prompt: shuffle y slice. Si la
     // BD tiene 80 nombres y siempre mostramos los 20 primeros, Claude
