@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 // ═══════════════════════════════════════════════════════════════════
-// Sports Betting Predictor — Elo + Poisson value-betting model
+// Sports Betting Predictor — Elo (+ Poisson en fútbol) value-betting model
+// Deportes soportados: football, tennis, basketball (solo mercado de
+// ganador del partido / 1X2 / moneyline — ver README.md).
 //
 // USO:
 //   node predict.mjs backtest --data data/sample-matches.csv
 //   node predict.mjs backtest --data data/sample-matches.csv --bankroll 500 --edge 0.05
 //   node predict.mjs backtest --data data/sample-matches.csv --take-profit 0.2 --stop-loss 0.15
-//   node predict.mjs fixture --data data/sample-matches.csv \
+//   node predict.mjs fixture --data data/sample-matches.csv --sport football \
 //       --home "Team A" --away "Team B" \
 //       --odds-home 2.10 --odds-draw 3.40 --odds-away 3.20
 //   node predict.mjs session start --data data/sample-matches.csv --bankroll 1000 --take-profit 0.2 --stop-loss 0.15
-//   node predict.mjs session bet --home "Team A" --away "Team B" --odds-home 2.10 --odds-draw 3.40 --odds-away 3.20
+//   node predict.mjs session bet --sport tennis --home "Player A" --away "Player B" --odds-home 1.80 --odds-away 2.00
 //   node predict.mjs session result --outcome home
 //   node predict.mjs session status
 //
@@ -20,12 +22,11 @@
 
 import { readFileSync } from 'fs'
 import { parseCsv } from './lib/csv.mjs'
-import { EloRatings } from './lib/elo.mjs'
-import { expectedGoals, matchProbabilities } from './lib/poisson.mjs'
 import { fairProbabilities, edge as computeEdge, overround } from './lib/odds.mjs'
 import { recommendedStake } from './lib/kelly.mjs'
 import { runBacktest } from './lib/backtest.mjs'
 import { startSession, loadSession, saveSession, evaluateFixture, scanFixtures, resolveBet, sessionStatus } from './lib/session.mjs'
+import { SPORT_CONFIG, isValidSport, createRatingsBySport, modelProbabilities, updateRatings } from './lib/sports.mjs'
 
 function parseArgs(argv) {
   const args = { _: [] }
@@ -44,13 +45,14 @@ function parseArgs(argv) {
 function loadMatches(path) {
   const rows = parseCsv(readFileSync(path, 'utf-8'))
   return rows.map(r => ({
+    sport: r.sport,
     date: r.date,
     home: r.home,
     away: r.away,
-    home_goals: Number(r.home_goals),
-    away_goals: Number(r.away_goals),
+    home_score: Number(r.home_score),
+    away_score: Number(r.away_score),
     odds_home: Number(r.odds_home),
-    odds_draw: Number(r.odds_draw),
+    odds_draw: r.odds_draw ? Number(r.odds_draw) : null,
     odds_away: Number(r.odds_away),
   }))
 }
@@ -58,11 +60,18 @@ function loadMatches(path) {
 function pct(x) { return `${(x * 100).toFixed(1)}%` }
 function money(x) { return x.toFixed(2) }
 
+function requireSport(sport) {
+  if (!isValidSport(sport)) {
+    console.error(`❌ --sport debe ser uno de: ${Object.keys(SPORT_CONFIG).join(', ')}`)
+    process.exit(1)
+  }
+}
+
 function printRecommendation(r) {
-  console.log(`\n✅ Value bet: ${r.label} (${r.pick}) @ ${r.odds}`)
+  console.log(`\n✅ Value bet [${SPORT_CONFIG[r.sport].label}]: ${r.label} (${r.pick}) @ ${r.odds}`)
   console.log(`   Probabilidad del modelo: ${pct(r.prob)} | edge vs cuota: +${pct(r.edge)}`)
   console.log(`   Bankroll actual: ${money(r.bankrollAtBet)} | apuesta recomendada: ${money(r.stake)} (${pct(r.stakeFraction)} del bankroll, Kelly completo ${pct(r.fullKelly)})`)
-  console.log('\nColócala tú en bet365 y luego: node predict.mjs session result --home "' + r.home + '" --away "' + r.away + '" --outcome home|draw|away\n')
+  console.log('\nColócala tú en bet365 y luego: node predict.mjs session result --sport ' + r.sport + ' --home "' + r.home + '" --away "' + r.away + '" --outcome home|draw|away\n')
 }
 
 function runBacktestCommand(args) {
@@ -83,7 +92,7 @@ function runBacktestCommand(args) {
   const result = runBacktest(matches, options)
   const s = result.summary
 
-  console.log('\n📊 BACKTEST — Elo + Poisson value-betting model\n')
+  console.log('\n📊 BACKTEST — Elo (+ Poisson en fútbol) value-betting model\n')
   console.log(`Partidos analizados:      ${s.numMatches}`)
   console.log(`Apuestas realizadas:      ${s.numBets} (umbral de edge: ${pct(options.edgeThreshold)})`)
   console.log(`Tasa de acierto:          ${pct(s.winRate)}`)
@@ -100,7 +109,7 @@ function runBacktestCommand(args) {
   if (args.verbose) {
     console.log('\nDetalle de apuestas:')
     for (const b of result.bets) {
-      console.log(`  ${b.date}  ${b.home} vs ${b.away}  → ${b.pick.toUpperCase()} @ ${b.odds}  ` +
+      console.log(`  [${b.sport}] ${b.date}  ${b.home} vs ${b.away}  → ${b.pick.toUpperCase()} @ ${b.odds}  ` +
         `edge=${pct(b.edge)}  stake=${money(b.stake)}  ${b.won ? '✅ +' + money(b.profit) : '❌ ' + money(b.profit)}` +
         `  bankroll=${money(b.bankrollAfter)}`)
     }
@@ -110,42 +119,52 @@ function runBacktestCommand(args) {
 }
 
 function runFixtureCommand(args) {
-  const required = ['data', 'home', 'away', 'odds-home', 'odds-draw', 'odds-away']
+  const required = ['data', 'sport', 'home', 'away', 'odds-home', 'odds-away']
   for (const key of required) {
     if (!args[key]) {
       console.error(`❌ Falta --${key}`)
       process.exit(1)
     }
   }
-
-  const matches = loadMatches(args.data)
-  const ratings = new EloRatings()
-  for (const m of [...matches].sort((a, b) => new Date(a.date) - new Date(b.date))) {
-    ratings.update(m.home, m.away, m.home_goals, m.away_goals)
+  requireSport(args.sport)
+  const hasDraw = SPORT_CONFIG[args.sport].outcomes.includes('draw')
+  if (hasDraw && !args['odds-draw']) {
+    console.error('❌ Falta --odds-draw (obligatoria en fútbol)')
+    process.exit(1)
   }
 
+  const matches = loadMatches(args.data).filter(m => m.sport === args.sport)
+  const ratingsBySport = createRatingsBySport()
+  const ratings = ratingsBySport[args.sport]
+  for (const m of [...matches].sort((a, b) => new Date(a.date) - new Date(b.date))) {
+    updateRatings(args.sport, ratings, m.home, m.away, { homeScore: m.home_score, awayScore: m.away_score, homeWon: m.home_score > m.away_score })
+  }
+
+  const model = modelProbabilities(args.sport, ratings, args.home, args.away)
   const ratingHome = ratings.getRating(args.home)
   const ratingAway = ratings.getRating(args.away)
-  const eloDiff = ratingHome + ratings.homeAdvantage - ratingAway
-  const { lambdaHome, lambdaAway } = expectedGoals(eloDiff)
-  const model = matchProbabilities(lambdaHome, lambdaAway)
 
   const oddsHome = Number(args['odds-home'])
-  const oddsDraw = Number(args['odds-draw'])
+  const oddsDraw = hasDraw ? Number(args['odds-draw']) : null
   const oddsAway = Number(args['odds-away'])
-  const fair = fairProbabilities([oddsHome, oddsDraw, oddsAway])
+  const oddsList = hasDraw ? [oddsHome, oddsDraw, oddsAway] : [oddsHome, oddsAway]
+  const fair = fairProbabilities(oddsList)
   const bankroll = Number(args.bankroll || 1000)
   const kellyMultiplier = Number(args.kelly || 0.25)
 
-  console.log(`\n⚽ ${args.home} (Elo ${ratingHome.toFixed(0)}) vs ${args.away} (Elo ${ratingAway.toFixed(0)})\n`)
-  console.log(`Goles esperados:          ${args.home} ${lambdaHome.toFixed(2)} — ${lambdaAway.toFixed(2)} ${args.away}`)
-  console.log(`Margen de la casa:        ${pct(overround([oddsHome, oddsDraw, oddsAway]) - 1)}\n`)
+  console.log(`\n🏆 [${SPORT_CONFIG[args.sport].label}] ${args.home} (Elo ${ratingHome.toFixed(0)}) vs ${args.away} (Elo ${ratingAway.toFixed(0)})\n`)
+  console.log(`Margen de la casa:        ${pct(overround(oddsList) - 1)}\n`)
 
-  const rows = [
-    { key: 'home', label: args.home, odds: oddsHome, prob: model.home, fair: fair[0] },
-    { key: 'draw', label: 'Empate', odds: oddsDraw, prob: model.draw, fair: fair[1] },
-    { key: 'away', label: args.away, odds: oddsAway, prob: model.away, fair: fair[2] },
-  ]
+  const rows = hasDraw
+    ? [
+        { key: 'home', label: args.home, odds: oddsHome, prob: model.home, fair: fair[0] },
+        { key: 'draw', label: 'Empate', odds: oddsDraw, prob: model.draw, fair: fair[1] },
+        { key: 'away', label: args.away, odds: oddsAway, prob: model.away, fair: fair[2] },
+      ]
+    : [
+        { key: 'home', label: args.home, odds: oddsHome, prob: model.home, fair: fair[0] },
+        { key: 'away', label: args.away, odds: oddsAway, prob: model.away, fair: fair[1] },
+      ]
 
   console.log('Resultado   Modelo   Mercado(justo)   Cuota   Edge vs cuota')
   for (const r of rows) {
@@ -193,23 +212,27 @@ function runSessionCommand(args) {
       maxStakeFraction: Number(args['stake-cap'] || 0.05),
       edgeThreshold: Number(args.edge || 0.03),
     })
-    console.log(`\n✅ Sesión creada en ${statePath}`)
+    console.log(`\n✅ Sesión creada en ${statePath} (fútbol, tenis y baloncesto)`)
     console.log(`   Bankroll inicial: ${money(session.bankroll)}`)
     if (session.takeProfitPct != null) console.log(`   Se parará automáticamente al ganar +${pct(session.takeProfitPct)}`)
     if (session.stopLossPct != null) console.log(`   Se parará automáticamente al perder -${pct(session.stopLossPct)}`)
-    console.log('\nSiguiente paso: node predict.mjs session bet --home ... --away ... --odds-home ... --odds-draw ... --odds-away ...\n')
+    console.log('\nSiguiente paso: node predict.mjs session bet --sport football|tennis|basketball --home ... --away ... --odds-home ... [--odds-draw ...] --odds-away ...\n')
     return
   }
 
   if (sub === 'bet') {
-    const required = ['home', 'away', 'odds-home', 'odds-draw', 'odds-away']
+    requireSport(args.sport)
+    const hasDraw = SPORT_CONFIG[args.sport].outcomes.includes('draw')
+    const required = ['home', 'away', 'odds-home', 'odds-away', ...(hasDraw ? ['odds-draw'] : [])]
     for (const key of required) {
       if (!args[key]) { console.error(`❌ Falta --${key}`); process.exit(1) }
     }
     const session = loadSession(statePath)
     const result = evaluateFixture(session, {
-      home: args.home, away: args.away,
-      oddsHome: Number(args['odds-home']), oddsDraw: Number(args['odds-draw']), oddsAway: Number(args['odds-away']),
+      sport: args.sport, home: args.home, away: args.away,
+      oddsHome: Number(args['odds-home']),
+      oddsDraw: hasDraw ? Number(args['odds-draw']) : null,
+      oddsAway: Number(args['odds-away']),
     })
     saveSession(statePath, session)
 
@@ -222,8 +245,10 @@ function runSessionCommand(args) {
   if (sub === 'scan') {
     if (!args.fixtures) { console.error('❌ Falta --fixtures <archivo.csv>'); process.exit(1) }
     const fixtures = parseCsv(readFileSync(args.fixtures, 'utf-8')).map(r => ({
-      home: r.home, away: r.away,
-      oddsHome: Number(r.odds_home), oddsDraw: Number(r.odds_draw), oddsAway: Number(r.odds_away),
+      sport: r.sport, home: r.home, away: r.away,
+      oddsHome: Number(r.odds_home),
+      oddsDraw: r.odds_draw ? Number(r.odds_draw) : null,
+      oddsAway: Number(r.odds_away),
     }))
     const session = loadSession(statePath)
     const { results, message } = scanFixtures(session, fixtures)
@@ -234,13 +259,13 @@ function runSessionCommand(args) {
     console.log(`\n📋 Boletín analizado (${fixtures.length} partidos)\n`)
     const value = results.filter(r => r.canBet)
     for (const r of results) {
-      if (r.canBet) console.log(`✅ ${r.home} vs ${r.away} → apostar ${r.recommendation.pick.toUpperCase()} @ ${r.recommendation.odds}, ${money(r.recommendation.stake)}`)
-      else console.log(`—  ${r.home} vs ${r.away}: ${r.message}`)
+      if (r.canBet) console.log(`✅ [${r.sport}] ${r.home} vs ${r.away} → apostar ${r.recommendation.pick.toUpperCase()} @ ${r.recommendation.odds}, ${money(r.recommendation.stake)}`)
+      else console.log(`—  [${r.sport}] ${r.home} vs ${r.away}: ${r.message}`)
     }
     console.log(`\n${value.length} apuesta(s) recomendada(s) de ${results.length} partidos analizados.`)
     if (value.length > 0) console.log(`Exposición total si las colocas todas: ${money(value.reduce((s, r) => s + r.recommendation.stake, 0))}`)
     console.log('\nColócalas tú en bet365 y luego registra cada resultado con:')
-    console.log('  node predict.mjs session result --home "..." --away "..." --outcome home|draw|away\n')
+    console.log('  node predict.mjs session result --sport ... --home "..." --away "..." --outcome home|draw|away\n')
     return
   }
 
@@ -251,9 +276,9 @@ function runSessionCommand(args) {
     }
     const session = loadSession(statePath)
     try {
-      const { bet, message } = resolveBet(session, { home: args.home, away: args.away, outcome: args.outcome })
+      const { bet, message } = resolveBet(session, { sport: args.sport, home: args.home, away: args.away, outcome: args.outcome })
       saveSession(statePath, session)
-      console.log(`\n${bet.won ? '✅ Acertada' : '❌ Fallada'}: ${bet.home} vs ${bet.away} → ${bet.pick.toUpperCase()} @ ${bet.odds}`)
+      console.log(`\n${bet.won ? '✅ Acertada' : '❌ Fallada'}: [${bet.sport}] ${bet.home} vs ${bet.away} → ${bet.pick.toUpperCase()} @ ${bet.odds}`)
       console.log(`   ${bet.profit >= 0 ? '+' : ''}${money(bet.profit)}  →  bankroll: ${money(bet.bankrollAfter)}`)
       console.log(`\n${message}\n`)
     } catch (e) {
@@ -272,7 +297,7 @@ function runSessionCommand(args) {
     console.log(`   Apuestas resueltas: ${session.history.length}`)
     if (session.pendingBets.length > 0) {
       console.log(`   Apuestas pendientes (${session.pendingBets.length}):`)
-      for (const b of session.pendingBets) console.log(`     - ${b.home} vs ${b.away} → ${b.pick.toUpperCase()} @ ${b.odds}, ${money(b.stake)}`)
+      for (const b of session.pendingBets) console.log(`     - [${b.sport}] ${b.home} vs ${b.away} → ${b.pick.toUpperCase()} @ ${b.odds}, ${money(b.stake)}`)
     }
     console.log(`\n${session.message}\n`)
     return
@@ -281,9 +306,9 @@ function runSessionCommand(args) {
   console.log(`
 Uso:
   node predict.mjs session start  --bankroll 1000 --take-profit 0.2 --stop-loss 0.15 [--data historico.csv] [--kelly 0.25] [--stake-cap 0.05] [--edge 0.03] [--state archivo.json]
-  node predict.mjs session bet    --home "Equipo A" --away "Equipo B" --odds-home 2.10 --odds-draw 3.40 --odds-away 3.20 [--state archivo.json]
+  node predict.mjs session bet    --sport football|tennis|basketball --home "A" --away "B" --odds-home 2.10 [--odds-draw 3.40] --odds-away 3.20 [--state archivo.json]
   node predict.mjs session scan   --fixtures boletin.csv [--state archivo.json]
-  node predict.mjs session result --outcome home|draw|away [--home "Equipo A" --away "Equipo B"] [--state archivo.json]
+  node predict.mjs session result --outcome home|draw|away [--sport ... --home "A" --away "B"] [--state archivo.json]
   node predict.mjs session status [--state archivo.json]
 `)
   process.exit(sub ? 1 : 0)
@@ -299,9 +324,10 @@ else {
   console.log(`
 Uso:
   node predict.mjs backtest --data <archivo.csv> [--bankroll 1000] [--edge 0.03] [--kelly 0.25] [--stake-cap 0.05] [--take-profit 0.2] [--stop-loss 0.15] [--verbose]
-  node predict.mjs fixture  --data <archivo.csv> --home "Equipo A" --away "Equipo B" --odds-home 2.10 --odds-draw 3.40 --odds-away 3.20
+  node predict.mjs fixture  --data <archivo.csv> --sport football|tennis|basketball --home "A" --away "B" --odds-home 2.10 [--odds-draw 3.40] --odds-away 3.20
   node predict.mjs session  start|bet|scan|result|status ...   (ver "node predict.mjs session" para el detalle)
 
+Deportes soportados: football, tennis, basketball (solo mercado de ganador del partido).
 Ver README.md para el formato del CSV y el descargo de responsabilidad.
 `)
   process.exit(command ? 1 : 0)

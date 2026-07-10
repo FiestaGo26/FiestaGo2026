@@ -1,5 +1,5 @@
-home,away,odds_home,odds_draw,odds_away
-Real Norte,Sporting Este,1.60,4.20,6.50
-Union Central,CF Montaña,2.00,3.20,4.00
-Racing Valle,Estrella Oeste,1.90,3.50,4.00
-Atletico Sur,Deportivo Costa,2.10,3.30,3.60
+sport,home,away,odds_home,odds_draw,odds_away
+football,Real Norte,Sporting Este,1.60,4.20,6.50
+football,Union Central,CF Montaña,2.00,3.20,4.00
+tennis,A. Rivas,T. Ibarra,1.55,,2.60
+basketball,Halcones,Panteras,1.50,,2.90
