@@ -6,11 +6,13 @@ import { recommendedStake } from './kelly.mjs'
 import { parseCsv } from './csv.mjs'
 
 // A "session" is a persisted, human-in-the-loop betting run: it keeps a
-// running bankroll across separate CLI invocations (one match finishes
-// at a time, in real life, over days/weeks) and reinvests every gain
-// automatically because each new stake is a fraction of the *current*
-// bankroll (compounding), not of the original one. It refuses to
-// recommend further bets once a take-profit or stop-loss target is hit.
+// running bankroll across separate CLI invocations (matches finish at
+// different times, in real life, over days/weeks) and reinvests every
+// gain automatically because each new stake is a fraction of the
+// *current* bankroll (compounding), not of the original one. It refuses
+// to recommend further bets once a take-profit or stop-loss target is
+// hit. It never places real bets itself — you place them yourself
+// (e.g. on bet365) and report the outcome back with "session result".
 
 export function loadSession(statePath) {
   if (!existsSync(statePath)) {
@@ -57,7 +59,7 @@ export function startSession(statePath, {
     edgeThreshold,
     eloConfig: elo,
     status: 'active', // active | stopped_profit | stopped_loss
-    pending: null,
+    pendingBets: [],
     history: [],
     ratings: ratings.ratings,
   }
@@ -78,12 +80,17 @@ function statusMessage(session) {
     (session.stopLossPct != null ? ` (stop-loss -${(session.stopLossPct * 100).toFixed(0)}%)` : '')
 }
 
-export function evaluateFixture(session, { home, away, oddsHome, oddsDraw, oddsAway }) {
-  if (session.status !== 'active') {
-    return { canBet: false, message: statusMessage(session) }
-  }
-  if (session.pending) {
-    return { canBet: false, message: `⚠️  Hay una apuesta pendiente de resolver (${session.pending.home} vs ${session.pending.away}). Registra su resultado con "session result" antes de evaluar otro partido.` }
+function findPending(session, home, away) {
+  return session.pendingBets.findIndex(b =>
+    b.home.toLowerCase() === home.toLowerCase() && b.away.toLowerCase() === away.toLowerCase())
+}
+
+// Evaluates one fixture against the session's current bankroll and rules.
+// Does NOT mutate session state except appending to pendingBets when a
+// value bet is found - safe to call repeatedly (e.g. from a batch scan).
+function evaluateOne(session, { home, away, oddsHome, oddsDraw, oddsAway }) {
+  if (findPending(session, home, away) !== -1) {
+    return { home, away, canBet: false, message: 'Ya hay una apuesta pendiente para este partido.' }
   }
 
   const ratings = new EloRatings(session.eloConfig)
@@ -111,32 +118,59 @@ export function evaluateFixture(session, { home, away, oddsHome, oddsDraw, oddsA
   })
 
   if (!best) {
-    return { canBet: false, message: 'ℹ️  No hay edge suficiente en ningún resultado — no se recomienda apostar en este partido.' }
+    return { home, away, canBet: false, message: 'No hay edge suficiente en ningún resultado.' }
   }
 
+  // Sized off the bankroll *at the moment of the scan* - simultaneous bets
+  // from the same batch don't compound against each other since none of
+  // them are resolved yet. If several fire from one scan, remember your
+  // real total exposure that day is the sum of all their stakes.
   const { stake, fraction, fullKelly } = recommendedStake(session.bankroll, best.prob, best.odds, {
     kellyMultiplier: session.kellyMultiplier,
     maxStakeFraction: session.maxStakeFraction,
   })
 
   if (stake <= 0) {
-    return { canBet: false, message: 'ℹ️  Kelly recomienda apuesta 0 en este partido — se descarta.' }
+    return { home, away, canBet: false, message: 'Kelly recomienda apuesta 0 en este partido — se descarta.' }
   }
 
-  session.pending = {
+  const bet = {
     home, away, pick: best.key, label: best.label,
     odds: best.odds, prob: best.prob, edge: best.edgeVsMarket,
     stake, stakeFraction: fraction, fullKelly,
     bankrollAtBet: session.bankroll,
   }
-
-  return { canBet: true, recommendation: session.pending }
+  session.pendingBets.push(bet)
+  return { home, away, canBet: true, recommendation: bet }
 }
 
-export function resolveBet(session, outcome) {
-  if (!session.pending) throw new Error('No hay ninguna apuesta pendiente que resolver.')
+export function evaluateFixture(session, fixture) {
+  if (session.status !== 'active') return { canBet: false, message: statusMessage(session) }
+  return evaluateOne(session, fixture)
+}
 
-  const bet = session.pending
+// Evaluates a whole batch of upcoming fixtures (e.g. today's bet365
+// coupon) in one go and returns the list of individual results.
+export function scanFixtures(session, fixtures) {
+  if (session.status !== 'active') {
+    return { results: [], message: statusMessage(session) }
+  }
+  const results = fixtures.map(f => evaluateOne(session, f))
+  return { results, message: statusMessage(session) }
+}
+
+export function resolveBet(session, { home, away, outcome }) {
+  if (session.pendingBets.length === 0) throw new Error('No hay ninguna apuesta pendiente que resolver.')
+
+  let index = 0
+  if (home && away) {
+    index = findPending(session, home, away)
+    if (index === -1) throw new Error(`No hay ninguna apuesta pendiente para ${home} vs ${away}.`)
+  } else if (session.pendingBets.length > 1) {
+    throw new Error(`Hay ${session.pendingBets.length} apuestas pendientes — especifica --home y --away para indicar cuál resolver.`)
+  }
+
+  const [bet] = session.pendingBets.splice(index, 1)
   const won = outcome === bet.pick
   const profit = won ? bet.stake * (bet.odds - 1) : -bet.stake
   session.bankroll += profit
@@ -154,8 +188,6 @@ export function resolveBet(session, outcome) {
   const syntheticGoals = outcome === 'home' ? [1, 0] : outcome === 'away' ? [0, 1] : [0, 0]
   ratings.update(bet.home, bet.away, syntheticGoals[0], syntheticGoals[1])
   session.ratings = ratings.ratings
-
-  session.pending = null
 
   const profitPct = (session.bankroll - session.initialBankroll) / session.initialBankroll
   if (session.takeProfitPct != null && profitPct >= session.takeProfitPct) session.status = 'stopped_profit'

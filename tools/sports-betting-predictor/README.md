@@ -112,24 +112,33 @@ largo de días o semanas.
   `--take-profit` o la pérdida alcanza `--stop-loss`, la sesión pasa a
   estado `stopped_profit`/`stopped_loss` y deja de recomendar apuestas
   hasta que inicies una sesión nueva.
-- **No ejecuta apuestas reales**: no se conecta a ninguna casa de
-  apuestas ni mueve dinero. Tú metes la cuota disponible, la
-  herramienta te dice si hay valor y cuánto apostar, y cuando termina
-  el partido le dices el resultado real para que actualice el
-  bankroll.
+- **No ejecuta apuestas reales**: no se conecta a bet365 ni a ninguna
+  otra casa de apuestas, y no mueve dinero. bet365 no ofrece una API
+  pública para colocar apuestas, y automatizarlo por scraping/ingeniería
+  inversa violaría sus términos de servicio (riesgo de cierre de cuenta
+  y retención de fondos) — así que el paso de "apostar" lo haces tú, a
+  mano, en la app o web de bet365. La herramienta decide qué apostar y
+  cuánto; tú ejecutas y le reportas el resultado real.
 
 ```bash
 # 1. Arrancar sesión: bankroll inicial, objetivo de ganancia y límite de pérdida
 node predict.mjs session start --data data/sample-matches.csv \
   --bankroll 1000 --take-profit 0.2 --stop-loss 0.15
 
-# 2. Antes de cada partido: ¿hay valor? ¿cuánto apostar?
+# 2a. Un partido suelto: ¿hay valor? ¿cuánto apostar?
 node predict.mjs session bet \
   --home "Real Norte" --away "Sporting Este" \
   --odds-home 1.60 --odds-draw 4.20 --odds-away 6.50
 
-# 3. Cuando termina el partido: registrar el resultado real
-node predict.mjs session result --outcome away
+# 2b. O varios de golpe: copia del boletín de bet365 los partidos que
+#     te interesan a un CSV (home,away,odds_home,odds_draw,odds_away)
+#     y analízalos todos a la vez
+node predict.mjs session scan --fixtures data/sample-upcoming-fixtures.csv
+
+# 3. Colocas tú la(s) apuesta(s) recomendada(s) en bet365. Cuando
+#    termina cada partido, registra el resultado real (indicando el
+#    partido si hay varias apuestas pendientes a la vez)
+node predict.mjs session result --home "Real Norte" --away "Sporting Este" --outcome away
 
 # 4. Ver el estado de la sesión en cualquier momento
 node predict.mjs session status
@@ -139,8 +148,14 @@ El estado se guarda por defecto en `.session-state.json` (ignorado por
 git); usa `--state <archivo>` para llevar varias sesiones en paralelo
 (por ejemplo, una por competición o por bankroll).
 
-Solo se permite una apuesta pendiente a la vez: hay que resolver el
-resultado (`session result`) antes de evaluar el siguiente partido.
+Puede haber varias apuestas pendientes a la vez (por ejemplo, tras un
+`scan` de una jornada completa). Si solo hay una pendiente, `session
+result --outcome ...` la resuelve directamente; si hay varias, hay que
+indicar `--home`/`--away` para saber cuál. Ten en cuenta que el stake de
+cada apuesta de un mismo `scan` se calcula sobre el bankroll del momento
+del análisis (no se compensan entre sí porque ninguna se ha resuelto
+todavía) — tu exposición real ese día es la suma de todas las que
+coloques.
 
 ## Formato del CSV
 

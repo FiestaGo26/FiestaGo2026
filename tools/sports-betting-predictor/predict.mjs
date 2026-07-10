@@ -25,7 +25,7 @@ import { expectedGoals, matchProbabilities } from './lib/poisson.mjs'
 import { fairProbabilities, edge as computeEdge, overround } from './lib/odds.mjs'
 import { recommendedStake } from './lib/kelly.mjs'
 import { runBacktest } from './lib/backtest.mjs'
-import { startSession, loadSession, saveSession, evaluateFixture, resolveBet, sessionStatus } from './lib/session.mjs'
+import { startSession, loadSession, saveSession, evaluateFixture, scanFixtures, resolveBet, sessionStatus } from './lib/session.mjs'
 
 function parseArgs(argv) {
   const args = { _: [] }
@@ -57,6 +57,13 @@ function loadMatches(path) {
 
 function pct(x) { return `${(x * 100).toFixed(1)}%` }
 function money(x) { return x.toFixed(2) }
+
+function printRecommendation(r) {
+  console.log(`\n✅ Value bet: ${r.label} (${r.pick}) @ ${r.odds}`)
+  console.log(`   Probabilidad del modelo: ${pct(r.prob)} | edge vs cuota: +${pct(r.edge)}`)
+  console.log(`   Bankroll actual: ${money(r.bankrollAtBet)} | apuesta recomendada: ${money(r.stake)} (${pct(r.stakeFraction)} del bankroll, Kelly completo ${pct(r.fullKelly)})`)
+  console.log('\nColócala tú en bet365 y luego: node predict.mjs session result --home "' + r.home + '" --away "' + r.away + '" --outcome home|draw|away\n')
+}
 
 function runBacktestCommand(args) {
   if (!args.data) {
@@ -208,11 +215,32 @@ function runSessionCommand(args) {
 
     if (!result.canBet) { console.log(`\n${result.message}\n`); return }
 
-    const r = result.recommendation
-    console.log(`\n✅ Value bet: ${r.label} (${r.pick}) @ ${r.odds}`)
-    console.log(`   Probabilidad del modelo: ${pct(r.prob)} | edge vs cuota: +${pct(r.edge)}`)
-    console.log(`   Bankroll actual: ${money(r.bankrollAtBet)} | apuesta recomendada: ${money(r.stake)} (${pct(r.stakeFraction)} del bankroll, Kelly completo ${pct(r.fullKelly)})`)
-    console.log('\nCuando termine el partido: node predict.mjs session result --outcome home|draw|away\n')
+    printRecommendation(result.recommendation)
+    return
+  }
+
+  if (sub === 'scan') {
+    if (!args.fixtures) { console.error('❌ Falta --fixtures <archivo.csv>'); process.exit(1) }
+    const fixtures = parseCsv(readFileSync(args.fixtures, 'utf-8')).map(r => ({
+      home: r.home, away: r.away,
+      oddsHome: Number(r.odds_home), oddsDraw: Number(r.odds_draw), oddsAway: Number(r.odds_away),
+    }))
+    const session = loadSession(statePath)
+    const { results, message } = scanFixtures(session, fixtures)
+    saveSession(statePath, session)
+
+    if (results.length === 0) { console.log(`\n${message}\n`); return }
+
+    console.log(`\n📋 Boletín analizado (${fixtures.length} partidos)\n`)
+    const value = results.filter(r => r.canBet)
+    for (const r of results) {
+      if (r.canBet) console.log(`✅ ${r.home} vs ${r.away} → apostar ${r.recommendation.pick.toUpperCase()} @ ${r.recommendation.odds}, ${money(r.recommendation.stake)}`)
+      else console.log(`—  ${r.home} vs ${r.away}: ${r.message}`)
+    }
+    console.log(`\n${value.length} apuesta(s) recomendada(s) de ${results.length} partidos analizados.`)
+    if (value.length > 0) console.log(`Exposición total si las colocas todas: ${money(value.reduce((s, r) => s + r.recommendation.stake, 0))}`)
+    console.log('\nColócalas tú en bet365 y luego registra cada resultado con:')
+    console.log('  node predict.mjs session result --home "..." --away "..." --outcome home|draw|away\n')
     return
   }
 
@@ -222,12 +250,16 @@ function runSessionCommand(args) {
       process.exit(1)
     }
     const session = loadSession(statePath)
-    const { bet, message } = resolveBet(session, args.outcome)
-    saveSession(statePath, session)
-
-    console.log(`\n${bet.won ? '✅ Acertada' : '❌ Fallada'}: ${bet.home} vs ${bet.away} → ${bet.pick.toUpperCase()} @ ${bet.odds}`)
-    console.log(`   ${bet.profit >= 0 ? '+' : ''}${money(bet.profit)}  →  bankroll: ${money(bet.bankrollAfter)}`)
-    console.log(`\n${message}\n`)
+    try {
+      const { bet, message } = resolveBet(session, { home: args.home, away: args.away, outcome: args.outcome })
+      saveSession(statePath, session)
+      console.log(`\n${bet.won ? '✅ Acertada' : '❌ Fallada'}: ${bet.home} vs ${bet.away} → ${bet.pick.toUpperCase()} @ ${bet.odds}`)
+      console.log(`   ${bet.profit >= 0 ? '+' : ''}${money(bet.profit)}  →  bankroll: ${money(bet.bankrollAfter)}`)
+      console.log(`\n${message}\n`)
+    } catch (e) {
+      console.error(`❌ ${e.message}`)
+      process.exit(1)
+    }
     return
   }
 
@@ -238,7 +270,10 @@ function runSessionCommand(args) {
     console.log(`   Bankroll: ${money(session.bankroll)} (inicial ${money(session.initialBankroll)})`)
     console.log(`   Ganancia/pérdida: ${profitPct >= 0 ? '+' : ''}${pct(profitPct)}`)
     console.log(`   Apuestas resueltas: ${session.history.length}`)
-    if (session.pending) console.log(`   Apuesta pendiente: ${session.pending.home} vs ${session.pending.away} → ${session.pending.pick}`)
+    if (session.pendingBets.length > 0) {
+      console.log(`   Apuestas pendientes (${session.pendingBets.length}):`)
+      for (const b of session.pendingBets) console.log(`     - ${b.home} vs ${b.away} → ${b.pick.toUpperCase()} @ ${b.odds}, ${money(b.stake)}`)
+    }
     console.log(`\n${session.message}\n`)
     return
   }
@@ -247,7 +282,8 @@ function runSessionCommand(args) {
 Uso:
   node predict.mjs session start  --bankroll 1000 --take-profit 0.2 --stop-loss 0.15 [--data historico.csv] [--kelly 0.25] [--stake-cap 0.05] [--edge 0.03] [--state archivo.json]
   node predict.mjs session bet    --home "Equipo A" --away "Equipo B" --odds-home 2.10 --odds-draw 3.40 --odds-away 3.20 [--state archivo.json]
-  node predict.mjs session result --outcome home|draw|away [--state archivo.json]
+  node predict.mjs session scan   --fixtures boletin.csv [--state archivo.json]
+  node predict.mjs session result --outcome home|draw|away [--home "Equipo A" --away "Equipo B"] [--state archivo.json]
   node predict.mjs session status [--state archivo.json]
 `)
   process.exit(sub ? 1 : 0)
@@ -264,7 +300,7 @@ else {
 Uso:
   node predict.mjs backtest --data <archivo.csv> [--bankroll 1000] [--edge 0.03] [--kelly 0.25] [--stake-cap 0.05] [--take-profit 0.2] [--stop-loss 0.15] [--verbose]
   node predict.mjs fixture  --data <archivo.csv> --home "Equipo A" --away "Equipo B" --odds-home 2.10 --odds-draw 3.40 --odds-away 3.20
-  node predict.mjs session  start|bet|result|status ...   (ver "node predict.mjs session" para el detalle)
+  node predict.mjs session  start|bet|scan|result|status ...   (ver "node predict.mjs session" para el detalle)
 
 Ver README.md para el formato del CSV y el descargo de responsabilidad.
 `)
