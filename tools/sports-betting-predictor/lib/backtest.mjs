@@ -14,6 +14,10 @@ export function runBacktest(matches, {
   maxStakeFraction = 0.05,
   elo = { initialRating: 1500, k: 20, homeAdvantage: 60 },
   avgTotalGoals = 2.6,
+  // Session-style stop rules: takeProfitPct/stopLossPct are fractions of
+  // initialBankroll (e.g. 0.2 = stop once up/down 20%). null/undefined = no limit.
+  takeProfitPct = null,
+  stopLossPct = null,
 } = {}) {
   const ratings = new EloRatings(elo)
   const sorted = [...matches].sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -21,10 +25,14 @@ export function runBacktest(matches, {
   let bankroll = initialBankroll
   let peakBankroll = initialBankroll
   let maxDrawdown = 0
+  let stoppedEarly = false
+  let stopReason = null
+  let stopDate = null
   const bets = []
   const bankrollCurve = [{ date: sorted[0]?.date ?? null, bankroll }]
 
   for (const m of sorted) {
+    if (stoppedEarly) break
     const ratingHome = ratings.getRating(m.home)
     const ratingAway = ratings.getRating(m.away)
     const eloDiff = ratingHome + ratings.homeAdvantage - ratingAway
@@ -62,6 +70,13 @@ export function runBacktest(matches, {
         peakBankroll = Math.max(peakBankroll, bankroll)
         maxDrawdown = Math.max(maxDrawdown, (peakBankroll - bankroll) / peakBankroll)
         bankrollCurve.push({ date: m.date, bankroll })
+
+        const profitPct = (bankroll - initialBankroll) / initialBankroll
+        if (takeProfitPct !== null && profitPct >= takeProfitPct) {
+          stoppedEarly = true; stopReason = 'take_profit'; stopDate = m.date
+        } else if (stopLossPct !== null && profitPct <= -stopLossPct) {
+          stoppedEarly = true; stopReason = 'stop_loss'; stopDate = m.date
+        }
       }
     }
 
@@ -82,6 +97,7 @@ export function runBacktest(matches, {
       numMatches: sorted.length,
       winRate: bets.length > 0 ? wins / bets.length : 0,
       maxDrawdownPct: maxDrawdown,
+      stoppedEarly, stopReason, stopDate,
     },
     bets,
     bankrollCurve,

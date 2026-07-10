@@ -77,6 +77,9 @@ node predict.mjs backtest --data data/sample-matches.csv \
 node predict.mjs fixture --data data/sample-matches.csv \
   --home "Real Norte" --away "Sporting Este" \
   --odds-home 1.60 --odds-draw 4.20 --odds-away 6.50
+
+# Backtest con reglas de parada (para validar la estrategia antes de usarla en vivo)
+node predict.mjs backtest --data data/sample-matches.csv --take-profit 0.2 --stop-loss 0.15
 ```
 
 ### Parámetros
@@ -88,8 +91,56 @@ node predict.mjs fixture --data data/sample-matches.csv \
 | `--edge` | backtest | 0.03 | Edge mínimo vs cuota para apostar |
 | `--kelly` | ambos | 0.25 | Multiplicador de Kelly fraccional |
 | `--stake-cap` | backtest | 0.05 | Tope máximo de apuesta (fracción del bankroll) |
+| `--take-profit` | backtest | — | Fracción de ganancia sobre el bankroll inicial a partir de la cual se para la sesión (p.ej. `0.2` = +20%) |
+| `--stop-loss` | backtest | — | Fracción de pérdida a partir de la cual se para la sesión (p.ej. `0.15` = -15%) |
 | `--home/--away` | fixture | — | Nombres de los equipos (deben existir en `--data`) |
 | `--odds-home/--odds-draw/--odds-away` | fixture | — | Cuotas decimales actuales del partido a evaluar |
+
+## Modo `session` — apuestas encadenadas con reinversión automática y parada al objetivo
+
+`backtest` y `fixture` son de un solo uso (todo el histórico de una vez, o
+un partido suelto). `session` es distinto: mantiene un **bankroll
+persistente entre ejecuciones** (guardado en un archivo JSON local) para
+usarlo partido a partido según van ocurriendo en la vida real, a lo
+largo de días o semanas.
+
+- **Reinversión automática**: cada nueva apuesta se calcula con Kelly
+  fraccional sobre el bankroll *actual*, no sobre el inicial — si vas
+  ganando, la siguiente apuesta recomendada es mayor en términos
+  absolutos (interés compuesto); si vas perdiendo, es menor.
+- **Parada automática**: en cuanto la ganancia acumulada alcanza
+  `--take-profit` o la pérdida alcanza `--stop-loss`, la sesión pasa a
+  estado `stopped_profit`/`stopped_loss` y deja de recomendar apuestas
+  hasta que inicies una sesión nueva.
+- **No ejecuta apuestas reales**: no se conecta a ninguna casa de
+  apuestas ni mueve dinero. Tú metes la cuota disponible, la
+  herramienta te dice si hay valor y cuánto apostar, y cuando termina
+  el partido le dices el resultado real para que actualice el
+  bankroll.
+
+```bash
+# 1. Arrancar sesión: bankroll inicial, objetivo de ganancia y límite de pérdida
+node predict.mjs session start --data data/sample-matches.csv \
+  --bankroll 1000 --take-profit 0.2 --stop-loss 0.15
+
+# 2. Antes de cada partido: ¿hay valor? ¿cuánto apostar?
+node predict.mjs session bet \
+  --home "Real Norte" --away "Sporting Este" \
+  --odds-home 1.60 --odds-draw 4.20 --odds-away 6.50
+
+# 3. Cuando termina el partido: registrar el resultado real
+node predict.mjs session result --outcome away
+
+# 4. Ver el estado de la sesión en cualquier momento
+node predict.mjs session status
+```
+
+El estado se guarda por defecto en `.session-state.json` (ignorado por
+git); usa `--state <archivo>` para llevar varias sesiones en paralelo
+(por ejemplo, una por competición o por bankroll).
+
+Solo se permite una apuesta pendiente a la vez: hay que resolver el
+resultado (`session result`) antes de evaluar el siguiente partido.
 
 ## Formato del CSV
 
