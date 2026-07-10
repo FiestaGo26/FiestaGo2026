@@ -27,6 +27,7 @@ import { recommendedStake } from './lib/kelly.mjs'
 import { runBacktest } from './lib/backtest.mjs'
 import { startSession, loadSession, saveSession, evaluateFixture, scanFixtures, resolveBet, sessionStatus } from './lib/session.mjs'
 import { SPORT_CONFIG, isValidSport, createRatingsBySport, modelProbabilities, updateRatings } from './lib/sports.mjs'
+import { simulateProjection } from './lib/projection.mjs'
 
 function parseArgs(argv) {
   const args = { _: [] }
@@ -189,6 +190,37 @@ function runFixtureCommand(args) {
   console.log('\n⚠️  Estimación de un modelo estadístico, no una garantía. Ver README.md.\n')
 }
 
+function runProjectCommand(args) {
+  if (!args.bankroll) { console.error('❌ Falta --bankroll <cantidad>'); process.exit(1) }
+  const params = {
+    initialBankroll: Number(args.bankroll),
+    days: Number(args.days || 30),
+    betsPerDay: Number(args['bets-per-day'] || 1.5),
+    avgOdds: Number(args['avg-odds'] || 2.2),
+    edgeRange: [Number(args['edge-min'] || 0.03), Number(args['edge-max'] || 0.08)],
+    kellyMultiplier: Number(args.kelly || 0.25),
+    maxStakeFraction: Number(args['stake-cap'] || 0.05),
+    trials: Number(args.trials || 5000),
+  }
+  const r = simulateProjection(params)
+
+  console.log(`\n🎲 PROYECCIÓN (Monte Carlo, ${r.trials} simulaciones de ${params.days} días)\n`)
+  console.log(`Supuestos: ~${params.betsPerDay} apuestas de valor/día, cuota media ${params.avgOdds}, ` +
+    `edge real asumido ${pct(params.edgeRange[0])}-${pct(params.edgeRange[1])}, Kelly ${params.kellyMultiplier}x\n`)
+  console.log(`Bankroll inicial:         ${money(params.initialBankroll)}`)
+  console.log(`Peor 10% de los casos:    ${money(r.p10)}`)
+  console.log(`Percentil 25:             ${money(r.p25)}`)
+  console.log(`Mediana:                  ${money(r.median)}`)
+  console.log(`Percentil 75:             ${money(r.p75)}`)
+  console.log(`Mejor 10% de los casos:   ${money(r.p90)}`)
+  console.log(`Media:                    ${money(r.mean)}`)
+  console.log(`Probabilidad de acabar en ganancia: ${pct(r.probProfit)}`)
+  console.log(`Probabilidad de caer por debajo del 20% del bankroll en algún momento: ${pct(r.probSevereDrawdown)}`)
+  console.log('\n⚠️  Esto asume que el edge existe de verdad y se mantiene todo el periodo — la')
+  console.log('    incertidumbre real más grande no está en esta simulación, sino en si esa')
+  console.log('    ventaja existe en el mercado real. Ver README.md.\n')
+}
+
 // --- session: apuestas encadenadas con bankroll persistente que se ---
 // --- reinvierte automáticamente y se para sola al llegar al objetivo ---
 // --- de ganancia o al límite de pérdida. -----------------------------
@@ -320,12 +352,14 @@ const command = args._[0]
 if (command === 'backtest') runBacktestCommand(args)
 else if (command === 'fixture') runFixtureCommand(args)
 else if (command === 'session') runSessionCommand(args)
+else if (command === 'project') runProjectCommand(args)
 else {
   console.log(`
 Uso:
   node predict.mjs backtest --data <archivo.csv> [--bankroll 1000] [--edge 0.03] [--kelly 0.25] [--stake-cap 0.05] [--take-profit 0.2] [--stop-loss 0.15] [--verbose]
   node predict.mjs fixture  --data <archivo.csv> --sport football|tennis|basketball --home "A" --away "B" --odds-home 2.10 [--odds-draw 3.40] --odds-away 3.20
   node predict.mjs session  start|bet|scan|result|status ...   (ver "node predict.mjs session" para el detalle)
+  node predict.mjs project  --bankroll 5 --days 30 [--bets-per-day 1.5] [--avg-odds 2.2] [--edge-min 0.03] [--edge-max 0.08] [--kelly 0.25] [--trials 5000]
 
 Deportes soportados: football, tennis, basketball (solo mercado de ganador del partido).
 Ver README.md para el formato del CSV y el descargo de responsabilidad.

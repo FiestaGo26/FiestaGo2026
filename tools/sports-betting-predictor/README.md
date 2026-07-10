@@ -201,6 +201,43 @@ según crece el bankroll, sin arriesgar la ruina en una mala racha. Un
 requeriría encadenar **muchas sesiones independientes** a lo largo de
 meses, cada una con su propio objetivo modesto — no una única racha.
 
+## `project` — proyección Monte Carlo ("¿cuánto podría ganar en N días?")
+
+Responde con números, no con promesas, a la pregunta de cuánto podría
+crecer un bankroll en un periodo dado — simulando miles de posibles
+"vidas" de la sesión bajo unos supuestos **explícitos** sobre cuántas
+apuestas de valor aparecen por día y cuál es su edge real. No usa datos
+reales: es una calculadora de "si el edge asumido existe y se mantiene,
+así de ancho es el rango de resultados plausibles" — el mayor factor de
+incertidumbre no está en la simulación, sino en si esa ventaja existe
+de verdad en el mercado (ver descargo de responsabilidad arriba).
+
+```bash
+node predict.mjs project --bankroll 5 --days 30
+node predict.mjs project --bankroll 5 --days 30 --bets-per-day 2 --edge-min 0.05 --edge-max 0.12
+node predict.mjs project --bankroll 5 --days 30 --edge-min -0.03 --edge-max 0.03   # sin ventaja real
+```
+
+| Flag | Por defecto | Descripción |
+|------|-------------|-------------|
+| `--bankroll` | — (obligatorio) | Bankroll inicial |
+| `--days` | 30 | Duración de la proyección |
+| `--bets-per-day` | 1.5 | Nº medio de apuestas de valor encontradas al día (los 3 deportes juntos) |
+| `--avg-odds` | 2.2 | Cuota decimal media de esas apuestas |
+| `--edge-min`/`--edge-max` | 0.03 / 0.08 | Rango del edge **real** asumido (no el detectado por el modelo — el que de verdad tendrías) |
+| `--kelly` | 0.25 | Multiplicador de Kelly fraccional |
+| `--stake-cap` | 0.05 | Tope de apuesta (fracción del bankroll) |
+| `--trials` | 5000 | Nº de simulaciones Monte Carlo |
+
+Con los valores por defecto (5€, 30 días, edge real 3-8%), la mediana
+ronda 5,70€ (+14%) y hay ~75% de probabilidad de acabar en ganancia —
+pero si el edge real fuera 0 (mercado eficiente, que es la hipótesis
+por defecto a la que hay que dar más crédito sin datos que la
+contradigan), la mediana es prácticamente el mismo bankroll de salida.
+El resultado cambia mucho según `--edge-min`/`--edge-max`, que es
+precisamente el parámetro que nadie puede fijar con certeza de
+antemano.
+
 ## Formato del CSV
 
 ```
