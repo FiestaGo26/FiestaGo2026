@@ -91,6 +91,7 @@ const TABS = [
   { id:'embed',        icon:'🔗', label:'Widget para mi web' },
   { id:'coupons',      icon:'🎟️', label:'Cupones'        },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
+  { id:'fiscal',       icon:'🧾', label:'Datos fiscales' },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
 
@@ -1010,6 +1011,8 @@ function ProveedorPanelInner() {
               Hola, {provider?.name} 👋
             </h1>
             <p className="text-ink/50 text-sm mb-8">{cat?.icon} {cat?.label} · 📍 {provider?.city}</p>
+
+            <FiscalBanner providerId={provider?.id || null} onGoFiscal={() => setTab('fiscal')} />
 
             <OnboardingChecklist provider={provider} services={services} onGoTab={setTab} />
 
@@ -2247,6 +2250,11 @@ function ProveedorPanelInner() {
           </div>
         )}
 
+        {/* FISCAL */}
+        {tab==='fiscal' && (
+          <FiscalTab provider={provider} />
+        )}
+
         {/* SECURITY */}
         {tab==='security' && (
           <div className="max-w-md">
@@ -2477,6 +2485,233 @@ function EmbedTab({ provider }: { provider: Provider | null }) {
           <li><strong>Web propia</strong>: pégalo donde quieras que aparezca, igual que cualquier HTML.</li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+// Banner del dashboard que avisa cuando el proveedor aún no ha completado sus
+// datos fiscales. No bloquea nada — es un aviso persistente hasta que se
+// completen. Se auto-oculta si tax_ready=true.
+function FiscalBanner({ providerId, onGoFiscal }: {
+  providerId: string | null
+  onGoFiscal: () => void
+}) {
+  const [ready,  setReady]  = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!providerId) return
+    fetch(`/api/proveedor/fiscal?providerId=${providerId}`)
+      .then(r => r.json())
+      .then(d => setReady(!!d?.fiscal?.tax_ready && !d?.needsResign))
+      .catch(() => setReady(null))
+  }, [providerId])
+
+  if (ready === true || ready === null) return null
+
+  return (
+    <div className="mb-8 bg-amber-50 border-l-4 border-amber-500 rounded-r-2xl p-5">
+      <div className="flex items-start gap-4">
+        <div className="text-2xl">🧾</div>
+        <div className="flex-1">
+          <div className="font-bold text-amber-900 mb-1">Antes de tu primera reserva: completa tus datos fiscales</div>
+          <div className="text-sm text-amber-800/85 mb-3 leading-relaxed">
+            Puedes seguir usando FiestaGo con normalidad — recibir consultas, generar presupuestos, chatear con clientes.
+            Pero cuando cierre tu primera reserva y llegue el cobro, necesitamos NIF/CIF y datos de facturación para
+            emitir factura al cliente. Rellenarlo ahora te ahorra prisas ese día.
+          </div>
+          <button onClick={onGoFiscal}
+            className="bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl hover:bg-amber-700 transition-colors">
+            Completar datos fiscales →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Wizard fiscal. Se muestra en la Etapa 2 del alta: cuando el proveedor va a
+// tener su primera reserva. Recoge NIF/CIF, nombre fiscal, dirección, régimen
+// y firma del compromiso. Cumple DAC7 (marketplaces UE) y protege a FiestaGo
+// dejando por escrito que la responsabilidad fiscal recae en el proveedor.
+function FiscalTab({ provider }: { provider: Provider | null }) {
+  const [loading, setLoading] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [form,    setForm]    = useState({
+    tax_id: '', tax_name: '', tax_address: '',
+    tax_regime: 'autonomo_puntual',
+    tax_iva_regime: 'general',
+    accept_agreement: false,
+  })
+  const [taxReady, setTaxReady] = useState<boolean>(false)
+  const [signedAt, setSignedAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!provider?.id) return
+    setLoading(true)
+    fetch(`/api/proveedor/fiscal?providerId=${provider.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.fiscal) {
+          setForm(f => ({
+            ...f,
+            tax_id:         d.fiscal.tax_id         || '',
+            tax_name:       d.fiscal.tax_name       || '',
+            tax_address:    d.fiscal.tax_address    || '',
+            tax_regime:     d.fiscal.tax_regime     || 'autonomo_puntual',
+            tax_iva_regime: d.fiscal.tax_iva_regime || 'general',
+            accept_agreement: !!d.fiscal.tax_agreement_signed_at && !d.needsResign,
+          }))
+          setTaxReady(!!d.fiscal.tax_ready && !d.needsResign)
+          setSignedAt(d.fiscal.tax_agreement_signed_at || null)
+        }
+      })
+      .finally(() => setLoading(false))
+  }, [provider?.id])
+
+  if (!provider) return null
+
+  async function save(e: any) {
+    e.preventDefault()
+    if (!form.accept_agreement) {
+      toast.error('Tienes que aceptar el compromiso de responsabilidad fiscal')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/proveedor/fiscal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId: provider!.id, ...form }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Error al guardar')
+        return
+      }
+      toast.success('✓ Datos fiscales guardados. Ya puedes recibir tu primer cobro.')
+      setTaxReady(true)
+      setSignedAt(data.fiscal.tax_agreement_signed_at)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const REGIMES: Array<[string, string, string]> = [
+    ['autonomo_puntual',     'Autónomo por días puntuales',      'Me doy de alta el día del evento (o los días que trabajo). Habitual en el sector eventos.'],
+    ['autonomo_permanente',  'Autónomo permanente (RETA)',       'Estoy dado de alta en el RETA todo el año, cotización mensual.'],
+    ['sociedad',             'Sociedad (SL, SLU, SA, SLNE)',     'Trabajo desde una empresa con CIF.'],
+    ['cooperativa',          'Cooperativa',                       'Facturo a través de una cooperativa de facturación.'],
+    ['otro',                 'Otro régimen',                      'Ninguna de las anteriores encaja.'],
+  ]
+  const IVA: Array<[string, string]> = [
+    ['general',              'IVA general (21% habitual)'],
+    ['recargo_equivalencia', 'Recargo de equivalencia'],
+    ['modulos',              'Módulos'],
+    ['exento',               'Exento de IVA'],
+  ]
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="font-serif text-2xl font-black text-ink mb-2">Datos fiscales</h1>
+      <p className="text-ink/55 text-sm mb-6 leading-relaxed">
+        Solo necesarios cuando vayas a cobrar tu primera reserva. Rellenar esto ahora te ahorra prisas
+        el día que llegue. FiestaGo los usa para emitir factura al cliente y cumplir con la normativa
+        europea DAC7. Los datos son responsabilidad tuya.
+      </p>
+
+      {taxReady && signedAt && (
+        <div className="mb-6 bg-sage/10 border border-sage/30 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">✓</div>
+            <div className="flex-1">
+              <div className="font-bold text-sage-dark mb-1">Perfil fiscal completo</div>
+              <div className="text-xs text-ink/60">
+                Firmaste el compromiso el {new Date(signedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                Ya puedes recibir cobros vía FiestaGo. Actualiza los datos si cambia algo.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center text-ink/40 py-12">Cargando…</div>
+      ) : (
+        <form onSubmit={save} className="bg-white border border-stone-200 rounded-3xl p-6 shadow-card space-y-5">
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">NIF / CIF *</label>
+            <input value={form.tax_id} onChange={e => setForm(f => ({ ...f, tax_id: e.target.value }))}
+              placeholder="12345678A o B12345678" required
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors uppercase"/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Nombre fiscal *</label>
+            <input value={form.tax_name} onChange={e => setForm(f => ({ ...f, tax_name: e.target.value }))}
+              placeholder="Tu nombre completo, o razón social de la empresa" required
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+            <p className="text-[11px] text-ink/45 mt-1">Es el nombre con el que emites facturas.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Dirección fiscal *</label>
+            <textarea value={form.tax_address} onChange={e => setForm(f => ({ ...f, tax_address: e.target.value }))}
+              placeholder="Calle, número, código postal, ciudad, provincia" rows={2} required
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-2">Régimen de actividad *</label>
+            <div className="space-y-2">
+              {REGIMES.map(([id, label, hint]) => (
+                <label key={id} className={`block p-3 border-2 rounded-xl cursor-pointer transition-colors ${
+                  form.tax_regime === id ? 'border-coral bg-coral/5' : 'border-stone-200 hover:border-stone-300'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <input type="radio" name="regime" value={id} checked={form.tax_regime === id}
+                      onChange={() => setForm(f => ({ ...f, tax_regime: id }))}
+                      className="mt-1 accent-coral"/>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm text-ink">{label}</div>
+                      <div className="text-xs text-ink/55 mt-0.5">{hint}</div>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Régimen de IVA *</label>
+            <select value={form.tax_iva_regime} onChange={e => setForm(f => ({ ...f, tax_iva_regime: e.target.value }))}
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors">
+              {IVA.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+            <p className="text-[11px] text-ink/45 mt-1">Si no lo sabes con seguridad, pregunta a tu asesor. El más habitual en el sector es "IVA general".</p>
+          </div>
+
+          <div className="border-t border-stone-200 pt-5">
+            <label className="flex items-start gap-3 cursor-pointer p-4 bg-cream-dark/40 border border-stone-200 rounded-xl">
+              <input type="checkbox" checked={form.accept_agreement}
+                onChange={e => setForm(f => ({ ...f, accept_agreement: e.target.checked }))}
+                className="mt-0.5 accent-coral w-4 h-4 flex-shrink-0"/>
+              <span className="text-xs text-ink/75 leading-relaxed">
+                <strong className="block text-ink text-sm mb-1">Compromiso de responsabilidad fiscal</strong>
+                Declaro que los datos anteriores son correctos y que soy el único responsable de estar
+                al día con mis obligaciones fiscales (Hacienda) y de Seguridad Social (RETA cuando
+                corresponda) en el momento de emitir factura por cualquier reserva recibida a través
+                de FiestaGo. Autorizo a FiestaGo a incluir estos datos en el reporte anual DAC7 a la
+                Agencia Tributaria, según la normativa europea de plataformas digitales.
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" disabled={saving}
+            className="w-full bg-coral text-white font-bold py-3.5 rounded-xl text-base hover:bg-coral-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {saving ? 'Guardando…' : (taxReady ? 'Actualizar datos fiscales' : 'Guardar y firmar compromiso')}
+          </button>
+        </form>
+      )}
     </div>
   )
 }
