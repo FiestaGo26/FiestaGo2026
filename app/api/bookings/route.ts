@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { calcCommission } from '@/lib/constants'
 import { emailAdminNewBooking, emailAdminPackInquiry, emailProviderNewBooking, emailClientBookingReceived } from '@/lib/resend'
 import { requireClientAuth } from '@/lib/auth'
+import { computePaymentSchedule } from '@/lib/booking-payments'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -72,6 +73,20 @@ export async function POST(req: NextRequest) {
     // también a packs (mismo 8% encima del precio del pack).
     const commission = calcCommission(amount)
 
+    // Anticipo del servicio, si aplica. Se lee del servicio elegido para
+    // calcular el desglose de pagos (anticipo al reservar + resto 2 meses
+    // antes del evento). Si no hay service_id, no hay anticipo y el
+    // cliente paga 100% al reservar.
+    let depositPct = 0
+    if (service_id) {
+      const { data: svc } = await supabase
+        .from('provider_services')
+        .select('deposit_pct')
+        .eq('id', service_id).maybeSingle()
+      depositPct = Math.max(0, Math.min(40, svc?.deposit_pct || 0))
+    }
+    const schedule = computePaymentSchedule(commission.clientPays, depositPct, event_date)
+
     const { data, error } = await supabase
       .from('bookings')
       .insert({
@@ -94,6 +109,12 @@ export async function POST(req: NextRequest) {
         commission_amt:   commission.amount,
         provider_earns:   commission.providerEarns,
         is_free_txn:      commission.isFree,
+        // Desglose del pago (single-source-of-truth en lib/booking-payments.ts)
+        first_payment_amount:   schedule.firstPaymentAmount,
+        first_payment_status:   'pending',
+        second_payment_amount:  schedule.secondPaymentAmount,
+        second_payment_due_date: schedule.secondPaymentDueDate,
+        second_payment_status:  schedule.secondPaymentStatus,
         status: 'pending',
       })
       .select()
@@ -155,7 +176,7 @@ export async function POST(req: NextRequest) {
       } catch { /* no-op */ }
     }
 
-    return NextResponse.json({ booking: data, commission }, { status: 201 })
+    return NextResponse.json({ booking: data, commission, schedule }, { status: 201 })
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Error inesperado en la reserva' }, { status: 500 })
   }

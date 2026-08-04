@@ -1843,6 +1843,27 @@ function ProveedorPanelInner() {
                 {b.message&&(
                   <div className="bg-stone-50 rounded-xl p-3 text-xs text-ink/60 mb-3 italic">"{b.message}"</div>
                 )}
+                {/* Estado del segundo pago — solo aparece si aplica (split). */}
+                {b.second_payment_amount != null && b.second_payment_amount > 0 && (
+                  <div className={`rounded-xl px-3 py-2.5 mb-3 text-xs border ${
+                    b.second_payment_status === 'paid'      ? 'bg-emerald-50 border-emerald-200 text-emerald-900' :
+                    b.second_payment_status === 'overdue'   ? 'bg-red-50 border-red-200 text-red-900' :
+                    b.second_payment_status === 'cancelled' ? 'bg-stone-100 border-stone-200 text-stone-600' :
+                                                              'bg-amber-50 border-amber-200 text-amber-900'
+                  }`}>
+                    <div className="font-semibold mb-0.5">
+                      {b.second_payment_status === 'paid'      ? '✓ Cliente ha pagado el resto' :
+                       b.second_payment_status === 'overdue'   ? '⚠️ Segundo pago vencido' :
+                       b.second_payment_status === 'cancelled' ? '✕ Reserva cancelada por impago' :
+                                                                 '⏳ Segundo pago pendiente'}
+                    </div>
+                    <div className="opacity-85">
+                      {formatEuro(b.second_payment_amount)} vence el{' '}
+                      {b.second_payment_due_date && new Date(b.second_payment_due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {b.second_payment_status === 'pending' && ' (2 meses antes del evento)'}
+                    </div>
+                  </div>
+                )}
                 {b.status==='pending'&&(
                   <div className="flex gap-2">
                     <button onClick={() => updateBooking(b.id,'confirmed')}

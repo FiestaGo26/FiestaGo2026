@@ -711,16 +711,20 @@ export default function ProviderDetailPage() {
               {/* Anticipo del servicio, si aplica. Informativo — la lógica real
                   de cobro parcial se activará con Stripe Connect (roadmap). */}
               {selectedSvc?.deposit_pct != null && selectedSvc.deposit_pct > 0 && (
-                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs flex items-start gap-2">
-                  <span className="text-lg leading-none">💶</span>
-                  <div className="flex-1">
+                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs">
+                  <div className="flex items-start gap-2 mb-2">
+                    <span className="text-lg leading-none">💶</span>
                     <div className="font-semibold text-amber-900">
-                      Requiere anticipo del {selectedSvc.deposit_pct}% al reservar
+                      Este servicio se paga en dos plazos
                     </div>
-                    <div className="text-amber-800/85 mt-0.5">
-                      Del total, se cobra un {selectedSvc.deposit_pct}% en el momento de la reserva
-                      para confirmar la fecha. El resto se paga antes del evento.
-                    </div>
+                  </div>
+                  <ol className="ml-6 space-y-1 text-amber-800/85 list-decimal">
+                    <li><strong>{selectedSvc.deposit_pct}% al reservar</strong> — confirma tu fecha en el momento.</li>
+                    <li><strong>{100 - selectedSvc.deposit_pct}% restante 2 meses antes del evento</strong> — te avisaremos por email y WhatsApp con antelación.</li>
+                  </ol>
+                  <div className="mt-2 pt-2 border-t border-amber-200 text-amber-800/80 text-[11px] leading-relaxed">
+                    Si reservas con menos de 2 meses de antelación, pagas el 100% al reservar.
+                    Tu pago queda retenido por FiestaGo hasta el evento (Garantía de Éxito).
                   </div>
                 </div>
               )}
