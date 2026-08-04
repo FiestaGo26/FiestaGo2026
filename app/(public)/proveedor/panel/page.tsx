@@ -88,6 +88,7 @@ const TABS = [
   { id:'bookings',     icon:'📋', label:'Reservas'       },
   { id:'earnings',     icon:'💶', label:'Cobros'         },
   { id:'messages',     icon:'💬', label:'Mensajes'       },
+  { id:'video-calls',  icon:'📹', label:'Videollamadas'  },
   { id:'embed',        icon:'🔗', label:'Widget para mi web' },
   { id:'coupons',      icon:'🎟️', label:'Cupones'        },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
@@ -149,6 +150,7 @@ function ProveedorPanelInner() {
     name:'', phone:'', website:'', instagram:'', description:'', specialties:'',
     photo_url:'' as string,
     auto_reply_message:'' as string,
+    offers_video_call: false,
   })
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
@@ -733,6 +735,7 @@ function ProveedorPanelInner() {
         specialties: (data.provider.specialties || []).join(', '),
         photo_url:   data.provider.photo_url || '',
         auto_reply_message: data.provider.auto_reply_message || '',
+        offers_video_call: !!data.provider.offers_video_call,
       })
       setReplyTemplates(Array.isArray(data.provider.reply_templates) ? data.provider.reply_templates : [])
 
@@ -795,6 +798,7 @@ function ProveedorPanelInner() {
           description: profile.description || null,
           specialties: profile.specialties.split(',').map(s=>s.trim()).filter(Boolean),
           auto_reply_message: profile.auto_reply_message.trim() || null,
+          offers_video_call: profile.offers_video_call,
         }),
       })
       const data = await res.json()
@@ -1445,6 +1449,19 @@ function ProveedorPanelInner() {
                   onChange={e => setProfile(p => ({...p,specialties:e.target.value}))}
                   placeholder="ej. Bodas íntimas, Vídeo 4K"
                   className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+              </div>
+              <div className="mb-5 pt-4 border-t border-stone-200">
+                <label className="flex items-start gap-3 cursor-pointer p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <input type="checkbox" checked={profile.offers_video_call}
+                    onChange={e => setProfile(p => ({...p, offers_video_call: e.target.checked}))}
+                    className="mt-0.5 accent-emerald-600 w-4 h-4 flex-shrink-0"/>
+                  <span className="text-xs text-ink/85 leading-relaxed">
+                    <strong className="block text-emerald-900 text-sm mb-1">📹 Ofrezco videollamada gratuita antes de reservar</strong>
+                    Aparecerá en tu ficha pública un botón para que los clientes indecisos pidan una videollamada breve.
+                    Los "clientes cierran mucho más después de vernos por vídeo" — este toggle captura esos leads que hoy se pierden.
+                    Recibirás cada solicitud por email y en la pestaña "📹 Videollamadas" del panel para acordar día y hora.
+                  </span>
+                </label>
               </div>
               <div className="mb-5 pt-4 border-t border-stone-200">
                 <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">
@@ -2439,6 +2456,11 @@ function ProveedorPanelInner() {
           </div>
         )}
 
+        {/* VIDEO CALLS · solicitudes pre-venta */}
+        {tab==='video-calls' && (
+          <VideoCallsTab provider={provider} offersVideoCall={profile.offers_video_call} onGoProfile={() => setTab('profile')} />
+        )}
+
         {/* FISCAL */}
         {tab==='fiscal' && (
           <FiscalTab provider={provider} />
@@ -2673,6 +2695,195 @@ function EmbedTab({ provider }: { provider: Provider | null }) {
           <li><strong>Wix / Squarespace</strong>: en un bloque "Embed code" o "Insertar HTML".</li>
           <li><strong>Web propia</strong>: pégalo donde quieras que aparezca, igual que cualquier HTML.</li>
         </ul>
+      </div>
+    </div>
+  )
+}
+
+// Panel de solicitudes de videollamada pre-venta. Cada solicitud es un
+// lead capturado desde la ficha pública del proveedor. Aquí el proveedor
+// las gestiona: acepta y genera link Jitsi (que copia y manda al cliente
+// por WhatsApp/email como quiera), marca completada tras la llamada, o
+// cancela si no encaja.
+function VideoCallsTab({ provider, offersVideoCall, onGoProfile }: {
+  provider: Provider | null
+  offersVideoCall: boolean
+  onGoProfile: () => void
+}) {
+  const [requests, setRequests] = useState<any[]>([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    if (!provider?.id) return
+    setLoading(true)
+    fetch(`/api/proveedor/video-call-requests?providerId=${provider.id}`)
+      .then(r => r.json())
+      .then(d => setRequests(d.requests || []))
+      .finally(() => setLoading(false))
+  }, [provider?.id])
+
+  async function respond(request_id: string, action: 'propose' | 'complete' | 'cancel') {
+    if (!provider) return
+    const res = await fetch('/api/proveedor/video-call-requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providerId: provider.id, request_id, action }),
+    })
+    const data = await res.json()
+    if (!res.ok) { toast.error(data.error || 'Error'); return }
+    setRequests(prev => prev.map(r => r.id === request_id ? data.request : r))
+    if (action === 'propose' && data.request?.jitsi_url) {
+      toast.success('Sala creada. Copia el link y mándalo al cliente ↓')
+    }
+  }
+
+  if (!provider) return null
+
+  const pending    = requests.filter(r => r.status === 'requested')
+  const proposed   = requests.filter(r => r.status === 'proposed')
+  const finished   = requests.filter(r => r.status === 'completed' || r.status === 'cancelled')
+
+  return (
+    <div className="max-w-3xl">
+      <h1 className="font-serif text-2xl font-black text-ink mb-2">Solicitudes de videollamada</h1>
+      <p className="text-ink/55 text-sm mb-6 leading-relaxed">
+        Clientes potenciales que quieren hablar contigo antes de reservar.
+        Acepta la solicitud y te generamos una sala de videollamada gratuita —
+        copias el link, lo mandas al cliente por WhatsApp o email acordando la hora, y a la hora ambos entráis.
+      </p>
+
+      {!offersVideoCall && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">⚠️</div>
+            <div className="flex-1">
+              <div className="font-bold text-amber-900 mb-1">Aún no ofreces videollamadas</div>
+              <div className="text-sm text-amber-800/85 mb-3">
+                Los clientes no verán el botón de "Pedir videollamada" en tu ficha pública. Actívalo desde tu perfil.
+              </div>
+              <button onClick={onGoProfile}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+                Ir a mi perfil →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center text-ink/40 py-12">Cargando…</div>
+      ) : requests.length === 0 ? (
+        <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
+          <div className="text-4xl mb-3">📹</div>
+          <p className="text-ink/55 text-sm">
+            Todavía no tienes solicitudes. Cuando alguien pida videollamada desde tu ficha pública, aparecerá aquí.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {pending.length > 0 && (
+            <VideoCallSection title="⏳ Pendientes de responder" tone="amber" items={pending} respond={respond} />
+          )}
+          {proposed.length > 0 && (
+            <VideoCallSection title="✓ Sala creada — mándale el link al cliente" tone="emerald" items={proposed} respond={respond} />
+          )}
+          {finished.length > 0 && (
+            <VideoCallSection title="📜 Historial" tone="stone" items={finished} respond={respond} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function VideoCallSection({ title, tone, items, respond }: {
+  title: string
+  tone: 'amber' | 'emerald' | 'stone'
+  items: any[]
+  respond: (id: string, action: 'propose' | 'complete' | 'cancel') => void
+}) {
+  const colors: Record<string, string> = {
+    amber:   'text-amber-800',
+    emerald: 'text-emerald-800',
+    stone:   'text-stone-500',
+  }
+  return (
+    <div>
+      <div className={`text-[11px] font-bold uppercase tracking-widest mb-3 ${colors[tone]}`}>{title}</div>
+      <div className="space-y-3">
+        {items.map(r => (
+          <div key={r.id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
+            <div className="flex justify-between items-start mb-2 gap-3">
+              <div className="flex-1">
+                <div className="font-semibold text-ink text-base">{r.client_name}</div>
+                <div className="text-xs text-ink/50 mt-0.5">
+                  {r.client_email}
+                  {r.client_phone && ` · ${r.client_phone}`}
+                </div>
+              </div>
+              <div className="text-[10px] text-ink/40 whitespace-nowrap">
+                {new Date(r.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+              </div>
+            </div>
+            {r.preferred_slot && (
+              <div className="text-xs text-ink/65 mb-1">
+                <strong className="text-ink/80">Prefiere:</strong> {r.preferred_slot}
+              </div>
+            )}
+            {r.reason && (
+              <div className="bg-stone-50 rounded-xl p-3 text-xs text-ink/70 my-2 italic leading-relaxed">
+                "{r.reason}"
+              </div>
+            )}
+            {r.jitsi_url && (
+              <div className="mt-3 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-1">Link de la sala</div>
+                <div className="flex items-center gap-2">
+                  <input readOnly value={r.jitsi_url}
+                    onClick={(e: any) => e.target.select()}
+                    className="flex-1 text-xs text-emerald-900 bg-white border border-emerald-200 rounded-lg px-3 py-2 font-mono"/>
+                  <button onClick={() => { navigator.clipboard.writeText(r.jitsi_url); toast.success('Copiado ✓') }}
+                    className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-700 transition-colors">
+                    Copiar
+                  </button>
+                </div>
+                <div className="text-[11px] text-emerald-800/70 mt-1.5">
+                  Envía este link al cliente por WhatsApp o email acordando la hora.
+                </div>
+              </div>
+            )}
+            {r.status === 'requested' && (
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => respond(r.id, 'propose')}
+                  className="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm hover:bg-emerald-700 transition-colors">
+                  ✓ Aceptar y crear sala
+                </button>
+                <button onClick={() => respond(r.id, 'cancel')}
+                  className="px-4 border border-red-200 text-red-500 rounded-xl text-sm hover:bg-red-50 transition-colors">
+                  ✕ Rechazar
+                </button>
+              </div>
+            )}
+            {r.status === 'proposed' && (
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => respond(r.id, 'complete')}
+                  className="flex-1 bg-ink text-white font-bold py-2 rounded-xl text-sm hover:bg-ink/85 transition-colors">
+                  Marcar completada
+                </button>
+                <button onClick={() => respond(r.id, 'cancel')}
+                  className="px-4 border border-red-200 text-red-500 rounded-xl text-sm hover:bg-red-50 transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            )}
+            {r.status === 'cancelled' && (
+              <div className="text-xs text-red-500/80 italic mt-2">Cancelada</div>
+            )}
+            {r.status === 'completed' && (
+              <div className="text-xs text-emerald-600 mt-2">✓ Videollamada realizada</div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

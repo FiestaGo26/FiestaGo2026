@@ -38,7 +38,7 @@ const PUBLIC_PROVIDER_FIELDS = `
   id, slug, name, category, city, address, description, short_desc,
   price_base, price_unit, years_active, specialties, tag,
   rating, total_reviews, total_bookings, featured, verified,
-  photo_url, photo_idx, created_at
+  photo_url, photo_idx, offers_video_call, created_at
 `
 
 // GET /api/providers — list approved providers
