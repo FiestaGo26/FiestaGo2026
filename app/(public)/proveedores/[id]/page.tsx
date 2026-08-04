@@ -41,6 +41,7 @@ type Service = {
   thumbnail_url: string | null
   status: string
   cancellation_policy: 'flexible' | 'moderate' | 'strict' | null
+  deposit_pct?: number | null
   addons?: Array<{ id: string; label: string; description?: string | null; price: number }>
   media?: Array<{
     id: string
@@ -704,6 +705,23 @@ export default function ProviderDetailPage() {
                     </div>
                   )}
                   {couponError && <p className="text-xs text-red-600 mt-1.5">{couponError}</p>}
+                </div>
+              )}
+
+              {/* Anticipo del servicio, si aplica. Informativo — la lógica real
+                  de cobro parcial se activará con Stripe Connect (roadmap). */}
+              {selectedSvc?.deposit_pct != null && selectedSvc.deposit_pct > 0 && (
+                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs flex items-start gap-2">
+                  <span className="text-lg leading-none">💶</span>
+                  <div className="flex-1">
+                    <div className="font-semibold text-amber-900">
+                      Requiere anticipo del {selectedSvc.deposit_pct}% al reservar
+                    </div>
+                    <div className="text-amber-800/85 mt-0.5">
+                      Del total, se cobra un {selectedSvc.deposit_pct}% en el momento de la reserva
+                      para confirmar la fecha. El resto se paga antes del evento.
+                    </div>
+                  </div>
                 </div>
               )}
 

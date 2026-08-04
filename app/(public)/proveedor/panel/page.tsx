@@ -162,10 +162,12 @@ function ProveedorPanelInner() {
   const [newSvc, setNewSvc] = useState<{
     name: string; description: string; price: string; duration: string; maxGuests: string
     cancellation_policy: 'flexible' | 'moderate' | 'strict'
+    deposit_pct: number
     mediaFile: File | null; mediaPreview: string | null
   }>({
     name: '', description: '', price: '', duration: 'Todo el día', maxGuests: '',
     cancellation_policy: 'moderate',
+    deposit_pct: 0,
     mediaFile: null, mediaPreview: null,
   })
 
@@ -787,6 +789,7 @@ function ProveedorPanelInner() {
           duration:    newSvc.duration,
           max_guests:  newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
           cancellation_policy: newSvc.cancellation_policy,
+          deposit_pct: newSvc.deposit_pct,
           media_type,
           media_url,
         }),
@@ -796,6 +799,7 @@ function ProveedorPanelInner() {
       setServices(s => [...s, data.service])
       setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'',
                   cancellation_policy: 'moderate',
+                  deposit_pct: 0,
                   mediaFile: null, mediaPreview: null })
       setShowNewSvc(false)
       toast.success('Servicio añadido ✓ · Marca ahora los días que NO estés disponible')
@@ -1439,6 +1443,29 @@ function ProveedorPanelInner() {
                         <option key={key} value={key}>{p.icon} {p.label} — {p.short}</option>
                       ))}
                     </select>
+                  </div>
+                  {/* Anticipo al reservar. 0% = sin anticipo (cobra todo al final). Cap 40%. */}
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">
+                      Anticipo al reservar: <span className="text-coral">{newSvc.deposit_pct}%</span>
+                    </label>
+                    <input type="range" min={0} max={40} step={5}
+                      value={newSvc.deposit_pct}
+                      onChange={e => setNewSvc(s => ({ ...s, deposit_pct: parseInt(e.target.value) }))}
+                      className="w-full accent-coral cursor-pointer"/>
+                    <div className="flex justify-between text-[10px] text-ink/40 mt-1 font-mono">
+                      <span>0%</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span>
+                    </div>
+                    {newSvc.deposit_pct > 0 && newSvc.price && parseFloat(newSvc.price) > 0 && (
+                      <div className="mt-2 text-xs text-ink/60">
+                        El cliente pagará <strong>{formatEuro(parseFloat(newSvc.price) * newSvc.deposit_pct / 100)}</strong> al reservar y el resto antes del evento.
+                      </div>
+                    )}
+                    {newSvc.deposit_pct > 0 && (
+                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-800 leading-relaxed">
+                        <strong>⚠️ Ojo con la fiscalidad:</strong> activar anticipo implica emitir 2 facturas por reserva (una al anticipo, otra al final). Si eres autónomo puntual tendrás que darte de alta 2 días en vez de 1.
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Descripción</label>

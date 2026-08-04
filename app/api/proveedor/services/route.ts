@@ -8,8 +8,14 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_FIELDS = new Set([
   'name', 'description', 'price', 'price_unit', 'duration', 'max_guests',
   'media_type', 'media_url', 'thumbnail_url', 'status', 'sort_order',
-  'cancellation_policy', 'addons',
+  'cancellation_policy', 'addons', 'deposit_pct',
 ])
+
+// Sanea deposit_pct: 0-40, entero. Se aplica tanto en POST como en PATCH.
+function cleanDepositPct(raw: any): number {
+  const n = Math.round(Number(raw) || 0)
+  return Math.max(0, Math.min(40, n))
+}
 
 // GET /api/proveedor/services?provider_id=...
 // Listado público de servicios de un proveedor (lo consume también la
@@ -64,6 +70,7 @@ export async function POST(req: NextRequest) {
       thumbnail_url: body.thumbnail_url || null,
       cancellation_policy: body.cancellation_policy || 'moderate',
       addons:        Array.isArray(body.addons) ? body.addons : [],
+      deposit_pct:   cleanDepositPct(body.deposit_pct),
       status:        'active',
     })
     .select()
@@ -88,7 +95,8 @@ export async function PATCH(req: NextRequest) {
 
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
   for (const [k, v] of Object.entries(rawUpdates)) {
-    if (ALLOWED_FIELDS.has(k)) updates[k] = v
+    if (!ALLOWED_FIELDS.has(k)) continue
+    updates[k] = k === 'deposit_pct' ? cleanDepositPct(v) : v
   }
 
   const { data, error } = await supabase
