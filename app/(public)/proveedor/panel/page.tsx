@@ -370,6 +370,89 @@ function ProveedorPanelInner() {
     setSendingMsg(false)
   }
 
+  // Envío genérico con opcional attachment. Comparte pipeline con
+  // sendChatMessage pero admite adjuntos. La videollamada y el
+  // upload de audio/vídeo lo usan.
+  async function sendChatWithAttachment(payload: {
+    body?: string
+    attachment_type: 'video_call' | 'audio' | 'video' | 'image'
+    attachment_url: string
+    attachment_duration_sec?: number
+  }) {
+    if (!provider || !openThread) return
+    setSendingMsg(true)
+    try {
+      const res = await apiFetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: openThread.booking_id,
+          role: 'provider',
+          token: provider.id,
+          ...payload,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setThreadMessages(prev => [...prev, data.message])
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo enviar el adjunto')
+    }
+    setSendingMsg(false)
+  }
+
+  // Videollamada Jitsi Meet — gratuita, sin login, funciona en cualquier
+  // navegador y en la app móvil. Generamos un roomId único con
+  // crypto.randomUUID (evitamos colisiones y salas adivinables).
+  function startVideoCall() {
+    if (!openThread) return
+    const roomId = (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2))
+      .replace(/-/g, '').slice(0, 16)
+    const url = `https://meet.jit.si/fiestago-${roomId}`
+    const clientFirstName = (openThread.client_name || '').split(' ')[0] || 'Hola'
+    sendChatWithAttachment({
+      body: `¡${clientFirstName}! Te dejo el enlace para nuestra videollamada. Pulsa cuando quieras entrar 👇`,
+      attachment_type: 'video_call',
+      attachment_url:  url,
+    })
+  }
+
+  // Upload de audio o vídeo grabado (o cualquier media adjunto) al bucket
+  // provider-media de Supabase Storage. Aceptamos audio/*, video/* e
+  // image/*. Máximo 25MB (cap ya usado en otros uploads del proyecto).
+  async function uploadChatAttachment(file: File) {
+    if (!provider || !openThread) return
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('Máximo 25 MB — graba un mensaje más corto o comprímelo antes.')
+      return
+    }
+    const kind: 'audio' | 'video' | 'image' | null =
+      file.type.startsWith('audio/') ? 'audio' :
+      file.type.startsWith('video/') ? 'video' :
+      file.type.startsWith('image/') ? 'image' : null
+    if (!kind) {
+      toast.error('Formato no admitido. Solo audio, vídeo o imagen.')
+      return
+    }
+    setSendingMsg(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'bin').toLowerCase().slice(0, 6)
+      const key = `chat/${provider.id}/${openThread.booking_id}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('provider-media')
+        .upload(key, file, { contentType: file.type, upsert: false })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('provider-media').getPublicUrl(key)
+      await sendChatWithAttachment({
+        attachment_type: kind,
+        attachment_url:  publicUrl,
+      })
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo subir el archivo')
+      setSendingMsg(false)
+    }
+  }
+
   async function uploadVerificationDoc(file: File) {
     if (!provider) return
     if (file.size > 8 * 1024 * 1024) {
@@ -2086,26 +2169,84 @@ function ProveedorPanelInner() {
                       {threadMessages.map(m => {
                         const mine = m.sender_role === 'provider'
                         const time = new Date(m.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+                        const att  = (m as any).attachment_type
+                        const url  = (m as any).attachment_url
                         return (
                           <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-snug ${mine ? 'bg-coral text-white' : 'bg-white border border-stone-200 text-ink'}`}>
-                              <div className="whitespace-pre-wrap">{m.body}</div>
+                              {m.body && <div className="whitespace-pre-wrap mb-2">{m.body}</div>}
+
+                              {att === 'video_call' && url && (
+                                <a href={url} target="_blank" rel="noreferrer"
+                                  className={`block rounded-xl px-3 py-2.5 mt-1 no-underline transition-colors ${
+                                    mine ? 'bg-white/15 hover:bg-white/25' : 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                                  }`}>
+                                  <div className={`text-[10px] font-bold uppercase tracking-widest ${mine ? 'text-white/80' : 'text-emerald-700'}`}>
+                                    📹 Videollamada
+                                  </div>
+                                  <div className={`text-sm font-semibold mt-0.5 ${mine ? 'text-white' : 'text-emerald-900'}`}>
+                                    Unirse a la sala →
+                                  </div>
+                                  <div className={`text-[10px] mt-0.5 truncate ${mine ? 'text-white/60' : 'text-emerald-700/70'}`}>
+                                    {url.replace(/^https?:\/\//, '')}
+                                  </div>
+                                </a>
+                              )}
+
+                              {att === 'audio' && url && (
+                                <audio controls src={url} className="w-full max-w-[280px] mt-1 rounded-lg" />
+                              )}
+
+                              {att === 'video' && url && (
+                                <video controls src={url} className="w-full max-w-[280px] mt-1 rounded-xl" />
+                              )}
+
+                              {att === 'image' && url && (
+                                <a href={url} target="_blank" rel="noreferrer">
+                                  <img src={url} alt="adjunto"
+                                    className="w-full max-w-[240px] mt-1 rounded-xl object-cover" />
+                                </a>
+                              )}
+
                               <div className={`text-[10px] mt-1 ${mine ? 'text-white/70' : 'text-ink/40'} text-right`}>{time}</div>
                             </div>
                           </div>
                         )
                       })}
                     </div>
-                    <div className="border-t border-stone-200 p-3 flex gap-2">
-                      <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
-                        placeholder="Escribe un mensaje..."
-                        maxLength={2000}
-                        className="flex-1 border border-stone-200 rounded-xl px-4 py-2 text-sm text-ink outline-none focus:border-coral transition-colors"/>
-                      <button onClick={sendChatMessage} disabled={sendingMsg || !msgInput.trim()}
-                        className="bg-coral text-white font-bold text-sm px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
-                        {sendingMsg ? '...' : 'Enviar'}
-                      </button>
+                    <div className="border-t border-stone-200 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        {/* Videollamada Jitsi Meet — gratis, sin login, ambos entran desde su navegador o app. */}
+                        <button onClick={startVideoCall} disabled={sendingMsg}
+                          title="Enviar enlace de videollamada Jitsi al cliente"
+                          className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50">
+                          📹 Videollamada
+                        </button>
+                        {/* Adjuntar audio/vídeo/imagen grabado con el móvil. */}
+                        <label className={`text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer ${sendingMsg ? 'opacity-50 pointer-events-none' : ''}`}
+                          title="Subir audio o vídeo grabado con el móvil">
+                          📎 Adjuntar
+                          <input type="file"
+                            accept="audio/*,video/*,image/*"
+                            onChange={e => {
+                              const f = e.target.files?.[0]
+                              if (f) uploadChatAttachment(f)
+                              e.target.value = ''
+                            }}
+                            className="hidden"/>
+                        </label>
+                      </div>
+                      <div className="flex gap-2">
+                        <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                          placeholder="Escribe un mensaje..."
+                          maxLength={2000}
+                          className="flex-1 border border-stone-200 rounded-xl px-4 py-2 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                        <button onClick={sendChatMessage} disabled={sendingMsg || !msgInput.trim()}
+                          className="bg-coral text-white font-bold text-sm px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
+                          {sendingMsg ? '...' : 'Enviar'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (

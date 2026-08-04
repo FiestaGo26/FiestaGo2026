@@ -518,10 +518,36 @@ function ChatModal({ booking, onClose }: { booking: Booking; onClose: () => void
           ) : messages.map(m => {
             const mine = m.sender_role === 'client'
             const time = new Date(m.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+            const att  = (m as any).attachment_type
+            const url  = (m as any).attachment_url
             return (
               <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-snug ${mine ? 'bg-coral text-white' : 'bg-white border border-stone-200 text-ink'}`}>
-                  <div className="whitespace-pre-wrap">{m.body}</div>
+                  {m.body && <div className="whitespace-pre-wrap mb-2">{m.body}</div>}
+                  {att === 'video_call' && url && (
+                    <a href={url} target="_blank" rel="noreferrer"
+                      className={`block rounded-xl px-3 py-2.5 mt-1 no-underline transition-colors ${
+                        mine ? 'bg-white/15 hover:bg-white/25' : 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                      }`}>
+                      <div className={`text-[10px] font-bold uppercase tracking-widest ${mine ? 'text-white/80' : 'text-emerald-700'}`}>
+                        📹 Videollamada
+                      </div>
+                      <div className={`text-sm font-semibold mt-0.5 ${mine ? 'text-white' : 'text-emerald-900'}`}>
+                        Unirse a la sala →
+                      </div>
+                    </a>
+                  )}
+                  {att === 'audio' && url && (
+                    <audio controls src={url} className="w-full max-w-[280px] mt-1 rounded-lg" />
+                  )}
+                  {att === 'video' && url && (
+                    <video controls src={url} className="w-full max-w-[280px] mt-1 rounded-xl" />
+                  )}
+                  {att === 'image' && url && (
+                    <a href={url} target="_blank" rel="noreferrer">
+                      <img src={url} alt="adjunto" className="w-full max-w-[240px] mt-1 rounded-xl object-cover" />
+                    </a>
+                  )}
                   <div className={`text-[10px] mt-1 ${mine ? 'text-white/70' : 'text-ink/40'} text-right`}>{time}</div>
                 </div>
               </div>
