@@ -88,9 +88,11 @@ const TABS = [
   { id:'bookings',     icon:'📋', label:'Reservas'       },
   { id:'earnings',     icon:'💶', label:'Cobros'         },
   { id:'messages',     icon:'💬', label:'Mensajes'       },
+  { id:'video-calls',  icon:'📹', label:'Videollamadas'  },
   { id:'embed',        icon:'🔗', label:'Widget para mi web' },
   { id:'coupons',      icon:'🎟️', label:'Cupones'        },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
+  { id:'fiscal',       icon:'🧾', label:'Datos fiscales' },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
 
@@ -148,6 +150,7 @@ function ProveedorPanelInner() {
     name:'', phone:'', website:'', instagram:'', description:'', specialties:'',
     photo_url:'' as string,
     auto_reply_message:'' as string,
+    offers_video_call: false,
   })
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
@@ -161,10 +164,12 @@ function ProveedorPanelInner() {
   const [newSvc, setNewSvc] = useState<{
     name: string; description: string; price: string; duration: string; maxGuests: string
     cancellation_policy: 'flexible' | 'moderate' | 'strict'
+    deposit_pct: number
     mediaFile: File | null; mediaPreview: string | null
   }>({
     name: '', description: '', price: '', duration: 'Todo el día', maxGuests: '',
     cancellation_policy: 'moderate',
+    deposit_pct: 0,
     mediaFile: null, mediaPreview: null,
   })
 
@@ -365,6 +370,89 @@ function ProveedorPanelInner() {
       toast.error(err.message || 'No se pudo enviar')
     }
     setSendingMsg(false)
+  }
+
+  // Envío genérico con opcional attachment. Comparte pipeline con
+  // sendChatMessage pero admite adjuntos. La videollamada y el
+  // upload de audio/vídeo lo usan.
+  async function sendChatWithAttachment(payload: {
+    body?: string
+    attachment_type: 'video_call' | 'audio' | 'video' | 'image'
+    attachment_url: string
+    attachment_duration_sec?: number
+  }) {
+    if (!provider || !openThread) return
+    setSendingMsg(true)
+    try {
+      const res = await apiFetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: openThread.booking_id,
+          role: 'provider',
+          token: provider.id,
+          ...payload,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
+      setThreadMessages(prev => [...prev, data.message])
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo enviar el adjunto')
+    }
+    setSendingMsg(false)
+  }
+
+  // Videollamada Jitsi Meet — gratuita, sin login, funciona en cualquier
+  // navegador y en la app móvil. Generamos un roomId único con
+  // crypto.randomUUID (evitamos colisiones y salas adivinables).
+  function startVideoCall() {
+    if (!openThread) return
+    const roomId = (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2))
+      .replace(/-/g, '').slice(0, 16)
+    const url = `https://meet.jit.si/fiestago-${roomId}`
+    const clientFirstName = (openThread.client_name || '').split(' ')[0] || 'Hola'
+    sendChatWithAttachment({
+      body: `¡${clientFirstName}! Te dejo el enlace para nuestra videollamada. Pulsa cuando quieras entrar 👇`,
+      attachment_type: 'video_call',
+      attachment_url:  url,
+    })
+  }
+
+  // Upload de audio o vídeo grabado (o cualquier media adjunto) al bucket
+  // provider-media de Supabase Storage. Aceptamos audio/*, video/* e
+  // image/*. Máximo 25MB (cap ya usado en otros uploads del proyecto).
+  async function uploadChatAttachment(file: File) {
+    if (!provider || !openThread) return
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('Máximo 25 MB — graba un mensaje más corto o comprímelo antes.')
+      return
+    }
+    const kind: 'audio' | 'video' | 'image' | null =
+      file.type.startsWith('audio/') ? 'audio' :
+      file.type.startsWith('video/') ? 'video' :
+      file.type.startsWith('image/') ? 'image' : null
+    if (!kind) {
+      toast.error('Formato no admitido. Solo audio, vídeo o imagen.')
+      return
+    }
+    setSendingMsg(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'bin').toLowerCase().slice(0, 6)
+      const key = `chat/${provider.id}/${openThread.booking_id}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from('provider-media')
+        .upload(key, file, { contentType: file.type, upsert: false })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('provider-media').getPublicUrl(key)
+      await sendChatWithAttachment({
+        attachment_type: kind,
+        attachment_url:  publicUrl,
+      })
+    } catch (err: any) {
+      toast.error(err.message || 'No se pudo subir el archivo')
+      setSendingMsg(false)
+    }
   }
 
   async function uploadVerificationDoc(file: File) {
@@ -647,6 +735,7 @@ function ProveedorPanelInner() {
         specialties: (data.provider.specialties || []).join(', '),
         photo_url:   data.provider.photo_url || '',
         auto_reply_message: data.provider.auto_reply_message || '',
+        offers_video_call: !!data.provider.offers_video_call,
       })
       setReplyTemplates(Array.isArray(data.provider.reply_templates) ? data.provider.reply_templates : [])
 
@@ -709,6 +798,7 @@ function ProveedorPanelInner() {
           description: profile.description || null,
           specialties: profile.specialties.split(',').map(s=>s.trim()).filter(Boolean),
           auto_reply_message: profile.auto_reply_message.trim() || null,
+          offers_video_call: profile.offers_video_call,
         }),
       })
       const data = await res.json()
@@ -786,6 +876,7 @@ function ProveedorPanelInner() {
           duration:    newSvc.duration,
           max_guests:  newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
           cancellation_policy: newSvc.cancellation_policy,
+          deposit_pct: newSvc.deposit_pct,
           media_type,
           media_url,
         }),
@@ -795,6 +886,7 @@ function ProveedorPanelInner() {
       setServices(s => [...s, data.service])
       setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'',
                   cancellation_policy: 'moderate',
+                  deposit_pct: 0,
                   mediaFile: null, mediaPreview: null })
       setShowNewSvc(false)
       toast.success('Servicio añadido ✓ · Marca ahora los días que NO estés disponible')
@@ -1010,6 +1102,8 @@ function ProveedorPanelInner() {
               Hola, {provider?.name} 👋
             </h1>
             <p className="text-ink/50 text-sm mb-8">{cat?.icon} {cat?.label} · 📍 {provider?.city}</p>
+
+            <FiscalBanner providerId={provider?.id || null} onGoFiscal={() => setTab('fiscal')} />
 
             <OnboardingChecklist provider={provider} services={services} onGoTab={setTab} />
 
@@ -1357,6 +1451,19 @@ function ProveedorPanelInner() {
                   className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
               </div>
               <div className="mb-5 pt-4 border-t border-stone-200">
+                <label className="flex items-start gap-3 cursor-pointer p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <input type="checkbox" checked={profile.offers_video_call}
+                    onChange={e => setProfile(p => ({...p, offers_video_call: e.target.checked}))}
+                    className="mt-0.5 accent-emerald-600 w-4 h-4 flex-shrink-0"/>
+                  <span className="text-xs text-ink/85 leading-relaxed">
+                    <strong className="block text-emerald-900 text-sm mb-1">📹 Ofrezco videollamada gratuita antes de reservar</strong>
+                    Aparecerá en tu ficha pública un botón para que los clientes indecisos pidan una videollamada breve.
+                    Los "clientes cierran mucho más después de vernos por vídeo" — este toggle captura esos leads que hoy se pierden.
+                    Recibirás cada solicitud por email y en la pestaña "📹 Videollamadas" del panel para acordar día y hora.
+                  </span>
+                </label>
+              </div>
+              <div className="mb-5 pt-4 border-t border-stone-200">
                 <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">
                   Auto-respuesta al cliente
                 </label>
@@ -1436,6 +1543,29 @@ function ProveedorPanelInner() {
                         <option key={key} value={key}>{p.icon} {p.label} — {p.short}</option>
                       ))}
                     </select>
+                  </div>
+                  {/* Anticipo al reservar. 0% = sin anticipo (cobra todo al final). Cap 40%. */}
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">
+                      Anticipo al reservar: <span className="text-coral">{newSvc.deposit_pct}%</span>
+                    </label>
+                    <input type="range" min={0} max={40} step={5}
+                      value={newSvc.deposit_pct}
+                      onChange={e => setNewSvc(s => ({ ...s, deposit_pct: parseInt(e.target.value) }))}
+                      className="w-full accent-coral cursor-pointer"/>
+                    <div className="flex justify-between text-[10px] text-ink/40 mt-1 font-mono">
+                      <span>0%</span><span>10%</span><span>20%</span><span>30%</span><span>40%</span>
+                    </div>
+                    {newSvc.deposit_pct > 0 && newSvc.price && parseFloat(newSvc.price) > 0 && (
+                      <div className="mt-2 text-xs text-ink/60">
+                        El cliente pagará <strong>{formatEuro(parseFloat(newSvc.price) * newSvc.deposit_pct / 100)}</strong> al reservar y el resto antes del evento.
+                      </div>
+                    )}
+                    {newSvc.deposit_pct > 0 && (
+                      <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-800 leading-relaxed">
+                        <strong>⚠️ Ojo con la fiscalidad:</strong> activar anticipo implica emitir 2 facturas por reserva (una al anticipo, otra al final). Si eres autónomo puntual tendrás que darte de alta 2 días en vez de 1.
+                      </div>
+                    )}
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Descripción</label>
@@ -1813,6 +1943,27 @@ function ProveedorPanelInner() {
                 {b.message&&(
                   <div className="bg-stone-50 rounded-xl p-3 text-xs text-ink/60 mb-3 italic">"{b.message}"</div>
                 )}
+                {/* Estado del segundo pago — solo aparece si aplica (split). */}
+                {b.second_payment_amount != null && b.second_payment_amount > 0 && (
+                  <div className={`rounded-xl px-3 py-2.5 mb-3 text-xs border ${
+                    b.second_payment_status === 'paid'      ? 'bg-emerald-50 border-emerald-200 text-emerald-900' :
+                    b.second_payment_status === 'overdue'   ? 'bg-red-50 border-red-200 text-red-900' :
+                    b.second_payment_status === 'cancelled' ? 'bg-stone-100 border-stone-200 text-stone-600' :
+                                                              'bg-amber-50 border-amber-200 text-amber-900'
+                  }`}>
+                    <div className="font-semibold mb-0.5">
+                      {b.second_payment_status === 'paid'      ? '✓ Cliente ha pagado el resto' :
+                       b.second_payment_status === 'overdue'   ? '⚠️ Segundo pago vencido' :
+                       b.second_payment_status === 'cancelled' ? '✕ Reserva cancelada por impago' :
+                                                                 '⏳ Segundo pago pendiente'}
+                    </div>
+                    <div className="opacity-85">
+                      {formatEuro(b.second_payment_amount)} vence el{' '}
+                      {b.second_payment_due_date && new Date(b.second_payment_due_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {b.second_payment_status === 'pending' && ' (2 meses antes del evento)'}
+                    </div>
+                  </div>
+                )}
                 {b.status==='pending'&&(
                   <div className="flex gap-2">
                     <button onClick={() => updateBooking(b.id,'confirmed')}
@@ -2035,26 +2186,84 @@ function ProveedorPanelInner() {
                       {threadMessages.map(m => {
                         const mine = m.sender_role === 'provider'
                         const time = new Date(m.created_at).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' })
+                        const att  = (m as any).attachment_type
+                        const url  = (m as any).attachment_url
                         return (
                           <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm leading-snug ${mine ? 'bg-coral text-white' : 'bg-white border border-stone-200 text-ink'}`}>
-                              <div className="whitespace-pre-wrap">{m.body}</div>
+                              {m.body && <div className="whitespace-pre-wrap mb-2">{m.body}</div>}
+
+                              {att === 'video_call' && url && (
+                                <a href={url} target="_blank" rel="noreferrer"
+                                  className={`block rounded-xl px-3 py-2.5 mt-1 no-underline transition-colors ${
+                                    mine ? 'bg-white/15 hover:bg-white/25' : 'bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                                  }`}>
+                                  <div className={`text-[10px] font-bold uppercase tracking-widest ${mine ? 'text-white/80' : 'text-emerald-700'}`}>
+                                    📹 Videollamada
+                                  </div>
+                                  <div className={`text-sm font-semibold mt-0.5 ${mine ? 'text-white' : 'text-emerald-900'}`}>
+                                    Unirse a la sala →
+                                  </div>
+                                  <div className={`text-[10px] mt-0.5 truncate ${mine ? 'text-white/60' : 'text-emerald-700/70'}`}>
+                                    {url.replace(/^https?:\/\//, '')}
+                                  </div>
+                                </a>
+                              )}
+
+                              {att === 'audio' && url && (
+                                <audio controls src={url} className="w-full max-w-[280px] mt-1 rounded-lg" />
+                              )}
+
+                              {att === 'video' && url && (
+                                <video controls src={url} className="w-full max-w-[280px] mt-1 rounded-xl" />
+                              )}
+
+                              {att === 'image' && url && (
+                                <a href={url} target="_blank" rel="noreferrer">
+                                  <img src={url} alt="adjunto"
+                                    className="w-full max-w-[240px] mt-1 rounded-xl object-cover" />
+                                </a>
+                              )}
+
                               <div className={`text-[10px] mt-1 ${mine ? 'text-white/70' : 'text-ink/40'} text-right`}>{time}</div>
                             </div>
                           </div>
                         )
                       })}
                     </div>
-                    <div className="border-t border-stone-200 p-3 flex gap-2">
-                      <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
-                        placeholder="Escribe un mensaje..."
-                        maxLength={2000}
-                        className="flex-1 border border-stone-200 rounded-xl px-4 py-2 text-sm text-ink outline-none focus:border-coral transition-colors"/>
-                      <button onClick={sendChatMessage} disabled={sendingMsg || !msgInput.trim()}
-                        className="bg-coral text-white font-bold text-sm px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
-                        {sendingMsg ? '...' : 'Enviar'}
-                      </button>
+                    <div className="border-t border-stone-200 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        {/* Videollamada Jitsi Meet — gratis, sin login, ambos entran desde su navegador o app. */}
+                        <button onClick={startVideoCall} disabled={sendingMsg}
+                          title="Enviar enlace de videollamada Jitsi al cliente"
+                          className="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl transition-colors disabled:opacity-50">
+                          📹 Videollamada
+                        </button>
+                        {/* Adjuntar audio/vídeo/imagen grabado con el móvil. */}
+                        <label className={`text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer ${sendingMsg ? 'opacity-50 pointer-events-none' : ''}`}
+                          title="Subir audio o vídeo grabado con el móvil">
+                          📎 Adjuntar
+                          <input type="file"
+                            accept="audio/*,video/*,image/*"
+                            onChange={e => {
+                              const f = e.target.files?.[0]
+                              if (f) uploadChatAttachment(f)
+                              e.target.value = ''
+                            }}
+                            className="hidden"/>
+                        </label>
+                      </div>
+                      <div className="flex gap-2">
+                        <input value={msgInput} onChange={e => setMsgInput(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                          placeholder="Escribe un mensaje..."
+                          maxLength={2000}
+                          className="flex-1 border border-stone-200 rounded-xl px-4 py-2 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                        <button onClick={sendChatMessage} disabled={sendingMsg || !msgInput.trim()}
+                          className="bg-coral text-white font-bold text-sm px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors disabled:opacity-50">
+                          {sendingMsg ? '...' : 'Enviar'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -2245,6 +2454,16 @@ function ProveedorPanelInner() {
               </div>
             )}
           </div>
+        )}
+
+        {/* VIDEO CALLS · solicitudes pre-venta */}
+        {tab==='video-calls' && (
+          <VideoCallsTab provider={provider} offersVideoCall={profile.offers_video_call} onGoProfile={() => setTab('profile')} />
+        )}
+
+        {/* FISCAL */}
+        {tab==='fiscal' && (
+          <FiscalTab provider={provider} />
         )}
 
         {/* SECURITY */}
@@ -2477,6 +2696,422 @@ function EmbedTab({ provider }: { provider: Provider | null }) {
           <li><strong>Web propia</strong>: pégalo donde quieras que aparezca, igual que cualquier HTML.</li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+// Panel de solicitudes de videollamada pre-venta. Cada solicitud es un
+// lead capturado desde la ficha pública del proveedor. Aquí el proveedor
+// las gestiona: acepta y genera link Jitsi (que copia y manda al cliente
+// por WhatsApp/email como quiera), marca completada tras la llamada, o
+// cancela si no encaja.
+function VideoCallsTab({ provider, offersVideoCall, onGoProfile }: {
+  provider: Provider | null
+  offersVideoCall: boolean
+  onGoProfile: () => void
+}) {
+  const [requests, setRequests] = useState<any[]>([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    if (!provider?.id) return
+    setLoading(true)
+    fetch(`/api/proveedor/video-call-requests?providerId=${provider.id}`)
+      .then(r => r.json())
+      .then(d => setRequests(d.requests || []))
+      .finally(() => setLoading(false))
+  }, [provider?.id])
+
+  async function respond(request_id: string, action: 'propose' | 'complete' | 'cancel') {
+    if (!provider) return
+    const res = await fetch('/api/proveedor/video-call-requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ providerId: provider.id, request_id, action }),
+    })
+    const data = await res.json()
+    if (!res.ok) { toast.error(data.error || 'Error'); return }
+    setRequests(prev => prev.map(r => r.id === request_id ? data.request : r))
+    if (action === 'propose' && data.request?.jitsi_url) {
+      toast.success('Sala creada. Copia el link y mándalo al cliente ↓')
+    }
+  }
+
+  if (!provider) return null
+
+  const pending    = requests.filter(r => r.status === 'requested')
+  const proposed   = requests.filter(r => r.status === 'proposed')
+  const finished   = requests.filter(r => r.status === 'completed' || r.status === 'cancelled')
+
+  return (
+    <div className="max-w-3xl">
+      <h1 className="font-serif text-2xl font-black text-ink mb-2">Solicitudes de videollamada</h1>
+      <p className="text-ink/55 text-sm mb-6 leading-relaxed">
+        Clientes potenciales que quieren hablar contigo antes de reservar.
+        Acepta la solicitud y te generamos una sala de videollamada gratuita —
+        copias el link, lo mandas al cliente por WhatsApp o email acordando la hora, y a la hora ambos entráis.
+      </p>
+
+      {!offersVideoCall && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">⚠️</div>
+            <div className="flex-1">
+              <div className="font-bold text-amber-900 mb-1">Aún no ofreces videollamadas</div>
+              <div className="text-sm text-amber-800/85 mb-3">
+                Los clientes no verán el botón de "Pedir videollamada" en tu ficha pública. Actívalo desde tu perfil.
+              </div>
+              <button onClick={onGoProfile}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+                Ir a mi perfil →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center text-ink/40 py-12">Cargando…</div>
+      ) : requests.length === 0 ? (
+        <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
+          <div className="text-4xl mb-3">📹</div>
+          <p className="text-ink/55 text-sm">
+            Todavía no tienes solicitudes. Cuando alguien pida videollamada desde tu ficha pública, aparecerá aquí.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {pending.length > 0 && (
+            <VideoCallSection title="⏳ Pendientes de responder" tone="amber" items={pending} respond={respond} />
+          )}
+          {proposed.length > 0 && (
+            <VideoCallSection title="✓ Sala creada — mándale el link al cliente" tone="emerald" items={proposed} respond={respond} />
+          )}
+          {finished.length > 0 && (
+            <VideoCallSection title="📜 Historial" tone="stone" items={finished} respond={respond} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function VideoCallSection({ title, tone, items, respond }: {
+  title: string
+  tone: 'amber' | 'emerald' | 'stone'
+  items: any[]
+  respond: (id: string, action: 'propose' | 'complete' | 'cancel') => void
+}) {
+  const colors: Record<string, string> = {
+    amber:   'text-amber-800',
+    emerald: 'text-emerald-800',
+    stone:   'text-stone-500',
+  }
+  return (
+    <div>
+      <div className={`text-[11px] font-bold uppercase tracking-widest mb-3 ${colors[tone]}`}>{title}</div>
+      <div className="space-y-3">
+        {items.map(r => (
+          <div key={r.id} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-card">
+            <div className="flex justify-between items-start mb-2 gap-3">
+              <div className="flex-1">
+                <div className="font-semibold text-ink text-base">{r.client_name}</div>
+                <div className="text-xs text-ink/50 mt-0.5">
+                  {r.client_email}
+                  {r.client_phone && ` · ${r.client_phone}`}
+                </div>
+              </div>
+              <div className="text-[10px] text-ink/40 whitespace-nowrap">
+                {new Date(r.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
+              </div>
+            </div>
+            {r.preferred_slot && (
+              <div className="text-xs text-ink/65 mb-1">
+                <strong className="text-ink/80">Prefiere:</strong> {r.preferred_slot}
+              </div>
+            )}
+            {r.reason && (
+              <div className="bg-stone-50 rounded-xl p-3 text-xs text-ink/70 my-2 italic leading-relaxed">
+                "{r.reason}"
+              </div>
+            )}
+            {r.jitsi_url && (
+              <div className="mt-3 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-1">Link de la sala</div>
+                <div className="flex items-center gap-2">
+                  <input readOnly value={r.jitsi_url}
+                    onClick={(e: any) => e.target.select()}
+                    className="flex-1 text-xs text-emerald-900 bg-white border border-emerald-200 rounded-lg px-3 py-2 font-mono"/>
+                  <button onClick={() => { navigator.clipboard.writeText(r.jitsi_url); toast.success('Copiado ✓') }}
+                    className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-700 transition-colors">
+                    Copiar
+                  </button>
+                </div>
+                <div className="text-[11px] text-emerald-800/70 mt-1.5">
+                  Envía este link al cliente por WhatsApp o email acordando la hora.
+                </div>
+              </div>
+            )}
+            {r.status === 'requested' && (
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => respond(r.id, 'propose')}
+                  className="flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-sm hover:bg-emerald-700 transition-colors">
+                  ✓ Aceptar y crear sala
+                </button>
+                <button onClick={() => respond(r.id, 'cancel')}
+                  className="px-4 border border-red-200 text-red-500 rounded-xl text-sm hover:bg-red-50 transition-colors">
+                  ✕ Rechazar
+                </button>
+              </div>
+            )}
+            {r.status === 'proposed' && (
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => respond(r.id, 'complete')}
+                  className="flex-1 bg-ink text-white font-bold py-2 rounded-xl text-sm hover:bg-ink/85 transition-colors">
+                  Marcar completada
+                </button>
+                <button onClick={() => respond(r.id, 'cancel')}
+                  className="px-4 border border-red-200 text-red-500 rounded-xl text-sm hover:bg-red-50 transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            )}
+            {r.status === 'cancelled' && (
+              <div className="text-xs text-red-500/80 italic mt-2">Cancelada</div>
+            )}
+            {r.status === 'completed' && (
+              <div className="text-xs text-emerald-600 mt-2">✓ Videollamada realizada</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Banner del dashboard que avisa cuando el proveedor aún no ha completado sus
+// datos fiscales. No bloquea nada — es un aviso persistente hasta que se
+// completen. Se auto-oculta si tax_ready=true.
+function FiscalBanner({ providerId, onGoFiscal }: {
+  providerId: string | null
+  onGoFiscal: () => void
+}) {
+  const [ready,  setReady]  = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!providerId) return
+    fetch(`/api/proveedor/fiscal?providerId=${providerId}`)
+      .then(r => r.json())
+      .then(d => setReady(!!d?.fiscal?.tax_ready && !d?.needsResign))
+      .catch(() => setReady(null))
+  }, [providerId])
+
+  if (ready === true || ready === null) return null
+
+  return (
+    <div className="mb-8 bg-amber-50 border-l-4 border-amber-500 rounded-r-2xl p-5">
+      <div className="flex items-start gap-4">
+        <div className="text-2xl">🧾</div>
+        <div className="flex-1">
+          <div className="font-bold text-amber-900 mb-1">Antes de tu primera reserva: completa tus datos fiscales</div>
+          <div className="text-sm text-amber-800/85 mb-3 leading-relaxed">
+            Puedes seguir usando FiestaGo con normalidad — recibir consultas, generar presupuestos, chatear con clientes.
+            Pero cuando cierre tu primera reserva y llegue el cobro, necesitamos NIF/CIF y datos de facturación para
+            emitir factura al cliente. Rellenarlo ahora te ahorra prisas ese día.
+          </div>
+          <button onClick={onGoFiscal}
+            className="bg-amber-600 text-white font-bold text-sm px-4 py-2 rounded-xl hover:bg-amber-700 transition-colors">
+            Completar datos fiscales →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Wizard fiscal. Se muestra en la Etapa 2 del alta: cuando el proveedor va a
+// tener su primera reserva. Recoge NIF/CIF, nombre fiscal, dirección, régimen
+// y firma del compromiso. Cumple DAC7 (marketplaces UE) y protege a FiestaGo
+// dejando por escrito que la responsabilidad fiscal recae en el proveedor.
+function FiscalTab({ provider }: { provider: Provider | null }) {
+  const [loading, setLoading] = useState(false)
+  const [saving,  setSaving]  = useState(false)
+  const [form,    setForm]    = useState({
+    tax_id: '', tax_name: '', tax_address: '',
+    tax_regime: 'autonomo_puntual',
+    tax_iva_regime: 'general',
+    accept_agreement: false,
+  })
+  const [taxReady, setTaxReady] = useState<boolean>(false)
+  const [signedAt, setSignedAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!provider?.id) return
+    setLoading(true)
+    fetch(`/api/proveedor/fiscal?providerId=${provider.id}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d?.fiscal) {
+          setForm(f => ({
+            ...f,
+            tax_id:         d.fiscal.tax_id         || '',
+            tax_name:       d.fiscal.tax_name       || '',
+            tax_address:    d.fiscal.tax_address    || '',
+            tax_regime:     d.fiscal.tax_regime     || 'autonomo_puntual',
+            tax_iva_regime: d.fiscal.tax_iva_regime || 'general',
+            accept_agreement: !!d.fiscal.tax_agreement_signed_at && !d.needsResign,
+          }))
+          setTaxReady(!!d.fiscal.tax_ready && !d.needsResign)
+          setSignedAt(d.fiscal.tax_agreement_signed_at || null)
+        }
+      })
+      .finally(() => setLoading(false))
+  }, [provider?.id])
+
+  if (!provider) return null
+
+  async function save(e: any) {
+    e.preventDefault()
+    if (!form.accept_agreement) {
+      toast.error('Tienes que aceptar el compromiso de responsabilidad fiscal')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/proveedor/fiscal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId: provider!.id, ...form }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Error al guardar')
+        return
+      }
+      toast.success('✓ Datos fiscales guardados. Ya puedes recibir tu primer cobro.')
+      setTaxReady(true)
+      setSignedAt(data.fiscal.tax_agreement_signed_at)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const REGIMES: Array<[string, string, string]> = [
+    ['autonomo_puntual',     'Autónomo por días puntuales',      'Me doy de alta el día del evento (o los días que trabajo). Habitual en el sector eventos.'],
+    ['autonomo_permanente',  'Autónomo permanente (RETA)',       'Estoy dado de alta en el RETA todo el año, cotización mensual.'],
+    ['sociedad',             'Sociedad (SL, SLU, SA, SLNE)',     'Trabajo desde una empresa con CIF.'],
+    ['cooperativa',          'Cooperativa',                       'Facturo a través de una cooperativa de facturación.'],
+    ['otro',                 'Otro régimen',                      'Ninguna de las anteriores encaja.'],
+  ]
+  const IVA: Array<[string, string]> = [
+    ['general',              'IVA general (21% habitual)'],
+    ['recargo_equivalencia', 'Recargo de equivalencia'],
+    ['modulos',              'Módulos'],
+    ['exento',               'Exento de IVA'],
+  ]
+
+  return (
+    <div className="max-w-2xl">
+      <h1 className="font-serif text-2xl font-black text-ink mb-2">Datos fiscales</h1>
+      <p className="text-ink/55 text-sm mb-6 leading-relaxed">
+        Solo necesarios cuando vayas a cobrar tu primera reserva. Rellenar esto ahora te ahorra prisas
+        el día que llegue. FiestaGo los usa para emitir factura al cliente y cumplir con la normativa
+        europea DAC7. Los datos son responsabilidad tuya.
+      </p>
+
+      {taxReady && signedAt && (
+        <div className="mb-6 bg-sage/10 border border-sage/30 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">✓</div>
+            <div className="flex-1">
+              <div className="font-bold text-sage-dark mb-1">Perfil fiscal completo</div>
+              <div className="text-xs text-ink/60">
+                Firmaste el compromiso el {new Date(signedAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                Ya puedes recibir cobros vía FiestaGo. Actualiza los datos si cambia algo.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center text-ink/40 py-12">Cargando…</div>
+      ) : (
+        <form onSubmit={save} className="bg-white border border-stone-200 rounded-3xl p-6 shadow-card space-y-5">
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">NIF / CIF *</label>
+            <input value={form.tax_id} onChange={e => setForm(f => ({ ...f, tax_id: e.target.value }))}
+              placeholder="12345678A o B12345678" required
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors uppercase"/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Nombre fiscal *</label>
+            <input value={form.tax_name} onChange={e => setForm(f => ({ ...f, tax_name: e.target.value }))}
+              placeholder="Tu nombre completo, o razón social de la empresa" required
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+            <p className="text-[11px] text-ink/45 mt-1">Es el nombre con el que emites facturas.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Dirección fiscal *</label>
+            <textarea value={form.tax_address} onChange={e => setForm(f => ({ ...f, tax_address: e.target.value }))}
+              placeholder="Calle, número, código postal, ciudad, provincia" rows={2} required
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors resize-none"/>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-2">Régimen de actividad *</label>
+            <div className="space-y-2">
+              {REGIMES.map(([id, label, hint]) => (
+                <label key={id} className={`block p-3 border-2 rounded-xl cursor-pointer transition-colors ${
+                  form.tax_regime === id ? 'border-coral bg-coral/5' : 'border-stone-200 hover:border-stone-300'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <input type="radio" name="regime" value={id} checked={form.tax_regime === id}
+                      onChange={() => setForm(f => ({ ...f, tax_regime: id }))}
+                      className="mt-1 accent-coral"/>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm text-ink">{label}</div>
+                      <div className="text-xs text-ink/55 mt-0.5">{hint}</div>
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Régimen de IVA *</label>
+            <select value={form.tax_iva_regime} onChange={e => setForm(f => ({ ...f, tax_iva_regime: e.target.value }))}
+              className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors">
+              {IVA.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+            </select>
+            <p className="text-[11px] text-ink/45 mt-1">Si no lo sabes con seguridad, pregunta a tu asesor. El más habitual en el sector es "IVA general".</p>
+          </div>
+
+          <div className="border-t border-stone-200 pt-5">
+            <label className="flex items-start gap-3 cursor-pointer p-4 bg-cream-dark/40 border border-stone-200 rounded-xl">
+              <input type="checkbox" checked={form.accept_agreement}
+                onChange={e => setForm(f => ({ ...f, accept_agreement: e.target.checked }))}
+                className="mt-0.5 accent-coral w-4 h-4 flex-shrink-0"/>
+              <span className="text-xs text-ink/75 leading-relaxed">
+                <strong className="block text-ink text-sm mb-1">Compromiso de responsabilidad fiscal</strong>
+                Declaro que los datos anteriores son correctos y que soy el único responsable de estar
+                al día con mis obligaciones fiscales (Hacienda) y de Seguridad Social (RETA cuando
+                corresponda) en el momento de emitir factura por cualquier reserva recibida a través
+                de FiestaGo. Autorizo a FiestaGo a incluir estos datos en el reporte anual DAC7 a la
+                Agencia Tributaria, según la normativa europea de plataformas digitales.
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" disabled={saving}
+            className="w-full bg-coral text-white font-bold py-3.5 rounded-xl text-base hover:bg-coral-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            {saving ? 'Guardando…' : (taxReady ? 'Actualizar datos fiscales' : 'Guardar y firmar compromiso')}
+          </button>
+        </form>
+      )}
     </div>
   )
 }

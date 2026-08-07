@@ -26,6 +26,7 @@ type Provider = {
   photo_idx: number
   photo_url: string | null
   specialties: string[]
+  offers_video_call?: boolean
 }
 
 type Service = {
@@ -41,6 +42,7 @@ type Service = {
   thumbnail_url: string | null
   status: string
   cancellation_policy: 'flexible' | 'moderate' | 'strict' | null
+  deposit_pct?: number | null
   addons?: Array<{ id: string; label: string; description?: string | null; price: number }>
   media?: Array<{
     id: string
@@ -134,6 +136,14 @@ export default function ProviderDetailPage() {
   const [signupPwd, setSignupPwd] = useState('')
   const [creatingAccount, setCreatingAccount] = useState(false)
   const [blockedDates, setBlockedDates] = useState<string[]>([])  // YYYY-MM-DD para el servicio seleccionado
+
+  // Videollamada pre-venta (solo si el proveedor la ofrece).
+  const [showVideoCallModal, setShowVideoCallModal] = useState(false)
+  const [videoCallForm, setVideoCallForm] = useState({
+    name: '', email: '', phone: '', reason: '', preferred_slot: '',
+  })
+  const [videoCallSubmitting, setVideoCallSubmitting] = useState(false)
+  const [videoCallSent,       setVideoCallSent]       = useState(false)
   const [calMonth, setCalMonth] = useState<number>(new Date().getMonth())
   const [calYear,  setCalYear]  = useState<number>(new Date().getFullYear())
   const [form, setForm] = useState({
@@ -457,6 +467,28 @@ export default function ProviderDetailPage() {
               </section>
             )}
 
+            {/* Videollamada pre-venta — solo si el proveedor la ofrece */}
+            {provider.offers_video_call && (
+              <section className="pb-8 border-b border-stone-200/70 mb-8">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-start gap-4">
+                  <div className="text-3xl leading-none">📹</div>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold uppercase tracking-widest text-emerald-700 mb-1">
+                      Videollamada gratuita antes de reservar
+                    </div>
+                    <div className="text-ink text-sm mb-3 leading-relaxed">
+                      ¿Tienes dudas? {provider.name.split(' ')[0]} ofrece una videollamada breve
+                      sin compromiso para conocerse antes de contratar.
+                    </div>
+                    <button onClick={() => { setVideoCallSent(false); setShowVideoCallModal(true) }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+                      Pedir videollamada gratuita →
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
             {/* Specialties */}
             {provider.specialties?.length > 0 && (
               <section className="pb-8 border-b border-stone-200/70 mb-8">
@@ -707,6 +739,27 @@ export default function ProviderDetailPage() {
                 </div>
               )}
 
+              {/* Anticipo del servicio, si aplica. Informativo — la lógica real
+                  de cobro parcial se activará con Stripe Connect (roadmap). */}
+              {selectedSvc?.deposit_pct != null && selectedSvc.deposit_pct > 0 && (
+                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs">
+                  <div className="flex items-start gap-2 mb-2">
+                    <span className="text-lg leading-none">💶</span>
+                    <div className="font-semibold text-amber-900">
+                      Este servicio se paga en dos plazos
+                    </div>
+                  </div>
+                  <ol className="ml-6 space-y-1 text-amber-800/85 list-decimal">
+                    <li><strong>{selectedSvc.deposit_pct}% al reservar</strong> — confirma tu fecha en el momento.</li>
+                    <li><strong>{100 - selectedSvc.deposit_pct}% restante 2 meses antes del evento</strong> — te avisaremos por email y WhatsApp con antelación.</li>
+                  </ol>
+                  <div className="mt-2 pt-2 border-t border-amber-200 text-amber-800/80 text-[11px] leading-relaxed">
+                    Si reservas con menos de 2 meses de antelación, pagas el 100% al reservar.
+                    Tu pago queda retenido por FiestaGo hasta el evento (Garantía de Éxito).
+                  </div>
+                </div>
+              )}
+
               {/* Política de cancelación del servicio seleccionado */}
               {selectedSvc?.cancellation_policy && CANCELLATION_POLICIES[selectedSvc.cancellation_policy] && (
                 <details className="mb-5 bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-xs group">
@@ -914,6 +967,113 @@ export default function ProviderDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal · Pedir videollamada gratuita */}
+      {showVideoCallModal && (
+        <div onClick={() => !videoCallSubmitting && setShowVideoCallModal(false)}
+          className="fixed inset-0 bg-black/60 z-[200] grid place-items-center p-4 overflow-y-auto">
+          <div onClick={e => e.stopPropagation()}
+            className="bg-white rounded-3xl p-6 max-w-md w-full my-8 shadow-2xl">
+            {videoCallSent ? (
+              <div className="text-center py-4">
+                <div className="text-5xl mb-3">✓</div>
+                <h3 className="font-serif text-2xl text-ink mb-2">Solicitud enviada</h3>
+                <p className="text-ink/60 text-sm mb-6 leading-relaxed">
+                  {provider!.name.split(' ')[0]} recibirá tu petición por email en unos segundos.
+                  Te contactará en menos de 24h para acordar el horario de la videollamada.
+                </p>
+                <button onClick={() => setShowVideoCallModal(false)}
+                  className="bg-ink text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-ink/85 transition-colors">
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl mb-1">📹</div>
+                <h3 className="font-serif text-2xl text-ink mb-1">Pedir videollamada gratuita</h3>
+                <p className="text-ink/55 text-sm mb-5 leading-relaxed">
+                  Rellena estos datos y {provider!.name.split(' ')[0]} te contactará
+                  para acordar día y hora. Sin coste, sin compromiso.
+                </p>
+
+                <form onSubmit={async e => {
+                  e.preventDefault()
+                  if (videoCallSubmitting) return
+                  setVideoCallSubmitting(true)
+                  try {
+                    const res = await fetch('/api/video-call-requests', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        provider_id:   provider!.id,
+                        client_name:   videoCallForm.name,
+                        client_email:  videoCallForm.email,
+                        client_phone:  videoCallForm.phone || null,
+                        reason:        videoCallForm.reason || null,
+                        preferred_slot: videoCallForm.preferred_slot || null,
+                      }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok) throw new Error(data.error || 'Error al enviar')
+                    setVideoCallSent(true)
+                  } catch (err: any) {
+                    alert(err.message || 'No se pudo enviar la solicitud')
+                  }
+                  setVideoCallSubmitting(false)
+                }} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Tu nombre *</label>
+                    <input value={videoCallForm.name} onChange={e => setVideoCallForm(f => ({ ...f, name: e.target.value }))}
+                      required maxLength={120}
+                      className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-coral transition-colors"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Email *</label>
+                    <input type="email" value={videoCallForm.email} onChange={e => setVideoCallForm(f => ({ ...f, email: e.target.value }))}
+                      required maxLength={200}
+                      className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-coral transition-colors"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Teléfono (opcional)</label>
+                    <input type="tel" value={videoCallForm.phone} onChange={e => setVideoCallForm(f => ({ ...f, phone: e.target.value }))}
+                      maxLength={40} placeholder="+34 600 000 000"
+                      className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-coral transition-colors"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">¿Cuándo prefieres?</label>
+                    <select value={videoCallForm.preferred_slot} onChange={e => setVideoCallForm(f => ({ ...f, preferred_slot: e.target.value }))}
+                      className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-coral transition-colors">
+                      <option value="">Cualquier momento me viene bien</option>
+                      <option value="Mañanas (9-13h)">Mañanas (9-13h)</option>
+                      <option value="Tardes (14-19h)">Tardes (14-19h)</option>
+                      <option value="Noches (19-22h)">Noches (19-22h)</option>
+                      <option value="Fines de semana">Fines de semana</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Cuéntanos brevemente</label>
+                    <textarea value={videoCallForm.reason} onChange={e => setVideoCallForm(f => ({ ...f, reason: e.target.value }))}
+                      rows={2} maxLength={500}
+                      placeholder="Ej: boda 100 invitados, agosto Valencia, dudas de estilo…"
+                      className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-coral transition-colors resize-none"/>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => setShowVideoCallModal(false)} disabled={videoCallSubmitting}
+                      className="px-5 py-2.5 border border-stone-200 text-ink/70 rounded-xl text-sm font-semibold hover:bg-stone-50 transition-colors disabled:opacity-50">
+                      Cancelar
+                    </button>
+                    <button type="submit" disabled={videoCallSubmitting || !videoCallForm.name || !videoCallForm.email}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50">
+                      {videoCallSubmitting ? 'Enviando…' : 'Enviar solicitud'}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   )
 }

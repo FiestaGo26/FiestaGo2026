@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
 
   const { data: messages, error } = await supabase
     .from('messages')
-    .select('id, created_at, sender_role, body, read_at')
+    .select('id, created_at, sender_role, body, read_at, attachment_type, attachment_url, attachment_duration_sec')
     .eq('booking_id', bookingId)
     .order('created_at', { ascending: true })
 
@@ -72,30 +72,53 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ messages: messages || [] })
 }
 
-// POST body: { booking_id, role, token, body }
+// POST body: { booking_id, role, token, body,
+//              attachment_type?, attachment_url?, attachment_duration_sec? }
+//
+// body puede ser vacío si viene un attachment (ej. audio grabado sin texto),
+// pero el mensaje sin body ni attachment se rechaza.
+const VALID_ATTACHMENT_TYPES = new Set(['video_call','audio','video','image'])
+
 export async function POST(req: NextRequest) {
   const supabase = createAdminClient()
-  const { booking_id, role, token, body } = await req.json().catch(() => ({}))
+  const {
+    booking_id, role, token, body,
+    attachment_type, attachment_url, attachment_duration_sec,
+  } = await req.json().catch(() => ({}))
 
-  if (!booking_id || !role || !token || !body) {
-    return NextResponse.json({ error: 'booking_id, role, token y body requeridos' }, { status: 400 })
+  if (!booking_id || !role || !token) {
+    return NextResponse.json({ error: 'booking_id, role y token requeridos' }, { status: 400 })
   }
-  const text = String(body).trim()
-  if (!text) return NextResponse.json({ error: 'Mensaje vacío' }, { status: 400 })
-  if (text.length > MAX_BODY) {
-    return NextResponse.json({ error: `Máximo ${MAX_BODY} caracteres` }, { status: 400 })
+
+  const text = String(body || '').trim().slice(0, MAX_BODY)
+  const hasAttachment = attachment_type && attachment_url
+
+  if (!text && !hasAttachment) {
+    return NextResponse.json({ error: 'Mensaje vacío (aporta body o adjunto)' }, { status: 400 })
+  }
+  if (attachment_type && !VALID_ATTACHMENT_TYPES.has(attachment_type)) {
+    return NextResponse.json({ error: 'Tipo de adjunto no válido' }, { status: 400 })
   }
 
   const auth = await authorize(req, booking_id, role, token)
   if ('errorResponse' in auth) return auth.errorResponse
 
+  const payload: Record<string, any> = {
+    booking_id,
+    sender_role: role,
+    body: text,
+  }
+  if (hasAttachment) {
+    payload.attachment_type = attachment_type
+    payload.attachment_url  = attachment_url
+    if (typeof attachment_duration_sec === 'number' && attachment_duration_sec >= 0) {
+      payload.attachment_duration_sec = Math.round(attachment_duration_sec)
+    }
+  }
+
   const { data, error } = await supabase
     .from('messages')
-    .insert({
-      booking_id,
-      sender_role: role,
-      body: text.slice(0, MAX_BODY),
-    })
+    .insert(payload)
     .select()
     .single()
 
@@ -103,7 +126,16 @@ export async function POST(req: NextRequest) {
 
   // Notificación por email al otro lado — solo si NO había ya mensajes sin
   // leer de este emisor (para no spamear durante una conversación activa).
-  notifyByEmail(supabase, auth.booking, role, text, data.id).catch(err =>
+  // Si el mensaje es solo adjunto (body vacío), en el email va un fallback
+  // legible en vez del literal en blanco.
+  const emailBody = text || (
+    attachment_type === 'video_call' ? '📹 Te ha enviado un enlace de videollamada.' :
+    attachment_type === 'audio'      ? '🎤 Te ha enviado un mensaje de audio.' :
+    attachment_type === 'video'      ? '🎬 Te ha enviado un mensaje de vídeo.' :
+    attachment_type === 'image'      ? '🖼️ Te ha enviado una imagen.' :
+                                       'Nuevo mensaje'
+  )
+  notifyByEmail(supabase, auth.booking, role, emailBody, data.id).catch(err =>
     console.error('notifyByEmail:', err?.message))
 
   return NextResponse.json({ message: data })
