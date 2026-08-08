@@ -93,6 +93,7 @@ const TABS = [
   { id:'coupons',      icon:'🎟️', label:'Cupones'        },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
   { id:'fiscal',       icon:'🧾', label:'Datos fiscales' },
+  { id:'invoices',     icon:'📄', label:'Facturas'       },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
 ]
 
@@ -2466,6 +2467,11 @@ function ProveedorPanelInner() {
           <FiscalTab provider={provider} />
         )}
 
+        {/* INVOICES · facturas emitidas por FiestaGo en nombre del proveedor */}
+        {tab==='invoices' && (
+          <InvoicesTab provider={provider} onGoFiscal={() => setTab('fiscal')} />
+        )}
+
         {/* SECURITY */}
         {tab==='security' && (
           <div className="max-w-md">
@@ -2696,6 +2702,136 @@ function EmbedTab({ provider }: { provider: Provider | null }) {
           <li><strong>Web propia</strong>: pégalo donde quieras que aparezca, igual que cualquier HTML.</li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+// Panel de solicitudes de videollamada pre-venta. Cada solicitud es un
+// Facturas emitidas en nombre del proveedor (facturación delegada
+// según art. 5 RD 1619/2012). El proveedor las descarga en PDF y
+// puede verlas junto a sus datos, sin tener que gestionar Verifactu
+// por su cuenta.
+function InvoicesTab({ provider, onGoFiscal }: {
+  provider: Provider | null
+  onGoFiscal: () => void
+}) {
+  const [invoices, setInvoices] = useState<any[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [consentActive, setConsentActive] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!provider?.id) return
+    setLoading(true)
+    Promise.all([
+      fetch(`/api/proveedor/invoices?providerId=${provider.id}`).then(r => r.json()),
+      fetch(`/api/proveedor/fiscal?providerId=${provider.id}`).then(r => r.json()),
+    ]).then(([invRes, fiscalRes]) => {
+      setInvoices(invRes.invoices || [])
+      setConsentActive(!!fiscalRes.fiscal?.consent_delegated_invoicing)
+    }).finally(() => setLoading(false))
+  }, [provider?.id])
+
+  if (!provider) return null
+
+  const totalFacturado = invoices.reduce((s, i) => s + Number(i.total_amount || 0), 0)
+  const totalIva       = invoices.reduce((s, i) => s + Number(i.tax_amount   || 0), 0)
+
+  return (
+    <div className="max-w-3xl">
+      <h1 className="font-serif text-2xl font-black text-ink mb-2">Facturas emitidas</h1>
+      <p className="text-ink/55 text-sm mb-6 leading-relaxed">
+        Facturas legales que FiestaGo emite en tu nombre por cada reserva confirmada.
+        Cumplen Verifactu (RD 1007/2023) con hash SHA-256 encadenado y código QR verificable en la Agencia Tributaria.
+        Tú te ahorras el software de facturación y el compliance — nosotros lo gestionamos.
+      </p>
+
+      {consentActive === false && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-2xl">⚠️</div>
+            <div className="flex-1">
+              <div className="font-bold text-amber-900 mb-1">
+                Facturación delegada desactivada
+              </div>
+              <div className="text-sm text-amber-800/85 mb-3 leading-relaxed">
+                Actívala en tus datos fiscales para que FiestaGo emita las facturas por ti.
+                Necesitas también tener el NIF, nombre fiscal y dirección completos.
+              </div>
+              <button onClick={onGoFiscal}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+                Ir a datos fiscales →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {consentActive && invoices.length > 0 && (
+        <div className="mb-6 grid grid-cols-3 gap-3">
+          <div className="bg-white border border-stone-200 rounded-2xl p-4">
+            <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest">Facturas</div>
+            <div className="font-serif text-2xl font-bold text-ink mt-1">{invoices.length}</div>
+          </div>
+          <div className="bg-white border border-stone-200 rounded-2xl p-4">
+            <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest">Facturado</div>
+            <div className="font-serif text-2xl font-bold text-coral mt-1">{formatEuro(totalFacturado)}</div>
+          </div>
+          <div className="bg-white border border-stone-200 rounded-2xl p-4">
+            <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest">IVA repercutido</div>
+            <div className="font-serif text-2xl font-bold text-emerald-700 mt-1">{formatEuro(totalIva)}</div>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center text-ink/40 py-12">Cargando facturas…</div>
+      ) : invoices.length === 0 ? (
+        <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
+          <div className="text-4xl mb-3">📄</div>
+          <p className="text-ink/55 text-sm">
+            Aún no hay facturas emitidas en tu nombre. Cuando confirmes tu primera reserva
+            y tengas la facturación delegada activada, aparecerá aquí automáticamente.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-stone-200 bg-stone-50">
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-ink/45 uppercase tracking-widest">Nº</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-ink/45 uppercase tracking-widest">Fecha</th>
+                <th className="text-left px-4 py-3 text-[10px] font-bold text-ink/45 uppercase tracking-widest">Cliente</th>
+                <th className="text-right px-4 py-3 text-[10px] font-bold text-ink/45 uppercase tracking-widest">Total</th>
+                <th className="text-right px-4 py-3 text-[10px] font-bold text-ink/45 uppercase tracking-widest">Descargar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map(inv => (
+                <tr key={inv.id} className="border-b border-stone-100 last:border-0">
+                  <td className="px-4 py-3 font-mono text-xs text-ink font-semibold">{inv.full_number}</td>
+                  <td className="px-4 py-3 text-ink/65 text-xs">
+                    {new Date(inv.issue_date).toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' })}
+                  </td>
+                  <td className="px-4 py-3 text-ink text-xs">
+                    <div>{inv.recipient_name}</div>
+                    <div className="text-ink/45">{inv.recipient_email}</div>
+                  </td>
+                  <td className="px-4 py-3 text-ink font-semibold tabular-nums text-right">
+                    {formatEuro(Number(inv.total_amount))}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <a href={`/api/invoices/${inv.id}/pdf`}
+                      target="_blank" rel="noreferrer"
+                      className="text-xs font-semibold text-coral hover:underline">
+                      PDF ↗
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
@@ -2940,6 +3076,8 @@ function FiscalTab({ provider }: { provider: Provider | null }) {
     tax_regime: 'autonomo_puntual',
     tax_iva_regime: 'general',
     accept_agreement: false,
+    consent_delegated_invoicing: false,
+    invoice_series: '',
   })
   const [taxReady, setTaxReady] = useState<boolean>(false)
   const [signedAt, setSignedAt] = useState<string | null>(null)
@@ -2959,6 +3097,8 @@ function FiscalTab({ provider }: { provider: Provider | null }) {
             tax_regime:     d.fiscal.tax_regime     || 'autonomo_puntual',
             tax_iva_regime: d.fiscal.tax_iva_regime || 'general',
             accept_agreement: !!d.fiscal.tax_agreement_signed_at && !d.needsResign,
+            consent_delegated_invoicing: !!d.fiscal.consent_delegated_invoicing && !d.needsResignDelegated,
+            invoice_series: d.fiscal.invoice_series || '',
           }))
           setTaxReady(!!d.fiscal.tax_ready && !d.needsResign)
           setSignedAt(d.fiscal.tax_agreement_signed_at || null)
@@ -3104,6 +3244,41 @@ function FiscalTab({ provider }: { provider: Provider | null }) {
                 Agencia Tributaria, según la normativa europea de plataformas digitales.
               </span>
             </label>
+          </div>
+
+          {/* Facturación delegada — Verifactu por cuenta de FiestaGo.
+              Este toggle es SEPARADO del compromiso fiscal porque puede
+              activarse/desactivarse independientemente. */}
+          <div className="border-t border-stone-200 pt-5">
+            <label className="flex items-start gap-3 cursor-pointer p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+              <input type="checkbox" checked={form.consent_delegated_invoicing}
+                onChange={e => setForm(f => ({ ...f, consent_delegated_invoicing: e.target.checked }))}
+                className="mt-0.5 accent-emerald-600 w-4 h-4 flex-shrink-0"/>
+              <span className="text-xs text-ink/85 leading-relaxed">
+                <strong className="block text-emerald-900 text-sm mb-1">📄 Que FiestaGo emita mis facturas al cliente (facturación delegada)</strong>
+                Autorizo a FiestaGo a emitir facturas en mi nombre a mis clientes por cada
+                reserva confirmada, cumpliendo con Verifactu (RD 1007/2023) y el artículo 5
+                del RD 1619/2012. Yo sigo siendo el sujeto pasivo — las facturas son mías a
+                efectos fiscales, pero <strong>me ahorro el software de facturación y el compliance</strong>.
+                Puedo desactivarlo cuando quiera. Podré ver, descargar en PDF y validar todas
+                las facturas emitidas en mi pestaña "📄 Facturas".
+              </span>
+            </label>
+
+            {form.consent_delegated_invoicing && (
+              <div className="mt-3 pl-4">
+                <label className="block text-[11px] font-bold text-ink/60 uppercase tracking-widest mb-1">
+                  Serie de facturación propia (opcional, máx 8 chars)
+                </label>
+                <input value={form.invoice_series}
+                  onChange={e => setForm(f => ({ ...f, invoice_series: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 8) }))}
+                  placeholder="Ej. AC (Ana Catering) — déjalo vacío para usar la por defecto"
+                  className="w-full border border-stone-200 rounded-xl px-4 py-2 text-sm font-mono text-ink outline-none focus:border-emerald-500 transition-colors"/>
+                <p className="text-[10px] text-ink/45 mt-1">
+                  Solo mayúsculas, dígitos y guiones. Si lo dejas vacío, las facturas usarán la serie por defecto FG-P{provider.id.replace(/-/g, '').slice(0, 6).toUpperCase()}.
+                </p>
+              </div>
+            )}
           </div>
 
           <button type="submit" disabled={saving}
