@@ -42,5 +42,9 @@ tools/fiegago-marketing-agent/bin/
 tools/fiegago-marketing-agent/music/
 tools/fiegago-marketing-agent/FiestaGo-Contenido/
 
+# Marketing agent: clips base del avatar (tu imagen/voz real, no subir)
+tools/fiegago-marketing-agent/avatar-clips/*.mp4
+tools/fiegago-marketing-agent/avatar-clips/*.mov
+
 # Content agent output
 /content/

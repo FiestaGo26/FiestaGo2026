@@ -228,6 +228,33 @@
       ],
       "caption_brief": "Caption a PROVEEDORES en España. Ángulo opinión impopular: 'Si pagas cuota anual a un portal y no vendes, te están robando. El modelo correcto es comisión sobre ventas, y la primera gratis. Por eso montamos FiestaGo'. Tono directo, sin agresividad, tuteo, español de España. CTA 'Cámbiate · fiestago.es/registro-proveedor'. Máx 220 chars.",
       "hashtags_base": ["fiestago", "proveedoresdeventos", "opinionimpopular", "marketingparaautonomos", "autonomosespaña", "eventosespaña", "fotografodebodas", "cateringespaña"]
+    },
+
+    {
+      "id": "provider_founder_intro_avatar",
+      "label": "Proveedor · Presentación fundador (avatar)",
+      "audience": "provider",
+      "weight": 8,
+      "media": "video",
+      "presenter": "avatar",
+      "avatar_mood": "neutral",
+      "avatar_script_brief": "Preséntate como fundador de FiestaGo hablando directo a cámara, como si le contases esto a un proveedor que acabas de conocer en un evento. Explica en tus palabras: por qué montaste FiestaGo, que el registro es gratis, que la primera venta es 100% para el proveedor (0% comisión), y que desde la segunda solo se paga un 8% cuando de verdad hay venta — nada de cuotas mensuales. Cierra invitándole a probarlo sin compromiso, mencionando fiestago.es.",
+      "avatar_cta": { "line1": "Date de alta gratis", "line2": "fiestago.es/registro-proveedor" },
+      "caption_brief": "Caption a PROVEEDORES en España acompañando un vídeo del fundador hablando directo a cámara. Tono cercano y personal, primera persona ('te lo cuento yo mismo'). Refuerza: registro gratis, 0% primera venta, 8% desde la segunda, sin cuotas. CTA 'Date de alta gratis · fiestago.es/registro-proveedor'. Máx 220 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "fundador", "autonomosespaña", "eventosespaña", "marketingparaautonomos"]
+    },
+    {
+      "id": "provider_hot_take_avatar",
+      "label": "Proveedor · Hot take fundador (avatar)",
+      "audience": "provider",
+      "weight": 7,
+      "media": "video",
+      "presenter": "avatar",
+      "avatar_mood": "serious",
+      "avatar_script_brief": "Suelta la opinión impopular directamente tú, mirando a cámara, con convicción pero sin agresividad: pagar una cuota anual a un portal cuando no te está trayendo ventas no tiene sentido. El modelo correcto es pagar comisión SOLO cuando vendes, y la primera venta debería ser gratis para que puedas probarlo sin riesgo. Por eso montaste FiestaGo así. Cierra invitando a que se pase, mencionando fiestago.es.",
+      "avatar_cta": { "line1": "Cámbiate", "line2": "fiestago.es/registro-proveedor" },
+      "caption_brief": "Caption a PROVEEDORES en España acompañando un vídeo del fundador dando una opinión impopular directo a cámara. Tono directo, primera persona, sin agresividad. Mensaje: comisión sobre ventas sí, cuota fija no. CTA 'Cámbiate · fiestago.es/registro-proveedor'. Máx 220 chars.",
+      "hashtags_base": ["fiestago", "proveedoresdeventos", "opinionimpopular", "fundador", "autonomosespaña", "eventosespaña"]
     }
   ]
 }

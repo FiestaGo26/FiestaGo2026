@@ -14,6 +14,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { resolve, join } from 'path'
+import { generateAvatarVideo } from './avatar-video.mjs'
 
 // ── .env ──────────────────────────────────────────────────────────
 function loadEnv() {
@@ -198,6 +199,51 @@ Reglas:
   return JSON.parse(m[0])
 }
 
+// ── Claude: guion HABLADO para el vídeo avatar (distinto del caption) ──
+async function claudeAvatarScript(template, context) {
+  const sysPrompt = `Eres el fundador de FiestaGo (@fiestagospain), marketplace español de proveedores de eventos, y vas a hablar A CÁMARA en primera persona.
+Este guion se convierte en AUDIO real (voz clonada) sobre un vídeo tuyo de verdad — tiene que sonar como tú hablando improvisado a un amigo, NUNCA como un anuncio leído.
+Reglas estrictas:
+- Español de España, tuteo, cero jerga de startup ('ecosistema', 'disruptivo', etc.)
+- Frases cortas, ritmo natural de conversación, con alguna pausa implícita (punto y seguido en vez de comas largas)
+- Duración objetivo: 15-20 segundos hablados (unas 45-65 palabras)
+- CERO emojis, hashtags, corchetes o marcas de formato — es texto para que se LEA en voz alta, no para pantalla
+- No repitas la URL completa más de una vez; puedes decir simplemente "fiestago punto es" si hace falta
+- Devuelve SOLO JSON válido, sin markdown ni explicación`
+
+  const userPrompt = `Genera el guion hablado para un vídeo avatar.
+
+Ángulo: ${template.label}
+Brief: ${template.avatar_script_brief}
+Contexto adicional: ${JSON.stringify(context)}
+
+Devuelve un JSON con esta estructura exacta:
+{
+  "script": "guion completo en primera persona, listo para leer en voz alta, 45-65 palabras"
+}`
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      system: sysPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    }),
+  })
+  const data = await res.json()
+  if (data.error) throw new Error(data.error.message)
+  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('')
+  const m = text.match(/\{[\s\S]*\}/)
+  if (!m) throw new Error('Sin JSON en respuesta de Claude (avatar script)')
+  return JSON.parse(m[0])
+}
+
 async function downloadTo(url, path) {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`download ${res.status}`)
@@ -264,13 +310,18 @@ async function generatePost(template) {
     scene = p.visual
   }
 
-  // Build media prompt
-  let mediaPrompt = template.prompt_template
-  Object.entries(context).forEach(([k, v]) => {
-    mediaPrompt = mediaPrompt.replace(new RegExp(`\\{${k}\\}`, 'g'), v)
-  })
-  // Fallback for any unfilled placeholder
-  mediaPrompt = mediaPrompt.replace(/\{\w+\}/g, 'a celebration scene')
+  // Build media prompt (las plantillas con presenter:'avatar' no generan
+  // imagen/vídeo con fal.ai, así que no llevan prompt_template)
+  const isAvatar = template.presenter === 'avatar'
+  let mediaPrompt = null
+  if (!isAvatar) {
+    mediaPrompt = template.prompt_template
+    Object.entries(context).forEach(([k, v]) => {
+      mediaPrompt = mediaPrompt.replace(new RegExp(`\\{${k}\\}`, 'g'), v)
+    })
+    // Fallback for any unfilled placeholder
+    mediaPrompt = mediaPrompt.replace(/\{\w+\}/g, 'a celebration scene')
+  }
 
   const date = new Date().toISOString().slice(0, 10)
   const time = new Date().toISOString().slice(11, 16).replace(':', '')
@@ -283,17 +334,34 @@ async function generatePost(template) {
   if (topic) console.log(`   📝 Tema:   ${topic}`)
 
   // 1. Media
-  console.log(`   🎨 Generando ${template.media}...`)
-  let mediaUrl, mediaPath
-  if (template.media === 'video') {
-    mediaUrl = await falVideo(mediaPrompt, template.video_duration || 5)
-    mediaPath = join(dir, 'video.mp4')
+  let mediaUrl = null, mediaPath, avatarScriptText = null, avatarDuration = null
+  if (isAvatar) {
+    console.log(`   🗣️  Generando guion hablado con Claude...`)
+    const avatarScript = await claudeAvatarScript(template, context)
+    avatarScriptText = avatarScript.script
+    writeFileSync(join(dir, 'avatar_script.txt'), avatarScriptText)
+    console.log(`   🎭 Generando vídeo avatar (voz clonada + lipsync)...`)
+    const avatarResult = await generateAvatarVideo({
+      script: avatarScriptText,
+      mood: template.avatar_mood || 'neutral',
+      cta: template.avatar_cta,
+      outDir: dir,
+    })
+    mediaPath = avatarResult.finalPath
+    avatarDuration = avatarResult.duration
+    console.log(`   ✓ vídeo avatar guardado (${avatarDuration.toFixed(1)}s habladas)`)
   } else {
-    mediaUrl = await falImage(mediaPrompt)
-    mediaPath = join(dir, 'imagen.jpg')
+    console.log(`   🎨 Generando ${template.media}...`)
+    if (template.media === 'video') {
+      mediaUrl = await falVideo(mediaPrompt, template.video_duration || 5)
+      mediaPath = join(dir, 'video.mp4')
+    } else {
+      mediaUrl = await falImage(mediaPrompt)
+      mediaPath = join(dir, 'imagen.jpg')
+    }
+    await downloadTo(mediaUrl, mediaPath)
+    console.log(`   ✓ ${template.media} guardado`)
   }
-  await downloadTo(mediaUrl, mediaPath)
-  console.log(`   ✓ ${template.media} guardado`)
 
   // 2. Caption + hashtags
   console.log(`   ✍️  Generando caption con Claude...`)
@@ -307,12 +375,15 @@ async function generatePost(template) {
     `${caption.caption_short_tiktok}\n\n${renderHashtagLine(caption.hashtags)}`)
   writeFileSync(join(dir, 'hashtags.txt'), cleanHashtags.map(h => '#' + h).join('\n'))
   writeFileSync(join(dir, 'hook_overlay.txt'), caption.hook_overlay || '')
-  writeFileSync(join(dir, 'prompt_usado.txt'), mediaPrompt)
+  writeFileSync(join(dir, 'prompt_usado.txt'), mediaPrompt || avatarScriptText || '')
   writeFileSync(join(dir, 'meta.json'), JSON.stringify({
     id, template_id: template.id, label: template.label, media: template.media,
+    presenter: template.presenter || null,
     audience: template.audience || 'client',
     scene, topic, context, generated_at: new Date().toISOString(),
     source_url: mediaUrl,
+    avatar_script: avatarScriptText,
+    avatar_duration_seconds: avatarDuration,
     caption: caption,
   }, null, 2))
 
@@ -336,7 +407,7 @@ async function generatePost(template) {
         template_label:    template.label,
         media_type:        template.media,
         platform:          'both',
-        prompt_used:       mediaPrompt,
+        prompt_used:       mediaPrompt || avatarScriptText,
         scene:             scene || null,
         topic:             topic || null,
         context:           { ...context, audience: template.audience || 'client' },
@@ -403,9 +474,10 @@ async function main() {
   }
 
   console.log('📋 Plan de generación:')
-  plan.forEach((t, i) => console.log(`  ${i + 1}. [${(t.audience || 'client').padEnd(8)}] ${t.label.padEnd(42)} ${t.media}`))
+  plan.forEach((t, i) => console.log(`  ${i + 1}. [${(t.audience || 'client').padEnd(8)}] ${t.label.padEnd(42)} ${t.media}${t.presenter === 'avatar' ? ' · avatar' : ''}`))
   console.log()
-  console.log(`💸 Coste estimado: ~$${plan.reduce((s, t) => s + (t.media === 'video' ? 0.5 : 0.04), 0).toFixed(2)}`)
+  // Avatar: ~$0.02-0.05 ElevenLabs (guion corto) + ~$0.15-0.25 Sync Labs (lipsync ~20s) — estimación orientativa
+  console.log(`💸 Coste estimado: ~$${plan.reduce((s, t) => s + (t.presenter === 'avatar' ? 0.25 : t.media === 'video' ? 0.5 : 0.04), 0).toFixed(2)}`)
   console.log()
 
   if (!CONFIRM) {

@@ -67,3 +67,65 @@ Edita `post-templates.json`. Cada template tiene:
 - `scenes`/`topics`/`packs`: pools de variables
 - `caption_brief`: instrucciones para Claude
 - `hashtags_base`: hashtags fijos a incluir
+
+---
+
+## Avatar — vídeos hablando a cámara (tú, no un avatar sintético)
+
+Además de imagen/vídeo generados por IA, hay un modo `presenter: "avatar"`
+que produce un vídeo hablando a cámara **con metraje real tuyo**: la cara y
+el cuerpo son siempre un clip que grabaste tú; la IA solo sustituye la boca
+(lipsync) y el audio (tu voz clonada) para que digas un guion nuevo cada
+vez. No usa avatares sintéticos tipo HeyGen/Synthesia — el objetivo es que
+no se note que hay IA de por medio.
+
+Plantillas ya incluidas: `provider_founder_intro_avatar` (presentación del
+fundador) y `provider_hot_take_avatar` (opinión directa a cámara).
+
+### Setup (una vez)
+
+1. **Graba tus clips base** — 15-30s hablando a cámara, vertical 9:16, buena
+   luz, movimiento natural. Guía completa en `avatar-clips/README.md`.
+   Guárdalos en `avatar-clips/` (esa carpeta no se sube al repo).
+2. **Clona tu voz** en [ElevenLabs](https://elevenlabs.io) — Voice Library →
+   Add Voice → Instant/Professional Voice Clone, sube 1-3 min de audio tuyo
+   limpio, copia el `voice_id`.
+3. **Crea cuenta en [Sync Labs](https://sync.so)** (lipsync) y copia tu API
+   key.
+4. Rellena en `.env`: `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`,
+   `SYNC_API_KEY` (ver `.env.example`).
+
+### Cómo funciona por post
+
+```
+Claude escribe un guion hablado (1ª persona, natural, 15-20s)
+    ↓
+ElevenLabs: guion → audio con tu voz + timestamps por palabra
+    ↓
+Sync Labs: lipsync del audio sobre tu clip base real (avatar-clips/)
+    ↓
+FFmpeg: quema subtítulos por palabra + marca de agua + tarjeta CTA final (3s)
+    ↓
+video_final.mp4 (listo para publicar, sin pasar por compose-video.mjs)
+```
+
+### Uso
+
+```
+node fiegago-marketing-agent.mjs --confirm --type provider_founder_intro_avatar
+node fiegago-marketing-agent.mjs --confirm --audience provider --n 5   # mezcla incl. avatar
+```
+
+### Coste (orientativo)
+
+- ElevenLabs: ~$0.02-0.05 por guion corto (según plan)
+- Sync Labs: ~$0.15-0.25 por vídeo de ~20s (según plan/modelo)
+- Total: ~$0.20-0.30 por vídeo avatar
+
+### Nota sobre las APIs externas
+
+Los endpoints de Sync Labs y ElevenLabs en `avatar-video.mjs` están escritos
+según su documentación pública. Si al ejecutar ves un error de "campo
+desconocido" o similar en la respuesta de la API, revisa su documentación
+actual (elevenlabs.io/docs, docs.sync.so) — el propio mensaje de error de la
+API te dirá qué campo ajustar.
