@@ -1,0 +1,52 @@
+{
+  "convenio": "X Convenio Colectivo Estatal de Enseñanza y Formación No Reglada",
+  "boe": "BOE-A-2025-14198 (Resolución de 27 de junio de 2025, DG de Trabajo; publicado en BOE núm. 164 de 9 de julio de 2025)",
+  "vigencia": "2024-01-01 a 2027-12-31",
+  "incremento_salarial_pactado": {
+    "nota": "3,5% anual sobre salario base y complementos de desarrollo y dedicación para 2024 (con efectos retroactivos desde 1 de julio de 2024), 2025, 2026 y 2027. Efectos económicos generales retroactivos a 1 de enero de 2024 según Anexo I.",
+    "2024": 0.035,
+    "2025": 0.035,
+    "2026": 0.035,
+    "2027": 0.035
+  },
+  "grupos": [
+    {
+      "id": "I",
+      "nombre": "Personal docente",
+      "jornada_anual_horas": 1446,
+      "categorias": [
+        { "id": "profesor_titular", "nombre": "Profesor/a Titular", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "profesor_auxiliar", "nombre": "Profesor/a Auxiliar o Adjunto/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "instructor_experto", "nombre": "Instructor/a o Experto/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+      ]
+    },
+    {
+      "id": "II",
+      "nombre": "Personal de administración",
+      "jornada_anual_horas": 1715,
+      "categorias": [
+        { "id": "jefe_administracion", "nombre": "Jefe/a de Administración", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "tecnico_administracion", "nombre": "Técnico/a de Administración", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "oficial_administrativo", "nombre": "Oficial Administrativo/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "auxiliar_administrativo", "nombre": "Auxiliar Administrativo/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+      ]
+    },
+    {
+      "id": "III",
+      "nombre": "Personal de servicios generales",
+      "jornada_anual_horas": null,
+      "categorias": [
+        { "id": "servicios_generales", "nombre": "Personal de servicios generales (pendiente detallar subcategorías del Anexo I)", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+      ]
+    },
+    {
+      "id": "IV",
+      "nombre": "Titulados no docentes",
+      "jornada_anual_horas": null,
+      "categorias": [
+        { "id": "titulado_no_docente", "nombre": "Titulado/a no docente (incluye roles nuevos: Social Media Manager, Diseñador/a de Contenidos, Dinamizador/a de cursos online)", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+      ]
+    }
+  ],
+  "estado_datos": "PENDIENTE — las cifras 'salario_base_mensual' están vacías (null) a propósito. Rellénalas copiándolas literalmente del Anexo I (tablas salariales) del X Convenio antes de confiar en el resultado del verificador para ninguna categoría. Fuentes oficiales: BOE-A-2025-14198 (https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-14198) y tablas publicadas por los sindicatos firmantes (UGT, FSIE, USO, CCOO). El script avisa explícitamente cuando falta el dato de una categoría/año y NO emite veredicto de 'correcto/incorrecto' en ese caso — solo lo hace para las categorías con datos ya rellenados."
+}

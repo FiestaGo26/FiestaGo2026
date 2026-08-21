@@ -1,0 +1,13 @@
+{
+  "nota": "Tipos de cotización a cargo del TRABAJADOR (cuota obrera), Régimen General. Se aplican sobre la base de cotización por contingencias comunes que figura en la propia nómina. No dependen del convenio, son de aplicación general por ley/RD de cotización de cada año. MEI (Mecanismo de Equidad Intergeneracional) sube 0,1 puntos porcentuales cada año hasta 2029 según calendario legal — revisar antes de usar años no listados aquí.",
+  "tipos_trabajador": {
+    "2024": { "contingencias_comunes": 0.047, "desempleo_indefinido": 0.0155, "desempleo_temporal": 0.016, "formacion_profesional": 0.001, "mei": 0.0012 },
+    "2025": { "contingencias_comunes": 0.047, "desempleo_indefinido": 0.0155, "desempleo_temporal": 0.016, "formacion_profesional": 0.001, "mei": 0.0013 },
+    "2026": { "contingencias_comunes": 0.047, "desempleo_indefinido": 0.0155, "desempleo_temporal": 0.016, "formacion_profesional": 0.001, "mei": 0.0015 }
+  },
+  "bases_2026": {
+    "base_maxima_mensual": 5101.20,
+    "base_minima_general_mensual": 1424.40,
+    "nota": "La base mínima del Grupo de cotización 1 (ingenieros, licenciados, alta dirección) es superior a la base mínima general y no está confirmada aquí — verificar tabla oficial de bases mínimas por grupo de cotización 2026 antes de usarla como referencia estricta."
+  }
+}
