@@ -2,7 +2,8 @@
 // Verificador de nóminas — X Convenio de Enseñanza y Formación No Reglada
 // Lee una nómina en PDF, extrae los datos con Claude y comprueba si el
 // salario y las cotizaciones a la Seguridad Social coinciden con lo que
-// corresponde según la categoría/grupo profesional y las horas lectivas.
+// corresponde según la categoría/grupo profesional y las horas trabajadas
+// a la semana.
 //
 // USO:
 //   node verificar-nomina.mjs <ruta-a-nomina.pdf> [--out=reporte.json]
@@ -69,7 +70,7 @@ Vas a recibir el PDF de una nómina. Extrae los datos y devuelve EXCLUSIVAMENTE 
   "grupo_convenio_id": "I, II, III o IV según la lista anterior, o null",
   "tipo_contrato": "indefinido | temporal | null",
   "jornada_porcentaje": 100,
-  "horas_lectivas_mes": null,
+  "horas_semana": null,
   "salario_base_nomina": 0,
   "complementos": [{ "concepto": "string", "importe": 0 }],
   "total_devengado": 0,
@@ -84,7 +85,9 @@ Vas a recibir el PDF de una nómina. Extrae los datos y devuelve EXCLUSIVAMENTE 
   "notas_extraccion": "cualquier dato que no hayas podido leer con confianza"
 }
 
-Si un campo no aparece en la nómina o no lo puedes leer con seguridad, pon null (o 0 solo si el concepto claramente no aplica, nunca inventes cifras). "horas_lectivas_mes" solo aplica si el trabajador es personal docente (grupo I) y la nómina indica horas de clase/lectivas; si no aplica, pon null.`
+Si un campo no aparece en la nómina o no lo puedes leer con seguridad, pon null (o 0 solo si el concepto claramente no aplica, nunca inventes cifras). "horas_semana" es el número de horas que el trabajador tiene contratadas/trabaja a la semana (de clase, de conducción, de atención, etc. según su puesto) — extráelo si la nómina o el contrato adjunto lo indican explícitamente o si puede deducirse con seguridad del texto (p. ej. "20 horas semanales", "media jornada de 20h/sem"); si no aparece ninguna cifra de horas semanales, pon null y usa "jornada_porcentaje" en su lugar.
+
+IMPORTANTE sobre categorías: "Monitor/a" o "Monitor-animador/a" pertenece al GRUPO III (personal de servicios), no al Grupo I docente, aunque trabaje dando clases o actividades — es un error habitual clasificarlo como docente. "Profesor/a Titular" sí es Grupo I.`
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -126,21 +129,38 @@ function buscarCategoria(grupoId, categoriaId) {
   return { grupo, categoria: categoria || null }
 }
 
-function salarioEsperado(grupo, categoria, anio, jornadaPorcentaje, horasLectivasMes) {
+// Semanas efectivamente trabajadas al año usadas para aproximar una referencia
+// semanal cuando el convenio no la fija explícitamente (52 semanas - vacaciones).
+const SEMANAS_TRABAJADAS_APROX = 44
+
+function jornadaSemanalReferencia(grupo) {
+  if (grupo.jornada_semanal_referencia_horas) {
+    return { horas: grupo.jornada_semanal_referencia_horas, aproximada: false }
+  }
+  if (grupo.jornada_anual_horas) {
+    return { horas: grupo.jornada_anual_horas / SEMANAS_TRABAJADAS_APROX, aproximada: true }
+  }
+  return { horas: null, aproximada: false }
+}
+
+function salarioEsperado(grupo, categoria, anio, jornadaPorcentaje, horasSemana) {
   if (!categoria) return { valor: null, motivo: 'Categoría del convenio no identificada para esta nómina.' }
   const tabla = categoria.salario_base_mensual?.[String(anio)]
   if (tabla == null) {
     return { valor: null, motivo: `Falta rellenar el salario base de "${categoria.nombre}" para ${anio} en convenio-x-ensenanza-no-reglada.json.` }
   }
-  // Jornada completa: si hay horas lectivas/mes y jornada anual en horas, prorratear por horas.
-  if (horasLectivasMes != null && grupo.jornada_anual_horas) {
-    const horasMesJornadaCompleta = grupo.jornada_anual_horas / 12
-    const factor = Math.min(horasLectivasMes / horasMesJornadaCompleta, 1)
-    return { valor: tabla * factor, motivo: `Prorrateado por horas lectivas: ${horasLectivasMes}h / ${horasMesJornadaCompleta.toFixed(2)}h (jornada completa mensual equivalente).` }
+  // Prorratear por horas/semana trabajadas frente a la jornada semanal de referencia del grupo.
+  if (horasSemana != null) {
+    const ref = jornadaSemanalReferencia(grupo)
+    if (ref.horas) {
+      const factor = Math.min(horasSemana / ref.horas, 1)
+      const aviso = ref.aproximada ? ' [referencia semanal APROXIMADA, no confirmada en fuente oficial — verificar]' : ''
+      return { valor: tabla * factor, motivo: `Prorrateado por horas/semana: ${horasSemana}h / ${ref.horas.toFixed(2)}h (jornada completa semanal de referencia, Grupo ${grupo.id}).${aviso}` }
+    }
   }
-  // Si no, prorratear por % de jornada declarado en la nómina.
+  // Si no hay horas/semana o el grupo no tiene jornada de referencia, prorratear por % de jornada declarado en la nómina.
   const factor = (typeof jornadaPorcentaje === 'number' ? jornadaPorcentaje : 100) / 100
-  return { valor: tabla * factor, motivo: `Prorrateado por jornada declarada: ${jornadaPorcentaje ?? 100}%.` }
+  return { valor: tabla * factor, motivo: `Prorrateado por jornada declarada: ${jornadaPorcentaje ?? 100}% (no se pudo usar horas/semana).` }
 }
 
 // ── 3. Cotizaciones SS esperadas sobre la base que declara la propia nómina ──
@@ -186,7 +206,7 @@ async function main() {
   log('✅ Datos extraídos:\n' + JSON.stringify(datos, null, 2))
 
   const { grupo, categoria } = buscarCategoria(datos.grupo_convenio_id, datos.categoria_convenio_id)
-  const salEsp = salarioEsperado(grupo, categoria, datos.anio, datos.jornada_porcentaje, datos.horas_lectivas_mes)
+  const salEsp = salarioEsperado(grupo, categoria, datos.anio, datos.jornada_porcentaje, datos.horas_semana)
   const cotEsp = cotizacionEsperada(datos.anio, datos.tipo_contrato, datos.base_cotizacion_contingencias_comunes)
 
   const informe = {

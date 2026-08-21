@@ -14,39 +14,62 @@
       "id": "I",
       "nombre": "Personal docente",
       "jornada_anual_horas": 1446,
+      "jornada_semanal_referencia_horas": null,
+      "nota_jornada": "La jornada anual máxima (1.446 h) está confirmada. La referencia semanal para prorratear por horas/semana NO está confirmada en fuente oficial — de momento se calcula como aproximación (1446/44 semanas trabajadas ≈ 32,86 h/semana, asumiendo 44 semanas efectivas tras vacaciones). Verifica el artículo de jornada del convenio y sustituye este valor por el oficial en cuanto lo tengas.",
       "categorias": [
         { "id": "profesor_titular", "nombre": "Profesor/a Titular", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
-        { "id": "profesor_auxiliar", "nombre": "Profesor/a Auxiliar o Adjunto/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
-        { "id": "instructor_experto", "nombre": "Instructor/a o Experto/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+        { "id": "profesor_taller", "nombre": "Profesor/a de Taller", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "profesor_auxiliar_adjunto", "nombre": "Profesor/a Auxiliar o Adjunto/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "profesor_auxiliar_online", "nombre": "Profesor/a Auxiliar «on line»", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "instructor_experto", "nombre": "Instructor/a o Experto/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "educador_social", "nombre": "Educador/a Social", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
       ]
     },
     {
       "id": "II",
       "nombre": "Personal de administración",
       "jornada_anual_horas": 1715,
+      "jornada_semanal_referencia_horas": 39,
+      "nota_jornada": "39 horas/semana de referencia confirmadas (coherente con 1.715 h/año repartidas en ~44 semanas trabajadas). Existe además una previsión de hasta 200 horas anuales adicionales para determinados puestos funcionales — no modelada aquí, revisar si aplica al trabajador.",
       "categorias": [
         { "id": "jefe_administracion", "nombre": "Jefe/a de Administración", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
-        { "id": "tecnico_administracion", "nombre": "Técnico/a de Administración", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
-        { "id": "oficial_administrativo", "nombre": "Oficial Administrativo/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
-        { "id": "auxiliar_administrativo", "nombre": "Auxiliar Administrativo/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+        { "id": "oficial_administrativo_1", "nombre": "Oficial Administrativo/a de Primera", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "oficial_administrativo_2", "nombre": "Oficial Administrativo/a de Segunda", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "orientador_profesional", "nombre": "Orientador/a Profesional", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "auxiliar_administrativo", "nombre": "Auxiliar Administrativo/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "redactor_corrector", "nombre": "Redactor/a - Corrector/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "agente_comercial", "nombre": "Agente Comercial", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "televendedor", "nombre": "Televendedor/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "prospector_empleo", "nombre": "Prospector/a de Empleo", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
       ]
     },
     {
       "id": "III",
-      "nombre": "Personal de servicios generales",
-      "jornada_anual_horas": null,
+      "nombre": "Personal de servicios",
+      "jornada_anual_horas": 1715,
+      "jornada_semanal_referencia_horas": 39,
+      "nota_jornada": "39 horas/semana de referencia confirmadas, igual que el Grupo II (coherente con 1.715 h/año). Misma previsión de hasta 200 h anuales adicionales para puestos funcionales, no modelada aquí.",
       "categorias": [
-        { "id": "servicios_generales", "nombre": "Personal de servicios generales (pendiente detallar subcategorías del Anexo I)", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+        { "id": "encargado_almacen", "nombre": "Encargado/a de Almacén", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "empleado_servicios_generales", "nombre": "Empleado/a de Servicios Generales", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "auxiliar_no_docente", "nombre": "Auxiliar no Docente", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "monitor_animador", "nombre": "Monitor/a-Animador/a", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
       ]
     },
     {
       "id": "IV",
       "nombre": "Titulados no docentes",
       "jornada_anual_horas": null,
+      "jornada_semanal_referencia_horas": null,
+      "nota_jornada": "Jornada de referencia no confirmada para este grupo — verificar en el convenio antes de prorratear por horas/semana. Incluye roles de nueva creación en el X Convenio: Social Media Manager, Diseñador/a de Contenidos, Dinamizador/a de cursos online.",
       "categorias": [
-        { "id": "titulado_no_docente", "nombre": "Titulado/a no docente (incluye roles nuevos: Social Media Manager, Diseñador/a de Contenidos, Dinamizador/a de cursos online)", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
+        { "id": "titulado_no_docente", "nombre": "Titulado/a no Docente", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "social_media_manager", "nombre": "Social Media Manager", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "disenador_contenidos", "nombre": "Diseñador/a de Contenidos", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } },
+        { "id": "dinamizador_cursos_online", "nombre": "Dinamizador/a de Cursos Online", "salario_base_mensual": { "2024": null, "2025": null, "2026": null, "2027": null } }
       ]
     }
   ],
-  "estado_datos": "PENDIENTE — las cifras 'salario_base_mensual' están vacías (null) a propósito. Rellénalas copiándolas literalmente del Anexo I (tablas salariales) del X Convenio antes de confiar en el resultado del verificador para ninguna categoría. Fuentes oficiales: BOE-A-2025-14198 (https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-14198) y tablas publicadas por los sindicatos firmantes (UGT, FSIE, USO, CCOO). El script avisa explícitamente cuando falta el dato de una categoría/año y NO emite veredicto de 'correcto/incorrecto' en ese caso — solo lo hace para las categorías con datos ya rellenados."
+  "estado_datos": "PENDIENTE — las cifras 'salario_base_mensual' están vacías (null) a propósito. Rellénalas copiándolas literalmente del Anexo I (tablas salariales) del X Convenio antes de confiar en el resultado del verificador para ninguna categoría. Fuentes oficiales: BOE-A-2025-14198 (https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-14198) y tablas publicadas por los sindicatos firmantes (UGT, FSIE, USO, CCOO). El script avisa explícitamente cuando falta el dato de una categoría/año y NO emite veredicto de 'correcto/incorrecto' en ese caso — solo lo hace para las categorías con datos ya rellenados.",
+  "nota_clasificacion": "IMPORTANTE: 'Monitor/a-Animador/a' pertenece al Grupo III (personal de servicios), NO al Grupo I docente, según el propio texto del convenio. Es un error habitual asumir que 'Monitor' es una figura docente — la jornada anual/semanal de referencia para prorratear su salario es la del Grupo III (1.715 h/año, 39 h/semana), no la del Grupo I."
 }

@@ -6,8 +6,34 @@ Social coinciden con lo que corresponde según:
 
 - La categoría/grupo profesional del **X Convenio Colectivo Estatal de Enseñanza y
   Formación No Reglada** (BOE-A-2025-14198, vigente 2024-2027).
-- Las horas lectivas/mes (para personal docente) o el % de jornada (resto de grupos).
+- Las horas trabajadas a la semana frente a la jornada semanal de referencia de su grupo
+  (o el % de jornada, si la nómina no indica horas/semana).
 - Los tipos de cotización a la Seguridad Social vigentes para el trabajador.
+
+## Categorías reales del convenio (confirmadas)
+
+- **Grupo I — Personal docente** (1.446 h/año): Profesor/a Titular, Profesor/a de Taller,
+  Profesor/a Auxiliar o Adjunto/a, Profesor/a Auxiliar «on line», Instructor/a o Experto/a,
+  Educador/a Social.
+- **Grupo II — Personal de administración** (1.715 h/año, 39 h/semana): Jefe/a de
+  Administración, Oficial Administrativo/a de 1ª y 2ª, Orientador/a Profesional, Auxiliar
+  Administrativo/a, Redactor/a-Corrector/a, Agente Comercial, Televendedor/a, Prospector/a
+  de Empleo.
+- **Grupo III — Personal de servicios** (1.715 h/año, 39 h/semana): Encargado/a de Almacén,
+  Empleado/a de Servicios Generales, Auxiliar no Docente, **Monitor/a-Animador/a**.
+- **Grupo IV — Titulados no docentes**: incluye los roles nuevos del X Convenio (Social
+  Media Manager, Diseñador/a de Contenidos, Dinamizador/a de Cursos Online).
+
+⚠️ **"Monitor/a" está en el Grupo III (servicios), no en el Grupo I (docente)**, aunque dé
+clases o actividades — es la clasificación que hace el propio convenio, y un error habitual
+es asumir que por dar clase es personal docente. Esto importa porque cambia la jornada de
+referencia usada para prorratear su salario por horas/semana.
+
+Para el Grupo I la jornada semanal de referencia (39 h en los Grupos II/III) **no está
+confirmada en fuente oficial** — el script usa de momento una aproximación (1.446 h/año ÷ 44
+semanas ≈ 32,86 h/semana) y lo avisa en cada informe donde aplica. Sustitúyela por la cifra
+oficial en `convenio-x-ensenanza-no-reglada.json` (campo `jornada_semanal_referencia_horas`
+del Grupo I) en cuanto la tengas.
 
 ## ⚠️ Antes de usarlo: rellena las tablas salariales
 
@@ -50,11 +76,13 @@ node verificar-nomina.mjs "/ruta/a/nomina.pdf" --out=informe.json
 
 El script:
 
-1. Envía el PDF a Claude y extrae: periodo, categoría declarada, horas lectivas/mes,
-   jornada, salario base, complementos, bases y cuotas de cotización, IRPF.
-2. Identifica a qué grupo/categoría del convenio corresponde el trabajador.
-3. Calcula el salario que le correspondería (prorrateado por horas lectivas si es personal
-   docente, o por % de jornada en el resto de grupos) y lo compara con el de la nómina.
+1. Envía el PDF a Claude y extrae: periodo, categoría declarada, horas trabajadas a la
+   semana, jornada, salario base, complementos, bases y cuotas de cotización, IRPF.
+2. Identifica a qué grupo/categoría del convenio corresponde el trabajador (con el aviso
+   de que Monitor/a-Animador/a es Grupo III, no Grupo I, incluido en el propio prompt).
+3. Calcula el salario que le correspondería prorrateando por horas/semana frente a la
+   jornada semanal de referencia de su grupo (o por % de jornada si no hay horas/semana en
+   la nómina) y lo compara con el de la nómina.
 4. Calcula la cuota de Seguridad Social que le correspondería sobre la base que declara la
    propia nómina, y la compara con lo retenido.
 5. Imprime un informe con veredicto por cada comprobación (✅ correcto / ⚠️ revisar /
