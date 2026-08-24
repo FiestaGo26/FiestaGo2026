@@ -4,7 +4,7 @@ import { TERMS_VERSION_CURRENT } from '@/lib/terms'
 
 export const metadata: Metadata = {
   title: 'Compromisos del Proveedor · FiestaGo',
-  description: 'Lo que aceptas al inscribirte como proveedor en FiestaGo. Seis compromisos prácticos que respaldan nuestra Garantía de Éxito.',
+  description: 'Lo que aceptas al inscribirte como proveedor en FiestaGo. Ocho compromisos prácticos que respaldan nuestra Garantía de Éxito y el sistema legal de facturación.',
 }
 
 export default function CompromisosPage() {
@@ -13,7 +13,7 @@ export default function CompromisosPage() {
       <article className="max-w-2xl mx-auto bg-white border border-stone-200 rounded-3xl p-8 md:p-12 shadow-card">
         <Link href="/profesionales" className="text-xs text-coral hover:underline mb-6 inline-block">← Volver</Link>
         <div className="text-[10px] font-bold tracking-widest uppercase text-coral mb-3">
-          Versión {TERMS_VERSION_CURRENT} — Junio 2026
+          Versión {TERMS_VERSION_CURRENT} — Agosto 2026
         </div>
         <h1 className="font-serif text-3xl md:text-4xl font-black text-ink mb-3 leading-tight">
           Compromisos del Proveedor en FiestaGo
@@ -96,7 +96,7 @@ export default function CompromisosPage() {
         </Section>
 
         <Section title="4. Documentos en regla" badge="Pierdes el sello">
-          Estás dado de alta como autónomo o empresa, declaras el IVA cuando corresponde, y tienes seguro de responsabilidad civil cuando tu actividad lo requiere (catering, animación con menores, espacios con aforo).
+          Aportas DNI/NIE o CIF veraces cuando FiestaGo te los solicita para verificar tu identidad y otorgarte el sello Verificado. Cuando tu actividad lo requiere (catering, animación con menores, espacios con aforo), aportas también seguro de responsabilidad civil vigente.
           <p className="mt-2 text-xs text-ink/55">FiestaGo guarda tu DNI/CIF en un bucket privado y lo elimina tras verificarte. Falsificar documentación = baja inmediata.</p>
           <p className="mt-3 text-xs text-ink/55">Antes de tu primera reserva confirmada, te pediremos firmar una domiciliación bancaria (mandato SEPA) para poder cargar, si llegara el caso, las penalizaciones del punto 3 cuando no existan payouts pendientes. En el momento del registro no necesitamos este dato — solo cuando estés a punto de aceptar tu primera reserva pagada.</p>
         </Section>
@@ -115,6 +115,30 @@ export default function CompromisosPage() {
           Si el cliente sufre una causa de fuerza mayor (fallecimiento familiar directo, hospitalización), FiestaGo le permite aplazar el evento hasta 12 meses. Te comprometes a ofrecer una fecha alternativa razonable o, si no tienes disponibilidad, a facilitar que FiestaGo te sustituya sin penalización para nadie.
         </Section>
 
+        <Section title="8. Estar de alta el día de emitir factura" badge="Imprescindible para cobrar">
+          <p>
+            <strong>Para cobrar cualquier reserva a través de FiestaGo debes estar dado de alta ese día en Hacienda (declaración censal 036) y en la Seguridad Social (RETA), o disponer del régimen equivalente</strong>. La responsabilidad fiscal y de Seguridad Social es exclusivamente tuya — FiestaGo actúa como plataforma intermediaria, no como empleador ni como colaborador fiscal.
+          </p>
+
+          <p className="mt-3">Cualquiera de estas opciones te permite facturar en la Plataforma:</p>
+          <ul className="list-disc pl-5 mt-2 space-y-1 text-sm">
+            <li><strong>Autónomo permanente</strong> (alta RETA todo el año)</li>
+            <li><strong>Autónomo por días puntuales</strong> — te das de alta solo los días que emites factura o prestas servicio. Es lo más habitual en el sector eventos y perfectamente legal en España.</li>
+            <li><strong>Sociedad</strong> con CIF (SL, SLU, SA, SLNE)</li>
+            <li><strong>Cooperativa de facturación</strong></li>
+          </ul>
+
+          <p className="mt-4"><strong>Cuidado con las reservas de pago dividido:</strong> si tu servicio tiene anticipo configurado y el evento es a más de 60 días, se emiten <strong>dos facturas</strong> — una al reservar (por el anticipo) y otra al cobrar el resto, dos meses antes del evento. Si trabajas como autónomo por días puntuales, tienes que estar de alta AMBOS días. Si tu servicio no tiene anticipo, o si el evento es a menos de 60 días, se emite una sola factura y basta con estar de alta ese día.</p>
+
+          <p className="mt-4"><strong>Facturación delegada (opcional).</strong> Puedes autorizar a FiestaGo a emitir facturas en tu nombre desde tus datos fiscales del panel, según el artículo 5 del Real Decreto 1619/2012. Cuando lo activas, nosotros generamos las facturas Verifactu (RD 1007/2023) por ti y las guardamos con hash SHA-256 encadenado, QR de verificación AEAT y numeración correlativa. Esto es una comodidad técnica — <strong>tú sigues siendo el sujeto pasivo</strong> y la obligación de estar dado de alta el día de la factura sigue siendo tuya. Puedes activarlo y desactivarlo cuando quieras.</p>
+
+          <p className="mt-4"><strong>Cumplimiento DAC7.</strong> Al aceptar estos compromisos autorizas a FiestaGo a incluir tus datos fiscales y el importe agregado de tus reservas en el reporte anual DAC7 a la Agencia Tributaria, según la Directiva (UE) 2021/514 sobre plataformas digitales.</p>
+
+          <p className="mt-4 text-xs text-ink/55">
+            Si emitiéramos una factura en tu nombre (delegada) para una reserva en la que resultase que no estabas de alta ese día, la responsabilidad ante Hacienda y la Seguridad Social recae íntegramente sobre ti. FiestaGo se reserva el derecho a suspender la facturación delegada si detecta incumplimientos fiscales reiterados y a retener los payouts hasta la regularización.
+          </p>
+        </Section>
+
         <hr className="my-10 border-stone-200"/>
 
         <h2 className="font-serif text-2xl font-black text-ink mb-4">Lo que tú recibes a cambio</h2>
@@ -130,7 +154,7 @@ export default function CompromisosPage() {
         <hr className="my-10 border-stone-200"/>
 
         <p className="text-xs text-ink/45 leading-relaxed">
-          Al inscribirte en FiestaGo confirmas que has leído y aceptas estos siete compromisos, <strong>incluidas las penalizaciones económicas del punto 3</strong>. La aceptación queda registrada con tu fecha y la versión del documento. Si actualizamos los compromisos, te pedimos volver a aceptarlos antes de seguir aceptando reservas. La autorización de domiciliación bancaria (mandato SEPA) se solicitará por separado antes de tu primera reserva confirmada, no en este momento.
+          Al inscribirte en FiestaGo confirmas que has leído y aceptas estos <strong>ocho compromisos</strong>, <strong>incluidas las penalizaciones económicas del punto 3</strong> y la obligación fiscal del punto 8 (estar dado de alta el día de emitir factura). La aceptación queda registrada con tu fecha y la versión del documento. Si actualizamos los compromisos, te pedimos volver a aceptarlos antes de seguir aceptando reservas. La autorización de domiciliación bancaria (mandato SEPA) se solicitará por separado antes de tu primera reserva confirmada, no en este momento.
         </p>
       </article>
     </main>
