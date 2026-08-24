@@ -14,7 +14,7 @@ export default function TerminosPage() {
       <article className="max-w-2xl mx-auto bg-white border border-stone-200 rounded-3xl p-8 md:p-12 shadow-card">
         <Link href="/" className="text-xs text-coral hover:underline mb-6 inline-block">← Volver al inicio</Link>
         <div className="text-[10px] font-bold tracking-widest uppercase text-coral mb-3">
-          Versión 1.0 — Junio 2026
+          Versión 1.1 — Agosto 2026
         </div>
         <h1 className="font-serif text-3xl md:text-4xl font-black text-ink mb-3 leading-tight">
           Términos y Condiciones de Uso
@@ -44,10 +44,38 @@ export default function TerminosPage() {
         <Section title="4. Funcionamiento de las reservas">
           <ol className="list-decimal pl-5 space-y-2">
             <li>El Cliente selecciona un servicio con precio cerrado, fecha y condiciones visibles en la ficha del Proveedor.</li>
-            <li>El pago se realiza íntegramente a través de la Plataforma. El importe queda retenido por FiestaGo (pago en depósito o “escrow”) hasta la finalización del evento.</li>
+            <li>El pago se realiza íntegramente a través de la Plataforma. El importe queda retenido por FiestaGo (pago en depósito o "escrow") hasta la finalización del evento.</li>
             <li>El Proveedor dispone de un plazo máximo de 48 horas (24 horas si el evento es en menos de 15 días) para aceptar la reserva.</li>
-            <li>Confirmada la reserva, Cliente y Proveedor se comunican a través del chat de la Plataforma.</li>
+            <li>Confirmada la reserva, Cliente y Proveedor se comunican a través del chat de la Plataforma. Adicionalmente, algunos Proveedores ofrecen videollamada gratuita previa a la reserva desde su ficha pública.</li>
           </ol>
+        </Section>
+
+        <Section title="4.b Anticipo y calendario de pagos">
+          <p>
+            Cada servicio puede requerir un anticipo del <strong>0% al 40%</strong> del precio en el momento de la reserva, según la configuración establecida por el Proveedor y visible en la ficha del servicio antes de reservar. En cualquier caso, el Cliente debe tener abonado el <strong>100% del importe con al menos 2 meses (60 días) de antelación</strong> al evento; de lo contrario, la reserva podrá cancelarse automáticamente con las consecuencias descritas en el apartado 6.
+          </p>
+          <p>
+            Reglas concretas del calendario de pagos:
+          </p>
+          <ul className="list-disc pl-5 mt-3 space-y-2">
+            <li>Si el servicio no exige anticipo (0%), el Cliente paga el 100% en el momento de la reserva.</li>
+            <li>Si el servicio exige anticipo (X%) y el evento es en más de 60 días, el Cliente paga el X% al reservar y el (100−X)% en la fecha que la Plataforma calcula automáticamente como <em>fecha del evento menos 60 días</em>.</li>
+            <li>Si el servicio exige anticipo pero el evento es en 60 días o menos (reserva de última hora), el Cliente paga el 100% al reservar. No hay segundo pago.</li>
+            <li>Cuando llegue la fecha del segundo pago, la Plataforma enviará al Cliente recordatorios por email y, si corresponde, por WhatsApp. El Cliente dispone de 7 días naturales de gracia desde la fecha de vencimiento; pasado este plazo la reserva se cancelará automáticamente y el anticipo abonado se destinará al Proveedor como compensación por la pérdida de la fecha.</li>
+          </ul>
+        </Section>
+
+        <Section title="4.c Facturación">
+          <p>
+            Por cada reserva confirmada la Plataforma emite dos facturas conforme al Reglamento Verifactu (RD 1007/2023):
+          </p>
+          <ol className="list-decimal pl-5 mt-3 space-y-2">
+            <li>Una factura de FiestaGo al Cliente por el importe de la tarifa de servicio del 8% (Garantía de Éxito), con desglose de base imponible e IVA aplicable.</li>
+            <li>Una factura del Proveedor al Cliente por el precio del servicio. Cuando el Proveedor haya activado el consentimiento de facturación delegada previsto en el artículo 5 del RD 1619/2012, esta factura será emitida materialmente por FiestaGo en nombre del Proveedor, quien conserva a todos los efectos la condición de sujeto pasivo. En caso contrario, el Proveedor deberá emitir la factura por sus propios medios.</li>
+          </ol>
+          <p className="mt-3">
+            Todas las facturas emitidas por la Plataforma cumplen los requisitos técnicos del Reglamento Verifactu: numeración correlativa, huella digital SHA-256 encadenada, código QR de verificación en la sede electrónica de la AEAT y contenido íntegro conforme al RD 1619/2012. El Cliente recibirá las facturas por email y podrá descargarlas también desde su cuenta.
+          </p>
         </Section>
 
         <Section title="5. Precio y Garantía de Éxito">

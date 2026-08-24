@@ -3,6 +3,7 @@ import { ReactNode } from 'react'
 import Navbar from './_components/Navbar'
 import WaitlistBanner from './_components/WaitlistBanner'
 import PwaInit from './_components/PwaInit'
+import CookieBanner from './_components/CookieBanner'
 
 function Footer() {
   return (
@@ -17,7 +18,7 @@ function Footer() {
             { title:'Celebraciones', links:[['Bodas','/proveedores?categoria=planner'],['Cumpleaños','/#packs'],['Fiestas privadas','/#packs']] },
             { title:'Proveedores',   links:[['Saber más','/profesionales'],['Inscribirse','/registro-proveedor'],['Acceder a mi panel','/proveedor/login']] },
             { title:'FiestaGo',      links:[['🛡 Garantía de Éxito','/garantia'],['Compromisos del Proveedor','/proveedor/compromisos']] },
-            { title:'Legal',         links:[['Términos de uso','/terminos'],['Privacidad','/privacidad'],['Cookies','/cookies']] },
+            { title:'Legal',         links:[['Términos de uso','/terminos'],['Aviso legal','/aviso-legal'],['Privacidad','/privacidad'],['Cookies','/cookies']] },
           ].map(col => (
             <div key={col.title}>
               <div className="text-white font-semibold text-sm mb-4">{col.title}</div>
@@ -46,6 +47,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <div className="flex-1">{children}</div>
       <Footer/>
       <PwaInit/>
+      <CookieBanner/>
     </div>
   )
 }
