@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('provider_quotes')
-    .select('id, public_id, client_name, event_date, event_city, guest_count, total_amount, status, shared_at, viewed_by_client_at, accepted_at, rejected_at, created_at')
+    .select('id, public_id, client_name, client_phone, event_date, event_city, guest_count, total_amount, status, shared_at, viewed_by_client_at, accepted_at, rejected_at, created_at')
     .eq('provider_id', providerId!)
     .order('created_at', { ascending: false })
     .limit(100)

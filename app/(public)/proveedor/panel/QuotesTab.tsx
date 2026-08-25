@@ -19,6 +19,7 @@ type Quote = {
   id:                   string
   public_id:            string
   client_name:          string | null
+  client_phone:         string | null
   event_date:           string | null
   event_city:           string | null
   guest_count:          number | null
@@ -127,8 +128,11 @@ export default function QuotesTab({ providerId, onGoTab }: {
     const url = `${window.location.origin}/q/${q.public_id}`
     const name = q.client_name?.split(' ')[0] || 'hola'
     const text = `¡Hola ${name}! Te paso el presupuesto que me pediste. Lo tienes aquí: ${url}\n\nCualquier duda, me escribes 🙂`
-    const phone = (q as any).client_phone || ''
-    const cleanPhone = phone.replace(/[^\d]/g, '')
+    // WhatsApp exige formato internacional sin '+', sin espacios y sin
+    // ceros iniciales. Si el proveedor guardó un móvil español sin código
+    // (9 dígitos empezando por 6/7), le anteponemos 34 automáticamente.
+    let cleanPhone = (q.client_phone || '').replace(/[^\d]/g, '')
+    if (cleanPhone.length === 9 && /^[67]/.test(cleanPhone)) cleanPhone = '34' + cleanPhone
     const waUrl = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`
