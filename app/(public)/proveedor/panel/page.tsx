@@ -2728,18 +2728,49 @@ function InvoicesTab({ provider, onGoFiscal }: {
   const [invoices, setInvoices] = useState<any[]>([])
   const [loading, setLoading]   = useState(true)
   const [consentActive, setConsentActive] = useState<boolean | null>(null)
+  const [regenerating, setRegenerating] = useState(false)
 
-  useEffect(() => {
+  async function load() {
     if (!provider?.id) return
     setLoading(true)
-    Promise.all([
-      fetch(`/api/proveedor/invoices?providerId=${provider.id}`).then(r => r.json()),
-      fetch(`/api/proveedor/fiscal?providerId=${provider.id}`).then(r => r.json()),
-    ]).then(([invRes, fiscalRes]) => {
+    try {
+      const [invRes, fiscalRes] = await Promise.all([
+        fetch(`/api/proveedor/invoices?providerId=${provider.id}`).then(r => r.json()),
+        fetch(`/api/proveedor/fiscal?providerId=${provider.id}`).then(r => r.json()),
+      ])
       setInvoices(invRes.invoices || [])
       setConsentActive(!!fiscalRes.fiscal?.consent_delegated_invoicing)
-    }).finally(() => setLoading(false))
-  }, [provider?.id])
+    } finally { setLoading(false) }
+  }
+  useEffect(() => { load() /* eslint-disable-next-line */ }, [provider?.id])
+
+  async function regenerate() {
+    if (!provider?.id || regenerating) return
+    setRegenerating(true)
+    try {
+      const res = await fetch('/api/proveedor/invoices/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-provider-token': provider.id },
+        body: JSON.stringify({ providerId: provider.id }),
+      })
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error || 'Error')
+      const total = (d.generated?.commission || 0) + (d.generated?.delegated || 0)
+      if (total === 0 && (d.skipped?.length || 0) === 0) {
+        toast.success('Todas tus facturas ya estaban emitidas ✓')
+      } else if (total > 0) {
+        toast.success(`Emitidas ${total} facturas nuevas (${d.generated.commission} comisión + ${d.generated.delegated} delegadas)`)
+      } else {
+        toast.error('No pude emitir facturas — revisa tus datos fiscales y el consent de facturación delegada')
+      }
+      if (d.errors?.length) console.warn('Errores al regenerar:', d.errors)
+      await load()
+    } catch (e: any) {
+      toast.error(e?.message || 'Error al regenerar')
+    } finally {
+      setRegenerating(false)
+    }
+  }
 
   if (!provider) return null
 
@@ -2748,7 +2779,18 @@ function InvoicesTab({ provider, onGoFiscal }: {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-serif text-2xl font-black text-ink mb-2">Facturas emitidas</h1>
+      <div className="flex items-start justify-between gap-4 mb-2">
+        <h1 className="font-serif text-2xl font-black text-ink">Facturas emitidas</h1>
+        <button onClick={regenerate} disabled={regenerating}
+          title="Reintenta emitir facturas para reservas confirmadas donde falta alguna (típicamente cuando confirmaste antes de rellenar tus datos fiscales)"
+          className={`text-xs font-bold px-3 py-2 rounded-lg border ${
+            regenerating
+              ? 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
+              : 'bg-white text-coral border-coral/40 hover:bg-coral/5 cursor-pointer'
+          }`}>
+          {regenerating ? 'Emitiendo…' : '🔄 Regenerar faltantes'}
+        </button>
+      </div>
       <p className="text-ink/55 text-sm mb-6 leading-relaxed">
         Facturas legales que FiestaGo emite en tu nombre por cada reserva confirmada.
         Cumplen Verifactu (RD 1007/2023) con hash SHA-256 encadenado y código QR verificable en la Agencia Tributaria.
