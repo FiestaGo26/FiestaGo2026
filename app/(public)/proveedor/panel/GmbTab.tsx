@@ -162,7 +162,7 @@ export default function GmbTab({ providerId }: { providerId: string }) {
     const text = p.body + (p.cta_url ? `\n\n👉 ${p.cta_url}` : '')
     // Si el proveedor ha pegado la URL de su ficha, abrimos ahí directo.
     // Si no, caemos al selector genérico de business.google.com/posts.
-    const target = settings.google_business_url || 'https://business.google.com/posts'
+    const target = settings.google_business_url || 'https://business.google.com/create'
     navigator.clipboard.writeText(text).then(
       () => {
         toast.success(settings.google_business_url

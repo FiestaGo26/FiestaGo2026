@@ -23,7 +23,7 @@ export async function emailProviderGmbWeeklyReminder(opts: {
   const escape = (s: string) => s
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-  const openHref = googleBusinessUrl || 'https://business.google.com/posts'
+  const openHref = googleBusinessUrl || 'https://business.google.com/create'
   const openLabel = googleBusinessUrl
     ? 'Abrir mi ficha de Google'
     : 'Abrir Google Business'
