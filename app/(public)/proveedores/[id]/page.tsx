@@ -294,11 +294,30 @@ export default function ProviderDetailPage() {
   async function handleBook(e: React.FormEvent) {
     e.preventDefault()
     if (!provider) return
+    // Guard: si el proveedor tiene servicios definidos, exigimos que el
+    // cliente elija uno antes de reservar. Sin esto la reserva se creaba
+    // con total_amount=0, el cliente no recibía link de pago y la
+    // pestaña Cobros del proveedor quedaba vacía.
+    const hasServices = (provider as any)?.services?.length > 0 ||
+                        (typeof selectedSvc !== 'undefined' && !!selectedSvc)
+    if (hasServices && !selectedSvc) {
+      toast.error('Selecciona primero uno de los servicios de arriba')
+      return
+    }
     setSending(true)
     try {
       const chosenAddons = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
       const addonsTotal  = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
-      const totalAmount  = (selectedSvc?.price ?? provider.price_base ?? 0) + addonsTotal
+      const basePrice    = selectedSvc?.price ?? provider.price_base ?? 0
+      const totalAmount  = basePrice + addonsTotal
+      // Doble red: nunca aceptamos reservas con importe 0 salvo que el
+      // proveedor haya declarado explícitamente "precio a consultar"
+      // (sin servicios y sin price_base).
+      if (totalAmount <= 0 && (selectedSvc || provider.price_base)) {
+        toast.error('El servicio no tiene precio definido. Elige otro o contacta con el proveedor.')
+        setSending(false)
+        return
+      }
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
