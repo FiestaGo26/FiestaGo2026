@@ -275,7 +275,13 @@ function ProveedorPanelInner() {
     try {
       const res = await apiFetch(`/api/proveedor/earnings?provider_id=${providerId}&year=${year}`)
       const data = await res.json()
-      setEarnings(data)
+      // Si el backend devuelve un error, no lo usamos como earnings:
+      // se cae al empty state en vez de crashear al leer .totals.count
+      if (!res.ok || data?.error || !data?.totals) {
+        setEarnings(null)
+      } else {
+        setEarnings(data)
+      }
     } catch { setEarnings(null) }
     setEarningsLoading(false)
   }
@@ -2009,7 +2015,7 @@ function ProveedorPanelInner() {
 
             {earningsLoading ? (
               <div className="text-center text-ink/40 py-12">Cargando cobros...</div>
-            ) : !earnings || earnings.totals.count === 0 ? (
+            ) : !earnings?.totals || earnings.totals.count === 0 ? (
               <div className="bg-white border border-stone-200 rounded-2xl p-10 text-center">
                 <div className="text-4xl mb-3">💶</div>
                 <p className="text-ink/55 text-sm">
