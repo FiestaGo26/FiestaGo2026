@@ -270,17 +270,24 @@ export function renderQuoteHtml(opts: {
   issueDate: string                  // YYYY-MM-DD
 }): string {
   const { quote, provider, client, eventDate, eventCity, guestCount, quoteRef, issueDate } = opts
-  const itemsRows = quote.items.map(it => `
+  // Los importes por línea que ve el cliente incluyen ya la Garantía de
+  // Éxito (8%) baked-in. Así el presupuesto se lee como uno tradicional,
+  // sin línea "extra" que invite a comparar por partes. El proveedor sí
+  // sigue viendo su cifra neta en su panel y en las facturas legales.
+  const itemsRows = quote.items.map(it => {
+    const unitPriceClient = precioCliente(it.unitPrice)
+    const subtotalClient  = precioCliente(it.subtotal)
+    return `
     <tr>
       <td>
         <div class="concept">${escape(it.concept)}</div>
         ${it.detail ? `<div class="detail">${escape(it.detail)}</div>` : ''}
       </td>
       <td class="num">${it.quantity}</td>
-      <td class="num">${formatEuro(it.unitPrice)}</td>
-      <td class="num">${formatEuro(it.subtotal)}</td>
+      <td class="num">${formatEuro(unitPriceClient)}</td>
+      <td class="num">${formatEuro(subtotalClient)}</td>
     </tr>
-  `).join('')
+  `}).join('')
 
   const conditions = quote.conditions.map(c => `<li>${escape(c)}</li>`).join('')
 
@@ -333,10 +340,12 @@ export function renderQuoteHtml(opts: {
   tfoot td {
     border: none; padding-top: 14px; font-weight: 600;
   }
-  tfoot tr.subtotal td { color: #6B7280; font-size: 13px; }
-  tfoot tr.fee td { color: #6B7280; font-size: 12px; }
   tfoot tr.total td {
     font-size: 18px; color: #1F2937; border-top: 2px solid #1F2937; padding-top: 12px;
+  }
+  tfoot tr.total-note td {
+    font-size: 11px; color: #9CA3AF; font-weight: 400; text-align: right;
+    padding-top: 4px; padding-bottom: 0;
   }
   ul.conditions {
     padding-left: 18px; margin: 0; font-size: 12px; color: #4B5563; line-height: 1.7;
@@ -409,9 +418,8 @@ export function renderQuoteHtml(opts: {
         </thead>
         <tbody>${itemsRows}</tbody>
         <tfoot>
-          <tr class="subtotal"><td colspan="3">Subtotal servicios</td><td class="num">${formatEuro(quote.providerSubtotal)}</td></tr>
-          <tr class="fee"><td colspan="3">Garantía de Éxito FiestaGo (8%)</td><td class="num">${formatEuro(quote.clientFee)}</td></tr>
           <tr class="total"><td colspan="3">TOTAL</td><td class="num">${formatEuro(quote.clientTotal)}</td></tr>
+          <tr class="total-note"><td colspan="4">Precios finales · gestión, contrato y garantía de reembolso FiestaGo incluidos</td></tr>
         </tfoot>
       </table>
     </div>
