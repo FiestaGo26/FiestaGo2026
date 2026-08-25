@@ -42,11 +42,22 @@ const TOPIC_IDEAS = [
   'Tip útil para parejas/familias',
 ]
 
+type Settings = {
+  google_business_url:          string | null
+  gmb_weekly_reminders_enabled: boolean
+}
+
 export default function GmbTab({ providerId }: { providerId: string }) {
   const [posts,    setPosts]    = useState<Post[]>([])
   const [loading,  setLoading]  = useState(true)
   const [topic,    setTopic]    = useState('')
   const [pending, startTransition] = useTransition()
+  const [settings, setSettings] = useState<Settings>({
+    google_business_url: null,
+    gmb_weekly_reminders_enabled: true,
+  })
+  const [urlDraft,   setUrlDraft]   = useState('')
+  const [savingUrl,  setSavingUrl]  = useState(false)
 
   async function load() {
     setLoading(true)
@@ -57,6 +68,12 @@ export default function GmbTab({ providerId }: { providerId: string }) {
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Error')
       setPosts(d.posts || [])
+      const s = d.settings || {}
+      setSettings({
+        google_business_url:          s.google_business_url ?? null,
+        gmb_weekly_reminders_enabled: s.gmb_weekly_reminders_enabled ?? true,
+      })
+      setUrlDraft(s.google_business_url || '')
     } catch (e: any) {
       toast.error(e?.message || 'Error')
     } finally {
@@ -64,6 +81,39 @@ export default function GmbTab({ providerId }: { providerId: string }) {
     }
   }
   useEffect(() => { load() }, [providerId])
+
+  // Si el proveedor entra con ?unsubscribe=1 (link desde el email de
+  // recordatorio), desactivamos el toggle y le confirmamos por toast.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('unsubscribe') === '1') {
+      saveSettings({ gmb_weekly_reminders_enabled: false })
+      toast.success('Recordatorios semanales desactivados')
+      url.searchParams.delete('unsubscribe')
+      window.history.replaceState({}, '', url.toString())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function saveSettings(update: Partial<Settings>) {
+    try {
+      setSavingUrl(true)
+      const r = await fetch('/api/proveedor/gmb', {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId, ...update }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.error || 'Error')
+      toast.success('Guardado ✓')
+      setSettings(s => ({ ...s, ...update }))
+    } catch (e: any) {
+      toast.error(e?.message || 'Error')
+    } finally {
+      setSavingUrl(false)
+    }
+  }
 
   function generate() {
     if (topic.trim().length < 5) {
@@ -110,11 +160,16 @@ export default function GmbTab({ providerId }: { providerId: string }) {
 
   function copyAndOpen(p: Post) {
     const text = p.body + (p.cta_url ? `\n\n👉 ${p.cta_url}` : '')
+    // Si el proveedor ha pegado la URL de su ficha, abrimos ahí directo.
+    // Si no, caemos al selector genérico de business.google.com/posts.
+    const target = settings.google_business_url || 'https://business.google.com/posts'
     navigator.clipboard.writeText(text).then(
       () => {
-        toast.success('Copiado · abriendo Google Business')
+        toast.success(settings.google_business_url
+          ? 'Copiado · abriendo tu ficha de Google'
+          : 'Copiado · abriendo Google Business')
         setStatus(p.id, 'copied')
-        setTimeout(() => window.open('https://business.google.com/posts', '_blank'), 400)
+        setTimeout(() => window.open(target, '_blank'), 400)
       },
       () => toast.error('No pude copiar')
     )
@@ -130,6 +185,59 @@ export default function GmbTab({ providerId }: { providerId: string }) {
           Genera posts optimizados para tu ficha de Google Maps con IA.
           Aparecerás más alto en búsquedas locales ("fotógrafo bodas {`<tu ciudad>`}").
         </div>
+      </div>
+
+      {/* Ajustes: URL de la ficha + toggle de recordatorios semanales */}
+      <div style={{
+        background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12,
+        padding: 16, marginBottom: 14,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#1F2937', marginBottom: 8 }}>
+          ⚙️ Configuración
+        </div>
+
+        <label style={{ fontSize: 11, fontWeight: 700, color: '#6B7280',
+          textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>
+          URL de tu ficha en Google Business
+        </label>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input value={urlDraft} onChange={e => setUrlDraft(e.target.value)}
+            placeholder="https://business.google.com/dashboard/l/…"
+            style={{
+              flex: 1, padding: '8px 10px', border: '1px solid #D1D5DB', borderRadius: 7,
+              fontSize: 12, outline: 'none', background: '#F9FAFB',
+            }}/>
+          <button
+            onClick={() => saveSettings({ google_business_url: urlDraft.trim() || null })}
+            disabled={savingUrl || urlDraft.trim() === (settings.google_business_url || '')}
+            style={{
+              padding: '8px 14px', borderRadius: 7, border: 'none',
+              background: savingUrl ? '#9CA3AF' : '#1F2937', color: '#fff',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              opacity: (savingUrl || urlDraft.trim() === (settings.google_business_url || '')) ? 0.6 : 1,
+            }}>
+            {savingUrl ? '…' : 'Guardar'}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: '#6B7280', marginTop: 6, lineHeight: 1.5 }}>
+          Entra a <a href="https://business.google.com" target="_blank" rel="noreferrer"
+            style={{ color: '#4285F4', fontWeight: 600, textDecoration: 'none' }}>
+            business.google.com</a>, elige tu ficha y copia la URL del navegador
+          (empieza por <code style={{ background: '#F3F4F6', padding: '1px 4px', borderRadius: 3 }}>
+          business.google.com/dashboard/l/…</code>). Sin esto, "Copiar y abrir" te lleva al selector genérico.
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12,
+          fontSize: 12, color: '#1F2937', cursor: 'pointer' }}>
+          <input type="checkbox"
+            checked={settings.gmb_weekly_reminders_enabled}
+            onChange={e => saveSettings({ gmb_weekly_reminders_enabled: e.target.checked })}
+            style={{ width: 16, height: 16, cursor: 'pointer' }}/>
+          <span>
+            <b>Recordatorio semanal por email</b> — si llevas más de 7 días sin publicar,
+            te mandamos un post ya generado listo para copiar y pegar.
+          </span>
+        </label>
       </div>
 
       {/* Generador */}
