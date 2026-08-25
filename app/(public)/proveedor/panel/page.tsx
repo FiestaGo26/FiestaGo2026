@@ -51,6 +51,10 @@ type Booking = {
   total_amount: number      // lo que pagó el cliente (base + 8%)
   provider_earns: number    // lo que cobra el proveedor (base, sin fee)
   status: string
+  // Split payment (anticipo + resto 2 meses antes del evento)
+  second_payment_amount?: number | null
+  second_payment_due_date?: string | null
+  second_payment_status?: 'not_needed' | 'pending' | 'paid' | 'overdue' | 'cancelled' | null
 }
 
 type Provider = {
