@@ -47,14 +47,14 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Facturas ya emitidas para estas reservas → set por (booking_id, type)
-  const bookingIds = (bookings || []).map(b => b.id)
+  const bookingIds = (bookings || []).map((b: any) => b.id)
   let existing: Set<string> = new Set()
   if (bookingIds.length > 0) {
     const { data: inv } = await supabase
       .from('invoices')
       .select('booking_id, invoice_type')
       .in('booking_id', bookingIds)
-    existing = new Set((inv || []).map(i => `${i.booking_id}:${i.invoice_type}`))
+    existing = new Set((inv || []).map((i: any) => `${i.booking_id}:${i.invoice_type}`))
   }
 
   const generated = { commission: 0, delegated: 0 }
