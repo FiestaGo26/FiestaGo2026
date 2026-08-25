@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { formatEuro } from '@/lib/pricing'
+
+// Fecha larga en español para labels del selector y placeholder {{fecha}}.
+function fmtDate(iso: string | null): string {
+  if (!iso) return 'sin fecha'
+  const d = new Date(iso + 'T00:00:00')
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: '2-digit' })
+}
 
 // ─── Pestaña Plantillas WhatsApp ───────────────────────────────────────
 // El proveedor mantiene una biblioteca de respuestas rápidas para
@@ -24,6 +33,23 @@ type Tpl = {
   use_count:  number
 }
 
+// Contacto = reserva confirmada o presupuesto generado (los que la IA
+// puede usar para prellenar placeholders). Los merge-eamos de bookings +
+// quotes y los ordenamos por fecha DESC para que lo más reciente asome
+// arriba del selector.
+type Contact = {
+  key:          string
+  source:       'booking' | 'quote'
+  label:        string   // "Ana García · reserva · 15 jun 26"
+  name:         string
+  phone:        string
+  event_date:   string | null
+  event_city:   string | null
+  guest_count:  number | null
+  amount:       number | null
+  publicUrl:    string | null   // solo quotes: link al presupuesto
+}
+
 const CATS: Array<{ id: string; label: string; icon: string }> = [
   { id:'consulta',       label:'Consulta inicial',      icon:'💬' },
   { id:'presupuesto',    label:'Presupuesto',           icon:'📄' },
@@ -40,6 +66,7 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
   const [loading,  setLoading]  = useState(true)
   const [editing,  setEditing]  = useState<Tpl | null>(null)
   const [usingTpl, setUsingTpl] = useState<Tpl | null>(null)
+  const [contacts, setContacts] = useState<Contact[]>([])
 
   async function load() {
     setLoading(true)
@@ -57,7 +84,61 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
       setLoading(false)
     }
   }
-  useEffect(() => { load() }, [providerId])
+
+  // Reservas + presupuestos → contactos para prellenar el modal. Los
+  // filtramos a los que tienen algún dato útil (nombre + evento) y los
+  // ordenamos por fecha DESC. Silencioso si algún endpoint falla.
+  async function loadContacts() {
+    try {
+      const [bkRes, qtRes] = await Promise.all([
+        fetch(`/api/proveedor/bookings?id=${providerId}`, { credentials: 'include' }),
+        fetch(`/api/proveedor/quotes/list?providerId=${providerId}`, { credentials: 'include' }),
+      ])
+      const bkData = bkRes.ok ? await bkRes.json() : { bookings: [] }
+      const qtData = qtRes.ok ? await qtRes.json() : { quotes: [] }
+
+      const fromBookings: Contact[] = (bkData.bookings || [])
+        .filter((b: any) => !b._masked && b.client_name)
+        .map((b: any) => ({
+          key:         `b:${b.id}`,
+          source:      'booking' as const,
+          label:       `${b.client_name} · reserva · ${fmtDate(b.event_date)}`,
+          name:        b.client_name || '',
+          phone:       b.client_phone || '',
+          event_date:  b.event_date || null,
+          event_city:  b.event_city || null,
+          guest_count: b.guest_count || null,
+          amount:      b.total_amount || null,
+          publicUrl:   null,
+        }))
+
+      const fromQuotes: Contact[] = (qtData.quotes || [])
+        .filter((q: any) => q.client_name)
+        .map((q: any) => ({
+          key:         `q:${q.id}`,
+          source:      'quote' as const,
+          label:       `${q.client_name} · presupuesto · ${fmtDate(q.event_date)}`,
+          name:        q.client_name || '',
+          phone:       q.client_phone || '',
+          event_date:  q.event_date || null,
+          event_city:  q.event_city || null,
+          guest_count: q.guest_count || null,
+          amount:      q.total_amount || null,
+          publicUrl:   `${window.location.origin}/q/${q.public_id}`,
+        }))
+
+      const merged = [...fromBookings, ...fromQuotes].sort((a, b) => {
+        const da = a.event_date || ''
+        const db = b.event_date || ''
+        return db.localeCompare(da)
+      })
+      setContacts(merged)
+    } catch {
+      // Los contactos son opcionales, no interrumpimos si fallan.
+    }
+  }
+
+  useEffect(() => { load(); loadContacts() }, [providerId])
 
   async function save(t: { id?: string; label: string; body: string; category: string | null }) {
     try {
@@ -168,7 +249,7 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
         <EditorModal tpl={editing} onClose={() => setEditing(null)} onSave={save} />
       )}
       {usingTpl && (
-        <UseModal tpl={usingTpl}
+        <UseModal tpl={usingTpl} contacts={contacts}
           onClose={() => setUsingTpl(null)}
           onUsed={() => markUsed(usingTpl.id)}/>
       )}
@@ -252,7 +333,9 @@ function EditorModal({ tpl, onClose, onSave }: {
   )
 }
 
-function UseModal({ tpl, onClose, onUsed }: { tpl: Tpl; onClose: () => void; onUsed: () => void }) {
+function UseModal({ tpl, contacts, onClose, onUsed }: {
+  tpl: Tpl; contacts: Contact[]; onClose: () => void; onUsed: () => void
+}) {
   const used = PLACEHOLDERS.filter(p => tpl.body.includes(`{{${p}}}`))
   const [values, setValues] = useState<Record<string, string>>(
     () => Object.fromEntries(used.map(p => [p, '']))
@@ -260,7 +343,29 @@ function UseModal({ tpl, onClose, onUsed }: { tpl: Tpl; onClose: () => void; onU
   const [phone, setPhone] = useState('')
 
   const filled = used.reduce((acc, p) => acc.replaceAll(`{{${p}}}`, values[p] || `{{${p}}}`), tpl.body)
-  const cleanPhone = phone.replace(/[^\d]/g, '')
+
+  // Normalización: WhatsApp exige internacional sin '+'. Un móvil español
+  // de 9 dígitos empezando por 6/7 → le prependemos '34'. Los demás los
+  // dejamos como los teclee el proveedor (asumimos que ya llevan código).
+  let cleanPhone = phone.replace(/[^\d]/g, '')
+  if (cleanPhone.length === 9 && /^[67]/.test(cleanPhone)) cleanPhone = '34' + cleanPhone
+
+  // Prellenar todos los campos del modal desde una reserva o presupuesto
+  // previo que el proveedor tenga en FiestaGo. Solo escribe los
+  // placeholders que la plantilla usa (los demás no molestan).
+  function prefillFromContact(key: string) {
+    const c = contacts.find(x => x.key === key)
+    if (!c) return
+    const next = { ...values }
+    if (used.includes('nombre')    && c.name)          next.nombre    = c.name.split(' ')[0]
+    if (used.includes('fecha')     && c.event_date)    next.fecha     = fmtDate(c.event_date)
+    if (used.includes('ciudad')    && c.event_city)    next.ciudad    = c.event_city
+    if (used.includes('invitados') && c.guest_count)   next.invitados = String(c.guest_count)
+    if (used.includes('precio')    && c.amount)        next.precio    = formatEuro(c.amount)
+    if (used.includes('enlace')    && c.publicUrl)     next.enlace    = c.publicUrl
+    setValues(next)
+    if (c.phone) setPhone(c.phone)
+  }
 
   function copy() {
     navigator.clipboard.writeText(filled).then(
@@ -278,6 +383,19 @@ function UseModal({ tpl, onClose, onUsed }: { tpl: Tpl; onClose: () => void; onU
 
   return (
     <Modal title={`💬 ${tpl.label}`} onClose={onClose}>
+      {contacts.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <label style={lbl}>Prellenar desde reserva o presupuesto (opcional)</label>
+          <select onChange={e => prefillFromContact(e.target.value)}
+            defaultValue=""
+            style={inputSty}>
+            <option value="">— Escribir a mano —</option>
+            {contacts.slice(0, 50).map(c => (
+              <option key={c.key} value={c.key}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
       {used.length > 0 && (
         <div style={{ marginBottom: 12 }}>
           <label style={lbl}>Rellena los datos</label>
