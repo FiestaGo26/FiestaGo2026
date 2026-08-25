@@ -55,16 +55,18 @@ export async function PATCH(req: NextRequest) {
   if (status === 'confirmed') updates.confirmed_at = new Date().toISOString()
   if (status === 'cancelled') updates.cancelled_at = new Date().toISOString()
 
-  // Lookup previa para conocer la fecha y calcular refund si toca cancelar
+  // Lookup previa para conocer la fecha y calcular refund si toca cancelar.
+  // No hay FK bookings → provider_services, así que no podemos traer la
+  // política de cancelación por join. Aplicamos la default 'moderate'.
   const { data: prev } = await supabase
     .from('bookings')
-    .select('event_date, total_amount, service_id, provider_services(cancellation_policy)')
+    .select('event_date, total_amount')
     .eq('id', id).single()
 
   let refund: { percent: number; amount: number; rule: string } | null = null
   if (status === 'cancelled' && prev) {
     refund = calcRefund({
-      policy: (prev as any).provider_services?.cancellation_policy,
+      policy: 'moderate',
       eventDate: prev.event_date,
       totalAmount: prev.total_amount || 0,
     })

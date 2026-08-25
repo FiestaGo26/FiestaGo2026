@@ -17,12 +17,15 @@ export async function GET(req: NextRequest) {
 
   const supabase = createAdminClient()
 
+  // Nota: no hacemos join a provider_services porque bookings no tiene FK
+  // hacia esa tabla (el ligado se pierde tras el cambio del modelo de datos).
+  // El nombre del servicio queda como null en la respuesta.
   const { data, error } = await supabase
     .from('bookings')
     .select(`
       id, created_at, event_date, paid_at, client_name, status,
       total_amount, commission_rate, commission_amt, provider_earns, is_free_txn,
-      event_type, city, provider_services(name)
+      event_type, city
     `)
     .eq('provider_id', providerId)
     .in('status', ['confirmed', 'completed'])
@@ -36,7 +39,7 @@ export async function GET(req: NextRequest) {
     event_date:   b.event_date,
     paid_at:      b.paid_at,
     client_name:  b.client_name,
-    service_name: b.provider_services?.name || null,
+    service_name: null,
     event_type:   b.event_type,
     city:         b.city,
     status:       b.status,
