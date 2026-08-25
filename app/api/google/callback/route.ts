@@ -13,14 +13,14 @@ export async function GET(req: NextRequest) {
 
   const error = searchParams.get('error')
   if (error) {
-    return NextResponse.redirect(`${base}/proveedor?gcal=error`)
+    return NextResponse.redirect(`${base}/proveedor/panel?tab=disponibilidad&gcal=error`)
   }
 
   const code = searchParams.get('code')
   const state = searchParams.get('state')
   const providerId = state ? verifyState(state) : null
   if (!code || !providerId) {
-    return NextResponse.redirect(`${base}/proveedor?gcal=error`)
+    return NextResponse.redirect(`${base}/proveedor/panel?tab=disponibilidad&gcal=error`)
   }
 
   try {
@@ -66,9 +66,9 @@ export async function GET(req: NextRequest) {
       console.error('[google callback] sync inicial falló', e)
     }
 
-    return NextResponse.redirect(`${base}/proveedor?gcal=ok`)
+    return NextResponse.redirect(`${base}/proveedor/panel?tab=disponibilidad&gcal=ok`)
   } catch (e) {
     console.error('[google callback] error', e)
-    return NextResponse.redirect(`${base}/proveedor?gcal=error`)
+    return NextResponse.redirect(`${base}/proveedor/panel?tab=disponibilidad&gcal=error`)
   }
 }
