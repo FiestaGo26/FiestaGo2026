@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { renderInvoiceHtml } from '@/lib/invoicing/pdf'
+import { getAuthUser } from '@/lib/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,12 +35,49 @@ export async function GET(
     return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
   }
 
-  // Autorización básica: admin, receptor por email, o emisor delegado.
+  // Autorización · aceptamos cualquiera de estos caminos:
+  //   1. Admin con x-admin-password
+  //   2. Receptor por ?email= (link firmado enviado en el email de factura)
+  //   3. Emisor por x-provider-token (llamada API desde el panel)
+  //   4. Sesión Supabase cuyo email coincide con el del proveedor emisor
+  //      o del cliente receptor (para <a href> desde panel FiestaGo)
   const isAdmin = req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD
   const isRecipient = email && String(email).toLowerCase() === String(inv.recipient_email).toLowerCase()
   const providerToken = req.headers.get('x-provider-token')
   const isIssuer = providerToken && providerToken === inv.issuer_provider_id
+
+  let isSessionAuthorized = false
   if (!isAdmin && !isRecipient && !isIssuer) {
+    const user = await getAuthUser()
+    if (user?.email) {
+      const userEmail = user.email.toLowerCase()
+      // ¿Es el cliente destinatario?
+      if (String(inv.recipient_email || '').toLowerCase() === userEmail) {
+        isSessionAuthorized = true
+      }
+      // ¿Es el proveedor emisor de una factura delegada?
+      if (!isSessionAuthorized && inv.issuer_provider_id) {
+        const { data: prov } = await supabase
+          .from('providers').select('email').eq('id', inv.issuer_provider_id).maybeSingle()
+        if (prov?.email && prov.email.toLowerCase() === userEmail) {
+          isSessionAuthorized = true
+        }
+      }
+      // ¿Es el proveedor asociado al booking (para la factura de comisión
+      // FiestaGo→cliente, que emite FiestaGo pero afecta al proveedor)?
+      if (!isSessionAuthorized && inv.booking_id) {
+        const { data: bk } = await supabase
+          .from('bookings').select('provider_id, providers(email)')
+          .eq('id', inv.booking_id).maybeSingle()
+        const providerEmail = (bk as any)?.providers?.email
+        if (providerEmail && String(providerEmail).toLowerCase() === userEmail) {
+          isSessionAuthorized = true
+        }
+      }
+    }
+  }
+
+  if (!isAdmin && !isRecipient && !isIssuer && !isSessionAuthorized) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
