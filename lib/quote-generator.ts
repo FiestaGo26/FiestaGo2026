@@ -12,7 +12,10 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { precioCliente, importeFee, formatEuro } from '@/lib/pricing'
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8'
+// Sonnet 5 basta para redactar presupuestos desde brief estructurado
+// (~0,07€/quote vs ~0,33€ con Opus). Se puede sobreescribir por env var
+// puntual si algún cliente exige la máxima calidad literaria de Opus.
+const MODEL = process.env.ANTHROPIC_QUOTE_MODEL || 'claude-sonnet-5'
 
 let _client: Anthropic | null = null
 function client(): Anthropic {
@@ -52,68 +55,31 @@ export type GeneratedQuote = {
   internalNotes: string
 }
 
-const SYSTEM = `Eres un asistente experto en redactar presupuestos profesionales para proveedores de bodas y eventos en España (fotografía, catering, espacios, música/DJ, flores, repostería, belleza, animación, transporte, papelería, planners, joyería).
+const SYSTEM = `Redactas presupuestos profesionales para proveedores de bodas y eventos en España (foto, catering, espacios, música, flores, repostería, belleza, animación, transporte, papelería, planners, joyería). Español de España.
 
-Recibes:
-- Un BRIEF libre del cliente (texto, transcripción de audio, o foto/imagen interpretada).
-- Datos del PROVEEDOR (nombre, categoría, ciudad).
-- SUS SERVICIOS REALES con precios (si los tiene definidos en su panel).
-- SUS PREFERENCIAS de presupuesto (% señal, validez, qué siempre incluye, qué excluye, condiciones por defecto, estilo, notas de pricing).
-- Sus 3 ÚLTIMOS PRESUPUESTOS generados (para mantener consistencia).
-- Datos del EVENTO (fecha, ciudad, nº invitados, si los hay).
+Recibes: brief libre del cliente, datos del proveedor, sus servicios reales con precios, sus preferencias (señal %, validez, includes/excludes, conditions, estilo), sus 3 últimos presupuestos, y datos del evento si los hay.
 
-Devuelves un PRESUPUESTO ESTRUCTURADO en JSON con:
-- "items": array con cada concepto. Cada item tiene concept (corto), detail (1 línea), quantity, unitPrice (EUR, precio del proveedor sin comisiones), subtotal.
-- "conditions": array de strings con condiciones generales (anticipo, plazo, política de cancelación, qué incluye, qué NO incluye, tiempos de entrega...). 4-8 condiciones.
-- "internalNotes": texto en 1-2 frases con sugerencias internas para el proveedor (qué preguntar al cliente antes de cerrar, qué riesgo ves, dónde puedes subir el precio si el cliente acepta sin negociar...).
+Devuelves JSON con:
+- "items": array de conceptos {concept, detail (1 línea), quantity, unitPrice (EUR sin comisiones), subtotal}. Mínimo 3 items detallados — nunca una línea "servicio completo".
+- "conditions": 4-8 strings con condiciones (anticipo, validez, incluye, no incluye, cancelación).
+- "internalNotes": 1-2 frases privadas para el proveedor (qué preguntar, qué riesgo, dónde puede subir precio).
 
-═══ JERARQUÍA DE FUENTES DE PRECIO (de más a menos prioritario) ═══
-
-1. SUS SERVICIOS REALES con precio definido en el panel → si hay un servicio que encaja con el brief, USA ESE PRECIO LITERAL. No lo modifiques ni redondees. Es su precio actual y vigente.
-2. SUS ÚLTIMOS PRESUPUESTOS → si en presupuestos anteriores cobró X por un item parecido, mantén X (consistencia con clientes recurrentes).
-3. SUS PREFERENCIAS (default_includes, default_excludes, pricing_notes) → ground truth para construir items y condiciones.
+JERARQUÍA DE PRECIO (de más a menos prioritario):
+1. Servicios reales del panel con precio → USA ese precio LITERAL, sin modificar.
+2. Últimos presupuestos → mantén consistencia con items parecidos.
+3. Sus preferencias (default_includes/excludes, pricing_notes).
 4. Su precio base orientativo si lo facilitó.
-5. RANGOS GENÉRICOS (solo si NO hay ninguna de las anteriores):
-   · Foto/Vídeo: 1.200-2.500€ paquete completo boda · 80-150€/h
-   · Catering: 60-95€/comensal · 35-55€ cóctel
-   · Música/DJ: 800-1.500€ ceremonia + banquete
-   · Flores: 350-1.200€ decoración floral
-   · Pastel: 4-7€/persona tarta de boda · mín 200€
-   · Animación: 400-900€ por evento
-   · Belleza (novia): 250-500€ peinado + maquillaje
-   · Transporte: 250-500€ servicio bodas
-   · Planner: 1.500-5.000€ planning completo · 800€ day-of
+5. Rangos genéricos SOLO si nada de lo anterior:
+   Foto/Vídeo 1.200-2.500€ paquete · 80-150€/h · Catering 60-95€/comensal · 35-55€ cóctel · DJ 800-1.500€ · Flores 350-1.200€ · Pastel 4-7€/pax mín 200€ · Animación 400-900€ · Belleza novia 250-500€ · Transporte 250-500€ · Planner 1.500-5.000€ full · 800€ day-of.
 
-═══ CONSTRUCCIÓN DE CONDICIONES ═══
+CONSTRUCCIÓN DE CONDICIONES: primero sus default_conditions verbatim; luego una con deposit_pct exacto; una con validity_days; si aplican, "INCLUYE:" desde default_includes y "NO INCLUYE:" desde default_excludes.
 
-- Empieza por SUS default_conditions (verbatim, no las reescribas).
-- Añade una condición con el % de señal exacto de su deposit_pct.
-- Añade una condición con su validity_days exacto.
-- Si en sus default_includes hay items relevantes al brief, mete una condición "El presupuesto INCLUYE: X, Y, Z".
-- Si en sus default_excludes hay cosas relevantes, mete "NO INCLUYE: X, Y" para evitar malentendidos.
-- Cierra con condiciones operativas estándar (forma de pago, cancelación) si no las cubrieron sus defaults.
+ESTILO según language_style: 'cercano' (tú, natural, sin "rogamos"), 'profesional' (usted, pulido), 'muy_formal' (usted, técnico, empresa grande).
 
-═══ ESTILO DE REDACCIÓN ═══
+REGLAS: si el brief no dice algo crítico (horas, invitados, fecha), estima y ANOTA en internalNotes. Si usas un servicio del catálogo, MENCIÓNALO en internalNotes. Si te apartas del precio de un presupuesto anterior similar, EXPLÍCALO.
 
-Adapta el tono al campo language_style del proveedor:
-- 'cercano' (default): tú, frases naturales, "te incluimos / te llevamos". Sin "rogamos" ni "estimado cliente".
-- 'profesional': usted, frases pulidas, ligeramente más formal.
-- 'muy_formal': usted, terminología técnica, formato tipo empresa grande.
-
-═══ REGLAS DURAS ═══
-
-- Items detallados, NO una sola línea "servicio completo X €". Mínimo 3 items.
-- Si el brief NO especifica algo crítico (nº horas, invitados, fecha), HAZ una estimación razonable y MENCIÓNALO en internalNotes.
-- Si usaste un servicio del catálogo del proveedor, MENCIÓNALO en internalNotes ("Item X cogido de tu catálogo de servicios al precio actual").
-- Si te apartaste del precio del último presupuesto similar, EXPLÍCALO en internalNotes.
-- Español de España.
-
-FORMATO DE RESPUESTA — devuelve ÚNICAMENTE el JSON, sin texto adicional, sin markdown:
-{
-  "items": [{"concept":"...", "detail":"...", "quantity":1, "unitPrice":0, "subtotal":0}],
-  "conditions": ["...", "..."],
-  "internalNotes": "..."
-}`
+Devuelve ÚNICAMENTE el JSON, sin markdown:
+{"items":[{"concept":"","detail":"","quantity":1,"unitPrice":0,"subtotal":0}],"conditions":["",""],"internalNotes":""}`
 
 export type ProviderQuoteContext = {
   services?: Array<{
@@ -210,7 +176,10 @@ export async function generateQuote(opts: {
 
   const resp = await client().messages.create({
     model:      MODEL,
-    max_tokens: 2048,
+    // 1500 basta: presupuestos típicos ocupan ~800-1200 tokens output.
+    // Sonnet no infla la salida como Opus, así que este tope evita
+    // pagar por texto extra que no aporta.
+    max_tokens: 1500,
     thinking:   { type: 'disabled' },
     system: [{
       type: 'text',
