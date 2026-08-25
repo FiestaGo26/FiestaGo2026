@@ -181,6 +181,22 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
     }).catch(() => {})
   }
 
+  // Copia rápida: cliente ya te escribió por WhatsApp, tienes el chat
+  // abierto en el móvil, solo quieres el texto en el portapapeles para
+  // pegarlo. Sustituimos {{nombre}} por "hola" (funciona como interjección
+  // sin nombre) y dejamos los demás placeholders sin resolver, entre
+  // corchetes, para que el proveedor los rellene tocándolos en la burbuja
+  // ya pegada. Nada de modal, nada de teléfono.
+  function quickCopy(t: Tpl) {
+    const filled = t.body
+      .replaceAll('{{nombre}}', 'hola')
+      .replace(/\{\{(fecha|ciudad|invitados|precio|enlace)\}\}/g, '[$1]')
+    navigator.clipboard.writeText(filled).then(
+      () => { toast.success('Copiado ✨ Pega en el chat de WhatsApp'); markUsed(t.id) },
+      () => toast.error('No pude copiar')
+    )
+  }
+
   const byCategory = CATS.map(c => ({
     ...c,
     items: tpls.filter(t => (t.category || 'otros') === c.id),
@@ -197,6 +213,10 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
           </h2>
           <div style={{ fontSize: 13, color: '#6B7280' }}>
             Responde a tus clientes en 2 clics. Edita las que vienen por defecto o crea las tuyas.
+          </div>
+          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>
+            <b style={{ color: '#128C7E' }}>📋 Copiar</b> — pega en el chat que ya tengas abierto ·&nbsp;
+            <b style={{ color: '#128C7E' }}>💬 Enviar</b> — abre WhatsApp directamente con un contacto
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -219,6 +239,7 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
             <div style={{ display: 'grid', gap: 8 }}>
               {group.items.map(t => (
                 <TplCard key={t.id} t={t}
+                  onQuickCopy={() => quickCopy(t)}
                   onUse={() => setUsingTpl(t)}
                   onEdit={() => setEditing(t)}
                   onDelete={() => remove(t.id)}/>
@@ -237,6 +258,7 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
           <div style={{ display: 'grid', gap: 8 }}>
             {huerfanas.map(t => (
               <TplCard key={t.id} t={t}
+                onQuickCopy={() => quickCopy(t)}
                 onUse={() => setUsingTpl(t)}
                 onEdit={() => setEditing(t)}
                 onDelete={() => remove(t.id)}/>
@@ -257,8 +279,8 @@ export default function QuickRepliesTab({ providerId }: { providerId: string }) 
   )
 }
 
-function TplCard({ t, onUse, onEdit, onDelete }: {
-  t: Tpl; onUse: () => void; onEdit: () => void; onDelete: () => void
+function TplCard({ t, onQuickCopy, onUse, onEdit, onDelete }: {
+  t: Tpl; onQuickCopy: () => void; onUse: () => void; onEdit: () => void; onDelete: () => void
 }) {
   return (
     <div style={{
@@ -282,13 +304,24 @@ function TplCard({ t, onUse, onEdit, onDelete }: {
           {t.body}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={onUse} style={{
-          padding: '7px 14px', borderRadius: 7, border: 'none',
-          background: '#25D366', color: '#fff', fontSize: 11, fontWeight: 700,
-          cursor: 'pointer', whiteSpace: 'nowrap',
-        }}>
-          💬 Usar
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <button onClick={onQuickCopy}
+          title="Copia el texto listo para pegar en el chat que ya tengas abierto"
+          style={{
+            padding: '7px 12px', borderRadius: 7, border: '1px solid #25D366',
+            background: '#fff', color: '#128C7E', fontSize: 11, fontWeight: 700,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>
+          📋 Copiar
+        </button>
+        <button onClick={onUse}
+          title="Rellena datos y abre WhatsApp directo con un contacto"
+          style={{
+            padding: '7px 12px', borderRadius: 7, border: 'none',
+            background: '#25D366', color: '#fff', fontSize: 11, fontWeight: 700,
+            cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>
+          💬 Enviar
         </button>
         <button onClick={onEdit} style={btnGhost}>✏️</button>
         <button onClick={onDelete} style={btnGhost}>🗑</button>
