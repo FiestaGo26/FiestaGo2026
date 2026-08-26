@@ -3272,9 +3272,17 @@ function VideoCallSection({ title, tone, items, respond }: {
                       📹 Entrar a la sala
                     </a>
                   </div>
-                  <div className="text-[11px] text-emerald-800/70 mt-2">
-                    Recuerda acordar la hora con el cliente antes. El link no caduca — sirve para cualquier videollamada con este cliente.
+                  <div className="text-[11px] text-emerald-800/70 mt-2 leading-relaxed">
+                    Recuerda acordar la hora antes. El link no caduca — sirve para cualquier videollamada con este cliente.
                   </div>
+                  <details className="mt-2">
+                    <summary className="text-[11px] font-bold text-emerald-800 cursor-pointer hover:text-emerald-900">
+                      ℹ️ La primera vez Jitsi te pedirá loguearte
+                    </summary>
+                    <div className="mt-1.5 text-[11px] text-emerald-800/85 leading-relaxed pl-4">
+                      Como anfitrión, Jitsi Meet te pedirá <b>una sola vez</b> iniciar sesión con Google/GitHub/Facebook para abrir la sala (medida anti-spam de Jitsi, no de FiestaGo). Después ya no vuelve a pedírtelo. Tu cliente entra sin loguearse — solo tú.
+                    </div>
+                  </details>
                 </div>
               )
             })()}
