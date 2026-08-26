@@ -843,23 +843,34 @@ export default function ProviderDetailPage() {
               )}
 
               {/* Desglose del precio (cliente paga base + 8% Garantía de Éxito) */}
-              <div className="rounded-xl p-3.5 mb-5 text-xs bg-cream-dark border border-stone-200">
-                <div className="font-bold mb-2 text-ink/60">💳 Desglose</div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-ink/50">Precio del proveedor</span>
-                  <span className="font-semibold">{formatEuro(effectivePrice)}</span>
+              {services.length > 0 && !selectedSvc ? (
+                <button type="button"
+                  onClick={() => document.getElementById('services-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  className="w-full rounded-xl p-3.5 mb-5 text-xs bg-amber-50 border border-amber-200 text-left hover:bg-amber-100 transition-colors">
+                  <div className="font-bold mb-1 text-amber-900">👇 Elige primero un servicio</div>
+                  <div className="text-amber-800/85 leading-relaxed">
+                    Pulsa una de las tarjetas de <b>Servicios disponibles</b> más abajo. Sin elegir servicio no puedo mostrarte el precio ni aplicar el cupón.
+                  </div>
+                </button>
+              ) : (
+                <div className="rounded-xl p-3.5 mb-5 text-xs bg-cream-dark border border-stone-200">
+                  <div className="font-bold mb-2 text-ink/60">💳 Desglose</div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-ink/50">Precio del proveedor</span>
+                    <span className="font-semibold">{formatEuro(effectivePrice)}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-ink/50" title="Si la reserva falla, FiestaGo te devuelve el dinero (110% si no encontramos sustituto)">
+                      Garantía de Éxito (8%) 🛡
+                    </span>
+                    <span className="text-ink/65">+{formatEuro(commission.amount)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
+                    <span className="text-ink font-semibold">Total a pagar</span>
+                    <span className="font-bold text-coral text-base">{formatEuro(commission.clientPays)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-ink/50" title="Si la reserva falla, FiestaGo te devuelve el dinero (110% si no encontramos sustituto)">
-                    Garantía de Éxito (8%) 🛡
-                  </span>
-                  <span className="text-ink/65">+{formatEuro(commission.amount)}</span>
-                </div>
-                <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
-                  <span className="text-ink font-semibold">Total a pagar</span>
-                  <span className="font-bold text-coral text-base">{formatEuro(commission.clientPays)}</span>
-                </div>
-              </div>
+              )}
 
               {booked ? (
                 <div className="py-2">
