@@ -75,8 +75,11 @@ export function desglosePrecio(base: number): {
   }
 }
 
-/** Texto reutilizable para tooltips/subtítulos: "incluye 8 € de Garantía de éxito". */
-export function textoGarantiaIncluida(base: number): string {
-  const fee = formatEuro(importeFee(base))
-  return `Incluye ${fee} de Garantía de Éxito`
+/** Texto reutilizable para tooltips/subtítulos.
+ *  Sin importe: el porcentaje/importe de la Garantía solo aparece en la
+ *  factura Verifactu (obligación fiscal). En web se muestra únicamente
+ *  como "Garantía de Éxito incluida" sin distraer al cliente con cifras.
+ *  `base` se conserva en la firma para no romper llamadas existentes. */
+export function textoGarantiaIncluida(_base?: number): string {
+  return 'Garantía de Éxito incluida'
 }
