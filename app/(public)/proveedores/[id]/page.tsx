@@ -597,8 +597,11 @@ export default function ProviderDetailPage() {
                           <div className="text-sm text-ink">
                             {svc.price != null ? (
                               <>
-                                <span className="font-semibold">{svc.price.toLocaleString()}€</span>
+                                <span className="font-semibold" title={textoGarantiaIncluida(svc.price)}>
+                                  {formatEuro(precioCliente(svc.price))}
+                                </span>
                                 <span className="text-ink/50"> {svc.price_unit}</span>
+                                <div className="text-[10px] text-ink/45">🛡 Garantía de Éxito incluida</div>
                               </>
                             ) : (
                               <span className="text-ink/45">A consultar</span>
