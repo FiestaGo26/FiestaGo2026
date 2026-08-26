@@ -88,8 +88,8 @@ Te comprometes a **mantener tu calendario de disponibilidad actualizado** en el 
 No es solo lista de obligaciones. Tú recibes:
 
 - **Acceso al tráfico de FiestaGo** sin coste fijo (sin cuotas, sin permanencia).
-- **Tu primera reserva sin comisión** (0%).
-- **8% de comisión** a partir de la segunda — pagada por el cliente, no por ti. Tú recibes el 100% del precio que pones en tu ficha.
+- **Cobras el 100% del precio que pones en tu ficha** en cada reserva.
+- **8% de Garantía de Éxito** que paga el cliente encima del precio del servicio — no sale de tu bolsillo.
 - **Sello "Verificado"** visible cuando entregas la documentación.
 - **Marketing gratuito** en nuestras redes y SEO.
 - **Garantía operativa**: si un cliente te pide un cambio abusivo o el evento se complica por culpa del cliente, FiestaGo media a tu favor.

@@ -110,7 +110,7 @@
 
     {
       "id": "provider_zero_commission_video",
-      "label": "Proveedor · 0% primera venta (vídeo)",
+      "label": "Proveedor · cobra el 100% (vídeo)",
       "audience": "provider",
       "weight": 25,
       "media": "video",
@@ -124,7 +124,7 @@
         "a Spanish wedding planner taking a phone call while flipping through a planner, calm and professional",
         "a decorator hanging fabric and lights for a celebration setup in a Spanish patio"
       ],
-      "caption_brief": "Caption dirigido a PROVEEDORES de eventos en España (fotógrafos, catering, DJ, animadores, decoradores). Hook punzante sobre cobrar la primera venta sin comisión. Tono cercano, tuteo, español de España. Estructura: hook 1 línea → propuesta (registro gratis + 0% 1ª venta + 8% desde la 2ª) → CTA 'Date de alta gratis · fiestago.es/registro-proveedor'. Máx 220 chars. Cero emojis al inicio, 1-2 al final como mucho.",
+      "caption_brief": "Caption dirigido a PROVEEDORES de eventos en España (fotógrafos, catering, DJ, animadores, decoradores). Hook punzante sobre que el proveedor cobra el 100% de su precio y la comisión la paga el cliente. Tono cercano, tuteo, español de España. Estructura: hook 1 línea → propuesta (registro gratis, sin cuotas, cobras el 100%, el 8% de Garantía lo paga el cliente encima) → CTA 'Date de alta gratis · fiestago.es/registro-proveedor'. Máx 220 chars. Cero emojis al inicio, 1-2 al final como mucho.",
       "hashtags_base": ["fiestago", "proveedoresdeventos", "autonomosespaña", "eventosespaña", "fotografodebodas", "catering", "djbodas", "weddingplannerespaña"]
     },
     {
@@ -141,7 +141,7 @@
         "a DJ unpacking equipment in an empty venue, slight frustration in the body language",
         "a florist sitting in a quiet workshop checking her phone with a worried expression"
       ],
-      "caption_brief": "Caption a PROVEEDORES en España. Ángulo: estás cansado de pagar cuota mensual sin clientes. FiestaGo es comisión, no suscripción: pagas solo cuando vendes, y la primera venta es íntegra para ti. Sin permanencia, sin tarjeta. Tuteo, español de España, frases cortas. CTA 'Empieza por aquí 👉 fiestago.es/registro-proveedor'. Máx 220 chars.",
+      "caption_brief": "Caption a PROVEEDORES en España. Ángulo: estás cansado de pagar cuota mensual sin clientes. En FiestaGo no hay cuota ni comisión al proveedor — cobras el 100% de tu precio y la comisión la paga el cliente encima. Sin permanencia, sin tarjeta. Tuteo, español de España, frases cortas. CTA 'Empieza por aquí 👉 fiestago.es/registro-proveedor'. Máx 220 chars.",
       "hashtags_base": ["fiestago", "proveedoresdeventos", "autonomos", "marketingparaautonomos", "eventosespaña", "bodasespaña", "cateringespaña"]
     },
     {
@@ -192,7 +192,7 @@
         "a tablet showing a clean dashboard graphic on a minimalist desk in a Mediterranean workspace",
         "a wallet, a phone and a business card holder arranged on a textured neutral background"
       ],
-      "caption_brief": "Caption a PROVEEDORES en España. Carrusel comparativa: cuánto cuesta salir en cada sitio. Estructura: 'Lo que te cuesta cada plataforma →' Bodas.net (cuota anual), Google Ads (coste por clic, sin garantía), Instagram orgánico (horas), FiestaGo (0€ alta + 0% primera venta + 8% desde la 2ª). NO inventes precios concretos de competidores, usa rangos genéricos 'desde X€/mes'. CTA 'Hazlo bien: fiestago.es/registro-proveedor'. 200-300 chars.",
+      "caption_brief": "Caption a PROVEEDORES en España. Carrusel comparativa: cuánto cuesta salir en cada sitio. Estructura: 'Lo que te cuesta cada plataforma →' Bodas.net (cuota anual), Google Ads (coste por clic, sin garantía), Instagram orgánico (horas), FiestaGo (0€ alta + 0€ cuota + cobras el 100% — la comisión la paga el cliente encima). NO inventes precios concretos de competidores, usa rangos genéricos 'desde X€/mes'. CTA 'Hazlo bien: fiestago.es/registro-proveedor'. 200-300 chars.",
       "hashtags_base": ["fiestago", "proveedoresdeventos", "marketingparaautonomos", "comoconseguirclientes", "autonomosespaña", "eventosespaña", "negocioseventos"]
     },
     {

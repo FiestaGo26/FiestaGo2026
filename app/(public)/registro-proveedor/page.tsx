@@ -186,7 +186,7 @@ function RegistroProveedorInner() {
           </div>
           <h1 className="font-serif text-3xl font-black text-ink mb-3">Registra tu negocio</h1>
           <p className="text-ink/55 leading-relaxed">
-            Sin coste hasta tu primera reserva. Ahora solo pedimos lo básico —
+            Sin coste, sin cuotas ni permanencia. Ahora solo pedimos lo básico —
             los datos fiscales los rellenas cuando cierres tu primer cliente, no antes.
           </p>
         </div>

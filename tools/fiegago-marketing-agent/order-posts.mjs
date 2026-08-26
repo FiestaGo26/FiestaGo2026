@@ -39,7 +39,7 @@ const START_DATE = startIdx >= 0 ? argv[startIdx + 1] : '2026-05-19'  // martes 
 const CALENDAR = [
   { order: 1, template_id: 'provider_anti_subscription_video',      day_offset: 0,  label: 'S1 Mar · Anti-suscripción' },
   { order: 2, template_id: 'provider_not_only_weddings_carousel',   day_offset: 3,  label: 'S1 Vie · No es solo bodas' },
-  { order: 3, template_id: 'provider_zero_commission_video',        day_offset: 7,  label: 'S2 Mar · 0% primera venta' },
+  { order: 3, template_id: 'provider_zero_commission_video',        day_offset: 7,  label: 'S2 Mar · Cobras el 100%' },
   { order: 4, template_id: 'provider_demo_signup_video',            day_offset: 9,  label: 'S2 Jue · Alta en 60s' },
   { order: 5, template_id: 'provider_low_season_video',             day_offset: 14, label: 'S3 Mar · Temporada baja' },
   { order: 6, template_id: 'provider_comparison_carousel',          day_offset: 17, label: 'S3 Vie · Comparativa coste' },

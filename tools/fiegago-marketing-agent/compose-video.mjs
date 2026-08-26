@@ -52,8 +52,8 @@ const SCRIPTS = {
     hook_sub: 'PRIMERA VENTA',
     music: 'motivational',
     kickers: [
-      { start: 3.2, end: 5.5, text: 'Tu primera venta\n100% para ti' },
-      { start: 5.6, end: 8.0, text: 'Desde la 2ª\nsolo 8%' },
+      { start: 3.2, end: 5.5, text: 'Cobras el 100%\nde tu precio' },
+      { start: 5.6, end: 8.0, text: 'La comisión\nla paga el cliente' },
       { start: 8.1, end: 12.0, text: 'Sin cuota · Sin permanencia' },
     ],
     cta: { start: 9.5, end: 12.0, line1: 'Date de alta gratis', line2: 'fiestago.es/registro-proveedor' },
@@ -66,7 +66,7 @@ const SCRIPTS = {
     kickers: [
       { start: 3.2, end: 5.5, text: '¿Cuota mensual\nsin clientes?' },
       { start: 5.6, end: 8.5, text: 'FiestaGo es comisión,\nno suscripción' },
-      { start: 8.6, end: 12.0, text: '0€ alta · 0% 1ª venta\n8% desde la 2ª' },
+      { start: 8.6, end: 12.0, text: '0€ alta · 0% cuota\nCobras el 100% siempre' },
     ],
     cta: { start: 9.5, end: 12.0, line1: 'Empieza por aquí', line2: 'fiestago.es/registro-proveedor' },
   },
@@ -133,7 +133,7 @@ const SCRIPTS = {
       { start: 3.0, end: 5.0, text: 'Bodas.net:\ncuotas anuales (desde 60€/mes)' },
       { start: 5.1, end: 7.0, text: 'Google Ads:\n1-3€ por clic, sin garantía' },
       { start: 7.1, end: 9.0, text: 'Instagram orgánico:\n10h/semana' },
-      { start: 9.1, end: 12.0, text: 'FiestaGo:\n0€ alta · 0% 1ª · 8% desde la 2ª' },
+      { start: 9.1, end: 12.0, text: 'FiestaGo:\n0€ alta · cobras el 100% siempre' },
       { start: 12.1, end: 14.0, text: 'Hazlo bien' },
     ],
     cta: { start: 11.5, end: 14.0, line1: 'Date de alta', line2: 'fiestago.es/registro-proveedor' },

@@ -138,9 +138,9 @@ Tono: cercano, directo, profesional, español de España (tuteo, sin latinoameri
 Audiencia: PROVEEDORES (fotógrafos, catering, DJ, animadores, decoradores, floristas, wedding planners, espacios, food trucks, magos, etc.) en España que quieren más clientes para sus eventos.
 Mensajes clave a martillear según el ángulo de cada plantilla:
 - Registro GRATIS, sin tarjeta, sin permanencia
-- La PRIMERA venta es íntegra para el proveedor (0% comisión)
-- A partir de la segunda venta, 8% de comisión y nada más
-- NO es una suscripción tipo Bodas.net: solo pagas cuando vendes
+- El proveedor cobra el 100% de su precio SIEMPRE — nunca paga comisión
+- El 8% de la Garantía de Éxito lo paga el cliente encima del precio del servicio
+- NO es una suscripción tipo Bodas.net: no hay cuota, no hay riesgo si no vendes
 - Cubre TODOS los tipos de evento (no solo bodas): cumples, comuniones, despedidas, corporate, baby showers, bautizos...
 - Llena temporada baja: clientes activamente buscando, no dependes del boca a boca
 - CTA estándar: 'Date de alta gratis 👉 fiestago.es/registro-proveedor' (o 'Link en bio')

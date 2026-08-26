@@ -221,7 +221,7 @@ export default function ProfesionalesPage() {
         <div className="space-y-4">
           {[
             ['¿Cuánto me cuesta entrar?',
-             'Nada. Ni cuota ni alta. Solo se aplica una comisión del 8% (pagada por el cliente) cuando hay reserva real. La primera reserva es 0% — la regalamos para que veas cómo va.'],
+             'Nada. Ni cuota ni alta. Cobras el 100% de tu precio siempre — la comisión del 8% la paga el cliente como Garantía de Éxito. Tú no pagas nada por usar la plataforma.'],
             ['¿Tengo que cambiar mi forma de trabajar?',
              'No. Sigues haciendo tu trabajo como siempre. FiestaGo te trae clientes, gestiona el pago y te protege con la mediación si algo se complica. Tú decides qué reservas aceptas.'],
             ['¿Y si un cliente intenta saltarse FiestaGo?',

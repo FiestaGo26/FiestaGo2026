@@ -16,13 +16,13 @@
 FiestaGo conecta a personas que organizan eventos (bodas, comuniones, cumpleaños, eventos corporativos) con proveedores de calidad verificados en España.
 
 **Descripción larga:**
-FiestaGo es un marketplace donde los organizadores de eventos pueden descubrir, comparar y contratar proveedores de servicios para todo tipo de celebraciones. Los proveedores se registran en la plataforma, crean su perfil con servicios y precios, y reciben solicitudes de clientes directamente. El modelo es freemium: el registro es gratuito y la primera transacción no tiene comisión; a partir de la segunda venta se aplica un 8% de comisión.
+FiestaGo es un marketplace donde los organizadores de eventos pueden descubrir, comparar y contratar proveedores de servicios para todo tipo de celebraciones. Los proveedores se registran en la plataforma, crean su perfil con servicios y precios, y reciben solicitudes de clientes directamente. El modelo: el registro es gratuito y sin permanencia, y el proveedor cobra el 100% del precio que fija en su ficha. La plataforma se financia con un 8% de Garantía de Éxito que paga el cliente encima del precio del servicio (no sale del bolsillo del proveedor).
 
 ---
 
 ## Modelo de negocio
 
-- **Freemium con comisión:** registro gratis + 0% en la primera transacción + 8% desde la segunda
+- **Modelo:** registro gratis + sin cuotas + proveedor cobra el 100% + 8% Garantía de Éxito que paga el cliente
 - **Dos lados del marketplace:**
   - **Proveedores (supply):** negocios de eventos que quieren más clientes
   - **Clientes (demand):** particulares y empresas que organizan eventos
@@ -65,7 +65,7 @@ FiestaGo es un marketplace donde los organizadores de eventos pueden descubrir, 
 ## Propuesta de valor única (UVP)
 
 **Para proveedores:**
-> "Consigue clientes de eventos sin gastar en publicidad. Regístrate gratis y cobra tu primera venta sin comisión."
+> "Consigue clientes de eventos sin gastar en publicidad. Regístrate gratis y cobra el 100% de tu precio — la comisión la paga el cliente."
 
 **Para clientes:**
 > "Encuentra y contrata al proveedor perfecto para tu evento en minutos, con precios claros y sin sorpresas."
@@ -82,7 +82,7 @@ FiestaGo es un marketplace donde los organizadores de eventos pueden descubrir, 
 
 **Ventaja diferencial de FiestaGo:**
 - Cubre todos los tipos de eventos (no solo bodas)
-- Modelo sin riesgo para el proveedor (0% primera transacción)
+- Modelo sin riesgo para el proveedor (100% del precio para él, comisión la paga el cliente)
 - Agente IA integrado para captación y gestión de proveedores
 - Plataforma española, en español, para el mercado español
 

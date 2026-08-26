@@ -169,7 +169,6 @@ export default function MiCuentaPage() {
               <div className="text-xs font-bold tracking-widest uppercase text-coral mb-2">✨ Beneficios de socio</div>
               <h3 className="font-serif text-xl font-bold text-ink mb-3">Eres parte del club</h3>
               <ul className="text-sm text-ink/75 space-y-1.5">
-                <li>🎁 1ª transacción sin comisión (0%)</li>
                 <li>💸 Descuentos exclusivos cada mes (próximamente)</li>
                 <li>📅 Tu calendario de celebraciones en un solo sitio</li>
                 <li>💌 Novedades de proveedores que sigues</li>

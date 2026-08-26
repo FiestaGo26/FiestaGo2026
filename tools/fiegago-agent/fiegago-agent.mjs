@@ -461,8 +461,7 @@ Vimos tu trabajo${sourceLabel} y encajas con lo que buscan nuestros clientes.
 Ventajas de entrar antes del lanzamiento:
 
 - Mejor posición en los resultados (catálogo en construcción)
-- Tu primera reserva sin comisión
-- Solo 8% desde la segunda venta
+- Cobras el 100% de tu precio en cada reserva (la comisión la paga el cliente)
 - Sin permanencia ni cuotas mensuales
 - Promoción gratuita en nuestras redes (@fiestagospain)
 
@@ -491,8 +490,7 @@ Tu trabajo encaja con lo que buscan nuestros clientes ✨
 
 Ventajas de entrar antes del lanzamiento:
 - Mejor posición en los resultados
-- 0% comisión en tu primera reserva
-- Solo 8% después · sin permanencia
+- Cobras el 100% (la comisión la paga el cliente) · sin permanencia
 - Promoción gratuita en @fiestagospain
 
 🏆 SELLO FIESTAGO DE CALIDAD GRATIS — si mantienes 4,5/5 en reseñas

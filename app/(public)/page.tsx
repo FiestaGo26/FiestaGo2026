@@ -390,7 +390,7 @@ export default async function HomePage() {
               ¿Eres profesional? <span className="italic font-light">Únete a FiestaGo.</span>
             </h2>
             <p className="text-white/70 text-sm leading-relaxed max-w-md">
-              Llega a miles de clientes en toda España. 1ª transacción sin comisión, sin permanencia, sin cuotas mensuales.
+              Llega a miles de clientes en toda España. Cobras el 100% de tu precio — la comisión la paga el cliente. Sin permanencia, sin cuotas mensuales.
             </p>
           </div>
           <Link href="/profesionales"

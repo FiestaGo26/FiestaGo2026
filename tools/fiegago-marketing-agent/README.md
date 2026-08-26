@@ -30,7 +30,7 @@ node fiegago-marketing-agent.mjs --confirm --audience mix     --n 6  # default
 - **fomo_seasonal** (10%): vídeo urgente de plaza limitada
 
 ### Audiencia `provider` (campaña de captación de proveedores)
-- **provider_zero_commission_video** (25%): vídeo · 0% comisión primera venta
+- **provider_zero_commission_video** (25%): vídeo · el proveedor cobra el 100%, la comisión la paga el cliente
 - **provider_anti_subscription_video** (20%): vídeo · contraposición con Bodas.net y cuotas
 - **provider_low_season_video** (15%): vídeo · llenar temporada baja
 - **provider_not_only_weddings_carousel** (15%): carrusel · no es solo bodas
