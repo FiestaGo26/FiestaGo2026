@@ -204,7 +204,7 @@ function RegistroProveedorInner() {
 
         {/* Value props */}
         <div className="grid grid-cols-3 gap-3 mb-8">
-          {[['🆓','Gratis','Sin tarjeta'],['🎁','1ª transacción','0% comisión'],['💸','Desde la 2ª','Solo 8%']].map(([ic,t,d])=>(
+          {[['🆓','Alta gratis','Sin tarjeta ni permanencia'],['💯','Cobras el 100%','La comisión la paga el cliente'],['🧾','Facturas legales','Verifactu emitidas por FiestaGo']].map(([ic,t,d])=>(
             <div key={t} className="bg-white border border-stone-200 rounded-2xl p-4 text-center">
               <div className="text-2xl mb-2">{ic}</div>
               <div className="text-xs font-bold text-ink mb-1">{t}</div>

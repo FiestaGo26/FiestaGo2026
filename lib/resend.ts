@@ -130,8 +130,8 @@ export async function emailProviderWelcome(provider: any) {
     `   → Te ahorras 20-30 min por post (≈ 150-400€/mes en community manager)`,
     ``,
     `Y además todo lo del marketplace en sí:`,
-    `   🎁 Primera venta sin comisión — cobras al 100%.`,
-    `   💸 Solo 8% después — sin cuotas, sin permanencia.`,
+    `   💯 Cobras el 100% de tu precio — la comisión la paga el cliente.`,
+    `   🧾 Facturas legales Verifactu emitidas por FiestaGo en tu nombre.`,
     `   📅 Calendario inteligente con sync a Google Calendar.`,
     `   🚀 Clientes cualificados con datos completos.`,
     `   🛡 Pago seguro y Garantía de Éxito incluida.`,
@@ -253,8 +253,8 @@ export async function emailProviderWelcome(provider: any) {
             </div>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
               ${[
-                ['🎁', 'Primera venta sin comisión',    'Tu primera transacción la cobras al 100%.'],
-                ['💸', 'Solo 8% después',               'La comisión más baja del sector. Sin cuotas.'],
+                ['💯', 'Cobras el 100% de tu precio',   'La comisión la paga el cliente, no tú. Sin cuotas ni permanencia.'],
+                ['🧾', 'Facturas legales Verifactu',    'Las emitimos en tu nombre cumpliendo la normativa. Te ahorras el software.'],
                 ['📅', 'Calendario inteligente',        'Bloqueamos automáticamente las fechas reservadas.'],
                 ['🚀', 'Clientes cualificados',         'Solo solicitudes serias, con fecha y datos completos.'],
                 ['🛡', 'Pago seguro + Garantía Éxito',  'El cliente paga primero. Tú cobras tras el servicio.'],
@@ -1432,8 +1432,8 @@ export async function emailProviderOutreach(
             <div style="text-align:center;font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;margin-bottom:16px;">Por qué te conviene FiestaGo</div>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
               ${[
-                ['🎁','Primera venta sin comisión','Cobras al 100% tu primera transacción.'],
-                ['💸','Solo 8% después','La comisión más baja del sector. Sin cuotas mensuales.'],
+                ['💯','Cobras el 100% de tu precio','La comisión la paga el cliente, no tú. Sin cuotas ni permanencia.'],
+                ['🧾','Facturas legales Verifactu','Las emitimos en tu nombre cumpliendo la normativa. Te ahorras el software.'],
                 ['📅','Calendario inteligente','Marcas tus días libres y bloqueamos las fechas ya reservadas.'],
                 ['🚀','Clientes cualificados','Solicitudes serias con fecha y datos completos.'],
                 ['📣','Marketing gratis','Te promocionamos en Instagram y TikTok @fiestagospain.'],
