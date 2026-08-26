@@ -993,6 +993,23 @@ function ProveedorPanelInner() {
     toast.success(status === 'confirmed' ? 'Reserva confirmada ✓' : 'Reserva cancelada')
   }
 
+  async function resendBookingEmail(bookingId: string, kind: string) {
+    if (!provider) return
+    const t = toast.loading('Reenviando…')
+    try {
+      const res = await apiFetch('/api/proveedor/bookings/resend-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-provider-token': provider.id },
+        body: JSON.stringify({ providerId: provider.id, bookingId, kind }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      toast.success('Email reenviado ✓', { id: t })
+    } catch (e: any) {
+      toast.error(e?.message || 'No pude reenviar', { id: t })
+    }
+  }
+
   function renderCalendar() {
     const days     = getDaysInMonth(calYear, calMonth)
     const first    = getFirstDay(calYear, calMonth)
@@ -1976,7 +1993,7 @@ function ProveedorPanelInner() {
                   </div>
                 )}
                 {b.status==='pending'&&(
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <button onClick={() => updateBooking(b.id,'confirmed')}
                       className="flex-1 bg-green-500 text-white font-bold py-2 rounded-xl text-sm hover:bg-green-600 transition-colors">
                       ✓ Confirmar reserva
@@ -1987,6 +2004,19 @@ function ProveedorPanelInner() {
                     </button>
                   </div>
                 )}
+                {/* Reenvío de emails · útil si el cliente los borró o no le llegaron */}
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <button onClick={() => resendBookingEmail(b.id, 'client_received')}
+                    className="px-3 py-1.5 border border-stone-200 text-ink/65 rounded-lg hover:bg-stone-50 transition-colors">
+                    📧 Reenviar al cliente (recibida)
+                  </button>
+                  {b.status === 'confirmed' && (
+                    <button onClick={() => resendBookingEmail(b.id, 'client_confirmed')}
+                      className="px-3 py-1.5 border border-stone-200 text-ink/65 rounded-lg hover:bg-stone-50 transition-colors">
+                      📧 Reenviar al cliente (confirmada)
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
