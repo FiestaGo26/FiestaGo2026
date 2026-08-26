@@ -1858,6 +1858,52 @@ function ProveedorPanelInner() {
                         )}
                       </div>
                     </div>
+
+                    {/* Compartir servicio · link directo pre-selecciona
+                        este servicio en la ficha del proveedor (?svc=ID).
+                        Ideal para cerrar ventas por WhatsApp o pegar en
+                        redes sin obligar al lead a navegar el catálogo. */}
+                    {(() => {
+                      const slug = (provider as any)?.slug || provider?.id
+                      const shareUrl = `https://fiestago.es/proveedores/${slug}?svc=${svc.id}&utm_source=service_share&utm_medium=whatsapp`
+                      const priceLabel = svc.price != null
+                        ? `${formatEuro(precioCliente(svc.price))} todo incluido`
+                        : 'precio a consultar'
+                      const shareText = `¡Hola! Te dejo el link para reservar mi servicio "${svc.name}" (${priceLabel}):\n\n${shareUrl}\n\nRellenas fecha y datos y listo — reserva segura por FiestaGo 🎉`
+                      const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`
+                      return (
+                        <div className="mt-4 pt-4 border-t border-stone-100">
+                          <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">
+                            Compartir este servicio
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button onClick={() => {
+                                navigator.clipboard.writeText(shareUrl).then(
+                                  () => toast.success('Link copiado ✓'),
+                                  () => toast.error('No pude copiar'))
+                              }}
+                              className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors">
+                              🔗 Copiar link
+                            </button>
+                            <a href={waUrl} target="_blank" rel="noreferrer"
+                              className="text-xs px-3 py-1.5 rounded-lg font-bold text-white transition-colors"
+                              style={{ background: '#25D366' }}>
+                              💬 Enviar por WhatsApp
+                            </a>
+                            <button onClick={() => {
+                                const html = `<!-- FiestaGo · reserva ${svc.name.replace(/"/g, '&quot;')} -->
+<a href="${shareUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#E8553E;color:#fff;text-decoration:none;font-family:system-ui,-apple-system,sans-serif;font-weight:700;font-size:14px;padding:12px 22px;border-radius:12px;box-shadow:0 4px 12px rgba(232,85,62,.25);"><span>📅</span><span>Reservar "${svc.name.replace(/"/g, '&quot;')}"</span></a>`
+                                navigator.clipboard.writeText(html).then(
+                                  () => toast.success('HTML del botón copiado ✓ — pégalo en tu web'),
+                                  () => toast.error('No pude copiar'))
+                              }}
+                              className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors">
+                              &lt;/&gt; Copiar HTML para web
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </>
                 )}
               </div>
@@ -2676,9 +2722,24 @@ function ProveedorPanelInner() {
 function EmbedTab({ provider }: { provider: Provider | null }) {
   const [variant, setVariant] = useState<'button' | 'card'>('button')
   const [copied,  setCopied]  = useState(false)
+  const [services, setServices] = useState<Array<{ id: string; name: string; price: number | null }>>([])
+  const [selectedSvcId, setSelectedSvcId] = useState<string>('')
+
+  useEffect(() => {
+    if (!provider?.id) return
+    fetch(`/api/proveedor/services?provider_id=${provider.id}`)
+      .then(r => r.json())
+      .then(d => setServices((d.services || []).filter((s: any) => s.status === 'active')
+        .map((s: any) => ({ id: s.id, name: s.name, price: s.price }))))
+      .catch(() => setServices([]))
+  }, [provider?.id])
+
   if (!provider) return null
 
-  const url = `https://fiestago.es/proveedores/${provider.slug || provider.id}?utm_source=widget&utm_medium=${variant}&utm_campaign=embed`
+  // Si el proveedor ha elegido un servicio, el widget lleva a la ficha con
+  // ese servicio pre-seleccionado (?svc=). Si no, va al catálogo completo.
+  const svcParam = selectedSvcId ? `&svc=${selectedSvcId}` : ''
+  const url = `https://fiestago.es/proveedores/${provider.slug || provider.id}?utm_source=widget&utm_medium=${variant}&utm_campaign=embed${svcParam}`
   const safeName = provider.name.replace(/"/g, '&quot;')
 
   const buttonHtml =
@@ -2730,7 +2791,7 @@ function EmbedTab({ provider }: { provider: Provider | null }) {
         Pega este código en tu propia web (WordPress, Wix, HTML directo, etc.) para que tus visitantes puedan reservarte vía FiestaGo. Cada click queda etiquetado como tráfico de tu widget para que sepamos cuánto te trae.
       </p>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-4">
         {([
           ['button', '🔘 Botón pequeño', 'Discreto, encaja en cualquier sitio'],
           ['card',   '🪪 Tarjeta',       'Mejor conversión, con tu foto y rating'],
@@ -2746,6 +2807,26 @@ function EmbedTab({ provider }: { provider: Provider | null }) {
           </button>
         ))}
       </div>
+
+      {services.length > 0 && (
+        <div className="mb-6 bg-cream border border-stone-200 rounded-xl p-4">
+          <label className="block text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">
+            ¿Enlazar a un servicio específico?
+          </label>
+          <select value={selectedSvcId} onChange={e => setSelectedSvcId(e.target.value)}
+            className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral bg-white">
+            <option value="">— Todos mis servicios (catálogo completo) —</option>
+            {services.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.name}{s.price != null ? ` · ${s.price.toLocaleString()}€` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-ink/55 mt-2 leading-relaxed">
+            Si eliges uno, el cliente aterriza en la ficha con ese servicio ya seleccionado y solo tiene que rellenar la fecha y pagar. Ideal para cerrar leads concretos.
+          </p>
+        </div>
+      )}
 
       {/* Preview */}
       <div className="mb-5">
