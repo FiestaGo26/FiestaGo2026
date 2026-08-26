@@ -691,11 +691,26 @@ export async function emailClientBookingConfirmed(booking: any, provider: any) {
   const subject = `✅ Reserva confirmada · ${provider?.name || 'Tu proveedor'} · ${bookingDateF(booking.event_date)}`
   const firstName = (booking.client_name || '').split(' ')[0] || ''
 
+  // Si el primer pago aún está pendiente, incluimos CTA prominente
+  // hacia /pago-inicial/... con el importe. Sin esto el cliente ve el
+  // email pero no encuentra cómo pagar → reserva atascada.
+  const needsPay = booking.first_payment_status === 'pending' &&
+                   Number(booking.first_payment_amount || 0) > 0
+  const payAmount = Number(booking.first_payment_amount || 0)
+  const secondAmount = Number(booking.second_payment_amount || 0)
+  const hasSplit = secondAmount > 0
+  const payUrl = `https://fiestago.es/pago-inicial/${booking.id}?email=${encodeURIComponent(booking.client_email)}`
+  const payLabel = hasSplit ? 'anticipo' : 'reserva'
+
   const text = `Hola ${firstName},
 
 ¡Buenas noticias! ${provider?.name || 'El proveedor'} ha confirmado tu reserva para el ${bookingDateF(booking.event_date)}.
 
-Datos de contacto del proveedor (ya puedes escribirle por chat o llamarle):
+${needsPay ? `⚠️ AÚN QUEDA UN PASO — pagar el ${payLabel} de ${payAmount.toLocaleString()}€ para asegurar la fecha:
+${payUrl}
+
+${hasSplit ? `Después, el resto (${secondAmount.toLocaleString()}€) se cobrará 2 meses antes del evento.\n` : ''}
+` : ''}Datos de contacto del proveedor (ya puedes escribirle por chat o llamarle):
 - Email:    ${provider?.email || '—'}
 - Teléfono: ${provider?.phone || '—'}
 
@@ -724,6 +739,23 @@ El equipo de FiestaGo`
             Te están esperando el <strong style="color:#E8553E;">${bookingDateF(booking.event_date)}</strong>.
           </p>
         </td></tr>
+        ${needsPay ? `<tr><td style="padding:20px 36px 8px;">
+          <div style="background:#FEF2F2;border:2px solid #FCA5A5;border-radius:12px;padding:18px 20px;">
+            <div style="font-size:10px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#DC2626;margin-bottom:8px;">⚠️ Aún queda un paso</div>
+            <div style="font-family:Georgia,serif;font-size:20px;color:#1A1612;font-weight:bold;line-height:1.3;margin-bottom:6px;">
+              Paga el ${payLabel} para asegurar la fecha
+            </div>
+            <div style="font-size:14px;color:#5C534A;line-height:1.5;margin-bottom:14px;">
+              Importe: <strong style="color:#E8553E;font-size:18px;">${payAmount.toLocaleString()}€</strong>
+              ${hasSplit ? `<br><span style="font-size:12px;color:#8A7968;">El resto (${secondAmount.toLocaleString()}€) se cobrará 2 meses antes del evento.</span>` : ''}
+            </div>
+            <div style="text-align:center;">
+              <a href="${payUrl}" style="display:inline-block;background:#E8553E;color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:15px;">
+                💳 Pagar ${payAmount.toLocaleString()}€ →
+              </a>
+            </div>
+          </div>
+        </td></tr>` : ''}
         <tr><td style="padding:20px 36px 8px;">
           <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:14px 16px;">
             <div style="font-size:10px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#10B981;margin-bottom:8px;">Contacto del proveedor</div>
@@ -735,7 +767,7 @@ El equipo de FiestaGo`
         </td></tr>
         <tr><td style="padding:14px 36px 28px;">
           <div style="text-align:center;">
-            <a href="https://fiestago.es/mi-cuenta" style="display:inline-block;background:#E8553E;color:#fff;padding:13px 30px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:14px;">
+            <a href="https://fiestago.es/mi-cuenta" style="display:inline-block;background:#5C534A;color:#fff;padding:11px 26px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:13px;">
               💬 Abrir chat con el proveedor →
             </a>
           </div>
