@@ -207,7 +207,17 @@ export default function ProviderDetailPage() {
           fetch(`/api/proveedor/services?provider_id=${p.id}`)
             .then(r => r.json())
             .then(d => {
-              const active = (d.services || []).filter((s: Service) => s.status === 'active')
+              // PostgreSQL devuelve numeric como string; normalizamos precios a
+              // Number aquí para evitar concatenaciones en el cálculo de subtotal.
+              const active = (d.services || [])
+                .filter((s: any) => s.status === 'active')
+                .map((s: any) => ({
+                  ...s,
+                  price: s.price != null ? Number(s.price) : null,
+                  addons: Array.isArray(s.addons)
+                    ? s.addons.map((a: any) => ({ ...a, price: Number(a.price) || 0 }))
+                    : [],
+                }))
               setServices(active)
               // Pre-seleccionar si vino con ?svc=ID en la URL
               if (preSvcId) {
@@ -374,7 +384,7 @@ export default function ProviderDetailPage() {
   // Auto-validar el cupón cuando hay código pendiente y el subtotal es
   // > 0 (usuario acaba de elegir servicio). Sin esto el cupón que viene
   // por URL se queda sin aplicar aunque el input esté relleno.
-  const subtotalForCoupon = (selectedSvc?.price ?? provider?.price_base ?? 0) +
+  const subtotalForCoupon = (Number(selectedSvc?.price ?? provider?.price_base ?? 0) || 0) +
     ((selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
       .reduce((s, a) => s + (Number(a.price) || 0), 0))
   useEffect(() => {
@@ -404,7 +414,10 @@ export default function ProviderDetailPage() {
   )
 
   const cat = CATEGORIES.find(c => c.id === provider.category)
-  const basePrice      = selectedSvc?.price ?? provider.price_base ?? 0
+  // Number() defensivo: PostgreSQL a veces devuelve numeric como string
+  // → sin esto '1150' + 0 = '11500' (concatenación) y todos los cálculos
+  // corriente abajo se rompen.
+  const basePrice      = Number(selectedSvc?.price ?? provider.price_base ?? 0) || 0
   const chosenAddons   = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
   const addonsTotal    = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
   const subtotal       = basePrice + addonsTotal
