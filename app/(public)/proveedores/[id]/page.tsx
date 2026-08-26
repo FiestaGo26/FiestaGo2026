@@ -298,10 +298,12 @@ export default function ProviderDetailPage() {
     // cliente elija uno antes de reservar. Sin esto la reserva se creaba
     // con total_amount=0, el cliente no recibía link de pago y la
     // pestaña Cobros del proveedor quedaba vacía.
-    const hasServices = (provider as any)?.services?.length > 0 ||
-                        (typeof selectedSvc !== 'undefined' && !!selectedSvc)
-    if (hasServices && !selectedSvc) {
-      toast.error('Selecciona primero uno de los servicios de arriba')
+    if (services.length > 0 && !selectedSvc) {
+      toast.error('Selecciona primero uno de los servicios de arriba ⬆️')
+      // Scroll hasta la lista de servicios para que sea obvio dónde clicar
+      if (typeof document !== 'undefined') {
+        document.getElementById('services-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
       return
     }
     setSending(true)
@@ -536,7 +538,7 @@ export default function ProviderDetailPage() {
 
             {/* Servicios disponibles */}
             {services.length > 0 && (
-              <section className="pb-8 border-b border-stone-200/70 mb-8">
+              <section id="services-list" className="pb-8 border-b border-stone-200/70 mb-8">
                 <div className="flex items-baseline justify-between mb-5">
                   <h2 className="font-serif text-2xl text-ink">Servicios disponibles</h2>
                   <span className="text-xs text-ink/45">{services.length} {services.length === 1 ? 'opción' : 'opciones'}</span>

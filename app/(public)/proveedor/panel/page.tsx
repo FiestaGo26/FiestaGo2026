@@ -2836,6 +2836,50 @@ function EmbedTab({ provider }: { provider: Provider | null }) {
         </div>
       </div>
 
+      {/* Compartir directo (sin pegar HTML) · el link ya tiene Open Graph
+          con foto + rating, así que WhatsApp/Facebook/Twitter/Email lo
+          renderizan automáticamente como tarjeta al pegar. */}
+      <div className="mb-6 bg-white border border-stone-200 rounded-2xl p-4">
+        <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-3">
+          O comparte el link directamente
+        </div>
+        <p className="text-xs text-ink/60 mb-3 leading-relaxed">
+          Al pegar el link en WhatsApp, Instagram, Facebook o email, se muestra
+          automáticamente <b>como tarjeta con tu foto, nombre y valoración</b>.
+          El código HTML de arriba solo lo necesitas si vas a pegarlo en tu web.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => {
+              navigator.clipboard.writeText(url).then(
+                () => toast.success('Link copiado ✓ Pégalo donde quieras'),
+                () => toast.error('No pude copiar'))
+            }}
+            className="text-xs px-3 py-2 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors font-semibold">
+            🔗 Copiar link
+          </button>
+          <a href={`https://wa.me/?text=${encodeURIComponent(`¡Hola! Aquí tienes mi ficha en FiestaGo, puedes reservar directamente:\n\n${url}`)}`}
+            target="_blank" rel="noreferrer"
+            className="text-xs px-3 py-2 rounded-lg font-bold text-white transition-colors"
+            style={{ background: '#25D366' }}>
+            💬 Compartir por WhatsApp
+          </a>
+          <a href={`mailto:?subject=${encodeURIComponent('Reserva tu evento conmigo')}&body=${encodeURIComponent(`¡Hola!\n\nAquí tienes mi ficha en FiestaGo, puedes reservar y pagar directamente en la plataforma:\n\n${url}\n\n¡Un saludo!`)}`}
+            className="text-xs px-3 py-2 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors font-semibold">
+            📧 Enviar por email
+          </a>
+          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`}
+            target="_blank" rel="noreferrer"
+            className="text-xs px-3 py-2 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors font-semibold">
+            📘 Facebook
+          </a>
+          <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent('Reserva tu evento conmigo en FiestaGo:')}`}
+            target="_blank" rel="noreferrer"
+            className="text-xs px-3 py-2 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors font-semibold">
+            🐦 Twitter/X
+          </a>
+        </div>
+      </div>
+
       {/* Code */}
       <div className="mb-3 flex items-center justify-between">
         <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest">Código para copiar</div>
