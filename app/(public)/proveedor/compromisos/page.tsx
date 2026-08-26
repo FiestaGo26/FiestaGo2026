@@ -144,7 +144,7 @@ export default function CompromisosPage() {
         <h2 className="font-serif text-2xl font-black text-ink mb-4">Lo que tú recibes a cambio</h2>
         <ul className="space-y-2 text-sm text-ink/75 leading-relaxed">
           <li><strong>Acceso al tráfico de FiestaGo</strong> sin coste fijo (sin cuotas, sin permanencia).</li>
-          <li><strong>Cobras el 100% del precio</strong> que pones en tu ficha. La comisión del 8% la paga el cliente como parte de la Garantía de Éxito.</li>
+          <li><strong>Cobras el 100% del precio</strong> que pones en tu ficha. La Garantía de Éxito la paga el cliente incluida en el total.</li>
           <li><strong>Sello "Verificado"</strong> visible cuando entregas la documentación.</li>
           <li><strong>Marketing gratuito</strong> en nuestras redes y SEO.</li>
           <li><strong>Garantía operativa</strong>: si un cliente te pide un cambio abusivo, FiestaGo media a tu favor.</li>

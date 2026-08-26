@@ -854,21 +854,11 @@ export default function ProviderDetailPage() {
                   </div>
                 </button>
               ) : (
-                <div className="rounded-xl p-3.5 mb-5 text-xs bg-cream-dark border border-stone-200">
-                  <div className="font-bold mb-2 text-ink/60">💳 Desglose</div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-ink/50">Precio del proveedor</span>
-                    <span className="font-semibold">{formatEuro(effectivePrice)}</span>
-                  </div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-ink/50" title="Si la reserva falla, FiestaGo te devuelve el dinero (110% si no encontramos sustituto)">
-                      Garantía de Éxito (8%) 🛡
-                    </span>
-                    <span className="text-ink/65">+{formatEuro(commission.amount)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-stone-200 pt-1.5 mt-1.5">
-                    <span className="text-ink font-semibold">Total a pagar</span>
-                    <span className="font-bold text-coral text-base">{formatEuro(commission.clientPays)}</span>
+                <div className="rounded-xl p-4 mb-5 bg-cream-dark border border-stone-200 text-center">
+                  <div className="text-[10px] font-bold tracking-widest uppercase text-ink/45 mb-1">Total a pagar</div>
+                  <div className="font-serif text-3xl font-black text-coral leading-none mb-2">{formatEuro(commission.clientPays)}</div>
+                  <div className="text-[11px] text-ink/55" title="Si la reserva falla, FiestaGo te devuelve el dinero (110% si no encontramos sustituto)">
+                    🛡 Garantía de Éxito incluida
                   </div>
                 </div>
               )}

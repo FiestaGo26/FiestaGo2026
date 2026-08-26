@@ -109,7 +109,7 @@ Pero AUNQUE no te llegara ni una sola reserva del marketplace, el día que te da
 💬 Plantillas de WhatsApp para responder a clientes en 2 clics
 📍 Posts de Google Business escritos por IA para aparecer más alto cuando buscan {categoría_natural} en {ciudad}
 
-Comisión 0% para ti (el cliente paga un 8% extra que financia la Garantía de Éxito — tú cobras tu precio íntegro).
+Comisión 0% para ti — cobras el 100% del precio que pones en tu ficha. La Garantía de Éxito va incluida en el precio que ve el cliente, la paga él.
 
 Alta en 60 segundos: https://fiestago.es/registro-proveedor — ¿lo haces hoy o esta noche cuando termines?"
 
@@ -335,7 +335,7 @@ Pero AUNQUE no te llegara ni una sola reserva del marketplace, el día que te da
 💬 Plantillas de WhatsApp para responder a clientes en 2 clics
 📍 Posts de Google Business escritos por IA para aparecer más alto cuando buscan ${catSearch} en ${city}
 
-Comisión 0% para ti (el cliente paga un 8% extra que financia la Garantía de Éxito — tú cobras tu precio íntegro).
+Comisión 0% para ti — cobras el 100% del precio que pones en tu ficha. La Garantía de Éxito va incluida en el precio que ve el cliente, la paga él.
 
 Alta en 60 segundos: https://fiestago.es/registro-proveedor — ¿lo haces hoy o esta noche cuando termines?`
   }

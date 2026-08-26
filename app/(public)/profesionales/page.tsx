@@ -190,7 +190,7 @@ export default function ProfesionalesPage() {
             Por qué los clientes pagan más en FiestaGo
           </h2>
           <p className="text-white/70 leading-relaxed mb-6 max-w-2xl">
-            Al cliente le cobramos un 8% extra sobre tu precio. A cambio,
+            En el precio final que el cliente ve ya está incluida la Garantía de Éxito. A cambio,
             tiene la Garantía de Éxito: si algo sale mal —tu cancelas en
             el último momento, no apareces, o no se entrega lo prometido—
             le respondemos económicamente.
@@ -221,7 +221,7 @@ export default function ProfesionalesPage() {
         <div className="space-y-4">
           {[
             ['¿Cuánto me cuesta entrar?',
-             'Nada. Ni cuota ni alta. Cobras el 100% de tu precio siempre — la comisión del 8% la paga el cliente como Garantía de Éxito. Tú no pagas nada por usar la plataforma.'],
+             'Nada. Ni cuota ni alta. Cobras el 100% de tu precio siempre — la Garantía de Éxito la paga el cliente incluida en el total. Tú no pagas nada por usar la plataforma.'],
             ['¿Tengo que cambiar mi forma de trabajar?',
              'No. Sigues haciendo tu trabajo como siempre. FiestaGo te trae clientes, gestiona el pago y te protege con la mediación si algo se complica. Tú decides qué reservas aceptas.'],
             ['¿Y si un cliente intenta saltarse FiestaGo?',

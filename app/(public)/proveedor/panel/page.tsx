@@ -1364,7 +1364,7 @@ function ProveedorPanelInner() {
                             <div className="min-w-0 flex-1">
                               <div className="text-sm font-medium text-ink truncate">{s.name}</div>
                               {s.price != null && (
-                                <div className="text-xs text-ink/50" title={`Cliente paga ${formatEuro(precioCliente(s.price))} (incluye 8% Garantía)`}>{formatEuro(s.price)}</div>
+                                <div className="text-xs text-ink/50" title={`Cliente paga ${formatEuro(precioCliente(s.price))} (Garantía de Éxito incluida)`}>{formatEuro(s.price)}</div>
                               )}
                             </div>
                           </div>
@@ -1586,7 +1586,7 @@ function ProveedorPanelInner() {
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                     {newSvc.price && parseFloat(newSvc.price) > 0 && (
                       <div className="text-[11px] text-ink/55 mt-1 leading-tight">
-                        Tú cobras <strong>{formatEuro(parseFloat(newSvc.price))}</strong> · cliente paga <strong>{formatEuro(precioCliente(parseFloat(newSvc.price)))}</strong> (8% Garantía de Éxito)
+                        Tú cobras <strong>{formatEuro(parseFloat(newSvc.price))}</strong> · cliente paga <strong>{formatEuro(precioCliente(parseFloat(newSvc.price)))}</strong> (Garantía de Éxito incluida)
                       </div>
                     )}
                   </div>
@@ -1797,7 +1797,7 @@ function ProveedorPanelInner() {
                         {svc.price != null ? (
                           <div>
                             <div className="font-serif text-xl font-bold text-coral">{formatEuro(svc.price)}</div>
-                            <div className="text-[11px] text-ink/55 leading-tight">Tú cobras esto · cliente paga {formatEuro(precioCliente(svc.price))} (8% Garantía)</div>
+                            <div className="text-[11px] text-ink/55 leading-tight">Tú cobras esto · cliente paga {formatEuro(precioCliente(svc.price))} (Garantía incluida)</div>
                           </div>
                         ) : (
                           <div className="font-serif text-xl font-bold text-coral">—</div>
@@ -2054,7 +2054,7 @@ function ProveedorPanelInner() {
                   </div>
                   <div>
                     <div className="text-xs text-ink/40 mb-0.5">Tú cobras</div>
-                    <div className="font-semibold text-coral" title={`El cliente pagó ${formatEuro(b.total_amount)} (incluye 8% Garantía)`}>{formatEuro(b.provider_earns || b.total_amount / 1.08)}</div>
+                    <div className="font-semibold text-coral" title={`El cliente pagó ${formatEuro(b.total_amount)} (Garantía de Éxito incluida)`}>{formatEuro(b.provider_earns || b.total_amount / 1.08)}</div>
                   </div>
                 </div>
                 {b.message&&(
