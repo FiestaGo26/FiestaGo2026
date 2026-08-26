@@ -430,7 +430,8 @@ export default function ProviderDetailPage() {
     if (!code) return
     setCouponChecking(true); setCouponError(null)
     try {
-      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(code)}&provider_id=${provider!.id}&total=${subtotal}`)
+      const svcParam = selectedSvc ? `&service_id=${selectedSvc.id}` : ''
+      const res = await fetch(`/api/coupons/validate?code=${encodeURIComponent(code)}&provider_id=${provider!.id}&total=${subtotal}${svcParam}`)
       const data = await res.json()
       if (!data.valid) {
         setCouponError(data.error || 'Cupón no válido')

@@ -202,7 +202,7 @@ function ProveedorPanelInner() {
   // Cupones
   const [coupons, setCoupons] = useState<any[]>([])
   const [couponsLoading, setCouponsLoading] = useState(false)
-  const [newCoupon, setNewCoupon] = useState({ code:'', description:'', percent_off:'10', max_uses:'', expires_at:'' })
+  const [newCoupon, setNewCoupon] = useState({ code:'', description:'', percent_off:'10', max_uses:'', expires_at:'', service_id:'' })
 
   // Cobros
   const [earnings,        setEarnings]        = useState<any | null>(null)
@@ -521,12 +521,13 @@ function ProveedorPanelInner() {
           percent_off: percent,
           max_uses:    newCoupon.max_uses ? parseInt(newCoupon.max_uses) : null,
           expires_at:  newCoupon.expires_at || null,
+          service_id:  newCoupon.service_id || null,
         }),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status}`)
       setCoupons(prev => [data.coupon, ...prev])
-      setNewCoupon({ code:'', description:'', percent_off:'10', max_uses:'', expires_at:'' })
+      setNewCoupon({ code:'', description:'', percent_off:'10', max_uses:'', expires_at:'', service_id:'' })
       toast.success('Cupón creado ✓')
     } catch (err: any) {
       toast.error(err.message || 'Error')
@@ -2395,6 +2396,18 @@ function ProveedorPanelInner() {
                 <input type="date" value={newCoupon.expires_at}
                   onChange={e => setNewCoupon(c => ({...c, expires_at: e.target.value}))}
                   className="border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral"/>
+                {services.length > 0 && (
+                  <select value={newCoupon.service_id}
+                    onChange={e => setNewCoupon(c => ({...c, service_id: e.target.value}))}
+                    className="col-span-2 border border-stone-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-coral bg-white">
+                    <option value="">Aplica a TODOS mis servicios</option>
+                    {services.map(s => (
+                      <option key={s.id} value={s.id}>
+                        Solo para: {s.name}{s.price != null ? ` (${s.price.toLocaleString()}€)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <button onClick={createCoupon}
                 className="w-full bg-coral text-white font-bold py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">
@@ -2415,8 +2428,15 @@ function ProveedorPanelInner() {
                   const expired = c.expires_at && new Date(c.expires_at) < new Date()
                   const exhausted = c.max_uses != null && c.used_count >= c.max_uses
                   const providerSlug = (provider as any)?.slug || provider?.id
-                  const shareUrl = `https://fiestago.es/proveedores/${providerSlug}?coupon=${encodeURIComponent(c.code)}`
-                  const shareText = `¡Hola! Te dejo un código con ${c.percent_off}% de descuento para reservar conmigo:\n\n${c.code}\n\nAplícalo aquí: ${shareUrl}`
+                  // Si el cupón está scoped a un servicio, incluimos ?svc= para
+                  // que la ficha lo pre-seleccione (si no, ni el auto-apply del
+                  // cupón funcionaría porque el guard exige servicio elegido).
+                  const scopedSvc = c.service_id ? services.find(s => s.id === c.service_id) : null
+                  const svcQuery = c.service_id ? `&svc=${c.service_id}` : ''
+                  const shareUrl = `https://fiestago.es/proveedores/${providerSlug}?coupon=${encodeURIComponent(c.code)}${svcQuery}`
+                  const shareText = scopedSvc
+                    ? `¡Hola! Te dejo un código con ${c.percent_off}% de descuento para mi servicio "${scopedSvc.name}":\n\n${c.code}\n\nAplícalo aquí: ${shareUrl}`
+                    : `¡Hola! Te dejo un código con ${c.percent_off}% de descuento para reservar conmigo:\n\n${c.code}\n\nAplícalo aquí: ${shareUrl}`
                   const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`
                   return (
                     <div key={c.id} className="bg-white border border-stone-200 rounded-xl p-4">
@@ -2428,6 +2448,9 @@ function ProveedorPanelInner() {
                             {c.description && <span>{c.description} · </span>}
                             {c.used_count} usos{c.max_uses != null ? ` / ${c.max_uses}` : ''}
                             {c.expires_at && <span> · caduca {new Date(c.expires_at).toLocaleDateString('es-ES')}</span>}
+                          </div>
+                          <div className={`text-[11px] mt-1 font-semibold ${scopedSvc ? 'text-coral' : 'text-ink/45'}`}>
+                            {scopedSvc ? `🎯 Solo para: ${scopedSvc.name}` : '🌐 Aplica a todos tus servicios'}
                           </div>
                         </div>
                         <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${

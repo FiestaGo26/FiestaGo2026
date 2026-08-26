@@ -49,13 +49,16 @@ export async function POST(req: NextRequest) {
       const normalized = String(coupon_code).toUpperCase().trim()
       const { data: c } = await supabase
         .from('coupons')
-        .select('id, code, percent_off, max_uses, used_count, expires_at, active')
+        .select('id, code, percent_off, max_uses, used_count, expires_at, active, service_id')
         .eq('provider_id', provider_id).eq('code', normalized).maybeSingle()
 
       const stillValid =
         c && c.active &&
         (!c.expires_at || new Date(c.expires_at) > new Date()) &&
-        (c.max_uses == null || c.used_count < c.max_uses)
+        (c.max_uses == null || c.used_count < c.max_uses) &&
+        // Scope por servicio: si el cupón está atado a uno concreto,
+        // solo aplica cuando la reserva es de ese servicio.
+        (!c.service_id || c.service_id === service_id)
 
       if (stillValid) {
         const off = Math.round((amount * c.percent_off / 100) * 100) / 100

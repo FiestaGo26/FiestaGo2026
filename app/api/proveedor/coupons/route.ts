@@ -40,10 +40,25 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient()
+
+  // Si viene service_id, verificamos que ese servicio pertenece al
+  // proveedor — evita que el proveedor cree cupones para servicios
+  // de otro proveedor (aunque debería ser imposible por auth, defensa
+  // en profundidad).
+  let serviceIdSafe: string | null = null
+  if (body.service_id) {
+    const { data: svc } = await supabase
+      .from('provider_services').select('id')
+      .eq('id', body.service_id).eq('provider_id', body.provider_id).maybeSingle()
+    if (!svc) return NextResponse.json({ error: 'Servicio no encontrado' }, { status: 400 })
+    serviceIdSafe = body.service_id
+  }
+
   const { data, error } = await supabase
     .from('coupons')
     .insert({
       provider_id:  body.provider_id,
+      service_id:   serviceIdSafe,
       code,
       description:  body.description || null,
       percent_off:  percent,
@@ -68,7 +83,7 @@ export async function PATCH(req: NextRequest) {
   const auth = await requireProviderAuth(req, provider_id)
   if (!auth.ok) return auth.response
 
-  const allowed = ['active', 'description', 'percent_off', 'max_uses', 'expires_at']
+  const allowed = ['active', 'description', 'percent_off', 'max_uses', 'expires_at', 'service_id']
   const updates: Record<string, any> = {}
   for (const k of allowed) {
     if (k in rawUpdates) updates[k] = rawUpdates[k]
