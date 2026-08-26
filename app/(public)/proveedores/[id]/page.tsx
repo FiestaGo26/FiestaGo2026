@@ -358,17 +358,32 @@ export default function ProviderDetailPage() {
     setSending(false)
   }
 
-  // Auto-aplicar cupón si viene en la URL (?coupon=CODIGO). Se registra
-  // ANTES de cualquier early return para no violar las reglas de hooks.
-  // Corre una sola vez cuando cargan provider + services.
+  // Prellenar el input del cupón si viene en la URL (?coupon=CODIGO).
+  // NO validamos aún — el subtotal todavía puede ser 0 (usuario aún no
+  // ha elegido servicio); el backend rechazaría el cupón. La validación
+  // real la dispara el siguiente useEffect cuando subtotal > 0.
   useEffect(() => {
     if (!provider) return
     const codeFromUrl = searchParams?.get('coupon')?.trim().toUpperCase()
-    if (!codeFromUrl || couponApplied || couponInput) return
-    setCouponInput(codeFromUrl)
-    setTimeout(() => { applyCoupon() }, 0)
+    if (codeFromUrl && !couponInput && !couponApplied) {
+      setCouponInput(codeFromUrl)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provider?.id])
+
+  // Auto-validar el cupón cuando hay código pendiente y el subtotal es
+  // > 0 (usuario acaba de elegir servicio). Sin esto el cupón que viene
+  // por URL se queda sin aplicar aunque el input esté relleno.
+  const subtotalForCoupon = (selectedSvc?.price ?? provider?.price_base ?? 0) +
+    ((selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
+      .reduce((s, a) => s + (Number(a.price) || 0), 0))
+  useEffect(() => {
+    if (!provider) return
+    if (!couponInput.trim() || couponApplied || couponChecking) return
+    if (subtotalForCoupon <= 0) return
+    applyCoupon()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotalForCoupon, couponInput, provider?.id])
 
   if (loading) return (
     <div className="min-h-screen bg-white flex items-center justify-center">
