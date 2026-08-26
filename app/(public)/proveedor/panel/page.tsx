@@ -3232,23 +3232,52 @@ function VideoCallSection({ title, tone, items, respond }: {
                 "{r.reason}"
               </div>
             )}
-            {r.jitsi_url && (
-              <div className="mt-3 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-1">Link de la sala</div>
-                <div className="flex items-center gap-2">
-                  <input readOnly value={r.jitsi_url}
-                    onClick={(e: any) => e.target.select()}
-                    className="flex-1 text-xs text-emerald-900 bg-white border border-emerald-200 rounded-lg px-3 py-2 font-mono"/>
-                  <button onClick={() => { navigator.clipboard.writeText(r.jitsi_url); toast.success('Copiado ✓') }}
-                    className="bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-700 transition-colors">
-                    Copiar
-                  </button>
+            {r.jitsi_url && (() => {
+              const firstName = (r.client_name || '').split(' ')[0] || 'hola'
+              const waText = `¡Hola ${firstName}! Aquí tienes el link para nuestra videollamada:\n\n${r.jitsi_url}\n\nEs Jitsi Meet, funciona en cualquier navegador y no hace falta registrarse. Confírmame la hora que te viene bien 😊`
+              const rawPhone = (r.client_phone || '').replace(/[^\d]/g, '')
+              const waPhone = rawPhone.length === 9 && /^[67]/.test(rawPhone) ? '34' + rawPhone : rawPhone
+              const waUrl = waPhone
+                ? `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`
+                : `https://wa.me/?text=${encodeURIComponent(waText)}`
+              const mailUrl = r.client_email
+                ? `mailto:${r.client_email}?subject=${encodeURIComponent('Videollamada FiestaGo · link de la sala')}&body=${encodeURIComponent(waText)}`
+                : null
+              return (
+                <div className="mt-3 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-1">Link de la sala</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input readOnly value={r.jitsi_url}
+                      onClick={(e: any) => e.target.select()}
+                      className="flex-1 text-xs text-emerald-900 bg-white border border-emerald-200 rounded-lg px-3 py-2 font-mono"/>
+                    <button onClick={() => { navigator.clipboard.writeText(r.jitsi_url); toast.success('Copiado ✓') }}
+                      className="bg-white text-emerald-700 border border-emerald-300 text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-50 transition-colors">
+                      📋 Copiar
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <a href={waUrl} target="_blank" rel="noreferrer"
+                      className="text-xs px-3 py-2 rounded-lg font-bold text-white transition-colors"
+                      style={{ background: '#25D366' }}>
+                      💬 Enviar por WhatsApp{waPhone ? '' : ' (elegir contacto)'}
+                    </a>
+                    {mailUrl && (
+                      <a href={mailUrl}
+                        className="text-xs px-3 py-2 border border-emerald-300 text-emerald-800 bg-white rounded-lg font-bold hover:bg-emerald-50 transition-colors">
+                        📧 Enviar por email
+                      </a>
+                    )}
+                    <a href={r.jitsi_url} target="_blank" rel="noreferrer"
+                      className="text-xs px-3 py-2 border border-emerald-300 text-emerald-800 bg-white rounded-lg font-bold hover:bg-emerald-50 transition-colors ml-auto">
+                      📹 Entrar a la sala
+                    </a>
+                  </div>
+                  <div className="text-[11px] text-emerald-800/70 mt-2">
+                    Recuerda acordar la hora con el cliente antes. El link no caduca — sirve para cualquier videollamada con este cliente.
+                  </div>
                 </div>
-                <div className="text-[11px] text-emerald-800/70 mt-1.5">
-                  Envía este link al cliente por WhatsApp o email acordando la hora.
-                </div>
-              </div>
-            )}
+              )
+            })()}
             {r.status === 'requested' && (
               <div className="flex gap-2 mt-3">
                 <button onClick={() => respond(r.id, 'propose')}
