@@ -401,6 +401,20 @@ export default function ProviderDetailPage() {
     setCouponChecking(false)
   }
 
+  // Auto-aplicar cupón si viene en la URL (?coupon=CODIGO). Usa selectedSvc
+  // o el primer servicio disponible para calcular el subtotal — así el
+  // cliente aterriza con el descuento ya visible aunque aún no haya
+  // elegido servicio. Corre una sola vez cuando cargan provider + services.
+  useEffect(() => {
+    if (!provider) return
+    const codeFromUrl = searchParams?.get('coupon')?.trim().toUpperCase()
+    if (!codeFromUrl || couponApplied || couponInput) return
+    setCouponInput(codeFromUrl)
+    // Damos un tick para que React actualice el input antes de aplicar
+    setTimeout(() => { applyCoupon() }, 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider?.id])
+
   return (
     <main className="bg-white">
       {/* Schema.org JSON-LD para rich results en Google */}

@@ -2368,30 +2368,61 @@ function ProveedorPanelInner() {
                 {coupons.map(c => {
                   const expired = c.expires_at && new Date(c.expires_at) < new Date()
                   const exhausted = c.max_uses != null && c.used_count >= c.max_uses
+                  const providerSlug = (provider as any)?.slug || provider?.id
+                  const shareUrl = `https://fiestago.es/proveedores/${providerSlug}?coupon=${encodeURIComponent(c.code)}`
+                  const shareText = `¡Hola! Te dejo un código con ${c.percent_off}% de descuento para reservar conmigo:\n\n${c.code}\n\nAplícalo aquí: ${shareUrl}`
+                  const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`
                   return (
-                    <div key={c.id} className="bg-white border border-stone-200 rounded-xl p-4 flex items-center gap-4">
-                      <div className="font-mono font-bold text-lg text-coral">{c.code}</div>
-                      <div className="flex-1">
-                        <div className="text-sm font-semibold text-ink">{c.percent_off}% descuento</div>
-                        <div className="text-xs text-ink/55 mt-0.5">
-                          {c.description && <span>{c.description} · </span>}
-                          {c.used_count} usos{c.max_uses != null ? ` / ${c.max_uses}` : ''}
-                          {c.expires_at && <span> · caduca {new Date(c.expires_at).toLocaleDateString('es-ES')}</span>}
+                    <div key={c.id} className="bg-white border border-stone-200 rounded-xl p-4">
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="font-mono font-bold text-lg text-coral">{c.code}</div>
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold text-ink">{c.percent_off}% descuento</div>
+                          <div className="text-xs text-ink/55 mt-0.5">
+                            {c.description && <span>{c.description} · </span>}
+                            {c.used_count} usos{c.max_uses != null ? ` / ${c.max_uses}` : ''}
+                            {c.expires_at && <span> · caduca {new Date(c.expires_at).toLocaleDateString('es-ES')}</span>}
+                          </div>
                         </div>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
+                          expired || exhausted ? 'bg-stone-100 text-stone-500'
+                            : c.active ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {expired ? 'Caducado' : exhausted ? 'Agotado' : c.active ? 'Activo' : 'Pausado'}
+                        </span>
+                        <button onClick={() => toggleCoupon(c.id, !c.active)}
+                          className="text-xs text-ink/55 hover:text-coral px-2 transition-colors">
+                          {c.active ? 'Pausar' : 'Activar'}
+                        </button>
+                        <button onClick={() => deleteCoupon(c.id)}
+                          className="text-xs text-red-400 hover:text-red-600 px-1">🗑️</button>
                       </div>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${
-                        expired || exhausted ? 'bg-stone-100 text-stone-500'
-                          : c.active ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {expired ? 'Caducado' : exhausted ? 'Agotado' : c.active ? 'Activo' : 'Pausado'}
-                      </span>
-                      <button onClick={() => toggleCoupon(c.id, !c.active)}
-                        className="text-xs text-ink/55 hover:text-coral px-2 transition-colors">
-                        {c.active ? 'Pausar' : 'Activar'}
-                      </button>
-                      <button onClick={() => deleteCoupon(c.id)}
-                        className="text-xs text-red-400 hover:text-red-600 px-1">🗑️</button>
+                      {/* Botones de compartir · el link lleva ?coupon= y el
+                          cupón se aplica solo al abrir la ficha */}
+                      <div className="flex flex-wrap gap-2 pt-3 border-t border-stone-100">
+                        <button onClick={() => {
+                            navigator.clipboard.writeText(c.code).then(
+                              () => toast.success('Código copiado'),
+                              () => toast.error('No pude copiar'))
+                          }}
+                          className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors">
+                          📋 Copiar código
+                        </button>
+                        <button onClick={() => {
+                            navigator.clipboard.writeText(shareUrl).then(
+                              () => toast.success('Link con cupón copiado'),
+                              () => toast.error('No pude copiar'))
+                          }}
+                          className="text-xs px-3 py-1.5 border border-stone-200 rounded-lg text-ink/65 hover:bg-stone-50 transition-colors">
+                          🔗 Copiar link con cupón
+                        </button>
+                        <a href={waUrl} target="_blank" rel="noreferrer"
+                          className="text-xs px-3 py-1.5 rounded-lg font-bold text-white transition-colors"
+                          style={{ background: '#25D366' }}>
+                          💬 Compartir por WhatsApp
+                        </a>
+                      </div>
                     </div>
                   )
                 })}
