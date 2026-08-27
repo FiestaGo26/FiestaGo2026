@@ -59,7 +59,7 @@ export default async function HomePage() {
           fill priority className="object-cover"/>
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/30 to-black/75" />
 
-        <div className="relative max-w-6xl mx-auto px-6 pb-64 md:pb-52 w-full text-white">
+        <div className="relative max-w-6xl mx-auto px-6 pb-80 md:pb-56 w-full text-white">
           <div className="max-w-2xl">
             <p className="inline-flex items-center gap-2 text-xs md:text-sm font-bold tracking-[0.22em] uppercase mb-5 bg-coral/95 text-white px-4 py-1.5 rounded-full">
               🛡 Garantía de Éxito
@@ -81,11 +81,12 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Search bar flotante DENTRO del hero (sobre la foto) */}
+        {/* Search bar flotante DENTRO del hero (sobre la foto).
+            El SearchBar trae su propio marco blanco — las pestañas y los
+            chips van intencionadamente sobre la foto oscura, no dentro de
+            un wrapper que las anule visualmente. */}
         <div className="absolute left-1/2 -translate-x-1/2 bottom-6 md:bottom-12 w-[94%] max-w-4xl z-20">
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-2 md:p-3">
-            <SearchBar />
-          </div>
+          <SearchBar />
         </div>
       </section>
 
