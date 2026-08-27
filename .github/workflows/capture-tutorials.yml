@@ -68,7 +68,16 @@ jobs:
           echo "### GIFs generados" >> $GITHUB_STEP_SUMMARY
           ls -lh public/tutorials/*.gif 2>/dev/null | awk '{print "- " $NF " (" $5 ")"}' >> $GITHUB_STEP_SUMMARY || echo "(ninguno)" >> $GITHUB_STEP_SUMMARY
 
-      - name: Limpiar fuentes .webm (no se comitean)
+      - name: Subir screenshots debug como artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: public/tutorials/_raw/_debug/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Limpiar fuentes .webm y debug (no se comitean)
         run: rm -rf public/tutorials/_raw
 
       - name: Commit y push de los GIFs
