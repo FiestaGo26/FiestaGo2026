@@ -1,0 +1,86 @@
+name: 🎬 Capturar tutoriales del proveedor
+
+# Genera los 15 GIFs de /proveedor/ayuda ejecutando Playwright contra
+# fiestago.es y hace commit de los GIFs directamente a main.
+#
+# Cómo lanzarlo:
+#   1. GitHub → Actions → 'Capturar tutoriales del proveedor'
+#   2. Botón 'Run workflow' (arriba a la derecha)
+#   3. Opcional: escribe un slug concreto (ej. 05-presupuestos-ia) para
+#      regrabar solo uno. Vacío = todos los 15.
+#   4. Espera ~10 min y en 'main' aparecen los GIFs actualizados.
+#
+# Requisito previo (una vez):
+#   Settings → Secrets and variables → Actions → New repository secret
+#     Name:  ADMIN_PASSWORD
+#     Value: la contraseña admin del site (misma que Netlify env var)
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'Slug concreto a regrabar (vacío = todos)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write   # necesario para commitear los GIFs
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Instalar Playwright + Chromium
+        run: |
+          npm install --save-dev @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Capturar tutoriales
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          BASE_URL:       https://fiestago.es
+        run: |
+          if [ -n "${{ inputs.slug }}" ]; then
+            node tools/tutorials/capture.mjs "${{ inputs.slug }}"
+          else
+            node tools/tutorials/capture.mjs
+          fi
+
+      - name: Resumen
+        if: always()
+        run: |
+          echo "### GIFs generados" >> $GITHUB_STEP_SUMMARY
+          ls -lh public/tutorials/*.gif 2>/dev/null | awk '{print "- " $NF " (" $5 ")"}' >> $GITHUB_STEP_SUMMARY || echo "(ninguno)" >> $GITHUB_STEP_SUMMARY
+
+      - name: Limpiar fuentes .webm (no se comitean)
+        run: rm -rf public/tutorials/_raw
+
+      - name: Commit y push de los GIFs
+        run: |
+          git config user.name  "fiestago-bot"
+          git config user.email "bot@fiestago.es"
+          git add public/tutorials/*.gif 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No hay cambios en los GIFs — nada que commitear."
+          else
+            SLUG_TXT="${{ inputs.slug }}"
+            if [ -z "$SLUG_TXT" ]; then SLUG_TXT="todos"; fi
+            git commit -m "Regeneración automática de tutoriales ($SLUG_TXT)"
+            git push
+          fi
