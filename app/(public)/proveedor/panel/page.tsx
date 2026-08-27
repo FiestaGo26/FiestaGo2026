@@ -80,7 +80,10 @@ type Provider = {
   specialties: string[]
 }
 
-const TABS = [
+// Ítems del sidebar. Si un item lleva `href` se renderiza como <a target=_blank>
+// (por ejemplo el Centro de ayuda, que es una página aparte). El resto son
+// tabs internos que solo cambian `tab` state.
+const TABS: Array<{ id: string; icon: string; label: string; href?: string }> = [
   { id:'dashboard',    icon:'📊', label:'Resumen'        },
   { id:'stats',        icon:'📈', label:'Estadísticas'   },
   { id:'profile',      icon:'✏️', label:'Mi perfil'      },
@@ -99,6 +102,7 @@ const TABS = [
   { id:'fiscal',       icon:'🧾', label:'Datos fiscales' },
   { id:'invoices',     icon:'📄', label:'Facturas'       },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
+  { id:'ayuda',        icon:'🎓', label:'Centro de ayuda', href:'/proveedor/ayuda' },
 ]
 
 type Review = {
@@ -1128,17 +1132,33 @@ function ProveedorPanelInner() {
                              : t.id === 'video-calls' ? badges.video_calls
                              : t.id === 'messages'    ? badges.messages
                              : 0
-            return (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-1 transition-colors text-left
-                  ${tab===t.id ? 'bg-coral/10 text-coral font-bold' : 'text-ink/60 hover:bg-stone-100'}`}>
+            const commonClasses = `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium mb-1 transition-colors text-left
+              ${tab===t.id ? 'bg-coral/10 text-coral font-bold' : 'text-ink/60 hover:bg-stone-100'}`
+
+            const inner = (
+              <>
                 <span>{t.icon}</span>
                 <span className="flex-1">{t.label}</span>
+                {t.href && <span className="text-ink/30 text-xs" aria-hidden="true">↗</span>}
                 {badgeCount > 0 && (
                   <span className="ml-auto bg-coral text-white text-[10px] font-bold min-w-[18px] h-[18px] px-1.5 rounded-full flex items-center justify-center leading-none">
                     {badgeCount > 99 ? '99+' : badgeCount}
                   </span>
                 )}
+              </>
+            )
+
+            // Items con href se abren en pestaña nueva (Centro de ayuda)
+            if (t.href) {
+              return (
+                <a key={t.id} href={t.href} target="_blank" rel="noreferrer" className={commonClasses}>
+                  {inner}
+                </a>
+              )
+            }
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)} className={commonClasses}>
+                {inner}
               </button>
             )
           })}
