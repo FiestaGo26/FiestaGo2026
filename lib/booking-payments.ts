@@ -109,7 +109,7 @@ export function computePaymentSchedule(
     secondPaymentStatus:  'pending',
     isRush:               false,
     humanCopy:
-      `Hoy pagas ${fmt(first)} (anticipo del ${pct}% del servicio + Garantía de Éxito). ` +
+      `Hoy pagas ${fmt(first)} (Garantía de Éxito incluida). ` +
       `El ${fmtDate(dueDate)} pagas los ${fmt(second)} restantes (2 meses antes del evento).`,
   }
 }
