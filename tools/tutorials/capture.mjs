@@ -287,14 +287,31 @@ async function captureScene(scene) {
   const url = `${BASE_URL}/proveedor/panel?as=${PROVIDER_ID}&tab=${scene.tab}`
   console.log(`  📍 ${url}`)
 
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
-  // Esperamos a que aparezca el sidebar (indica que la app hidrató)
+  await page.goto(url, { waitUntil: 'load', timeout: 60_000 })
+  // Esperamos a que el fallback de Suspense desaparezca (la app ha
+  // hidratado) Y a que 'Panel del proveedor' aparezca (el sidebar real
+  // del panel montó, no el navbar público superior que también tiene
+  // <nav>). Esto es lo que hacía que capturas anteriores mostrasen
+  // 'Cargando panel...' — el navbar público tenía <nav> con botones
+  // y el waitForSelector antiguo se conformaba con eso.
   try {
-    await page.waitForSelector('nav button, nav a', { timeout: 30_000 })
-  } catch (e) {
-    console.error(`  ⚠  Sidebar no apareció en 30s`)
+    await page.waitForFunction(
+      () => document.body.innerText.includes('Panel del proveedor'),
+      { timeout: 30_000 }
+    )
+  } catch {
+    console.error(`  ⚠  El sidebar del panel no apareció en 30s (¿bypass admin roto?)`)
   }
-  await sleep(3000) // que se cargue el panel completo (provider fetch, etc.)
+  // Después esperamos a que loadData termine (mensaje interno 'Cargando tu panel...')
+  try {
+    await page.waitForFunction(
+      () => !document.body.innerText.includes('Cargando tu panel'),
+      { timeout: 20_000 }
+    )
+  } catch {
+    console.error(`  ⚠  loadData no terminó en 20s`)
+  }
+  await sleep(1500) // margen extra para renders post-fetch
 
   // Aseguramos que estamos en el tab correcto haciendo clic explícito
   // sobre el botón del sidebar (por si el URL param falla). Busca el
