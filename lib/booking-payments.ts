@@ -45,19 +45,36 @@ export type PaymentSchedule = {
  * para guardar en BD como para devolver el desglose al cliente en el
  * checkout.
  *
- * totalAmount: importe TOTAL que paga el cliente (base + 8% Garantía)
- * depositPct:  0-40 del servicio elegido (0 si no se definió)
- * eventDate:   YYYY-MM-DD del evento
- * now:         opcional, para tests deterministas
+ * baseAmount:       importe base del servicio (lo que cobra el proveedor)
+ * commissionAmount: Garantía de Éxito (8% base, la paga el cliente)
+ * depositPct:       0-40 del servicio elegido (0 si no se definió)
+ * eventDate:        YYYY-MM-DD del evento
+ * now:              opcional, para tests deterministas
+ *
+ * REGLA DE DIVISIÓN (Opción A · decidida tras revisión con socios):
+ * Cuando hay split, la Garantía se cobra ÍNTEGRA con el anticipo — no
+ * proporcional. Razones:
+ *   · FiestaGo tiene la Garantía cobrada desde el día 1 → cobertura
+ *     total incluso si el cliente no paga el resto.
+ *   · Cada pago cuadra exacto con sus facturas (anticipo = comisión
+ *     FiestaGo + parte del servicio; resto = solo servicio).
+ *   · Simplifica contabilidad: una sola factura de comisión, no dos.
+ *
+ * Ejemplo: base 1000€ + Garantía 80€, anticipo 30%
+ *   Anticipo:  380€  (80€ Garantía  +  300€ = 30% del servicio)
+ *   Resto:     700€  (100% del servicio restante, cero Garantía)
  */
 export function computePaymentSchedule(
-  totalAmount: number,
-  depositPct: number,
-  eventDate: string | Date,
-  now: Date = new Date()
+  baseAmount:       number,
+  commissionAmount: number,
+  depositPct:       number,
+  eventDate:        string | Date,
+  now:              Date = new Date()
 ): PaymentSchedule {
-  const total = Math.round(Math.max(0, totalAmount) * 100) / 100
-  const pct   = Math.max(0, Math.min(40, Math.round(depositPct || 0)))
+  const base       = Math.round(Math.max(0, baseAmount)       * 100) / 100
+  const commission = Math.round(Math.max(0, commissionAmount) * 100) / 100
+  const total      = Math.round((base + commission)           * 100) / 100
+  const pct        = Math.max(0, Math.min(40, Math.round(depositPct || 0)))
 
   const eventD = typeof eventDate === 'string' ? new Date(eventDate + 'T00:00:00') : new Date(eventDate)
   const dueMs  = eventD.getTime() - SECOND_PAYMENT_LEAD_DAYS * 24 * 60 * 60 * 1000
@@ -78,8 +95,10 @@ export function computePaymentSchedule(
     }
   }
 
-  const first  = Math.round(total * pct / 100 * 100) / 100
-  const second = Math.round((total - first) * 100) / 100
+  // Opción A: anticipo = Garantía completa + parte proporcional del servicio.
+  const providerDeposit = Math.round(base * pct / 100 * 100) / 100
+  const first  = Math.round((commission + providerDeposit) * 100) / 100
+  const second = Math.round((base - providerDeposit) * 100) / 100
   const dueDate = new Date(dueMs)
   const dueIso  = dueDate.toISOString().slice(0, 10) // YYYY-MM-DD
 
@@ -90,8 +109,8 @@ export function computePaymentSchedule(
     secondPaymentStatus:  'pending',
     isRush:               false,
     humanCopy:
-      `Hoy pagas ${fmt(first)} (${pct}% de anticipo). ` +
-      `El ${fmtDate(dueDate)} pagas los ${fmt(second)} restantes (fecha límite: 2 meses antes del evento).`,
+      `Hoy pagas ${fmt(first)} (anticipo del ${pct}% del servicio + Garantía de Éxito). ` +
+      `El ${fmtDate(dueDate)} pagas los ${fmt(second)} restantes (2 meses antes del evento).`,
   }
 }
 

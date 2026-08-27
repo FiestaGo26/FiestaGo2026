@@ -59,18 +59,15 @@ export async function POST(
     second_payment_paid_at: now,
   }).eq('id', bookingId)
 
-  // Emitir factura delegada del segundo tramo si el proveedor lo tiene activo
+  // Emitir factura delegada del segundo tramo si el proveedor lo tiene activo.
+  // Opción A: el segundo pago es ÍNTEGRAMENTE del proveedor — la Garantía
+  // ya se cobró completa con el anticipo, así que aquí el importe delegado
+  // coincide con secondAmount tal cual.
   const provider = booking.providers
   const secondAmount = Number(booking.second_payment_amount || 0)
   if (provider?.consent_delegated_invoicing && secondAmount > 0) {
-    // Cuánto va al proveedor del segundo tramo (proporción del provider_earns)
-    const providerEarns = Number(booking.provider_earns || 0)
-    const totalAmount   = Number(booking.total_amount || 1)
-    const amountForProvider =
-      Math.round((providerEarns * (secondAmount / totalAmount)) * 100) / 100
-
     const result = await generateDelegatedInvoice(supabase as any, booking, provider, {
-      amount: amountForProvider,
+      amount: secondAmount,
       concept: `Resto por servicios para evento del ${booking.event_date} (${booking.event_type || 'evento'})`,
     })
     if (result.error) {

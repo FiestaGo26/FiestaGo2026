@@ -88,7 +88,10 @@ export async function POST(req: NextRequest) {
         .eq('id', service_id).maybeSingle()
       depositPct = Math.max(0, Math.min(40, svc?.deposit_pct || 0))
     }
-    const schedule = computePaymentSchedule(commission.clientPays, depositPct, event_date)
+    // Opción A: pasamos base y Garantía por separado — la Garantía se cobra
+    // ÍNTEGRA con el anticipo, no proporcional. Ver comentarios de
+    // computePaymentSchedule para la lógica completa.
+    const schedule = computePaymentSchedule(amount, commission.amount, depositPct, event_date)
 
     const { data, error } = await supabase
       .from('bookings')

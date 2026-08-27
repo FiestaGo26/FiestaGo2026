@@ -180,15 +180,16 @@ async function autoIssueInvoicesForBooking(supabase: any, bookingId: string) {
   const provider = booking.providers
   if (!provider?.consent_delegated_invoicing) return
 
-  // Cuánto facturar en este momento: si hay split, el anticipo;
-  // si no, el total del provider_earns.
+  // Opción A: si hay split, en el anticipo va TODA la Garantía + parte
+  // proporcional del servicio. Lo que va al proveedor por este anticipo
+  // es simplemente firstAmount - commission (la Garantía la cobra
+  // FiestaGo en su factura aparte). El resto irá en el 2º pago.
   const providerEarns = Number(booking.provider_earns || 0)
-  const firstAmount = Number(booking.first_payment_amount || providerEarns)
-  const hasSplit    = booking.second_payment_status === 'pending' && Number(booking.second_payment_amount || 0) > 0
-  // Nota: first_payment_amount incluye la comisión. La parte que va al
-  // proveedor por este primer pago es proporcional a su cuota total.
+  const firstAmount   = Number(booking.first_payment_amount || providerEarns)
+  const commissionAmt = Number(booking.commission_amt || 0)
+  const hasSplit      = booking.second_payment_status === 'pending' && Number(booking.second_payment_amount || 0) > 0
   const amountForProvider = hasSplit
-    ? Math.round((providerEarns * (firstAmount / Number(booking.total_amount))) * 100) / 100
+    ? Math.max(0, Math.round((firstAmount - commissionAmt) * 100) / 100)
     : providerEarns
   const concept = hasSplit
     ? `Anticipo por servicios para evento del ${booking.event_date} (${booking.event_type || 'evento'})`
