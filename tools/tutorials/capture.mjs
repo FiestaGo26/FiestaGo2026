@@ -262,12 +262,23 @@ async function injectCaption(page, text) {
   }, text)
 }
 
-function toGif(webmPath, gifPath) {
-  // Paleta primero para colores decentes; sino sale un GIF con dither feo.
+// Recorta a los últimos N segundos y convierte a GIF. El recorte
+// es CRÍTICO: Playwright graba TODO el rato desde que llama a page.goto,
+// incluyendo los 15-25s de setup/loading antes del scene.steps. Sin
+// recortar, los GIFs son 90% pantalla en blanco/loading.
+function toGif(webmPath, gifPath, keepLastSeconds = 10) {
   const palette = webmPath.replace('.webm', '_palette.png')
-  execSync(`ffmpeg -y -i "${webmPath}" -vf "fps=12,scale=1200:-1:flags=lanczos,palettegen=stats_mode=diff" "${palette}"`, { stdio: 'ignore' })
-  execSync(`ffmpeg -y -i "${webmPath}" -i "${palette}" -filter_complex "fps=12,scale=1200:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5" "${gifPath}"`, { stdio: 'ignore' })
+  const trimmed = webmPath.replace('.webm', '_trimmed.webm')
+
+  // Recorta el final N segundos. -sseof -N funciona con webm.
+  execSync(`ffmpeg -y -sseof -${keepLastSeconds} -i "${webmPath}" -c copy "${trimmed}"`, { stdio: 'ignore' })
+
+  // Paleta + conversión a GIF sobre el vídeo ya recortado.
+  execSync(`ffmpeg -y -i "${trimmed}" -vf "fps=12,scale=1200:-1:flags=lanczos,palettegen=stats_mode=diff" "${palette}"`, { stdio: 'ignore' })
+  execSync(`ffmpeg -y -i "${trimmed}" -i "${palette}" -filter_complex "fps=12,scale=1200:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5" "${gifPath}"`, { stdio: 'ignore' })
+
   rmSync(palette, { force: true })
+  rmSync(trimmed, { force: true })
 }
 
 // ─── Runner ──────────────────────────────────────────────────────────
