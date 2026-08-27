@@ -288,7 +288,33 @@ async function captureScene(scene) {
   console.log(`  📍 ${url}`)
 
   await page.goto(url, { waitUntil: 'networkidle', timeout: 45_000 })
-  await sleep(1500)
+  await sleep(2000) // que se cargue el panel completo (provider fetch, etc.)
+
+  // Aseguramos que estamos en el tab correcto haciendo clic explícito
+  // sobre el botón del sidebar (por si el URL param falla). Busca el
+  // botón cuyo texto contenga el label del tab.
+  try {
+    await page.evaluate((tabId) => {
+      // Los botones del sidebar tienen el id como parte del texto/aria.
+      // Buscamos por el texto del label mediante querySelectorAll.
+      const labels = {
+        dashboard: 'Resumen', stats: 'Estadísticas', profile: 'Mi perfil',
+        services: 'Mis servicios', quotes: 'Presupuestos IA',
+        'wa-replies': 'Plantillas WhatsApp', gmb: 'Google Business',
+        availability: 'Disponibilidad', bookings: 'Reservas', earnings: 'Cobros',
+        messages: 'Mensajes', 'video-calls': 'Videollamadas',
+        embed: 'Widget para mi web', coupons: 'Cupones', reviews: 'Reseñas',
+        fiscal: 'Datos fiscales', invoices: 'Facturas', security: 'Seguridad',
+      }
+      const label = labels[tabId] || tabId
+      const btn = Array.from(document.querySelectorAll('nav button')).find(
+        (b) => b.textContent && b.textContent.includes(label)
+      )
+      if (btn) btn.click()
+    }, scene.tab)
+    await sleep(800) // deja que el tab renderice
+  } catch { /* ignora si falla — al menos tenemos el URL param */ }
+
   await injectCaption(page, scene.caption)
   await sleep(500)
 

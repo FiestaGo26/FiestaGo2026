@@ -139,11 +139,7 @@ function ProveedorPanelInner() {
     }
     return fetch(url, { ...init, headers })
   }
-  // Tab inicial · si viene ?tab=X en la URL (usado por /proveedor/ayuda,
-  // por los deep links y por el capturador de tutoriales) arrancamos ahí,
-  // en vez de siempre en 'dashboard'.
-  const initialTab = searchParams?.get('tab') || 'dashboard'
-  const [tab,      setTab]      = useState(initialTab)
+  const [tab,      setTab]      = useState('dashboard')
   const [provider, setProvider] = useState<Provider | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -741,6 +737,11 @@ function ProveedorPanelInner() {
   useEffect(() => {
     // Modo admin: el admin abre el panel de cualquier proveedor con ?as=<id>
     // si tiene la contraseña admin en localStorage.
+    // Si viene ?tab=X en la URL, arrancar en ese tab (deep links desde
+    // /proveedor/ayuda, emails, capturador de tutoriales, etc.)
+    const urlTab = searchParams?.get('tab')
+    if (urlTab) setTab(urlTab)
+
     if (adminAsId && typeof window !== 'undefined' && localStorage.getItem('fg_admin_pass')) {
       setIsAdminView(true)
       loadData(null, adminAsId)
