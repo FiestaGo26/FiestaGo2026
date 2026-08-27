@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import TutorialCard from './TutorialCard'
 
 // ─── Página de ayuda del proveedor ───────────────────────────────────
 // Grid de tutoriales cortos (10-30s cada uno) en formato GIF.
@@ -88,36 +88,9 @@ export default function AyudaPage() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 {items.map(t => (
-                  <article key={t.slug} className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col">
-                    <div className="relative bg-stone-100 aspect-video overflow-hidden">
-                      {/* Cuando el capturador genere el GIF, se sirve
-                          desde /tutorials/{slug}.gif. Mientras tanto,
-                          placeholder con nombre del tutorial. */}
-                      <img src={`/tutorials/${t.slug}.gif`}
-                        alt={t.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                        onError={(e: any) => {
-                          e.currentTarget.style.display = 'none'
-                          e.currentTarget.parentElement.querySelector('.tutorial-placeholder')?.classList.remove('hidden')
-                        }}/>
-                      <div className="tutorial-placeholder absolute inset-0 flex flex-col items-center justify-center text-ink/30 hidden">
-                        <div className="text-4xl mb-2">🎬</div>
-                        <div className="text-xs font-mono">Grabación pendiente</div>
-                      </div>
-                      <div className="absolute top-2 right-2 bg-ink/85 text-white text-[10px] font-bold px-2 py-1 rounded-md tabular-nums">
-                        {t.duration}
-                      </div>
-                    </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <h3 className="font-semibold text-ink text-base mb-1 leading-tight">{t.title}</h3>
-                      <p className="text-sm text-ink/60 leading-snug mb-3 flex-1">{t.hint}</p>
-                      <Link href={`/proveedor/panel?tab=${t.panelTab}`}
-                        className="text-xs font-bold text-coral hover:text-coral-dark transition-colors self-start">
-                        Ir a esta sección del panel →
-                      </Link>
-                    </div>
-                  </article>
+                  <TutorialCard key={t.slug}
+                    slug={t.slug} title={t.title} duration={t.duration}
+                    hint={t.hint} panelTab={t.panelTab}/>
                 ))}
               </div>
             </section>
