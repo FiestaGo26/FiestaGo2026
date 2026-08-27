@@ -135,7 +135,11 @@ function ProveedorPanelInner() {
     }
     return fetch(url, { ...init, headers })
   }
-  const [tab,      setTab]      = useState('dashboard')
+  // Tab inicial · si viene ?tab=X en la URL (usado por /proveedor/ayuda,
+  // por los deep links y por el capturador de tutoriales) arrancamos ahí,
+  // en vez de siempre en 'dashboard'.
+  const initialTab = searchParams?.get('tab') || 'dashboard'
+  const [tab,      setTab]      = useState(initialTab)
   const [provider, setProvider] = useState<Provider | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [services, setServices] = useState<Service[]>([])
