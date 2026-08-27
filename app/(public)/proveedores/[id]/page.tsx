@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
-import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
+import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import FavoriteButton from '../../_components/FavoriteButton'
@@ -804,26 +804,34 @@ export default function ProviderDetailPage() {
                 </div>
               )}
 
-              {/* Anticipo del servicio, si aplica. Informativo — la lógica real
-                  de cobro parcial se activará con Stripe Connect (roadmap). */}
-              {selectedSvc?.deposit_pct != null && selectedSvc.deposit_pct > 0 && (
-                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs">
-                  <div className="flex items-start gap-2 mb-2">
-                    <span className="text-lg leading-none">💶</span>
-                    <div className="font-semibold text-amber-900">
-                      Este servicio se paga en dos plazos
+              {/* Anticipo del servicio, si aplica. Mostramos importes concretos
+                  (no porcentajes) para no obligar al cliente a hacer cálculos
+                  y para no revelar el desglose interno de la Garantía. */}
+              {selectedSvc?.deposit_pct != null && selectedSvc.deposit_pct > 0 && selectedSvc.price != null && (() => {
+                const svcBase   = Number(selectedSvc.price) || 0
+                const svcDeposit = Math.round((svcBase * selectedSvc.deposit_pct / 100) * 100) / 100
+                const svcRest   = Math.round((svcBase - svcDeposit) * 100) / 100
+                // Anticipo cliente = Garantía completa + parte proporcional del servicio
+                const clientDeposit = Math.round((svcDeposit + importeFee(svcBase)) * 100) / 100
+                return (
+                  <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs">
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className="text-lg leading-none">💶</span>
+                      <div className="font-semibold text-amber-900">
+                        Este servicio se paga en dos plazos
+                      </div>
+                    </div>
+                    <ol className="ml-6 space-y-1 text-amber-800/85 list-decimal">
+                      <li><strong>{formatEuro(clientDeposit)} al reservar</strong> — confirma tu fecha en el momento.</li>
+                      <li><strong>{formatEuro(svcRest)} restantes 2 meses antes del evento</strong> — te avisaremos por email y WhatsApp con antelación.</li>
+                    </ol>
+                    <div className="mt-2 pt-2 border-t border-amber-200 text-amber-800/80 text-[11px] leading-relaxed">
+                      Si reservas con menos de 2 meses de antelación, pagas el total al reservar.
+                      Tu pago queda retenido por FiestaGo hasta el evento (Garantía de Éxito).
                     </div>
                   </div>
-                  <ol className="ml-6 space-y-1 text-amber-800/85 list-decimal">
-                    <li><strong>{selectedSvc.deposit_pct}% al reservar</strong> — confirma tu fecha en el momento.</li>
-                    <li><strong>{100 - selectedSvc.deposit_pct}% restante 2 meses antes del evento</strong> — te avisaremos por email y WhatsApp con antelación.</li>
-                  </ol>
-                  <div className="mt-2 pt-2 border-t border-amber-200 text-amber-800/80 text-[11px] leading-relaxed">
-                    Si reservas con menos de 2 meses de antelación, pagas el 100% al reservar.
-                    Tu pago queda retenido por FiestaGo hasta el evento (Garantía de Éxito).
-                  </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* Política de cancelación del servicio seleccionado */}
               {selectedSvc?.cancellation_policy && CANCELLATION_POLICIES[selectedSvc.cancellation_policy] && (
