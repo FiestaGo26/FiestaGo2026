@@ -13,6 +13,7 @@ type Provider = {
   id: string
   name: string
   category: string
+  categories?: string[]
   city: string
   description: string | null
   price_base: number | null
@@ -499,7 +500,23 @@ export default function ProviderDetailPage() {
             {provider.rating > 0 && <span className="text-ink/30">·</span>}
             <span className="underline underline-offset-2">{provider.city}</span>
             {provider.verified && <><span className="text-ink/30">·</span><span>🛡️ Verificado</span></>}
-            {cat && <><span className="text-ink/30">·</span><span>{cat.icon} {cat.label}</span></>}
+            {(() => {
+              const allCats = (provider.categories && provider.categories.length
+                ? provider.categories
+                : [provider.category]
+              ).map(id => CATEGORIES.find(c => c.id === id)).filter(Boolean) as Array<(typeof CATEGORIES)[number]>
+              if (!allCats.length) return null
+              return <>
+                <span className="text-ink/30">·</span>
+                <span className="inline-flex items-center gap-1.5 flex-wrap">
+                  {allCats.map((c, i) => (
+                    <span key={c.id}>
+                      {c.icon} {c.label}{i < allCats.length - 1 ? <span className="text-ink/25 ml-1.5">+</span> : null}
+                    </span>
+                  ))}
+                </span>
+              </>
+            })()}
           </div>
         </div>
 

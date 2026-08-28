@@ -35,7 +35,7 @@ function fireEmail(
 // cualquier dato interno (outreach_*, agent_*, user_id) para que un cliente
 // no pueda saltarse el flujo de reserva de FiestaGo.
 const PUBLIC_PROVIDER_FIELDS = `
-  id, slug, name, category, city, address, description, short_desc,
+  id, slug, name, category, categories, city, address, description, short_desc,
   price_base, price_unit, years_active, specialties, tag,
   rating, total_reviews, total_bookings, featured, verified,
   photo_url, photo_idx, offers_video_call, created_at
@@ -73,7 +73,11 @@ export async function GET(req: NextRequest) {
     .order('rating', { ascending: false })
     .range(offset, offset + limit - 1)
 
-  if (category) query = query.eq('category', category)
+  // Multi-category: un proveedor con categories = ['flores','planner'] aparece
+  // en ambos listados. Usamos containment sobre el array para hacer un match
+  // por el índice GIN. La columna category (primaria) se mantiene en sync por
+  // trigger; contains cubre AMBAS.
+  if (category) query = query.contains('categories', [category])
   if (city)     query = query.eq('city', city)
   if (featured) query = query.eq('featured', true)
 
@@ -87,11 +91,19 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient()
   const body = await req.json()
 
-  const { name, category, city, email, phone, website, instagram,
+  const { name, category, categories, city, email, phone, website, instagram,
           description, price_base, price_unit, specialties, referred_by,
           accept_terms } = body
 
-  if (!name || !category || !city || !email) {
+  // Multi-category: aceptamos `categories` como array. Si solo llega `category`
+  // (payload antiguo), lo envolvemos en un array de 1. El primer elemento del
+  // array será la categoría principal.
+  const cats: string[] = Array.isArray(categories) && categories.length
+    ? categories
+    : (category ? [category] : [])
+  const primaryCategory = cats[0]
+
+  if (!name || !primaryCategory || !city || !email) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
   }
   if (!accept_terms) {
@@ -126,7 +138,16 @@ export async function POST(req: NextRequest) {
       // valor nuevo es distinto y más completo. NO sobrescribimos status ni tag
       // del lifecycle existente.
       if (name        && name        !== existing.name)        merged.name        = name
-      if (category    && category    !== existing.category)    merged.category    = category
+      // Multi-categoría: si el proveedor existente tiene menos cats de las que
+      // llegan ahora, unimos (respetando la primaria del payload).
+      if (cats.length) {
+        const existingCats: string[] = Array.isArray(existing.categories) ? existing.categories : []
+        const union = [primaryCategory, ...cats.filter(c => c !== primaryCategory), ...existingCats.filter((c: string) => !cats.includes(c))]
+        if (union.length && JSON.stringify(union) !== JSON.stringify(existingCats)) {
+          merged.categories = union
+          merged.category   = primaryCategory
+        }
+      }
       if (city        && city        !== existing.city)        merged.city        = city
       if (phone       && !existing.phone)                      merged.phone       = phone
       if (website     && !existing.website)                    merged.website     = website
@@ -176,7 +197,10 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from('providers')
     .insert({
-      name, category, city, email,
+      name,
+      category:   primaryCategory,
+      categories: cats,
+      city, email,
       phone:        phone || null,
       website:      website || null,
       instagram:    instagram || null,
@@ -200,12 +224,12 @@ export async function POST(req: NextRequest) {
     // 4s y se perdía la causa real. Ahora dejamos rastro en notifications
     // para que /admin lo vea con el error exacto y un link al auth user
     // huérfano (si lo hubiese — viene del flujo de /registro-proveedor).
-    console.error('[providers POST] INSERT failed:', JSON.stringify(error), { email, name, category, city })
+    console.error('[providers POST] INSERT failed:', JSON.stringify(error), { email, name, categories: cats, city })
     supabase.from('notifications').insert({
       type:       'provider_insert_failure',
       title:      `❌ Alta de proveedor FALLÓ · ${name}`,
-      message:    `${error.message}. Email: ${email}. Ciudad: ${city}. Categoría: ${category}. Revisa /admin-tools/huerfanos para recuperarlo.`,
-      data:       { email, name, category, city, db_error: error },
+      message:    `${error.message}. Email: ${email}. Ciudad: ${city}. Categorías: ${cats.join(', ')}. Revisa /admin-tools/huerfanos para recuperarlo.`,
+      data:       { email, name, categories: cats, city, db_error: error },
       action_url: `/admin-tools/huerfanos`,
     }).then(() => {})
     return NextResponse.json({ error: error.message }, { status: 500 })

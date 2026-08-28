@@ -163,6 +163,7 @@ function ProveedorPanelInner() {
     photo_url:'' as string,
     auto_reply_message:'' as string,
     offers_video_call: false,
+    categories: [] as string[],   // multi-categoría · [0] = principal
   })
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
@@ -789,6 +790,9 @@ function ProveedorPanelInner() {
         photo_url:   data.provider.photo_url || '',
         auto_reply_message: data.provider.auto_reply_message || '',
         offers_video_call: !!data.provider.offers_video_call,
+        categories:  Array.isArray(data.provider.categories) && data.provider.categories.length
+                       ? data.provider.categories
+                       : (data.provider.category ? [data.provider.category] : []),
       })
       setReplyTemplates(Array.isArray(data.provider.reply_templates) ? data.provider.reply_templates : [])
 
@@ -852,6 +856,7 @@ function ProveedorPanelInner() {
           specialties: profile.specialties.split(',').map(s=>s.trim()).filter(Boolean),
           auto_reply_message: profile.auto_reply_message.trim() || null,
           offers_video_call: profile.offers_video_call,
+          categories: profile.categories.length ? profile.categories : undefined,
         }),
       })
       const data = await res.json()
@@ -1518,6 +1523,64 @@ function ProveedorPanelInner() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* Categorías del proveedor (multi) */}
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card mb-5">
+              <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-3">
+                Categorías <span className="normal-case font-normal text-ink/40">· en las que apareces</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {CATEGORIES.map(c => {
+                  const active = profile.categories.includes(c.id)
+                  const isPrimary = profile.categories[0] === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setProfile(p => {
+                        const has = p.categories.includes(c.id)
+                        const next = has ? p.categories.filter(x => x !== c.id) : [...p.categories, c.id]
+                        return { ...p, categories: next.length ? next : [c.id] }
+                      })}
+                      className={`relative flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                        active
+                          ? 'border-coral bg-coral/5 text-ink font-medium'
+                          : 'border-stone-200 bg-white text-ink/70 hover:border-stone-300'
+                      }`}
+                    >
+                      <span className="text-base">{c.icon}</span>
+                      <span className="truncate">{c.label}</span>
+                      {isPrimary && (
+                        <span className="ml-auto text-[9px] font-bold text-coral uppercase tracking-wider">1ª</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              {profile.categories.length > 1 && (
+                <div className="mt-3 text-xs text-ink/50 leading-relaxed">
+                  <span className="text-coral font-bold">1ª</span> = categoría principal (la que se usa para tu foto de cabecera y label en listados). Cambiar principal:{' '}
+                  {profile.categories.slice(1).map(id => {
+                    const c = CATEGORIES.find(x => x.id === id)
+                    if (!c) return null
+                    return (
+                      <button key={id} type="button"
+                        onClick={() => setProfile(p => {
+                          if (!p.categories.includes(id)) return p
+                          const rest = p.categories.filter(x => x !== id)
+                          return { ...p, categories: [id, ...rest] }
+                        })}
+                        className="underline hover:text-coral mr-2">
+                        {c.icon} {c.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="text-[11px] text-ink/45 mt-3 leading-relaxed">
+                Aparecerás en el listado de <strong>cada categoría</strong> que marques. Ideal si ofreces varias disciplinas (ej. planner + flores, foto + vídeo).
+              </p>
             </div>
 
             <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-card">

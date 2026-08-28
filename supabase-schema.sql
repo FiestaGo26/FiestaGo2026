@@ -25,7 +25,8 @@ create table providers (
   -- Info básica
   name            text not null,
   slug            text unique,
-  category        category_id not null,
+  category        category_id not null,     -- categoría principal (representativa)
+  categories      category_id[] not null default '{}',  -- multi-cat · [0]=principal
   city            text not null,
   address         text,
   description     text,
@@ -81,6 +82,7 @@ create table providers (
 
 -- Índices
 create index providers_category_idx on providers(category);
+create index providers_categories_gin_idx on providers using gin (categories);
 create index providers_city_idx     on providers(city);
 create index providers_status_idx   on providers(status);
 create index providers_featured_idx on providers(featured) where featured = true;

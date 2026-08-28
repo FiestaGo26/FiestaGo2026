@@ -9,6 +9,7 @@ const ALLOWED_FIELDS = new Set([
   'name', 'phone', 'website', 'instagram', 'description', 'short_desc',
   'price_base', 'price_unit', 'specialties', 'photo_url',
   'auto_reply_message', 'reply_templates', 'offers_video_call',
+  'categories', // multi-categoría · primer elemento = principal (trigger sincroniza)
 ])
 
 export async function GET(req: NextRequest) {

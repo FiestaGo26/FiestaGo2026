@@ -21,13 +21,28 @@ function RegistroProveedorInner() {
   const [postError, setPostError] = useState<string | null>(null)
   const [authCreated, setAuthCreated] = useState(false)
   const [form, setForm] = useState({
-    name:'', category:'foto', city:'Madrid',
+    name:'', categories:['foto'] as string[], city:'Madrid',
     email:'', password:'', confirmPassword:'',
     phone:'', website:'', instagram:'',
     description:'', price_base:'', price_unit:'por evento',
     specialties:[] as string[],
     acceptTerms: false,
   })
+
+  function toggleCategory(id: string) {
+    setForm(f => {
+      const has = f.categories.includes(id)
+      const next = has ? f.categories.filter(c => c !== id) : [...f.categories, id]
+      return { ...f, categories: next.length ? next : [id] } // siempre al menos 1
+    })
+  }
+  function setPrimaryCategory(id: string) {
+    setForm(f => {
+      if (!f.categories.includes(id)) return f
+      const rest = f.categories.filter(c => c !== id)
+      return { ...f, categories: [id, ...rest] }
+    })
+  }
 
   // Si llega con ?ref=ID, mostrar quién le invitó
   useEffect(() => {
@@ -111,7 +126,8 @@ function RegistroProveedorInner() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name:        form.name,
-        category:    form.category,
+        category:    form.categories[0],
+        categories:  form.categories,
         city:        form.city,
         email:       form.email,
         phone:       form.phone || null,
@@ -149,7 +165,8 @@ function RegistroProveedorInner() {
     setLoading(false)
   }
 
-  const cat = CATEGORIES.find(c => c.id === form.category)
+  const cat = CATEGORIES.find(c => c.id === form.categories[0])
+  const selectedCats = form.categories.map(id => CATEGORIES.find(c => c.id === id)).filter(Boolean) as Array<(typeof CATEGORIES)[number]>
 
   if (step === 2) return (
     <div className="min-h-screen bg-cream flex items-center justify-center px-4">
@@ -162,7 +179,7 @@ function RegistroProveedorInner() {
         </p>
         <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-6 text-left">
           <div className="text-xs font-bold text-ink/40 uppercase tracking-widest mb-4">Tu registro</div>
-          {[['Negocio',form.name],['Categoría',`${cat?.icon} ${cat?.label}`],['Ciudad',form.city],['Email',form.email]].map(([k,v])=>(
+          {[['Negocio',form.name],['Categorías',selectedCats.map(c => `${c.icon} ${c.label}`).join(' · ')],['Ciudad',form.city],['Email',form.email]].map(([k,v])=>(
             <div key={k} className="flex justify-between py-2 border-b border-stone-100 text-sm">
               <span className="text-ink/50">{k}</span>
               <span className="font-medium text-ink">{v}</span>
@@ -249,22 +266,59 @@ function RegistroProveedorInner() {
                 className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors"/>
             </div>
 
-            {/* Categoria + Ciudad */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Categoría *</label>
-                <select value={form.category} onChange={e=>set('category',e.target.value)}
-                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors">
-                  {CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
-                </select>
+            {/* Categorías (multi) + Ciudad */}
+            <div>
+              <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">
+                Categorías * <span className="normal-case font-normal text-ink/40">· puedes elegir una o varias</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {CATEGORIES.map(c => {
+                  const active = form.categories.includes(c.id)
+                  const isPrimary = form.categories[0] === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggleCategory(c.id)}
+                      className={`relative flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                        active
+                          ? 'border-coral bg-coral/5 text-ink font-medium'
+                          : 'border-stone-200 bg-white text-ink/70 hover:border-stone-300'
+                      }`}
+                    >
+                      <span className="text-base">{c.icon}</span>
+                      <span className="truncate">{c.label}</span>
+                      {isPrimary && (
+                        <span className="ml-auto text-[9px] font-bold text-coral uppercase tracking-wider">1ª</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
-              <div>
-                <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Ciudad *</label>
-                <select value={form.city} onChange={e=>set('city',e.target.value)}
-                  className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors">
-                  {CITIES.map(c=><option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+              {form.categories.length > 1 && (
+                <div className="mt-2 flex items-start gap-2 text-xs text-ink/50">
+                  <span className="text-coral font-bold">1ª</span>
+                  <span>= categoría principal. La usamos para tu ficha por defecto. Pincha en otra seleccionada para hacerla principal:{' '}
+                    {form.categories.slice(1).map(id => {
+                      const c = CATEGORIES.find(x => x.id === id)
+                      if (!c) return null
+                      return (
+                        <button key={id} type="button" onClick={() => setPrimaryCategory(id)}
+                                className="underline hover:text-coral mr-2">
+                          {c.icon} {c.label}
+                        </button>
+                      )
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1.5">Ciudad *</label>
+              <select value={form.city} onChange={e=>set('city',e.target.value)}
+                className="w-full border border-stone-200 rounded-xl px-4 py-3 text-sm text-ink outline-none focus:border-coral transition-colors">
+                {CITIES.map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
 
             {/* Email */}
