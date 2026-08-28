@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
-import { emailClientBookingConfirmed, emailClientBookingCancelled } from '@/lib/resend'
+import { emailClientBookingConfirmed, emailClientBookingCancelled, emailClientInvoicesReady } from '@/lib/resend'
 import { calcRefund } from '@/lib/constants'
 import { exportBookingToGoogle, removeBookingFromGoogle } from '@/lib/google-sync'
 import { generateCommissionInvoice, generateDelegatedInvoice } from '@/lib/invoicing/generator'
@@ -209,5 +209,20 @@ async function autoIssueInvoicesForBooking(supabase: any, bookingId: string) {
       data:    { booking_id: bookingId, provider_id: provider.id, error: delegatedResult.error },
       action_url: `/admin?booking=${bookingId}`,
     })
+  }
+
+  // Enviar al cliente los enlaces a las facturas que se acaben de emitir.
+  // No forzamos a crear cuenta — los links llevan ?email= como soft auth.
+  try {
+    const { data: invs } = await supabase
+      .from('invoices')
+      .select('id, full_number, total_amount, invoice_type, issue_date')
+      .eq('booking_id', bookingId)
+      .order('issue_date', { ascending: true })
+    if (invs && invs.length > 0) {
+      await emailClientInvoicesReady(booking, provider, invs as any)
+    }
+  } catch (e) {
+    console.error('[invoices email] failed', e)
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { generateDelegatedInvoice } from '@/lib/invoicing/generator'
+import { emailClientInvoicesReady } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -72,6 +73,15 @@ export async function POST(
     })
     if (result.error) {
       console.error('delegated invoice (second payment) failed:', result.error)
+    } else if (result.invoiceId) {
+      // Enviar al cliente el enlace a la nueva factura sin obligarle a crear cuenta.
+      try {
+        const { data: inv } = await supabase
+          .from('invoices')
+          .select('id, full_number, total_amount, invoice_type')
+          .eq('id', result.invoiceId).maybeSingle()
+        if (inv) await emailClientInvoicesReady(booking, provider, [inv as any])
+      } catch (e) { console.error('[second payment invoice email] failed', e) }
     }
   }
 

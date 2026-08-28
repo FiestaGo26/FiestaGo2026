@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
 import { generateCommissionInvoice, generateDelegatedInvoice } from '@/lib/invoicing/generator'
+import { emailClientInvoicesReady } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -97,6 +98,35 @@ export async function POST(req: NextRequest) {
         })
         if (r.error) errors.push({ booking_id: booking.id, type: 'delegated', error: r.error })
         else generated.delegated++
+      }
+    }
+  }
+
+  // Enviar emails al cliente de las facturas emitidas en este batch, agrupadas
+  // por booking (una notificación por reserva con todas las nuevas juntas).
+  if ((generated.commission + generated.delegated) > 0) {
+    const bookingIdsAffected = Array.from(new Set([
+      ...errors.map(e => e.booking_id),
+      ...skipped.map(s => s.booking_id),
+      ...(bookings || []).map((b: any) => b.id),
+    ]))
+    for (const bId of bookingIdsAffected) {
+      const booking = (bookings || []).find((b: any) => b.id === bId)
+      if (!booking) continue
+      // Solo enviamos si se generó al menos 1 factura nueva para esta reserva:
+      // fetch todas las de la reserva y comparamos con las que había antes.
+      const { data: allInv } = await supabase
+        .from('invoices')
+        .select('id, full_number, total_amount, invoice_type, created_at')
+        .eq('booking_id', bId)
+        .order('issue_date', { ascending: true })
+      // "Nuevas" = creadas después de la marca (usamos umbral 5 min).
+      const cutoff = Date.now() - 5 * 60 * 1000
+      const newlyCreated = (allInv || []).filter((i: any) => new Date(i.created_at).getTime() > cutoff)
+      if (newlyCreated.length > 0) {
+        try {
+          await emailClientInvoicesReady({ ...booking, providers: provider }, provider, newlyCreated as any)
+        } catch (e) { console.error('[regenerate invoice email] failed', e) }
       }
     }
   }

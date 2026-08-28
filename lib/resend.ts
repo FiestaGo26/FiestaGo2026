@@ -881,6 +881,100 @@ El equipo de FiestaGo`
 // Aviso de mensaje nuevo en el chat de una reserva. Solo se envía cuando
 // no hay otros mensajes sin leer del mismo emisor (para no spamear durante
 // una conversación activa).
+/**
+ * Envía al cliente los enlaces a las facturas Verifactu emitidas por
+ * FiestaGo (comisión + delegada del proveedor). Los enlaces usan
+ * ?email= como soft-auth para que el cliente NO tenga que crear cuenta.
+ *
+ * Se llama tras autoIssueInvoicesForBooking y tras mock/pay-second.
+ * Si viene planner_email en el booking, la planner recibe CC.
+ */
+export async function emailClientInvoicesReady(
+  booking: any,
+  provider: any,
+  invoices: Array<{ id: string; full_number: string; total_amount: number; invoice_type: string }>,
+) {
+  if (!booking?.client_email || invoices.length === 0) return { ok: false, error: 'nada que enviar' }
+
+  const firstName  = (booking.client_name || '').split(' ')[0] || ''
+  const providerNm = provider?.name || 'tu proveedor'
+  const emailParam = encodeURIComponent(booking.client_email)
+
+  const subject = invoices.length === 1
+    ? `📄 Tu factura de la reserva con ${providerNm}`
+    : `📄 Tus ${invoices.length} facturas de la reserva con ${providerNm}`
+
+  const rows = invoices.map(inv => {
+    const url  = `https://fiestago.es/api/invoices/${inv.id}/pdf?email=${emailParam}`
+    const desc = inv.invoice_type === 'commission_fiestago'
+      ? 'Garantía de Éxito FiestaGo'
+      : 'Servicio del proveedor'
+    return { url, desc, number: inv.full_number, amount: Number(inv.total_amount).toFixed(2) }
+  })
+
+  const text = `Hola ${firstName},
+
+FiestaGo ha emitido las facturas legales de tu reserva con ${providerNm}. Aquí tienes los enlaces (no hace falta crear cuenta — puedes descargarlas cuando quieras):
+
+${rows.map(r => `- ${r.desc} (${r.number}) · ${r.amount}€\n  ${r.url}`).join('\n\n')}
+
+Cumplen la normativa Verifactu (RD 1007/2023): hash SHA-256 encadenado y QR verificable en la Agencia Tributaria.
+
+Un saludo,
+El equipo de FiestaGo`
+
+  const safe = (s: string) => (s || '').replace(/</g, '&lt;').replace(/&/g, '&amp;')
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF7F0;font-family:Arial,Helvetica,sans-serif;color:#1A1612;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FBF7F0;padding:32px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ECE3D2;">
+        <tr><td style="padding:36px 36px 22px;border-bottom:1px solid #ECE3D2;">
+          <div style="font-size:11px;font-weight:bold;letter-spacing:0.2em;text-transform:uppercase;color:#C0392B;margin-bottom:14px;">📄 Facturas legales emitidas</div>
+          <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:24px;color:#1A1612;line-height:1.25;">
+            Tus facturas de la reserva con ${safe(providerNm)}
+          </h1>
+          <p style="margin:0;font-size:14px;color:#5C534A;line-height:1.55;">
+            Hola ${safe(firstName)}, aquí tienes los enlaces. No hace falta crear cuenta — puedes descargar los PDF cuando quieras.
+          </p>
+        </td></tr>
+        <tr><td style="padding:22px 36px;">
+          ${rows.map(r => `
+            <div style="border:1px solid #ECE3D2;border-radius:10px;padding:16px;margin-bottom:12px;">
+              <div style="font-size:12px;color:#5C534A;text-transform:uppercase;letter-spacing:0.06em;font-weight:bold;margin-bottom:4px;">${safe(r.desc)}</div>
+              <div style="font-family:Georgia,serif;font-size:18px;font-weight:bold;color:#1A1612;margin-bottom:2px;">${safe(r.number)}</div>
+              <div style="font-size:14px;color:#5C534A;margin-bottom:12px;">Total · ${r.amount}€</div>
+              <a href="${r.url}" style="display:inline-block;background:#C0392B;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">
+                📥 Descargar PDF
+              </a>
+            </div>
+          `).join('')}
+        </td></tr>
+        <tr><td style="padding:0 36px 22px;">
+          <div style="background:#F0F8F0;border-left:3px solid #10B981;padding:12px 14px;font-size:12px;color:#1F5E32;line-height:1.55;border-radius:2px;">
+            <b>Cumplen Verifactu (RD 1007/2023).</b> Hash SHA-256 encadenado y código QR verificable en la Agencia Tributaria.
+          </div>
+        </td></tr>
+        <tr><td style="padding:0 36px 26px;text-align:center;">
+          <div style="font-size:12px;color:#8A7968;line-height:1.6;">
+            ¿Quieres tenerlas todas juntas y ver el historial de tus reservas?<br>
+            <a href="https://fiestago.es/registro?email=${emailParam}" style="color:#C0392B;font-weight:bold;">Crea tu cuenta gratis en 30 segundos →</a>
+          </div>
+        </td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:11px;color:#8A7968;">
+          FiestaGo · Marketplace de celebraciones · España
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
+
+  return sendEmail({
+    to: booking.client_email,
+    cc: booking.planner_email || undefined,
+    subject, text, html,
+  })
+}
+
 export async function emailChatMessage(opts: {
   to: string
   recipientName: string
