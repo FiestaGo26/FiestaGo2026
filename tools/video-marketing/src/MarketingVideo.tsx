@@ -1,6 +1,7 @@
 import { AbsoluteFill, Audio, Sequence, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from 'remotion'
 import { SCRIPTS, type Script, type Scene } from './scripts'
 import { theme, targetAccent } from './theme'
+import { CHARACTERS } from './characters'
 
 // La composición se parametriza por slug del guión (o el primero por defecto).
 // Cada escena del guión se renderiza en secuencia, sincronizada con el audio
@@ -50,14 +51,25 @@ const SceneRenderer: React.FC<{ scene: Scene; accent: string }> = ({ scene, acce
 
   const bg = scene.bgAccent ? accent : theme.bg
   const ink = scene.bgAccent ? theme.ink : theme.ink
+  const Character = scene.character ? CHARACTERS[scene.character] : null
 
   return (
     <AbsoluteFill style={{ backgroundColor: bg, padding: '80px 60px', justifyContent: 'center', alignItems: 'center' }}>
       {/* Contenido visual opcional (chips, panel, etc.) */}
       {scene.visual && <VisualElement kind={scene.visual} accent={accent}/>}
 
-      {/* Icono grande decorativo */}
-      {scene.icon && (
+      {/* Muñeco animado · si la escena tiene character definido */}
+      {Character && (
+        <div style={{
+          marginBottom: 40,
+          filter: 'drop-shadow(0 12px 30px rgba(0, 0, 0, 0.32))',
+        }}>
+          <Character />
+        </div>
+      )}
+
+      {/* Icono grande decorativo · solo si NO hay muñeco */}
+      {scene.icon && !Character && (
         <div style={{ fontSize: 140, marginBottom: 40, opacity, transform: `scale(${scale})` }}>
           {scene.icon}
         </div>

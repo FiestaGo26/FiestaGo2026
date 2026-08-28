@@ -3,10 +3,13 @@
 // contenido de la escena (subtítulo, iconos, etc.), y duración.
 // El audio de voz IA se sincroniza con la suma de duraciones.
 
+import type { CharacterKey } from './characters'
+
 export type Scene = {
   kicker:     string     // texto grande, principal, animado
   sub?:       string     // texto secundario más pequeño
   icon?:      string     // emoji o glifo grande decorativo (opcional)
+  character?: CharacterKey  // muñeco animado (SVG · Remotion)
   bgAccent?:  boolean    // si true, fondo con accent color (para hooks o CTAs)
   visual?:    'stats' | 'compare' | 'panel' | 'quote' | 'guarantee' | 'clock' | 'chips'
   duration:   number     // segundos
@@ -33,7 +36,7 @@ export const SCRIPTS: Script[] = [
       'El que no está dado de alta no existe para esa pareja. ' +
       'Date de alta gratis hoy en fiestago punto es barra registro proveedor.',
     scenes: [
-      { kicker: '40 parejas',       sub: 'buscando fotógrafo esta semana', icon: '📅',   duration: 2.5, bgAccent: true },
+      { kicker: '40 parejas',       sub: 'buscando fotógrafo esta semana', character: 'couple', duration: 2.8, bgAccent: true },
       { kicker: '¿Cuántas te han escrito a ti?', duration: 2.5 },
       { kicker: 'Se las lleva\nel que aparece', visual: 'stats',           duration: 3.5 },
       { kicker: 'El que no está,\nno existe',    sub: 'sin cuota · sin permanencia', duration: 3 },
@@ -51,9 +54,9 @@ export const SCRIPTS: Script[] = [
       'Hazlo bien: fiestago punto es barra registro proveedor.',
     scenes: [
       { kicker: '60 €/mes',   sub: 'vendas o no vendas',              duration: 2.5 },
-      { kicker: '0 €/mes',    sub: 'sin cuota · sin permanencia',     bgAccent: true, duration: 2.5 },
+      { kicker: '0 €/mes',    sub: 'sin cuota · sin permanencia',     character: 'checkmark', bgAccent: true, duration: 2.8 },
       { kicker: 'La comisión\nla paga el cliente', visual: 'compare', duration: 3 },
-      { kicker: 'Tú cobras el 100%\nde tu precio',                    duration: 3 },
+      { kicker: 'Tú cobras el 100%\nde tu precio', character: 'starBurst', duration: 3.2 },
       { kicker: 'Hazlo bien',  sub: 'fiestago.es/registro-proveedor', bgAccent: true, duration: 2.5 },
     ],
   },
@@ -70,7 +73,7 @@ export const SCRIPTS: Script[] = [
     scenes: [
       { kicker: '40 min',          sub: 'antes',                            duration: 2 },
       { kicker: '10 segundos',     sub: 'ahora, con IA',                    bgAccent: true, duration: 2.5 },
-      { kicker: 'Pega el WhatsApp\ndel cliente', visual: 'panel',           duration: 3.5 },
+      { kicker: 'Pega el WhatsApp\ndel cliente', character: 'phoneMsg',     duration: 3.5 },
       { kicker: 'Precio, condiciones,\nlink para enviar', visual: 'quote',  duration: 4 },
       { kicker: 'Todo gratis\nen tu panel',                                  duration: 2.5 },
       { kicker: 'fiestago.es',     sub: 'regístrate y empieza hoy',         bgAccent: true, duration: 3 },
@@ -86,11 +89,11 @@ export const SCRIPTS: Script[] = [
       'con QR verificable en la Agencia Tributaria. Tú solo cobras y te olvidas. ' +
       'Deja de perder tardes en papeles. Fiestago punto es barra registro proveedor.',
     scenes: [
-      { kicker: '¿Autónomo?',  sub: 'Verifactu · QR · Hash · Correlativa', icon: '📄', duration: 3 },
+      { kicker: '¿Autónomo?',  sub: 'Verifactu · QR · Hash · Correlativa', character: 'stressed', duration: 3.2 },
       { kicker: 'Ya no haces\nfacturas',   bgAccent: true,                              duration: 3 },
       { kicker: 'Las emite Fiestago\nen tu nombre', sub: 'Art. 5 RD 1619/2012',        duration: 4 },
       { kicker: 'QR verificable\nen la AEAT',       visual: 'panel',                    duration: 3.5 },
-      { kicker: 'Cobras y\nte olvidas',   sub: 'fiestago.es/registro-proveedor',        bgAccent: true, duration: 3 },
+      { kicker: 'Cobras y\nte olvidas',   sub: 'fiestago.es/registro-proveedor',        character: 'checkmark', bgAccent: true, duration: 3 },
     ],
   },
   {
@@ -106,7 +109,7 @@ export const SCRIPTS: Script[] = [
     scenes: [
       { kicker: 'Todos parecen\niguales',  duration: 2.5 },
       { kicker: '¿Por qué\na ti?',         icon: '🤔',                     duration: 2 },
-      { kicker: 'Sello ✓ · Reseñas ★\nGarantía 110%', visual: 'chips',    bgAccent: true, duration: 4 },
+      { kicker: 'Sello ✓ · Reseñas ★\nGarantía 110%', character: 'starBurst', bgAccent: true, duration: 4 },
       { kicker: 'La confianza\nvende', sub: 'convertir a "reservar ya"',   duration: 3 },
       { kicker: 'Únete gratis hoy',    sub: 'fiestago.es/registro-proveedor', bgAccent: true, duration: 3 },
     ],
@@ -123,7 +126,7 @@ export const SCRIPTS: Script[] = [
       'Fiestago punto es. Sin llamadas, sin sorpresas.',
     scenes: [
       { kicker: '47 llamadas',      sub: 'lo de siempre',           duration: 2.5 },
-      { kicker: 'o 3 clicks',        bgAccent: true,                 duration: 2 },
+      { kicker: 'o 3 clicks',        character: 'cursor', bgAccent: true, duration: 3 },
       { kicker: 'Elige · Compara\nReserva', visual: 'panel',        duration: 3.5 },
       { kicker: 'Sin llamadas\nsin sorpresas',                       duration: 3 },
       { kicker: 'fiestago.es',       sub: 'reserva tu evento hoy',   bgAccent: true, duration: 3 },
@@ -141,7 +144,7 @@ export const SCRIPTS: Script[] = [
     scenes: [
       { kicker: 'Semana antes\nde tu evento', duration: 2.5 },
       { kicker: 'El proveedor\ncancela',      icon: '😱',            duration: 2.5 },
-      { kicker: 'Sustituto en 48h', visual: 'guarantee',              duration: 3.5 },
+      { kicker: 'Sustituto en 48h', character: 'checkmark',           duration: 3.5 },
       { kicker: 'O te devolvemos\nel 110%',   bgAccent: true,          duration: 4 },
       { kicker: 'Reserva con\nred debajo',    sub: 'solo en fiestago.es', duration: 3 },
     ],
@@ -189,7 +192,7 @@ export const SCRIPTS: Script[] = [
       'Un solo sitio. Un solo calendario. Las facturas llegan solas. ' +
       'Reserva tu boda igual de rápido. Fiestago punto es.',
     scenes: [
-      { kicker: 'Los planners\nde WOW',   sub: 'ya reservan aquí',    icon: '💍',   duration: 3 },
+      { kicker: 'Los planners\nde WOW',   sub: 'ya reservan aquí',    character: 'rings', duration: 3.2 },
       { kicker: '¿Por qué?',                                                        duration: 1.5 },
       { kicker: 'Cierran el equipo\nen una tarde',                                  duration: 3 },
       { kicker: 'Un sitio · Un calendario\nLas facturas llegan solas', bgAccent: true, duration: 4 },
