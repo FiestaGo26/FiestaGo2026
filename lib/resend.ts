@@ -26,6 +26,7 @@ function paragraphsToHtml(text: string): string {
 
 export async function sendEmail(opts: {
   to: string | string[]
+  cc?: string | string[]     // copia · usado para incluir a la planner en emails al cliente
   subject: string
   text: string
   html?: string
@@ -36,6 +37,9 @@ export async function sendEmail(opts: {
 
   const html = opts.html || paragraphsToHtml(opts.text)
   const reply_to = opts.reply_to || process.env.OUTREACH_REPLY_TO || undefined
+  const cc = opts.cc
+    ? (Array.isArray(opts.cc) ? opts.cc : [opts.cc]).filter(x => x && x.trim())
+    : undefined
 
   try {
     const res = await fetch(RESEND_API, {
@@ -47,6 +51,7 @@ export async function sendEmail(opts: {
       body: JSON.stringify({
         from:    fromHeader(),
         to:      Array.isArray(opts.to) ? opts.to : [opts.to],
+        ...(cc && cc.length ? { cc } : {}),
         subject: opts.subject,
         text:    opts.text,
         html,
@@ -680,7 +685,13 @@ El equipo de FiestaGo`
   </table>
 </body></html>`
 
-  return sendEmail({ to: booking.client_email, subject, text, html })
+  // Si la reserva fue gestionada por una planner, la ponemos en copia
+  // para que reciba las mismas notificaciones que el cliente final.
+  return sendEmail({
+    to: booking.client_email,
+    cc: booking.planner_email || undefined,
+    subject, text, html,
+  })
 }
 
 // El proveedor ha aceptado la reserva. Se libera el contacto del proveedor
@@ -780,7 +791,13 @@ El equipo de FiestaGo`
   </table>
 </body></html>`
 
-  return sendEmail({ to: booking.client_email, subject, text, html })
+  // Si la reserva fue gestionada por una planner, la ponemos en copia
+  // para que reciba las mismas notificaciones que el cliente final.
+  return sendEmail({
+    to: booking.client_email,
+    cc: booking.planner_email || undefined,
+    subject, text, html,
+  })
 }
 
 // La reserva se ha cancelado (por el proveedor, el admin o el propio cliente).
@@ -852,7 +869,13 @@ El equipo de FiestaGo`
   </table>
 </body></html>`
 
-  return sendEmail({ to: booking.client_email, subject, text, html })
+  // Si la reserva fue gestionada por una planner, la ponemos en copia
+  // para que reciba las mismas notificaciones que el cliente final.
+  return sendEmail({
+    to: booking.client_email,
+    cc: booking.planner_email || undefined,
+    subject, text, html,
+  })
 }
 
 // Aviso de mensaje nuevo en el chat de una reserva. Solo se envía cuando

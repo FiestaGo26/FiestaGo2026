@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       client_name, client_email, client_phone,
       event_date, event_type, city, guests, message,
       total_amount, selected_addons, coupon_code,
+      planner_name, planner_email,   // opcional: wedding/event planner que gestiona en nombre del cliente
     } = body || {}
 
     if (!client_name || !client_email || !event_date) {
@@ -101,6 +102,8 @@ export async function POST(req: NextRequest) {
         pack_id:      pack_id || null,
         client_name, client_email,
         client_phone: client_phone || null,
+        planner_name:  planner_name  ? String(planner_name).trim()  : null,
+        planner_email: planner_email ? String(planner_email).trim().toLowerCase() : null,
         event_date, event_type: event_type || 'otro',
         city: city || null,
         guests: guests || null,

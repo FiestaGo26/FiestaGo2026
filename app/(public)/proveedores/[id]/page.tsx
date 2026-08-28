@@ -150,6 +150,13 @@ export default function ProviderDetailPage() {
     client_name: '', client_email: '', client_phone: '',
     event_date: '', event_type: 'otro', guests: '', message: '',
   })
+  // Modo "reservo en nombre de otro" (wedding planner reservando para su cliente).
+  // Cuando se activa, el proveedor de arriba pide los datos DEL CLIENTE FINAL
+  // (quien va a pagar y usar el servicio), y añadimos abajo los datos de
+  // contacto de la planner para copiarla en los emails.
+  const [asPlanner,    setAsPlanner]   = useState(false)
+  const [plannerName,  setPlannerName] = useState('')
+  const [plannerEmail, setPlannerEmail] = useState('')
 
   // Pre-rellenar form si el usuario está logueado
   useEffect(() => {
@@ -348,6 +355,9 @@ export default function ProviderDetailPage() {
           selected_addons: chosenAddons,
           coupon_code:  couponApplied?.code || null,
           city:         provider.city,
+          // Modo "reserva en nombre de un cliente" (wedding planner)
+          planner_name:  asPlanner ? plannerName.trim()  : null,
+          planner_email: asPlanner ? plannerEmail.trim() : null,
         }),
       })
       const text = await res.text()
@@ -918,19 +928,65 @@ export default function ProviderDetailPage() {
                 </div>
               ) : (
                 <form onSubmit={handleBook} className="flex flex-col gap-3">
+                  {/* Toggle · reserva en nombre de un cliente (wedding planners) */}
+                  <label className="flex items-start gap-2.5 bg-cream-dark border border-stone-200 rounded-xl px-3 py-2.5 cursor-pointer hover:border-coral/40 transition-colors">
+                    <input type="checkbox" checked={asPlanner}
+                      onChange={e => setAsPlanner(e.target.checked)}
+                      className="mt-0.5 accent-coral cursor-pointer"/>
+                    <span className="text-xs text-ink/70 leading-relaxed">
+                      <strong className="text-ink">Reservo en nombre de otra persona</strong>
+                      <br/>
+                      <span className="text-ink/55">
+                        Rellena abajo los datos de <strong>quien pagará y disfrutará</strong> el servicio.
+                        Tú recibirás copia de todo por email.
+                      </span>
+                    </span>
+                  </label>
+
+                  {asPlanner && (
+                    <div className="bg-white border border-coral/30 rounded-xl p-3 space-y-3">
+                      <div className="text-[10px] font-bold tracking-widest uppercase text-coral">
+                        📋 Tus datos (planner)
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Tu nombre *</label>
+                        <input required={asPlanner} value={plannerName}
+                          onChange={e => setPlannerName(e.target.value)}
+                          placeholder="Ej. Ana García · Wedding Planner"
+                          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Tu email *</label>
+                        <input required={asPlanner} type="email" value={plannerEmail}
+                          onChange={e => setPlannerEmail(e.target.value)}
+                          placeholder="tu@email.com"
+                          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                      </div>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Tu nombre *</label>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">
+                      {asPlanner ? 'Nombre del cliente *' : 'Tu nombre *'}
+                    </label>
                     <input required value={form.client_name}
                       onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))}
-                      placeholder="Tu nombre completo"
+                      placeholder={asPlanner ? 'Nombre de quien pagará y usará el servicio' : 'Tu nombre completo'}
                       className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Email *</label>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">
+                      {asPlanner ? 'Email del cliente *' : 'Email *'}
+                    </label>
                     <input required type="email" value={form.client_email}
                       onChange={e => setForm(f => ({ ...f, client_email: e.target.value }))}
-                      placeholder="tu@email.com"
+                      placeholder={asPlanner ? 'Email donde recibirá el link de pago' : 'tu@email.com'}
                       className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                    {asPlanner && (
+                      <p className="text-[11px] text-ink/50 mt-1">
+                        Aquí es donde el cliente recibirá el botón para pagar. Tú (planner) recibirás copia.
+                      </p>
+                    )}
                   </div>
                   {/* Calendario visual (días bloqueados grises) */}
                   <div>

@@ -55,6 +55,9 @@ type Booking = {
   second_payment_amount?: number | null
   second_payment_due_date?: string | null
   second_payment_status?: 'not_needed' | 'pending' | 'paid' | 'overdue' | 'cancelled' | null
+  // Reserva gestionada por wedding/event planner en nombre del cliente
+  planner_name?: string | null
+  planner_email?: string | null
 }
 
 type Provider = {
@@ -2059,6 +2062,12 @@ function ProveedorPanelInner() {
                   <div>
                     <div className="font-semibold text-ink text-base">{b.client_name}</div>
                     <div className="text-xs text-ink/50 mt-0.5">{b.client_email}{b.client_phone&&` · ${b.client_phone}`}</div>
+                    {b.planner_name && (
+                      <div className="text-[11px] mt-1 inline-flex items-center gap-1 bg-coral/10 text-coral font-semibold px-2 py-0.5 rounded-md"
+                        title={b.planner_email || ''}>
+                        📋 Gestionada por {b.planner_name}
+                      </div>
+                    )}
                   </div>
                   <span className={`text-xs font-bold px-3 py-1 rounded-full ${
                     b.status==='confirmed'?'bg-green-100 text-green-700':

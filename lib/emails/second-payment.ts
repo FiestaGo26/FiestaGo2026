@@ -112,7 +112,11 @@ El equipo de FiestaGo`
   </table>
 </body></html>`
 
-  return sendEmail({ to: booking.client_email, subject: c.subject, text, html })
+  return sendEmail({
+    to: booking.client_email,
+    cc: booking.planner_email || undefined,
+    subject: c.subject, text, html,
+  })
 }
 
 // ─── Reserva cancelada automáticamente por impago del segundo pago ───────────
@@ -151,7 +155,11 @@ El equipo de FiestaGo`
   </table>
 </body></html>`
 
-  return sendEmail({ to: booking.client_email, subject, text, html })
+  return sendEmail({
+    to: booking.client_email,
+    cc: booking.planner_email || undefined,
+    subject, text, html,
+  })
 }
 
 // ─── Proveedor: reserva cancelada por impago del cliente, fecha liberada ─────
