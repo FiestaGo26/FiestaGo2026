@@ -205,7 +205,8 @@ export async function GET(req: NextRequest) {
   for (const b of confirmed) {
     const invs = invByBooking.get(b.id) || []
     const hasCommission = invs.some(i => i.invoice_type === 'commission_fiestago')
-    const delegatedInvs = invs.filter(i => i.invoice_type === 'delegated').length
+    // El nombre real del tipo en BD es 'delegated_provider' (visto en invoices.invoice_type)
+    const delegatedInvs = invs.filter(i => i.invoice_type === 'delegated_provider').length
     const paidFirst  = b.first_payment_status  === 'paid'
     const paidSecond = b.second_payment_status === 'paid'
     const paymentsDone = (paidFirst ? 1 : 0) + (paidSecond ? 1 : 0)
