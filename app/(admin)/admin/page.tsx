@@ -763,6 +763,27 @@ export default function AdminPage() {
     if (section === 'metrics') fetchMetrics()
   }, [authed, section, fetchMetrics])
 
+  // ── FINANCIALS ────────────────────────────────────────────────────────────
+  const [financials,        setFinancials]        = useState<any | null>(null)
+  const [financialsLoading, setFinancialsLoading] = useState(false)
+  const [financialsYear,    setFinancialsYear]    = useState<number>(new Date().getFullYear())
+
+  const fetchFinancials = useCallback(async (year: number) => {
+    setFinancialsLoading(true)
+    try {
+      const res = await fetch(`/api/admin/financials?year=${year}`, { headers: adminHeaders() })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      setFinancials(data)
+    } catch { setFinancials(null) }
+    setFinancialsLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (!authed) return
+    if (section === 'financials') fetchFinancials(financialsYear)
+  }, [authed, section, financialsYear, fetchFinancials])
+
   // ── WAITLIST ──────────────────────────────────────────────────────────────
   const fetchWaitlist = useCallback(async () => {
     try {
@@ -1005,6 +1026,7 @@ export default function AdminPage() {
   const NAV = [
     { id:'dashboard',    icon:'📊', label:'Dashboard' },
     { id:'metrics',      icon:'📈', label:'Métricas' },
+    { id:'financials',   icon:'💰', label:'Cobros y facturación' },
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
     { id:'incidents',    icon:'🚨', label:'Incidencias', badge: incidentsStats.open || 0 },
@@ -1247,6 +1269,15 @@ export default function AdminPage() {
           {/* ══ MÉTRICAS ══ */}
           {section === 'metrics' && (
             <MetricsPanel metrics={metrics} loading={metricsLoading} onRefresh={fetchMetrics} />
+          )}
+
+          {section === 'financials' && (
+            <FinancialsPanel
+              data={financials}
+              loading={financialsLoading}
+              year={financialsYear}
+              onYearChange={setFinancialsYear}
+              onRefresh={() => fetchFinancials(financialsYear)}/>
           )}
 
           {section === 'providers' && (
@@ -3619,6 +3650,307 @@ function ApifyPanel() {
       {importResult && (
         <div style={{ marginTop:12, padding:10, background:'#10B98122', border:'1px solid #10B98166', borderRadius:8, fontSize:11, color:'#10B981' }}>
           ✓ {importResult.saved} importados · {importResult.skippedDup} duplicados saltados
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// FinancialsPanel · Cobros y facturación consolidado
+// ═════════════════════════════════════════════════════════════════════
+function FinancialsPanel({ data, loading, year, onYearChange, onRefresh }: {
+  data: any
+  loading: boolean
+  year: number
+  onYearChange: (y: number) => void
+  onRefresh: () => void
+}) {
+  if (loading || !data) {
+    return <div style={{ padding:60, textAlign:'center', color:'#9CA3AF' }}>Cargando datos financieros...</div>
+  }
+
+  const fmt = (n: number) => new Intl.NumberFormat('es-ES', { style:'currency', currency:'EUR', minimumFractionDigits: 0 }).format(n || 0)
+  const t = data.totals
+
+  const card = (label: string, value: string, hint?: string, color: string = '#F0F4FF') => (
+    <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:16 }}>
+      <div style={{ fontSize:10, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>{label}</div>
+      <div style={{ fontSize:24, fontWeight:700, color, fontFamily:'IBM Plex Mono,monospace' }}>{value}</div>
+      {hint && <div style={{ fontSize:11, color:'#9CA3AF', marginTop:4 }}>{hint}</div>}
+    </div>
+  )
+
+  const sectionTitle = (t: string) => (
+    <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10, marginTop:24 }}>{t}</h2>
+  )
+
+  const years = [year - 1, year, year + 1]
+  const maxMonthly = Math.max(1, ...data.monthly.map((m: any) => m.gmv))
+
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18, gap:12, flexWrap:'wrap' }}>
+        <h1 style={{ fontSize:24, fontWeight:700, color:'#F9FAFB' }}>💰 Cobros y facturación</h1>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <select value={year} onChange={e => onYearChange(parseInt(e.target.value))}
+            style={{ background:'#111827', border:'1px solid #1F2937', color:'#F9FAFB',
+              padding:'6px 10px', borderRadius:8, fontSize:12 }}>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <button onClick={onRefresh}
+            style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #1F2937',
+              background:'transparent', color:'#9CA3AF', fontSize:11, cursor:'pointer' }}>
+            🔄 Actualizar
+          </button>
+        </div>
+      </div>
+
+      {/* ── TOTALES ── */}
+      {sectionTitle('Totales · ' + year)}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:10, marginBottom:8 }}>
+        {card('GMV',                fmt(t.gmv),         `${t.bookings} reservas confirmed/completed`, '#C0392B')}
+        {card('Comisiones FiestaGo', fmt(t.commissions), '8% Garantía de Éxito',                       '#F59E0B')}
+        {card('Ingreso proveedores', fmt(t.provider_rev), '100% de sus precios base',                   '#10B981')}
+        {card('Cobrado (real)',      fmt(t.cobrado),     'entradas en escrow')}
+        {card('Facturado',           fmt(t.facturado),   `${t.invoicesCount} facturas emitidas`)}
+        {card('Pendiente facturar',  fmt(t.pendienteFacturar), 'diferencia cobrado - facturado', '#EF4444')}
+      </div>
+
+      {/* ── EVOLUCIÓN MENSUAL ── */}
+      {sectionTitle('Evolución mensual')}
+      <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:20 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(12, 1fr)', gap:6, alignItems:'end', minHeight:150 }}>
+          {data.monthly.map((m: any) => {
+            const h = maxMonthly > 0 ? Math.round((m.gmv / maxMonthly) * 130) : 0
+            return (
+              <div key={m.month} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+                <div style={{ fontSize:9, fontWeight:700, color:'#9CA3AF', minHeight:12 }}>
+                  {m.gmv > 0 ? fmt(m.gmv) : ''}
+                </div>
+                <div style={{ width:'100%', background:'#1F2937', borderRadius:'4px 4px 0 0', overflow:'hidden', display:'flex', alignItems:'end', height:130 }}>
+                  <div style={{ width:'100%', background:'#C0392B', borderRadius:'4px 4px 0 0',
+                    height: `${h}%`, minHeight: m.gmv > 0 ? 2 : 0, transition:'height 0.3s' }}/>
+                </div>
+                <div style={{ fontSize:10, color:'#6B7280', textTransform:'capitalize' }}>{m.label}</div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ fontSize:10, color:'#6B7280', marginTop:12, textAlign:'center' }}>
+          Barras = GMV. Hover mouse sobre un mes en la tabla de abajo para más detalle.
+        </div>
+        <div style={{ marginTop:14, overflow:'auto' }}>
+          <table style={{ width:'100%', fontSize:11, color:'#D1D5DB', fontFamily:'IBM Plex Mono,monospace', borderCollapse:'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom:'1px solid #1F2937', color:'#6B7280', textTransform:'uppercase' }}>
+                <th style={{ textAlign:'left', padding:'6px 8px' }}>Mes</th>
+                <th style={{ textAlign:'right', padding:'6px 8px' }}>Reservas</th>
+                <th style={{ textAlign:'right', padding:'6px 8px' }}>GMV</th>
+                <th style={{ textAlign:'right', padding:'6px 8px' }}>Comisiones</th>
+                <th style={{ textAlign:'right', padding:'6px 8px' }}>Cobrado</th>
+                <th style={{ textAlign:'right', padding:'6px 8px' }}>Facturado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.monthly.map((m: any) => (
+                <tr key={m.month} style={{ borderBottom:'1px solid #111827' }}>
+                  <td style={{ padding:'6px 8px', textTransform:'capitalize' }}>{m.label}</td>
+                  <td style={{ padding:'6px 8px', textAlign:'right' }}>{m.bookings}</td>
+                  <td style={{ padding:'6px 8px', textAlign:'right', color:'#C0392B' }}>{fmt(m.gmv)}</td>
+                  <td style={{ padding:'6px 8px', textAlign:'right', color:'#F59E0B' }}>{fmt(m.commissions)}</td>
+                  <td style={{ padding:'6px 8px', textAlign:'right' }}>{fmt(m.cobrado)}</td>
+                  <td style={{ padding:'6px 8px', textAlign:'right' }}>{fmt(m.facturado)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── RANKING DE PROVEEDORES ── */}
+      {sectionTitle(`Ranking de proveedores · ${data.providersRanking.length}`)}
+      {data.providersRanking.length === 0 ? (
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:24, textAlign:'center', color:'#6B7280', fontSize:13 }}>
+          Aún no hay reservas confirmadas en {year}.
+        </div>
+      ) : (
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, overflow:'auto' }}>
+          <table style={{ width:'100%', fontSize:11, color:'#D1D5DB', fontFamily:'IBM Plex Mono,monospace', borderCollapse:'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom:'1px solid #1F2937', color:'#6B7280', textTransform:'uppercase' }}>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>#</th>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Proveedor</th>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Categoría · Ciudad</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Reservas</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>GMV</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Comisión FG</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Ticket medio</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Pending payout</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.providersRanking.map((p: any, idx: number) => (
+                <tr key={p.provider_id} style={{ borderBottom:'1px solid #111827' }}>
+                  <td style={{ padding:'8px 12px', color:'#6B7280' }}>{idx + 1}</td>
+                  <td style={{ padding:'8px 12px', color:'#F9FAFB', fontWeight:600 }}>{p.name}</td>
+                  <td style={{ padding:'8px 12px', color:'#9CA3AF' }}>{p.category} · {p.city}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right' }}>{p.bookings}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right', color:'#C0392B' }}>{fmt(p.gmv)}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right', color:'#F59E0B' }}>{fmt(p.commissions)}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right' }}>{fmt(p.avgTicket)}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right', color: p.pendientePayout > 0 ? '#EF4444' : '#6B7280' }}>{fmt(p.pendientePayout)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── PAYOUTS PENDIENTES ── */}
+      {data.payoutsRanking.length > 0 && (
+        <>
+          {sectionTitle('Payouts pendientes · lo que hay que transferir a cada proveedor')}
+          <div style={{ background:'#1F1C15', border:'1px solid #F59E0B', borderRadius:14, padding:16, marginBottom:8, fontSize:12, color:'#FCD34D' }}>
+            💡 Total pendiente de transferir: <strong>{fmt(data.payoutsRanking.reduce((s: number, p: any) => s + p.pendientePayout, 0))}</strong>.
+            Hasta implementar Stripe Connect, se pagan manualmente por SEPA/Bizum al proveedor.
+          </div>
+          <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, overflow:'auto' }}>
+            <table style={{ width:'100%', fontSize:11, color:'#D1D5DB', fontFamily:'IBM Plex Mono,monospace', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom:'1px solid #1F2937', color:'#6B7280', textTransform:'uppercase' }}>
+                  <th style={{ textAlign:'left', padding:'8px 12px' }}>Proveedor</th>
+                  <th style={{ textAlign:'right', padding:'8px 12px' }}>Reservas cobradas</th>
+                  <th style={{ textAlign:'right', padding:'8px 12px' }}>Pendiente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.payoutsRanking.map((p: any) => (
+                  <tr key={p.provider_id} style={{ borderBottom:'1px solid #111827' }}>
+                    <td style={{ padding:'8px 12px', color:'#F9FAFB', fontWeight:600 }}>{p.name}</td>
+                    <td style={{ padding:'8px 12px', textAlign:'right' }}>{p.bookings}</td>
+                    <td style={{ padding:'8px 12px', textAlign:'right', color:'#EF4444', fontWeight:700 }}>{fmt(p.pendientePayout)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* ── RESERVAS PENDIENTES DE FACTURAR ── */}
+      {data.pendientesFacturar.length > 0 && (
+        <>
+          {sectionTitle(`Reservas pendientes de facturar · ${data.pendientesFacturar.length}`)}
+          <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, overflow:'auto' }}>
+            <table style={{ width:'100%', fontSize:11, color:'#D1D5DB', fontFamily:'IBM Plex Mono,monospace', borderCollapse:'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom:'1px solid #1F2937', color:'#6B7280', textTransform:'uppercase' }}>
+                  <th style={{ textAlign:'left', padding:'8px 12px' }}>Reserva</th>
+                  <th style={{ textAlign:'left', padding:'8px 12px' }}>Proveedor</th>
+                  <th style={{ textAlign:'left', padding:'8px 12px' }}>Cliente</th>
+                  <th style={{ textAlign:'left', padding:'8px 12px' }}>Evento</th>
+                  <th style={{ textAlign:'center', padding:'8px 12px' }}>Pagos</th>
+                  <th style={{ textAlign:'center', padding:'8px 12px' }}>Falta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.pendientesFacturar.map((r: any) => (
+                  <tr key={r.booking_id} style={{ borderBottom:'1px solid #111827' }}>
+                    <td style={{ padding:'8px 12px', color:'#6B7280', fontSize:9 }}>{r.booking_id.slice(0, 8)}</td>
+                    <td style={{ padding:'8px 12px', color:'#F9FAFB' }}>{r.provider_name}</td>
+                    <td style={{ padding:'8px 12px' }}>{r.client_name}<br/><span style={{ color:'#6B7280', fontSize:9 }}>{r.client_email}</span></td>
+                    <td style={{ padding:'8px 12px' }}>{r.event_date}</td>
+                    <td style={{ padding:'8px 12px', textAlign:'center' }}>{r.pagos_hechos}</td>
+                    <td style={{ padding:'8px 12px', textAlign:'center', color:'#EF4444' }}>
+                      {r.falta_comision && '📄 comisión '}
+                      {r.falta_delegadas > 0 && `📄 ${r.falta_delegadas} delegadas`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* ── RANKING DE CLIENTES ── */}
+      {sectionTitle(`Top clientes · ${data.clientsRanking.length}`)}
+      {data.clientsRanking.length === 0 ? (
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:24, textAlign:'center', color:'#6B7280', fontSize:13 }}>
+          Aún no hay clientes con reservas en {year}.
+        </div>
+      ) : (
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, overflow:'auto' }}>
+          <table style={{ width:'100%', fontSize:11, color:'#D1D5DB', fontFamily:'IBM Plex Mono,monospace', borderCollapse:'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom:'1px solid #1F2937', color:'#6B7280', textTransform:'uppercase' }}>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>#</th>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Cliente</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Reservas</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Total gastado</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Último evento</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.clientsRanking.map((c: any, idx: number) => (
+                <tr key={c.email} style={{ borderBottom:'1px solid #111827' }}>
+                  <td style={{ padding:'8px 12px', color:'#6B7280' }}>{idx + 1}</td>
+                  <td style={{ padding:'8px 12px' }}>{c.name || '—'}<br/><span style={{ color:'#6B7280', fontSize:9 }}>{c.email}</span></td>
+                  <td style={{ padding:'8px 12px', textAlign:'right' }}>{c.bookings}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right', color:'#C0392B', fontWeight:700 }}>{fmt(c.gasto)}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right', color:'#9CA3AF' }}>{c.ultimoEvento || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── FACTURAS EMITIDAS ── */}
+      {sectionTitle(`Últimas facturas emitidas · ${data.invoices.length}${data.invoices.length === 200 ? '+' : ''}`)}
+      {data.invoices.length === 0 ? (
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, padding:24, textAlign:'center', color:'#6B7280', fontSize:13 }}>
+          Aún no hay facturas emitidas en {year}.
+        </div>
+      ) : (
+        <div style={{ background:'#111827', border:'1px solid #1F2937', borderRadius:14, overflow:'auto' }}>
+          <table style={{ width:'100%', fontSize:11, color:'#D1D5DB', fontFamily:'IBM Plex Mono,monospace', borderCollapse:'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom:'1px solid #1F2937', color:'#6B7280', textTransform:'uppercase' }}>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Nº</th>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Fecha</th>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Tipo</th>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Emisor</th>
+                <th style={{ textAlign:'left', padding:'8px 12px' }}>Cliente</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Base</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>IVA</th>
+                <th style={{ textAlign:'right', padding:'8px 12px' }}>Total</th>
+                <th style={{ textAlign:'center', padding:'8px 12px' }}>PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.invoices.map((inv: any) => (
+                <tr key={inv.id} style={{ borderBottom:'1px solid #111827', opacity: inv.cancelled_at ? 0.4 : 1 }}>
+                  <td style={{ padding:'8px 12px', color:'#F9FAFB', fontWeight:600 }}>{inv.full_number}</td>
+                  <td style={{ padding:'8px 12px' }}>{new Date(inv.issue_date).toLocaleDateString('es-ES', { day:'2-digit', month:'short' })}</td>
+                  <td style={{ padding:'8px 12px', color: inv.invoice_type === 'commission_fiestago' ? '#F59E0B' : '#10B981' }}>
+                    {inv.invoice_type === 'commission_fiestago' ? 'Comisión FG' : 'Delegada'}
+                    {inv.cancelled_at && ' · CANCELADA'}
+                  </td>
+                  <td style={{ padding:'8px 12px' }}>{inv.issuer_tax_name || '—'}</td>
+                  <td style={{ padding:'8px 12px' }}>{inv.recipient_name || '—'}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right' }}>{fmt(Number(inv.base_amount))}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right' }}>{fmt(Number(inv.tax_amount))}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'right', color:'#C0392B', fontWeight:700 }}>{fmt(Number(inv.total_amount))}</td>
+                  <td style={{ padding:'8px 12px', textAlign:'center' }}>
+                    <a href={`/api/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer"
+                      style={{ color:'#3B82F6', textDecoration:'none' }}>↗</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
