@@ -9,6 +9,7 @@ import { precioCliente, formatEuro } from '@/lib/pricing'
 import QuotesTab from './QuotesTab'
 import QuickRepliesTab from './QuickRepliesTab'
 import GmbTab from './GmbTab'
+import FiscalPlanTab from './FiscalPlanTab'
 import WelcomeModal from './WelcomeModal'
 
 type ServiceMedia = {
@@ -103,6 +104,7 @@ const TABS: Array<{ id: string; icon: string; label: string; href?: string }> = 
   { id:'coupons',      icon:'🎟️', label:'Cupones'        },
   { id:'reviews',      icon:'⭐', label:'Reseñas'        },
   { id:'fiscal',       icon:'🧾', label:'Datos fiscales' },
+  { id:'fiscal-plan',  icon:'✨', label:'FiestaGo Fiscal' },
   { id:'invoices',     icon:'📄', label:'Facturas'       },
   { id:'security',     icon:'🔒', label:'Seguridad'      },
   { id:'ayuda',        icon:'🎓', label:'Centro de ayuda', href:'/proveedor/ayuda' },
@@ -2062,6 +2064,10 @@ function ProveedorPanelInner() {
           <div className="max-w-4xl">
             <GmbTab providerId={provider.id} />
           </div>
+        )}
+
+        {tab==='fiscal-plan' && provider?.id && (
+          <FiscalPlanTab providerId={provider.id} />
         )}
 
         {tab==='availability' && (
