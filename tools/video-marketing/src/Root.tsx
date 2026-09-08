@@ -1,10 +1,12 @@
 import { Composition } from 'remotion'
 import { MarketingVideo } from './MarketingVideo'
 import { SCRIPTS, totalDuration } from './scripts'
+import { CinematicVideo } from './CinematicVideo'
+import { REELS, totalDuration as cineDuration } from './cinematic/shots'
 
 // Registramos una Composition por cada guión, con su duración exacta
 // calculada como suma de sus escenas. Así en Remotion Studio se ve el
-// árbol de los 10 vídeos y puedes previsualizar cualquiera en vivo.
+// árbol de los vídeos y puedes previsualizar cualquiera en vivo.
 export const RemotionRoot: React.FC = () => (
   <>
     {SCRIPTS.map(s => (
@@ -19,6 +21,23 @@ export const RemotionRoot: React.FC = () => (
         defaultProps={{ slug: s.slug }}
       />
     ))}
+
+    {/* Reels híbridos: tomas de vídeo IA + motion graphics.
+        Requieren los MP4 en public/shots/{slug}/ — los deja
+        scripts/gen-shots.mjs (con --dry-run genera placeholders). */}
+    {REELS.map(r => (
+      <Composition
+        key={r.slug}
+        id={r.slug}
+        component={CinematicVideo}
+        durationInFrames={Math.round(cineDuration(r) * 30)}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{ slug: r.slug }}
+      />
+    ))}
+
     {/* Alias 'MarketingVideo' que renderiza el primer script — útil para
         `remotion render` con --props={"slug":"XX"} */}
     <Composition

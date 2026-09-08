@@ -7,7 +7,12 @@
     "studio": "remotion studio src/index.ts",
     "generate-voices": "node scripts/gen-voices.mjs",
     "render-all": "node scripts/render-all.mjs",
-    "render": "remotion render src/index.ts MarketingVideo out.mp4"
+    "render": "remotion render src/index.ts MarketingVideo out.mp4",
+    "cine:cost": "node scripts/estimate-cost.mjs",
+    "cine:shots-dry": "node scripts/gen-shots.mjs --dry-run",
+    "cine:shots": "node scripts/gen-shots.mjs",
+    "cine:voice": "node scripts/gen-cine-voice.mjs",
+    "cine:render": "node scripts/render-cine.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.0",
@@ -17,5 +22,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
   }
 }

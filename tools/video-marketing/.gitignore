@@ -2,3 +2,5 @@ node_modules/
 public/voices/*.mp3
 out/*.mp4
 .env
+public/shots/
+public/frames/
