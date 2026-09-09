@@ -13,6 +13,7 @@
  *   node scripts/gen-cine-voice.mjs                      # todos
  *   node scripts/gen-cine-voice.mjs cine-01-el-fichaje   # uno
  */
+import './env.mjs'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { join, dirname } from 'node:path'

@@ -19,7 +19,8 @@
  *
  * REQUIERE (salvo en --dry-run): FAL_KEY
  */
-import { mkdirSync, existsSync, writeFileSync } from 'node:fs'
+import './env.mjs'
+import { mkdirSync, existsSync, writeFileSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -68,11 +69,37 @@ if (!reels.length) {
 
 let spent = 0
 
+/** Traduce el fallo a algo accionable en vez de escupir un stack trace. */
+function explain(err) {
+  const m = String(err?.message ?? err)
+  if (/\b(401|403)\b/.test(m) && /unauthor|forbidden|invalid|token|key/i.test(m)) {
+    return 'La FAL_KEY no es válida o no tiene permisos. Revísala en https://fal.ai/dashboard/keys\n' +
+           '  Formato correcto: <UUID>:<hex>'
+  }
+  if (/not in allowlist|ENOTFOUND|ECONNREFUSED|EAI_AGAIN|fetch failed/i.test(m)) {
+    return 'No hay salida de red hacia fal.ai desde esta máquina.\n' +
+           '  Si estás detrás de un proxy o un firewall corporativo, ese es el motivo.'
+  }
+  if (/\b429\b/.test(m)) return 'fal.ai te está limitando (429). Espera un minuto y reintenta.'
+  if (/\b(402|payment|quota|balance)\b/i.test(m)) return 'Sin saldo en fal.ai. Recarga en el dashboard.'
+  return m
+}
+
+try {
+
 for (const r of reels) {
   const framesDir = join(ROOT, 'public', 'frames', r.slug)
   const shotsDir  = join(ROOT, 'public', 'shots',  r.slug)
-  mkdirSync(framesDir, { recursive: true })
+  if (!dryRun) mkdirSync(framesDir, { recursive: true })
   mkdirSync(shotsDir,  { recursive: true })
+
+  // Guardamos la URL de cada fotograma generado. Así, cuando revisas las
+  // imágenes con --frames-only y te gustan, el paso de vídeo anima ESAS
+  // mismas — sin volver a pagar por Flux y sin que te cambie la cara.
+  const manifestPath = join(framesDir, 'frames.json')
+  const manifest = existsSync(manifestPath)
+    ? JSON.parse(readFileSync(manifestPath, 'utf8'))
+    : {}
 
   const shots = aiShots(r).filter(s => !onlyShot || s.id === onlyShot)
   if (!shots.length) {
@@ -88,7 +115,7 @@ for (const r of reels) {
     console.log(`\n▶ ${shot.id}`)
 
     if (dryRun) {
-      makePlaceholder(clipPath, framePath, shot, r.slug)
+      makePlaceholder(clipPath, shot)
       console.log(`  ✓ placeholder ${shot.durationInSeconds}s · 0,00 $`)
       continue
     }
@@ -96,8 +123,10 @@ for (const r of reels) {
     // ─── 1. Fotograma de arranque ───────────────────────────────
     let imageUrl
     if (existsSync(framePath) && !force) {
-      console.log('  · fotograma ya existe (usa --force para regenerar)')
-      imageUrl = null
+      imageUrl = manifest[shot.id] ?? null
+      console.log(imageUrl
+        ? '  · reutilizo el fotograma que ya aprobaste (0 $)'
+        : '  · fotograma en disco pero sin URL guardada')
     } else {
       process.stdout.write('  · generando fotograma… ')
       const img = await falRun(IMAGE_MODEL.id, {
@@ -110,6 +139,8 @@ for (const r of reels) {
       imageUrl = img.images?.[0]?.url
       if (!imageUrl) throw new Error(`Flux no devolvió imagen para ${shot.id}`)
       const bytes = await download(imageUrl, framePath)
+      manifest[shot.id] = imageUrl
+      writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
       spent += IMAGE_MODEL.usdPerImage
       console.log(`✓ ${(bytes / 1024).toFixed(0)} KB · $${IMAGE_MODEL.usdPerImage}`)
     }
@@ -119,7 +150,7 @@ for (const r of reels) {
       continue
     }
     if (!imageUrl) {
-      console.log('  ⚠ sin URL del fotograma (ya estaba en disco). Usa --force para regenerar y encadenar.')
+      console.log('  ⚠ no tengo la URL de este fotograma. Regenéralo con --force para poder animarlo.')
       continue
     }
 
@@ -145,6 +176,13 @@ for (const r of reels) {
   }
 }
 
+} catch (err) {
+  console.error(`\n\n❌ ${explain(err)}`)
+  if (spent > 0) console.error(`\n   Ya se habían gastado $${spent.toFixed(2)} antes del fallo.`)
+  console.error('   Las tomas ya generadas están guardadas: al reintentar no se vuelven a pagar.\n')
+  process.exit(1)
+}
+
 console.log(`\n${dryRun ? '✅ Dry run terminado · gastado 0,00 $' : `✅ Terminado · gastado $${spent.toFixed(2)}`}`)
 if (dryRun) console.log('   Los MP4 son placeholders: sirven para revisar ritmo, subtítulos y CTA antes de pagar.')
 console.log(`   Siguiente: npm run cine:voice && npm run cine:render\n`)
@@ -152,7 +190,7 @@ console.log(`   Siguiente: npm run cine:voice && npm run cine:render\n`)
 // ─── Placeholder para dry-run ───────────────────────────────────
 // Un clip sintético con el id de la toma y su prompt, para que la pieza se
 // pueda montar y revisar entera sin llamar a ninguna API.
-function makePlaceholder(clipPath, framePath, shot, slug) {
+function makePlaceholder(clipPath, shot) {
   const label = `${shot.id}`.replace(/[:'\\]/g, ' ')
   const wrapped = wrap(shot.motionPrompt, 34).slice(0, 5)
   const drawLines = wrapped.map((line, i) =>
@@ -163,8 +201,10 @@ function makePlaceholder(clipPath, framePath, shot, slug) {
   const vf = [
     `drawtext=fontfile=${FONT}:text='${esc(label)}':fontcolor=0xF5F1E8:fontsize=64` +
       `:x=(w-text_w)/2:y=h/2-160`,
-    `drawtext=fontfile=${FONT}:text='TOMA IA - PLACEHOLDER':fontcolor=0xE8553E:fontsize=30` +
-      `:x=(w-text_w)/2:y=h/2-240`,
+    `drawtext=fontfile=${FONT}:text='AQUI VA LA TOMA DE VIDEO IA':fontcolor=0xE8553E:fontsize=38` +
+      `:x=(w-text_w)/2:y=h/2-300`,
+    `drawtext=fontfile=${FONT}:text='(aun no generada - no se ha gastado nada)':fontcolor=0x6B6560:fontsize=26` +
+      `:x=(w-text_w)/2:y=h/2-244`,
     drawLines,
   ].join(',')
 
@@ -174,11 +214,6 @@ function makePlaceholder(clipPath, framePath, shot, slug) {
     '-vf', vf,
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '28',
     clipPath,
-  ], { stdio: 'pipe' })
-
-  // Un fotograma suelto para poder ojear el encuadre en public/frames/
-  execFileSync('ffmpeg', [
-    '-y', '-i', clipPath, '-frames:v', '1', '-q:v', '4', framePath,
   ], { stdio: 'pipe' })
 }
 

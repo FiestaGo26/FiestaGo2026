@@ -97,6 +97,22 @@ node scripts/gen-shots.mjs --only 02-ventana    # repetir UNA toma
 node scripts/gen-shots.mjs --model kling-v3-pro # subir a 1080p
 ```
 
+## El checkpoint de 12 céntimos
+
+Antes de pagar vídeo, mira las caras:
+
+```bash
+node scripts/gen-shots.mjs --frames-only     # 3 imágenes · $0,12
+```
+
+Las deja en `public/frames/{slug}/` junto a un `frames.json` con la URL de
+cada una. Si te gustan, `npm run cine:shots` **anima esas mismas** sin volver
+a pagar por la imagen. Si no te gustan, tocas el bloque `look` en
+`characters.ts` y repites por otros 12 céntimos.
+
+El dry-run no escribe nada en `public/frames/` a propósito: esa carpeta
+contiene solo fotogramas reales aprobados.
+
 ## Consistencia de personaje
 
 Es el problema difícil de todo esto, y aquí se resuelve por el lado barato:
@@ -132,7 +148,8 @@ scripts/render-cine.mjs       Render final
 
 ## Variables de entorno
 
-Copia `.env.example` a `.env`. Ninguna es obligatoria para probar:
+Copia `.env.example` a `.env` — los scripts lo cargan solos (`process.loadEnvFile`,
+nativo en Node 22). Ninguna variable es obligatoria para probar:
 
 - Sin `FAL_KEY` → usa `cine:shots-dry` (placeholders)
 - Sin `ELEVENLABS_API_KEY` → pista de silencio
