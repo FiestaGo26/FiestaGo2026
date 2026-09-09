@@ -41,7 +41,9 @@ for (const r of reels) {
       missing = true
     }
   }
-  if (!existsSync(join(ROOT, 'public', 'voices', `${r.slug}.mp3`))) {
+  // Los reels de diálogo no tienen pista global: el audio va en cada clip.
+  if (r.voiceMode !== 'dialogue' &&
+      !existsSync(join(ROOT, 'public', 'voices', `${r.slug}.mp3`))) {
     console.error(`❌ Falta la voz ${r.slug}.mp3`)
     missing = true
   }

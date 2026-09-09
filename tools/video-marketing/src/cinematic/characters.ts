@@ -19,6 +19,12 @@ export type Character = {
   look:   string
   /** Seed fija en Flux · ayuda a que la cara no derive entre tomas. */
   seed:   number
+  /**
+   * Nombre de la variable de entorno con el voice_id de ElevenLabs de este
+   * personaje. Los voice_id son propios de cada cuenta, así que no se pueden
+   * fijar en el código. Si falta, se usa ELEVENLABS_VOICE_ID.
+   */
+  voiceEnv?: string
 }
 
 export const CHARACTERS: Character[] = [
@@ -27,6 +33,7 @@ export const CHARACTERS: Character[] = [
     name: 'Marcos',
     role: 'Fotógrafo de bodas, 38 años. El proveedor que paga cuota y no recibe nada.',
     seed: 730114,
+    voiceEnv: 'ELEVENLABS_VOICE_MARCOS',
     look:
       'a 38-year-old Spanish man with short dark brown hair, a neatly trimmed dark beard, ' +
       'warm olive skin, tired brown eyes with faint shadows under them, a small mole on his left cheek, ' +
@@ -37,10 +44,22 @@ export const CHARACTERS: Character[] = [
     name: 'Nuria',
     role: 'Madre, 36 años. Organiza el cumple de su hija y no llega a todo.',
     seed: 615238,
+    voiceEnv: 'ELEVENLABS_VOICE_NURIA',
     look:
       'a 36-year-old Spanish woman with dark brown hair loosely tied back with strands falling ' +
       'across her face, warm light-olive skin, dark brown eyes, faint smile lines, no visible makeup, ' +
       'wearing a soft mustard-yellow cardigan over a white t-shirt',
+  },
+  {
+    id:   'elena',
+    name: 'Elena',
+    role: 'Ojeadora de FiestaGo, 44 años. Ficha proveedores buenos que nadie ve.',
+    seed: 209471,
+    voiceEnv: 'ELEVENLABS_VOICE_ELENA',
+    look:
+      'a 44-year-old Spanish woman with straight dark hair cut just above the shoulders, ' +
+      'light olive skin, sharp brown eyes, subtle laugh lines, minimal makeup, ' +
+      'wearing a well-cut navy blazer over a plain white shirt',
   },
   {
     id:   'lucia',
@@ -52,6 +71,11 @@ export const CHARACTERS: Character[] = [
       'green-hazel eyes, subtle freckles across her nose, wearing a cream oversized knit jumper',
   },
 ]
+
+/** voice_id de ElevenLabs para este personaje, o el genérico si no tiene. */
+export function voiceIdFor(c: Character): string | undefined {
+  return (c.voiceEnv && process.env[c.voiceEnv]) || process.env.ELEVENLABS_VOICE_ID
+}
 
 export function character(id: string): Character {
   const c = CHARACTERS.find(x => x.id === id)

@@ -39,3 +39,17 @@ export function videoModel(name = DEFAULT_VIDEO_MODEL) {
   }
   return m
 }
+
+// Lipsync: cuadra la boca con un audio que le pasamos nosotros. Es lo que
+// permite que la voz sea de ElevenLabs (dicción perfecta en español, guion
+// bajo nuestro control) y aun así el personaje parezca estar hablando.
+// Acepta data URI, así que el MP3 va inline sin subirlo a ningún sitio.
+export const LIPSYNC_MODEL = {
+  id:            'fal-ai/sync-lipsync/v2/pro',
+  usdPerMinute:  5.0,
+  get usdPerSecond() { return this.usdPerMinute / 60 },
+}
+
+export const TTS = {
+  modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2',
+}

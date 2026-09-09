@@ -22,13 +22,17 @@ export const CinematicVideo: React.FC<{ slug: string }> = ({ slug }) => {
   const r = reel(slug)
   const accent = targetAccent(r.target)
 
+  // En modo diálogo el audio viene incrustado en cada clip (lo mete el
+  // lipsync), así que ni hay pista global ni se silencian los vídeos.
+  const dialogueMode = r.voiceMode === 'dialogue'
+
   let cursor = 0
   const sequences = r.shots.map(shot => {
     const frames = Math.round(shot.durationInSeconds * fps)
     const el = (
       <Sequence key={shot.id} from={cursor} durationInFrames={frames}>
         {shot.kind === 'ai'
-          ? <AiShotRenderer slug={slug} id={shot.id} />
+          ? <AiShotRenderer slug={slug} id={shot.id} withAudio={dialogueMode && !!shot.dialogue} />
           : <MotionShotRenderer shot={shot} accent={accent} />}
         {shot.subtitle && <Subtitle text={shot.subtitle} />}
       </Sequence>
@@ -42,7 +46,7 @@ export const CinematicVideo: React.FC<{ slug: string }> = ({ slug }) => {
       {sequences}
       <Watermark />
       <AiDisclosure />
-      <Audio src={staticFile(`voices/${slug}.mp3`)} />
+      {!dialogueMode && <Audio src={staticFile(`voices/${slug}.mp3`)} />}
     </AbsoluteFill>
   )
 }
@@ -50,12 +54,14 @@ export const CinematicVideo: React.FC<{ slug: string }> = ({ slug }) => {
 // ─── Toma de vídeo IA ─────────────────────────────────────────────
 // El MP4 lo deja scripts/gen-shots.mjs. En --dry-run son placeholders,
 // así que la pieza se puede montar y revisar sin gastar un euro.
-const AiShotRenderer: React.FC<{ slug: string; id: string }> = ({ slug, id }) => (
+const AiShotRenderer: React.FC<{
+  slug: string; id: string; withAudio?: boolean
+}> = ({ slug, id, withAudio }) => (
   <AbsoluteFill style={{ backgroundColor: '#000' }}>
     <OffthreadVideo
       src={staticFile(`shots/${slug}/${id}.mp4`)}
       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-      muted
+      muted={!withAudio}
     />
     {/* Degradado inferior para que el subtítulo se lea siempre */}
     <AbsoluteFill style={{

@@ -32,6 +32,18 @@ export type AiShot = {
   motionPrompt: string
   /** Subtítulo quemado durante la toma. */
   subtitle?: string
+  /**
+   * Frase que dice el personaje EN PLANO. Dispara la cadena de lipsync:
+   * Kling genera el clip mudo → ElevenLabs pone la voz → sync-lipsync cuadra
+   * la boca. El audio queda incrustado en el MP4 resultante.
+   *
+   * Una frase corta por toma: al modelo se le va el labio en frases largas,
+   * y nunca dos personajes hablando a la vez.
+   */
+  dialogue?: {
+    characterId: string
+    line:        string
+  }
 }
 
 export type MotionShot = {
@@ -50,7 +62,13 @@ export type Reel = {
   slug: string
   title: string
   target: 'provider' | 'client'
-  /** Texto EXACTO que dirá ElevenLabs. Voz en OFF: sin lipsync, sin sobrecoste. */
+  /**
+   * 'voiceover' → un narrador sobre todo el reel (barato, sin lipsync).
+   * 'dialogue'  → los personajes hablan en plano; cada toma lleva su audio
+   *               incrustado y no hay pista global.
+   */
+  voiceMode?: 'voiceover' | 'dialogue'
+  /** Texto EXACTO del narrador. Solo se usa en voiceMode 'voiceover'. */
   voiceover: string
   ctaUrl: string
   shots: Shot[]
@@ -58,6 +76,11 @@ export type Reel = {
 
 const marcos = character('marcos')
 const nuria  = character('nuria')
+const elena  = character('elena')
+
+/** Encuadre + look, con el bloque del personaje incrustado literal. */
+const shot = (framing: string, c: typeof marcos, scene: string) =>
+  `${framing} of ${c.look}, ${scene}, ${LOOK}`
 
 export const REELS: Reel[] = [
   {
@@ -234,7 +257,126 @@ export const REELS: Reel[] = [
       },
     ],
   },
+  {
+    slug:      'cine-03-el-fichaje-largo',
+    title:     'El Fichaje · versión larga con diálogo',
+    target:    'provider',
+    voiceMode: 'dialogue',
+    ctaUrl:    'fiestago.es/registro-proveedor',
+    voiceover: '',   // sin narrador: hablan los personajes
+    shots: [
+      {
+        kind: 'ai', id: '01-factura', durationInSeconds: 5, characterId: 'marcos',
+        framePrompt: shot('Close medium shot', marcos,
+          'sitting alone at a kitchen table at night lit by his phone screen, ' +
+          'camera gear scattered behind him, speaking quietly to himself'),
+        motionPrompt: 'He speaks a short line without looking up. Almost no camera movement.',
+        dialogue: { characterId: 'marcos', line: 'Catorce meses pagando.' },
+        subtitle: 'Catorce meses pagando.',
+      },
+      {
+        kind: 'ai', id: '02-ni-una', durationInSeconds: 5, characterId: 'marcos',
+        framePrompt: shot('Tight close-up', marcos,
+          'at the same table, looking straight ahead past the camera, jaw tight'),
+        motionPrompt: 'He says a short line and exhales. Very slow push in.',
+        dialogue: { characterId: 'marcos', line: 'Y ni una boda.' },
+        subtitle: 'Y ni una boda.',
+      },
+      {
+        kind: 'ai', id: '03-cierra', durationInSeconds: 5, characterId: 'marcos',
+        framePrompt: shot('Wide shot', marcos,
+          'closing a laptop in a dark apartment, standing up slowly'),
+        motionPrompt: 'He closes the laptop and stands. Slow lateral drift. No speech.',
+        subtitle: undefined,
+      },
+      {
+        kind: 'ai', id: '04-elena', durationInSeconds: 5, characterId: 'elena',
+        framePrompt: shot('Medium shot', elena,
+          'sitting down opposite someone at a sunlit café table, calm and direct, ' +
+          'speaking to the person across from her'),
+        motionPrompt: 'She sits, meets his eyes and says a short line. Slight handheld feel.',
+        dialogue: { characterId: 'elena', line: '¿Marcos? Te he visto trabajar.' },
+        subtitle: '¿Marcos? Te he visto trabajar.',
+      },
+      {
+        kind: 'ai', id: '05-perdona', durationInSeconds: 5, characterId: 'marcos',
+        framePrompt: shot('Reverse medium shot', marcos,
+          'sitting at the same sunlit café table, coffee in front of him, caught off guard'),
+        motionPrompt: 'He looks up, surprised, and says a short line. Static camera.',
+        dialogue: { characterId: 'marcos', line: '¿Perdona?' },
+        subtitle: '¿Perdona?',
+      },
+      {
+        kind: 'ai', id: '06-sin-cuota', durationInSeconds: 5, characterId: 'elena',
+        framePrompt: shot('Medium close shot', elena,
+          'at the café table sliding a small plain card across the surface, ' +
+          'looking up as she speaks'),
+        motionPrompt: 'She slides the card forward and says a short line. Slow push in.',
+        dialogue: { characterId: 'elena', line: 'FiestaGo. Sin cuota.' },
+        subtitle: 'FiestaGo. Sin cuota.',
+      },
+      {
+        kind: 'ai', id: '07-y-que', durationInSeconds: 5, characterId: 'marcos',
+        framePrompt: shot('Close shot', marcos,
+          'leaning back in the café chair, arms crossed, openly sceptical'),
+        motionPrompt: 'He tilts his head and says a short sceptical line. Static camera.',
+        dialogue: { characterId: 'marcos', line: 'Ya. ¿Y qué me cobráis?' },
+        subtitle: 'Ya. ¿Y qué me cobráis?',
+      },
+      {
+        kind: 'ai', id: '08-nada', durationInSeconds: 5, characterId: 'elena',
+        framePrompt: shot('Close shot', elena,
+          'at the café table, holding his gaze, completely matter-of-fact'),
+        motionPrompt: 'She answers with one short calm line, no gesture. Static camera.',
+        dialogue: { characterId: 'elena', line: 'A ti nada. Paga el cliente.' },
+        subtitle: 'A ti nada. Paga el cliente.',
+      },
+      {
+        kind: 'motion', id: '09-cero', durationInSeconds: 4,
+        kicker: '0 €/mes', sub: 'sin cuota · sin permanencia', bgAccent: true,
+      },
+      {
+        kind: 'ai', id: '10-trabajando', durationInSeconds: 5, characterId: 'marcos',
+        framePrompt: shot('Wide shot', marcos,
+          'photographing a wedding couple outdoors at golden hour, camera raised, ' +
+          'absorbed in the work'),
+        motionPrompt: 'He raises the camera and shoots, stepping sideways. No speech. Warm, alive.',
+        subtitle: undefined,
+      },
+      {
+        kind: 'ai', id: '11-tres', durationInSeconds: 5, characterId: 'marcos',
+        framePrompt: shot('Medium close shot', marcos,
+          'outdoors between shots, looking at his phone with quiet disbelief, ' +
+          'starting to smile'),
+        motionPrompt: 'He glances at the phone and says a short line, half a laugh. Slow push in.',
+        dialogue: { characterId: 'marcos', line: 'Tres consultas esta semana.' },
+        subtitle: 'Tres consultas esta semana.',
+      },
+      {
+        kind: 'motion', id: '12-cien', durationInSeconds: 4,
+        kicker: 'Tú cobras\nel 100 %', sub: 'de tu precio, siempre',
+      },
+      {
+        kind: 'ai', id: '13-siguiente', durationInSeconds: 5, characterId: 'elena',
+        framePrompt: shot('Medium shot', elena,
+          'at a plain desk with a phone to her ear, a list in front of her, ' +
+          'already working on the next one'),
+        motionPrompt: 'She lifts the phone and starts a short line. Slight push in. Ends the story.',
+        dialogue: { characterId: 'elena', line: '¿Hablo con el catering?' },
+        subtitle: '¿Hablo con el catering?',
+      },
+      {
+        kind: 'motion', id: '14-cta', durationInSeconds: 4,
+        kicker: 'Date de alta\ngratis', sub: 'fiestago.es/registro-proveedor', bgAccent: true,
+      },
+    ],
+  },
 ]
+
+/** Tomas que hablan en plano · son las que pasan por lipsync. */
+export function dialogueShots(r: Reel): AiShot[] {
+  return aiShots(r).filter(s => !!s.dialogue)
+}
 
 export function reel(slug: string): Reel {
   const r = REELS.find(x => x.slug === slug)

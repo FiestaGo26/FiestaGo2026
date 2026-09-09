@@ -10,7 +10,7 @@
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadTs } from './load-ts.mjs'
-import { IMAGE_MODEL, videoModel, DEFAULT_VIDEO_MODEL, VIDEO_MODELS } from './models.mjs'
+import { IMAGE_MODEL, LIPSYNC_MODEL, videoModel, DEFAULT_VIDEO_MODEL, VIDEO_MODELS } from './models.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -23,7 +23,7 @@ const modelIdx = args.indexOf('--model')
 const modelName = modelIdx !== -1 ? args[modelIdx + 1] : DEFAULT_VIDEO_MODEL
 const only = args.filter(a => !a.startsWith('--') && a !== modelName)[0]
 
-const { REELS, totalDuration, aiShots } = await loadTs(join(ROOT, 'src/cinematic/shots.ts'))
+const { REELS, totalDuration, aiShots, dialogueShots } = await loadTs(join(ROOT, 'src/cinematic/shots.ts'))
 const vm = videoModel(modelName)
 const targets = only ? REELS.filter(r => r.slug === only) : REELS
 
@@ -42,11 +42,14 @@ for (const r of targets) {
   const aiSeconds = ai.reduce((a, s) => a + s.durationInSeconds, 0)
   const motionCount = r.shots.length - ai.length
 
-  const videoClean = aiSeconds * vm.usdPerSecond
+  const dial        = dialogueShots(r)
+  const dialSeconds = dial.reduce((a, s) => a + s.durationInSeconds, 0)
+  const lipsyncClean= dialSeconds * LIPSYNC_MODEL.usdPerSecond
+  const videoClean  = aiSeconds * vm.usdPerSecond
   const needImage = ai.filter(s => !s.imageUrl).length
   const reused    = ai.length - needImage
   const imageClean = needImage * IMAGE_MODEL.usdPerImage
-  const clean = videoClean + imageClean
+  const clean = videoClean + imageClean + lipsyncClean
   const real = clean * RETRY_FACTOR
   grandTotal += real
 
@@ -55,6 +58,9 @@ for (const r of targets) {
   console.log(`  Fotogramas inicio : $${imageClean.toFixed(2)}  (${needImage} × $${IMAGE_MODEL.usdPerImage}` +
               `${reused ? ` · ${reused} reutilizada(s) del panel, gratis` : ''})`)
   console.log(`  Vídeo             : $${videoClean.toFixed(2)}  (${aiSeconds}s × $${vm.usdPerSecond})`)
+  if (dial.length) {
+    console.log(`  Lipsync           : $${lipsyncClean.toFixed(2)}  (${dial.length} tomas habladas · ${dialSeconds}s × $${LIPSYNC_MODEL.usdPerMinute}/min)`)
+  }
   console.log(`  Pasada limpia     : $${clean.toFixed(2)}`)
   console.log(`  Coste realista    : $${real.toFixed(2)}  ← cuenta con este\n`)
 }
@@ -67,7 +73,8 @@ for (const [name, m] of Object.entries(VIDEO_MODELS)) {
     const ai = aiShots(r)
     const secs = ai.reduce((a, s) => a + s.durationInSeconds, 0)
     const imgs = ai.filter(s => !s.imageUrl).length
-    return acc + (secs * m.usdPerSecond + imgs * IMAGE_MODEL.usdPerImage) * RETRY_FACTOR
+    const lip  = dialogueShots(r).reduce((a, s) => a + s.durationInSeconds, 0) * LIPSYNC_MODEL.usdPerSecond
+    return acc + (secs * m.usdPerSecond + imgs * IMAGE_MODEL.usdPerImage + lip) * RETRY_FACTOR
   }, 0)
   console.log(`  ${name.padEnd(20)} $${t.toFixed(2).padStart(7)}  ${m.resolution}  ${m.nota}`)
 }

@@ -26,7 +26,8 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadTs } from './load-ts.mjs'
 import { falRun, download } from './fal.mjs'
-import { IMAGE_MODEL, videoModel, DEFAULT_VIDEO_MODEL } from './models.mjs'
+import { IMAGE_MODEL, LIPSYNC_MODEL, videoModel, DEFAULT_VIDEO_MODEL } from './models.mjs'
+import { speak, toDataUri } from './tts.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const FONT = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
@@ -59,6 +60,7 @@ const modelName  = flags['--model'] ?? DEFAULT_VIDEO_MODEL
 const reelSlug   = positional[0]
 
 const { REELS, aiShots, NEGATIVE } = await loadTs(join(ROOT, 'src/cinematic/shots.ts'))
+const { character, voiceIdFor } = await loadTs(join(ROOT, 'src/cinematic/characters.ts'))
 const vm = videoModel(modelName)
 
 const reels = reelSlug ? REELS.filter(r => r.slug === reelSlug) : REELS
@@ -175,12 +177,39 @@ for (const r of reels) {
       negative_prompt: NEGATIVE,
     }, st => process.stdout.write(`${st[0]}`))
 
-    const videoUrl = vid.video?.url
+    let videoUrl = vid.video?.url
     if (!videoUrl) throw new Error(`Kling no devolvió vídeo para ${shot.id}: ${JSON.stringify(vid).slice(0, 200)}`)
-    const bytes = await download(videoUrl, clipPath)
-    const cost = shot.durationInSeconds * vm.usdPerSecond
+    let cost = shot.durationInSeconds * vm.usdPerSecond
     spent += cost
-    console.log(` ✓ ${(bytes / 1024 / 1024).toFixed(1)} MB · $${cost.toFixed(2)}`)
+    console.log(` ✓ $${cost.toFixed(2)}`)
+
+    // ─── 3. Lipsync (solo tomas habladas) ───────────────────────
+    // El clip de Kling viene mudo. Le ponemos la voz de ElevenLabs —
+    // dicción y guion bajo nuestro control — y sync-lipsync cuadra la boca.
+    if (shot.dialogue) {
+      const c = character(shot.dialogue.characterId)
+      process.stdout.write(`  · voz de ${c.name}… `)
+      const mp3 = await speak(shot.dialogue.line, voiceIdFor(c))
+      console.log(`✓ ${(mp3.length / 1024).toFixed(0)} KB`)
+
+      process.stdout.write('  · sincronizando labios… ')
+      const synced = await falRun(LIPSYNC_MODEL.id, {
+        video_url: videoUrl,
+        audio_url: toDataUri(mp3),
+      }, st => process.stdout.write(`${st[0]}`))
+
+      const syncedUrl = synced.video?.url
+      if (!syncedUrl) {
+        throw new Error(`Lipsync no devolvió vídeo para ${shot.id}: ${JSON.stringify(synced).slice(0, 200)}`)
+      }
+      videoUrl = syncedUrl
+      const lipCost = shot.durationInSeconds * LIPSYNC_MODEL.usdPerSecond
+      spent += lipCost
+      console.log(` ✓ $${lipCost.toFixed(2)}`)
+    }
+
+    const bytes = await download(videoUrl, clipPath)
+    console.log(`  ✓ ${clipPath.split('/').pop()} · ${(bytes / 1024 / 1024).toFixed(1)} MB`)
   }
 }
 
@@ -200,7 +229,7 @@ console.log(`   Siguiente: npm run cine:voice && npm run cine:render\n`)
 // pueda montar y revisar entera sin llamar a ninguna API.
 function makePlaceholder(clipPath, shot) {
   const label = `${shot.id}`.replace(/[:'\\]/g, ' ')
-  const wrapped = wrap(shot.motionPrompt, 34).slice(0, 5)
+  const wrapped = wrap(shot.dialogue ? `« ${shot.dialogue.line} »` : shot.motionPrompt, 34).slice(0, 5)
   const drawLines = wrapped.map((line, i) =>
     `drawtext=fontfile=${FONT}:text='${esc(line)}':fontcolor=0xA29D91:fontsize=34` +
     `:x=(w-text_w)/2:y=h/2+${i * 46}`
@@ -209,7 +238,7 @@ function makePlaceholder(clipPath, shot) {
   const vf = [
     `drawtext=fontfile=${FONT}:text='${esc(label)}':fontcolor=0xF5F1E8:fontsize=64` +
       `:x=(w-text_w)/2:y=h/2-160`,
-    `drawtext=fontfile=${FONT}:text='AQUI VA LA TOMA DE VIDEO IA':fontcolor=0xE8553E:fontsize=38` +
+    `drawtext=fontfile=${FONT}:text='${shot.dialogue ? 'TOMA HABLADA - PLACEHOLDER' : 'AQUI VA LA TOMA DE VIDEO IA'}':fontcolor=0xE8553E:fontsize=38` +
       `:x=(w-text_w)/2:y=h/2-300`,
     `drawtext=fontfile=${FONT}:text='(aun no generada - no se ha gastado nada)':fontcolor=0x6B6560:fontsize=26` +
       `:x=(w-text_w)/2:y=h/2-244`,

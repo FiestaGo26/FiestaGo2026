@@ -45,6 +45,11 @@ if (silent) {
 }
 
 for (const r of reels) {
+  if (r.voiceMode === 'dialogue') {
+    console.log(`▶ ${r.slug} · modo diálogo: la voz va por toma, dentro del lipsync`)
+    console.log('  · nada que hacer aquí\n')
+    continue
+  }
   const outPath = join(OUT_DIR, `${r.slug}.mp3`)
   console.log(`▶ ${r.slug} · ${r.voiceover.length} chars · ${totalDuration(r)}s`)
 
