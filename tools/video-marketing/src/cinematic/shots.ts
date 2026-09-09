@@ -17,8 +17,17 @@ export type AiShot = {
   durationInSeconds: number
   /** Personaje que sale en plano (id de characters.ts). */
   characterId?: string
-  /** Prompt del FOTOGRAMA inicial · lo genera Flux, es la imagen de arranque. */
-  framePrompt: string
+  /**
+   * Prompt del FOTOGRAMA inicial · lo genera Flux.
+   * Opcional: si la toma trae `imageUrl`, no se genera nada y no se paga imagen.
+   */
+  framePrompt?: string
+  /**
+   * Imagen pública ya existente de la que partir — p.ej. una que haya
+   * generado el agente de marketing del panel y esté en el bucket
+   * `social-posts`. Se salta el paso de Flux: solo se paga el vídeo.
+   */
+  imageUrl?: string
   /** Prompt del MOVIMIENTO · lo consume Kling a partir de ese fotograma. */
   motionPrompt: string
   /** Subtítulo quemado durante la toma. */
@@ -192,12 +201,19 @@ export const REELS: Reel[] = [
         subtitle: 'Todo en un sitio, con precios',
       },
       {
-        kind: 'motion',
-        id: '04-categorias',
-        durationInSeconds: 4,
-        kicker: 'Animación, tarta,\nfotógrafo',
-        sub: 'en tu ciudad · con precio a la vista',
-        subtitle: 'Todo lo que necesitas, en un sitio',
+        // Imagen ya generada por el agente de marketing del panel
+        // (social_posts · 91c6c721, hook "Ideas MÁGICAS para su cumple").
+        // Ya está pagada y aprobada: aquí solo se paga el movimiento.
+        kind: 'ai',
+        id: '04-fiesta',
+        durationInSeconds: 5,
+        imageUrl:
+          'https://borcqxgnmwtztuvdgzjx.supabase.co/storage/v1/object/public/' +
+          'social-posts/custom/1788725881019-inspiration.jpg',
+        motionPrompt:
+          'The balloons sway gently, the children move and laugh, the entertainer turns ' +
+          'towards them. Slow steady push in. Warm, alive, documentary feel.',
+        subtitle: 'Animación, tarta, fotógrafo',
       },
       {
         kind: 'motion',

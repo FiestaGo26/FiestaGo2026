@@ -43,14 +43,17 @@ for (const r of targets) {
   const motionCount = r.shots.length - ai.length
 
   const videoClean = aiSeconds * vm.usdPerSecond
-  const imageClean = ai.length * IMAGE_MODEL.usdPerImage
+  const needImage = ai.filter(s => !s.imageUrl).length
+  const reused    = ai.length - needImage
+  const imageClean = needImage * IMAGE_MODEL.usdPerImage
   const clean = videoClean + imageClean
   const real = clean * RETRY_FACTOR
   grandTotal += real
 
   console.log(`▶ ${r.slug} · ${totalDuration(r)}s totales`)
   console.log(`  ${ai.length} tomas IA (${aiSeconds}s de pago) · ${motionCount} tomas motion graphics (gratis)`)
-  console.log(`  Fotogramas inicio : $${imageClean.toFixed(2)}  (${ai.length} × $${IMAGE_MODEL.usdPerImage})`)
+  console.log(`  Fotogramas inicio : $${imageClean.toFixed(2)}  (${needImage} × $${IMAGE_MODEL.usdPerImage}` +
+              `${reused ? ` · ${reused} reutilizada(s) del panel, gratis` : ''})`)
   console.log(`  Vídeo             : $${videoClean.toFixed(2)}  (${aiSeconds}s × $${vm.usdPerSecond})`)
   console.log(`  Pasada limpia     : $${clean.toFixed(2)}`)
   console.log(`  Coste realista    : $${real.toFixed(2)}  ← cuenta con este\n`)
@@ -63,7 +66,8 @@ for (const [name, m] of Object.entries(VIDEO_MODELS)) {
   const t = targets.reduce((acc, r) => {
     const ai = aiShots(r)
     const secs = ai.reduce((a, s) => a + s.durationInSeconds, 0)
-    return acc + (secs * m.usdPerSecond + ai.length * IMAGE_MODEL.usdPerImage) * RETRY_FACTOR
+    const imgs = ai.filter(s => !s.imageUrl).length
+    return acc + (secs * m.usdPerSecond + imgs * IMAGE_MODEL.usdPerImage) * RETRY_FACTOR
   }, 0)
   console.log(`  ${name.padEnd(20)} $${t.toFixed(2).padStart(7)}  ${m.resolution}  ${m.nota}`)
 }

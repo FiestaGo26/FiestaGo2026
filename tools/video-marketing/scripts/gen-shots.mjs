@@ -122,12 +122,20 @@ for (const r of reels) {
 
     // ─── 1. Fotograma de arranque ───────────────────────────────
     let imageUrl
-    if (existsSync(framePath) && !force) {
+    if (shot.imageUrl) {
+      // La toma parte de una imagen que ya existe (p.ej. del agente de
+      // marketing). Nos saltamos Flux entero: 0 $ en imagen.
+      imageUrl = shot.imageUrl
+      console.log('  · imagen ya existente · no se genera fotograma (0 $)')
+    } else if (existsSync(framePath) && !force) {
       imageUrl = manifest[shot.id] ?? null
       console.log(imageUrl
         ? '  · reutilizo el fotograma que ya aprobaste (0 $)'
         : '  · fotograma en disco pero sin URL guardada')
     } else {
+      if (!shot.framePrompt) {
+        throw new Error(`${shot.id}: la toma necesita framePrompt o imageUrl`)
+      }
       process.stdout.write('  · generando fotograma… ')
       const img = await falRun(IMAGE_MODEL.id, {
         prompt:          shot.framePrompt,
