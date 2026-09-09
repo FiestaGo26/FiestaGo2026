@@ -113,6 +113,30 @@ a pagar por la imagen. Si no te gustan, tocas el bloque `look` en
 El dry-run no escribe nada en `public/frames/` a propósito: esa carpeta
 contiene solo fotogramas reales aprobados.
 
+## Animar imágenes que ya tienes
+
+El agente de marketing del panel (`/admin/marketing`) ya genera imágenes con
+personajes ficticios y las sube al bucket `social-posts` de Supabase con URL
+pública. Esas se pueden animar directamente — te saltas el paso de Flux y
+solo pagas el vídeo:
+
+```bash
+node scripts/animate.mjs \
+  "https://<proyecto>.supabase.co/storage/v1/object/public/social-posts/custom/foo.jpg" \
+  "She turns slowly toward the camera and smiles. Very slow push in." \
+  --out out/clip-novia.mp4
+```
+
+5 segundos por **~0,42 $**. Es la vía más barata que hay aquí: la imagen ya
+está pagada y aprobada por ti.
+
+**Ojo con el formato.** El agente genera `square_hd` (1024×1024, cuadrado)
+porque está pensado para el feed de Instagram. Si animas una cuadrada, el
+clip sale cuadrado y en un Reel vertical se queda con bandas. Para vídeo
+conviene generar la imagen en vertical: en
+`app/api/admin/marketing/custom/route.ts`, `image_size: 'square_hd'` →
+`'portrait_16_9'`.
+
 ## Consistencia de personaje
 
 Es el problema difícil de todo esto, y aquí se resuelve por el lado barato:
