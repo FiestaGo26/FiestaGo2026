@@ -33,6 +33,16 @@ export const CHARACTERS: Character[] = [
       'wearing a charcoal grey henley shirt with the sleeves pushed up',
   },
   {
+    id:   'nuria',
+    name: 'Nuria',
+    role: 'Madre, 36 años. Organiza el cumple de su hija y no llega a todo.',
+    seed: 615238,
+    look:
+      'a 36-year-old Spanish woman with dark brown hair loosely tied back with strands falling ' +
+      'across her face, warm light-olive skin, dark brown eyes, faint smile lines, no visible makeup, ' +
+      'wearing a soft mustard-yellow cardigan over a white t-shirt',
+  },
+  {
     id:   'lucia',
     name: 'Lucía',
     role: 'Novia, 31 años. La clienta que busca proveedor y no encuentra precios.',

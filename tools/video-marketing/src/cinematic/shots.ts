@@ -48,6 +48,7 @@ export type Reel = {
 }
 
 const marcos = character('marcos')
+const nuria  = character('nuria')
 
 export const REELS: Reel[] = [
   {
@@ -130,6 +131,90 @@ export const REELS: Reel[] = [
         kicker: 'Date de alta\ngratis',
         sub: 'fiestago.es/registro-proveedor',
         bgAccent: true,
+      },
+    ],
+  },
+  {
+    slug:   'cine-02-ideas-magicas',
+    title:  'Ideas MÁGICAS para su cumple · cliente',
+    target: 'client',
+    ctaUrl: 'fiestago.es',
+    voiceover:
+      'Quedan dos semanas para su cumple y no tienes nada cerrado. ' +
+      'Llamas al animador: no contesta. ' +
+      'Pides precio a tres pastelerías y te responden dos, la semana que viene. ' +
+      'En Fiestago lo tienes todo en un sitio, con el precio delante. ' +
+      'Animación, tarta, fotógrafo. Y reservas en cinco minutos. ' +
+      'Ideas mágicas para su cumple, en fiestago punto es.',
+    shots: [
+      {
+        kind: 'ai',
+        id: '01-agenda',
+        durationInSeconds: 5,
+        characterId: 'nuria',
+        framePrompt:
+          `Medium shot of ${nuria.look}, sitting at a kitchen table covered with a half-written ` +
+          `party checklist, coloured balloons still in their packet, and a cold cup of coffee, ` +
+          `holding her phone to her ear with her shoulder while rubbing her forehead, ` +
+          `late afternoon light through a window, ${LOOK}`,
+        motionPrompt:
+          'She lowers the phone from her ear and stares at it, then closes her eyes briefly. ' +
+          'Very slight handheld camera movement. Domestic, warm, a little defeated.',
+        subtitle: 'Dos semanas para su cumple',
+      },
+      {
+        kind: 'ai',
+        id: '02-sin-respuesta',
+        durationInSeconds: 5,
+        characterId: 'nuria',
+        framePrompt:
+          `Close over-the-shoulder shot of ${nuria.look}, scrolling on her phone at the same ` +
+          `kitchen table, her face lit by the screen, brow furrowed with mild frustration, ` +
+          `the balloons and checklist blurred in the foreground, ${LOOK}`,
+        motionPrompt:
+          'Her thumb scrolls twice and stops. She exhales and looks away from the screen. ' +
+          'Slow push in over her shoulder.',
+        subtitle: 'y nadie te contesta el presupuesto',
+      },
+      {
+        kind: 'ai',
+        id: '03-resuelto',
+        durationInSeconds: 5,
+        characterId: 'nuria',
+        framePrompt:
+          `Medium shot of ${nuria.look}, now relaxed at the same table with a laptop open in ` +
+          `front of her, a six-year-old girl leaning against her arm pointing at the screen, ` +
+          `both of them smiling, the balloons now inflated and bright behind them, ` +
+          `warm golden light, ${LOOK}`,
+        motionPrompt:
+          'The girl points at the screen and looks up at her mother, who laughs quietly. ' +
+          'Gentle push in. Warm, resolved, unforced.',
+        subtitle: 'Todo en un sitio, con precios',
+      },
+      {
+        kind: 'motion',
+        id: '04-categorias',
+        durationInSeconds: 4,
+        kicker: 'Animación, tarta,\nfotógrafo',
+        sub: 'en tu ciudad · con precio a la vista',
+        subtitle: 'Todo lo que necesitas, en un sitio',
+      },
+      {
+        kind: 'motion',
+        id: '05-rapido',
+        durationInSeconds: 4,
+        kicker: 'Reservas en\n5 minutos',
+        sub: 'sin llamar a diez sitios',
+        bgAccent: true,
+        subtitle: 'Y reservas en cinco minutos',
+      },
+      {
+        kind: 'motion',
+        id: '06-cta',
+        durationInSeconds: 4,
+        kicker: 'Ideas MÁGICAS\npara su cumple 🎈',
+        sub: 'fiestago.es',
+        subtitle: undefined,
       },
     ],
   },

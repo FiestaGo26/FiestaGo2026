@@ -9,8 +9,8 @@ import { theme, targetAccent } from './theme'
 // (no hay @remotion/google-fonts), así que el navegador headless cae al
 // serif por defecto. Declaramos la cascada aquí para que, haya o no las
 // webfonts instaladas, el resultado sea sans — que es la intención.
-const DISPLAY = `'${theme.displayFont}', 'DejaVu Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif`
-const BODY    = `'${theme.bodyFont}', 'DejaVu Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif`
+const DISPLAY = `'${theme.displayFont}', 'DejaVu Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif, 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'`
+const BODY    = `'${theme.bodyFont}', 'DejaVu Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif, 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'`
 const MONO    = `'${theme.monoFont}', 'DejaVu Sans Mono', ui-monospace, SFMono-Regular, Menlo, monospace`
 
 // Composición híbrida: tomas de vídeo IA (public/shots/{slug}/{id}.mp4)
