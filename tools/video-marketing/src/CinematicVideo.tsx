@@ -17,9 +17,15 @@ const MONO    = `'${theme.monoFont}', 'DejaVu Sans Mono', ui-monospace, SFMono-R
 // intercaladas con escenas de motion graphics renderizadas aquí mismo.
 // La voz va en OFF (public/voices/{slug}.mp3) — sin lipsync, sin sobrecoste.
 
-export const CinematicVideo: React.FC<{ slug: string }> = ({ slug }) => {
+// `reelData` permite pasar un reel completo por inputProps en vez de
+// buscarlo por slug en shots.ts. Lo necesita el vídeo diario, que se
+// construye en caliente a partir del guion que escribe Claude cada mañana.
+export const CinematicVideo: React.FC<{
+  slug: string
+  reelData?: Reel
+}> = ({ slug, reelData }) => {
   const { fps } = useVideoConfig()
-  const r = reel(slug)
+  const r = reelData ?? reel(slug)
   const accent = targetAccent(r.target)
 
   // En modo diálogo el audio viene incrustado en cada clip (lo mete el

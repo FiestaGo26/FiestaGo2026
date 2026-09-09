@@ -186,3 +186,71 @@ del render cae al serif por defecto. `CinematicVideo.tsx` declara su propia
 cascada con fallback sans para evitarlo. **Los 10 reels de motion graphics
 originales siguen renderizando en serif** — se arregla instalando
 `@remotion/google-fonts` o añadiendo el mismo fallback en `theme.ts`.
+
+---
+
+# Vídeo diario para redes (15 s)
+
+Sustituye al avatar de HeyGen manteniendo **todo lo demás**: el cron ya
+elegía pilar y tema del día con anti-repetición de 14 días, Claude ya
+redactaba guion, caption y hashtags, y `content_videos` ya alimenta la
+pestaña Contenido de `/admin`. Lo único que cambia es quién produce el vídeo.
+
+```
+toma 1   5s   presentadora hablando   (hook)
+toma 2   5s   presentadora hablando   (cuerpo)
+toma 3   5s   tarjeta de CTA          (motion graphics, gratis)
+```
+
+## La cara de la marca se fija una vez
+
+`DAILY_PRESENTER_IMAGE_URL` apunta a una imagen pública que hayas aprobado.
+Cada día se anima **esa misma**, así que:
+
+- el coste de imagen es **0 €** (no se genera nada nuevo)
+- la cara **no cambia** de un día para otro
+
+Sin esa variable se genera una cara nueva cada mañana: 0,04 $ más y un
+presentador distinto cada día, que es justo lo que no quieres.
+
+Para fijarla: genera un retrato de la presentadora (con el agente del panel o
+con `gen-shots.mjs --frames-only`), súbelo a Supabase Storage y pon su URL
+pública en el secret.
+
+## Coste
+
+| Concepto | Por vídeo | Al mes |
+|---|---|---|
+| Imagen | 0 € (cara fija) | 0 € |
+| Vídeo · 15 s | 1,26 $ | ~38 $ |
+| Lipsync · 10 s hablados | 0,83 $ | ~25 $ |
+| **Total** | **~2,09 $** | **~63 $** |
+
+## Uso
+
+```bash
+npm run cine:daily-dry     # ensayo · no gasta ni escribe en la BD
+npm run cine:daily         # producción
+node scripts/daily.mjs --force   # rehacer el de hoy
+```
+
+El ensayo en seco funciona **sin ninguna clave**: usa un guion de ejemplo y
+placeholders, y sirve para revisar ritmo y encuadre antes de gastar.
+
+## Automatización
+
+`.github/workflows/daily-cinematic-video.yml` lo lanza cada día a las 08:30
+CEST. El render pesado no cabe en una función de Netlify (necesita Chromium,
+ffmpeg y varios minutos), por eso vive en Actions.
+
+## Convivencia con el cron viejo
+
+Los dos pueden estar activos a la vez sin pisarse. Cuando quieras cambiar,
+pon en Netlify:
+
+```
+DAILY_VIDEO_PRODUCER=cinematic
+```
+
+y el cron de HeyGen se aparta solo. Para volver atrás, quita la variable —
+no hace falta tocar código ni desplegar nada.

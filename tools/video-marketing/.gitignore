@@ -4,3 +4,4 @@ out/*.mp4
 .env
 public/shots/
 public/frames/
+.daily-reel.json

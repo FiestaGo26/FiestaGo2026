@@ -34,7 +34,7 @@ const FONT = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 
 // Parser: los flags con valor (--only, --model) consumen el argumento
 // siguiente; lo que quede suelto es el slug del reel.
-const WITH_VALUE = new Set(['--only', '--model'])
+const WITH_VALUE = new Set(['--only', '--model', '--reel'])
 const flags = {}
 const positional = []
 {
@@ -63,7 +63,11 @@ const { REELS, aiShots, NEGATIVE } = await loadTs(join(ROOT, 'src/cinematic/shot
 const { character, voiceIdFor } = await loadTs(join(ROOT, 'src/cinematic/characters.ts'))
 const vm = videoModel(modelName)
 
-const reels = reelSlug ? REELS.filter(r => r.slug === reelSlug) : REELS
+// --reel apunta a un JSON con un reel construido en caliente (lo usa el
+// vídeo diario, que no vive en shots.ts).
+const reels = flags['--reel']
+  ? [JSON.parse(readFileSync(flags['--reel'], 'utf8'))]
+  : reelSlug ? REELS.filter(r => r.slug === reelSlug) : REELS
 if (!reels.length) {
   console.error(`❌ No hay reel con slug "${reelSlug}". Disponibles: ${REELS.map(r => r.slug).join(', ')}`)
   process.exit(1)

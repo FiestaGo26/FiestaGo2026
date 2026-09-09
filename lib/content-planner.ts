@@ -393,11 +393,27 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin bloques markdown:
 
 // Genera el guion + caption + hashtags para un pilar + topic dados.
 // Sin contexto de plazas/escasez: el enfoque es valor real.
+// Ritmo de habla en español, medido contra los guiones que ya funcionan:
+// 45-55 palabras entran en 20 segundos. Redondeamos a 2,4 palabras/segundo.
+const WORDS_PER_SECOND = 2.4
+
 export async function generateContent(opts: {
   pillar: Pillar
   topic:  string
+  /**
+   * Duración objetivo del guion hablado. Por defecto 20s, que es lo que
+   * espera el cron de HeyGen. El pipeline cinematográfico pide 15s, y con
+   * eso el recuento de palabras se recalcula solo.
+   */
+  maxSeconds?: number
 }): Promise<GeneratedContent> {
-  const { pillar, topic } = opts
+  const { pillar, topic, maxSeconds = 20 } = opts
+
+  // El límite de palabras vive en el system prompt (cacheado). Para no
+  // romper la caché lo sobrescribimos desde el mensaje de usuario.
+  const target = Math.round(maxSeconds * WORDS_PER_SECOND)
+  const minW   = Math.max(12, target - 3)
+  const maxW   = target + 3
 
   const userMsg =
     `[Pilar de hoy] ${pillar.label}\n` +
@@ -405,7 +421,8 @@ export async function generateContent(opts: {
     `[CTA final del guion] ${pillar.ctaShort} (${pillar.ctaUrl})\n` +
     `[Hashtags base sugeridos] ${pillar.hashtagsBase.join(', ')}\n` +
     `[Contexto FiestaGo] Marketplace de bodas/eventos en España YA EN MARCHA. Cada semana hay parejas y familias buscando proveedores y solo ven a los que están dados de alta — los que aparecen reciben las consultas. Alta gratis, sin cuotas ni comisión. El cliente paga 8% extra que financia la Garantía de Éxito; el proveedor cobra su precio íntegro. Al darse de alta, el proveedor desbloquea un pack de herramientas IA gratis (Quote Generator, plantillas WhatsApp, posts Google Business) que pagadas sueltas costarían entre 265€ y 605€/mes — sirven para QUITAR FRICCIÓN al alta, no como mensaje principal.\n\n` +
-    `Genera el guion (20s), caption y hashtags. JSON puro. Recuerda: hook de DEMANDA ACTIVA en su zona/categoría; el ángulo del pilar entra después como refuerzo; CTA al alta gratis hoy. Prohibido escasez sobre plazas/sello.`
+    `⚠ LONGITUD (manda sobre cualquier regla anterior): el guion dura ${maxSeconds} SEGUNDOS y tiene ENTRE ${minW} Y ${maxW} PALABRAS. Cuéntalas antes de responder. Si te pasas, corta el refuerzo del pilar y deja hook + CTA.\n\n` +
+    `Genera el guion (${maxSeconds}s), caption y hashtags. JSON puro. Recuerda: hook de DEMANDA ACTIVA en su zona/categoría; el ángulo del pilar entra después como refuerzo; CTA al alta gratis hoy. Prohibido escasez sobre plazas/sello.`
 
   const resp = await client().messages.create({
     model:      MODEL,
@@ -439,8 +456,11 @@ export async function generateContent(opts: {
   const caption  = String(parsed.caption  ?? '').trim()
   const hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags.map(String) : []
 
-  if (!script || script.length < 50) {
-    throw new Error(`Script demasiado corto: "${script}"`)
+  // Guardarraíl proporcional: antes era un mínimo fijo de 50 caracteres,
+  // pensado para guiones de 20s. Con 15s ese umbral se quedaba corto.
+  const minChars = Math.max(40, Math.round(minW * 4))
+  if (!script || script.length < minChars) {
+    throw new Error(`Script demasiado corto (${script.length} < ${minChars}): "${script}"`)
   }
 
   return { script, caption, hashtags }

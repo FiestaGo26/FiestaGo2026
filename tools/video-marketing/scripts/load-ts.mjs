@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-export async function loadTs(entryPath) {
+export async function loadTs(entryPath, { external = [] } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'fiestago-ts-'))
   const outfile = join(dir, 'mod.mjs')
   try {
@@ -22,6 +22,7 @@ export async function loadTs(entryPath) {
       format: 'esm',
       platform: 'node',
       target: 'node20',
+      external,
       logLevel: 'silent',
     })
     return await import(pathToFileURL(outfile).href)

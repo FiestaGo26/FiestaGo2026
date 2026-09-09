@@ -1,0 +1,83 @@
+name: 🎬 Vídeo diario cinematográfico (15s)
+
+# Sustituto del cron de HeyGen (netlify/functions/content-daily-generate.mts).
+# El render pesado (Kling + lipsync + Remotion) no cabe en una función de
+# Netlify: necesita Chromium, ffmpeg y varios minutos. Aquí sí.
+#
+# Para que los dos no se pisen, pon DAILY_VIDEO_PRODUCER=cinematic en las
+# variables de Netlify: el cron viejo se desactiva solo.
+#
+# SECRETS que necesita (Settings → Secrets and variables → Actions):
+#   ANTHROPIC_API_KEY           guion del día
+#   FAL_KEY                     Kling + lipsync
+#   ELEVENLABS_API_KEY          voz
+#   ELEVENLABS_VOICE_ELENA      voz de la presentadora
+#   SUPABASE_URL                proyecto
+#   SUPABASE_SERVICE_ROLE_KEY   subida + inserción
+#   DAILY_PRESENTER_IMAGE_URL   cara fija aprobada (si falta, se genera una
+#                               nueva cada día: +0,04 $ y la cara cambia)
+
+on:
+  schedule:
+    # 06:30 UTC ≈ 08:30 CEST · media hora después del cron de Netlify para
+    # no solaparse mientras convivan los dos.
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rehacer el vídeo de hoy aunque ya exista'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Ensayo en seco (no gasta ni escribe en la base de datos)'
+        type: boolean
+        default: false
+
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+
+      # El guion vive en lib/content-planner.ts y usa el SDK de Anthropic,
+      # así que hacen falta las dependencias de la raíz además de las del tool.
+      - name: Dependencias
+        run: |
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          cd tools/video-marketing
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Producir el vídeo del día
+        env:
+          ANTHROPIC_API_KEY:         ${{ secrets.ANTHROPIC_API_KEY }}
+          FAL_KEY:                   ${{ secrets.FAL_KEY }}
+          ELEVENLABS_API_KEY:        ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ELENA:    ${{ secrets.ELEVENLABS_VOICE_ELENA }}
+          ELEVENLABS_VOICE_ID:       ${{ secrets.ELEVENLABS_VOICE_ID }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DAILY_PRESENTER_IMAGE_URL: ${{ secrets.DAILY_PRESENTER_IMAGE_URL }}
+        working-directory: tools/video-marketing
+        run: |
+          node scripts/daily.mjs \
+            ${{ inputs.dry_run && '--dry-run' || '' }} \
+            ${{ inputs.force && '--force' || '' }}
+
+      # Aunque el vídeo ya está en Supabase, dejarlo también aquí ayuda a
+      # revisar qué salió exactamente cuando algo no cuadra.
+      - name: Guardar el MP4 como artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-diario
+          path: tools/video-marketing/out/*.mp4
+          if-no-files-found: ignore
+          retention-days: 14

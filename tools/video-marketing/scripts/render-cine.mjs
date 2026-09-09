@@ -12,7 +12,7 @@
  */
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
-import { mkdirSync, existsSync } from 'node:fs'
+import { mkdirSync, existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadTs } from './load-ts.mjs'
@@ -22,8 +22,15 @@ const OUT_DIR = join(ROOT, 'out')
 mkdirSync(OUT_DIR, { recursive: true })
 
 const { REELS, aiShots } = await loadTs(join(ROOT, 'src/cinematic/shots.ts'))
-const only = process.argv[2]
-const reels = only ? REELS.filter(r => r.slug === only) : REELS
+
+// --reel <json> [salida.mp4] renderiza un reel construido en caliente.
+const argv     = process.argv.slice(2)
+const reelIdx  = argv.indexOf('--reel')
+const adhoc    = reelIdx !== -1 ? JSON.parse(readFileSync(argv[reelIdx + 1], 'utf8')) : null
+const adhocOut = reelIdx !== -1 ? argv[reelIdx + 2] : null
+const only     = reelIdx === -1 ? argv[0] : null
+
+const reels = adhoc ? [adhoc] : only ? REELS.filter(r => r.slug === only) : REELS
 
 if (!reels.length) {
   console.error(`❌ No hay reel con slug "${only}"`)
@@ -74,16 +81,23 @@ console.log('📦 Bundling Remotion...')
 const serveUrl = await bundle({ entryPoint: join(ROOT, 'src/index.ts'), webpackOverride: c => c })
 
 for (const r of reels) {
-  const outPath = join(OUT_DIR, `${r.slug}.mp4`)
+  const outPath = adhocOut || join(OUT_DIR, `${r.slug}.mp4`)
   console.log(`\n▶ ${r.slug}`)
 
-  const composition = await selectComposition({ serveUrl, id: r.slug, inputProps: { slug: r.slug }, browserExecutable })
+  // El reel ad-hoc va por la composición genérica 'daily': se le pasa el reel
+  // entero y se ajusta la duración a la suma real de sus tomas.
+  const inputProps = adhoc ? { slug: r.slug, reelData: r } : { slug: r.slug }
+  const base = await selectComposition({ serveUrl, id: adhoc ? 'daily' : r.slug, inputProps, browserExecutable })
+  const composition = adhoc
+    ? { ...base, durationInFrames: Math.round(r.shots.reduce((a, x) => a + x.durationInSeconds, 0) * 30) }
+    : base
+
   await renderMedia({
     composition,
     serveUrl,
     codec: 'h264',
     outputLocation: outPath,
-    inputProps: { slug: r.slug },
+    inputProps,
     browserExecutable,
     concurrency: 1,
     onProgress: ({ progress }) => process.stdout.write(`\r  render ${(progress * 100).toFixed(0)}%   `),

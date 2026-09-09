@@ -12,7 +12,9 @@
     "cine:shots-dry": "node scripts/gen-shots.mjs --dry-run",
     "cine:shots": "node scripts/gen-shots.mjs",
     "cine:voice": "node scripts/gen-cine-voice.mjs",
-    "cine:render": "node scripts/render-cine.mjs"
+    "cine:render": "node scripts/render-cine.mjs",
+    "cine:daily": "node scripts/daily.mjs",
+    "cine:daily-dry": "node scripts/daily.mjs --dry-run"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.0",

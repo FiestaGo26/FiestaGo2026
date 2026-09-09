@@ -38,6 +38,19 @@ export const RemotionRoot: React.FC = () => (
       />
     ))}
 
+    {/* Composición del vídeo diario: no tiene guión fijo, se le pasa el reel
+        entero por inputProps desde scripts/daily.mjs. La duración real la
+        fija el renderizador; estos 15s son solo el valor por defecto. */}
+    <Composition
+      id="daily"
+      component={CinematicVideo}
+      durationInFrames={15 * 30}
+      fps={30}
+      width={1080}
+      height={1920}
+      defaultProps={{ slug: 'daily' }}
+    />
+
     {/* Alias 'MarketingVideo' que renderiza el primer script — útil para
         `remotion render` con --props={"slug":"XX"} */}
     <Composition

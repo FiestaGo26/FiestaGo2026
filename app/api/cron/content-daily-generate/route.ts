@@ -33,6 +33,17 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const force: boolean = !!body.force
 
+  // Interruptor: con DAILY_VIDEO_PRODUCER=cinematic el vídeo del día lo
+  // produce la GitHub Action .github/workflows/daily-cinematic-video.yml
+  // (Kling + lipsync, 15s) y este cron se aparta. Cualquier otro valor —o
+  // ninguno— mantiene el comportamiento de siempre con HeyGen.
+  if (process.env.DAILY_VIDEO_PRODUCER === 'cinematic' && !force) {
+    return NextResponse.json({
+      skipped: true,
+      reason:  'DAILY_VIDEO_PRODUCER=cinematic · lo produce la GitHub Action',
+    })
+  }
+
   if (!isConfigured()) {
     return NextResponse.json({
       error: 'HeyGen no configurado — define HEYGEN_API_KEY, HEYGEN_AVATAR_ID, HEYGEN_VOICE_ID',
