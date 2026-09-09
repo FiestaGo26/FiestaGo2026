@@ -78,7 +78,16 @@ El admin de FiestaGo te pide que crees UN post para publicar en Instagram y TikT
   return JSON.parse(match[0])
 }
 
-async function generateImageWithFal(prompt: string): Promise<string> {
+// Vertical por defecto: es el formato de Reels, TikTok y Stories, y además
+// permite animar la imagen después (tools/video-marketing/scripts/animate.mjs)
+// sin que el clip salga con bandas. Se puede pedir 'square_hd' explícitamente
+// para un post cuadrado de feed.
+type Orientation = 'portrait_16_9' | 'square_hd'
+
+async function generateImageWithFal(
+  prompt: string,
+  orientation: Orientation = 'portrait_16_9',
+): Promise<string> {
   // fal.ai Flux 1.1 Pro
   const res = await fetch('https://fal.run/fal-ai/flux-pro/v1.1', {
     method: 'POST',
@@ -88,7 +97,7 @@ async function generateImageWithFal(prompt: string): Promise<string> {
     },
     body: JSON.stringify({
       prompt,
-      image_size: 'square_hd',  // 1024x1024, perfecto para IG/TikTok
+      image_size: orientation,
       num_inference_steps: 28,
       enable_safety_checker: true,
     }),
@@ -118,7 +127,7 @@ async function uploadToSupabaseStorage(imageUrl: string, filename: string): Prom
 }
 
 // POST /api/admin/marketing/custom
-// body: { prompt: string }
+// body: { prompt: string, orientation?: 'portrait_16_9' | 'square_hd' }
 export async function POST(req: NextRequest) {
   if (!checkAdminAuth(req)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -130,6 +139,8 @@ export async function POST(req: NextRequest) {
     if (!userPrompt) {
       return NextResponse.json({ error: 'Falta el prompt' }, { status: 400 })
     }
+    const orientation: Orientation =
+      body.orientation === 'square_hd' ? 'square_hd' : 'portrait_16_9'
 
     // 1) Plan del post con Claude
     const plan = await planPostWithClaude(userPrompt)
@@ -138,7 +149,7 @@ export async function POST(req: NextRequest) {
     const format: 'image' | 'video' = 'image'
 
     // 3) Generar imagen
-    const falUrl  = await generateImageWithFal(plan.visual_prompt)
+    const falUrl  = await generateImageWithFal(plan.visual_prompt, orientation)
     const ts      = Date.now()
     const filename= `${ts}-${(plan.post_type || 'custom').replace(/[^a-z0-9]/gi, '_')}.jpg`
     const mediaUrl= await uploadToSupabaseStorage(falUrl, filename)
