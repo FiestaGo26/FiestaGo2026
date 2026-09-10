@@ -20,7 +20,8 @@
  *
  * OPCIONES:
  *   --out <ruta>          salida (por defecto out/editado.mp4)
- *   --cut-silence [seg]   quita los silencios más largos que N (0.6 por defecto)
+ *   --cut-silence [seg]   quita TODOS los silencios más largos que N (0.6 por defecto)
+ *   --trim-ends           solo quita el aire del principio y del final
  *   --no-subtitles        no transcribe ni quema subtítulos
  *   --transcript <json>   usa una transcripción ya hecha
  *   --model <nombre>      modelo de whisper: tiny|base|small|medium (small)
@@ -37,7 +38,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { execFileSync } from 'node:child_process'
 import { basename, extname, join, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { probe, toVertical, chromaKey, detectSilences, keepSegments, cutSegments } from './video-ops.mjs'
+import { probe, toVertical, chromaKey, detectSilences, keepSegments, trimEnds, cutSegments } from './video-ops.mjs'
 import { removeBackgroundAI } from './bg-ai.mjs'
 import { transcribe } from './transcribe.mjs'
 
@@ -90,13 +91,17 @@ let current = input
 
 const info0 = probe(input)
 console.log(`\n🎬 ${basename(input)}`)
-console.log(`   ${info0.width}×${info0.height} · ${info0.duration.toFixed(1)}s · ${info0.fps.toFixed(0)}fps` +
-            `${info0.hasAudio ? '' : ' · SIN AUDIO'}\n`)
+console.log(`   ${info0.width}×${info0.height}` +
+            `${info0.rotation ? ` (rotado ${info0.rotation}°)` : ''}` +
+            ` · ${info0.duration.toFixed(1)}s · ${info0.fps.toFixed(0)}fps` +
+            `${info0.isHdr ? ' · HDR' : ''}${info0.hasAudio ? '' : ' · SIN AUDIO'}\n`)
 
 // ─── 1. Vertical ─────────────────────────────────────────────────
-if (info0.width / info0.height !== 1080 / 1920) {
-  process.stdout.write('· Encuadrando a 9:16… ')
-  current = toVertical(current, join(TMP, `${slug}-vert.mp4`))
+// Siempre pasamos por aquí si no es exactamente 1080×1920, o si viene en
+// HDR: aunque el encuadre ya sea vertical, hay que convertir el color.
+if (info0.width !== 1080 || info0.height !== 1920 || info0.isHdr) {
+  process.stdout.write(`· Encuadrando a 9:16${info0.isHdr ? ' y convirtiendo HDR→SDR' : ''}… `)
+  current = toVertical(current, join(TMP, `${slug}-vert.mp4`), { isHdr: info0.isHdr })
   console.log('✓')
 }
 
@@ -130,11 +135,14 @@ if (cutSilence) {
     process.stdout.write('· Buscando silencios… ')
     const info = probe(current)
     const silences = detectSilences(current, { minDuration: silenceMin })
-    const keeps = keepSegments(info.duration, silences)
+    const keeps = flags['--trim-ends']
+      ? trimEnds(info.duration, silences)
+      : keepSegments(info.duration, silences)
     const kept = keeps.reduce((a, s) => a + (s.end - s.start), 0)
-    console.log(`${silences.length} encontrados`)
+    console.log(`${silences.length} encontrados` +
+                (flags['--trim-ends'] ? ' · solo recorto principio y final' : ''))
 
-    if (silences.length) {
+    if (silences.length && kept < info.duration - 0.2) {
       process.stdout.write('· Cortando… ')
       current = cutSegments(current, join(TMP, `${slug}-cut.mp4`), keeps)
       console.log(`✓ ${info.duration.toFixed(1)}s → ${kept.toFixed(1)}s ` +
