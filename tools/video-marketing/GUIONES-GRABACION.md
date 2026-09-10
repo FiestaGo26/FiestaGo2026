@@ -134,3 +134,61 @@ Reglas duras, para que ninguna versión se desvíe:
 ```bash
 node scripts/edit.mjs lunes.mov --cut-silence --cta 3
 ```
+
+---
+
+# Variante B · ganchos de pérdida
+
+Misma información, mismo CTA. Solo cambia la primera frase — que es lo único
+que decide si siguen viendo.
+
+El mecanismo es la aversión a la pérdida: dueles más por lo que ya estás
+perdiendo que por lo que podrías ganar. Por eso ninguno de estos habla del
+futuro, todos hablan de algo que **ya está pasando**.
+
+| Día | Gancho A (actual) | Gancho B (pérdida) |
+|---|---|---|
+| Lunes | «Cuarenta» parejas han buscado fotógrafo esta semana | **Esta semana has perdido «cuarenta» clientes y no te has enterado** |
+| Martes | Cuarenta y cinco minutos por presupuesto | **Mientras tú haces un presupuesto, otro ya ha mandado tres** |
+| Miércoles | «Sesenta» euros al mes, vendas o no vendas | **Llevas «setecientos» euros pagados este año. ¿Cuántas bodas te han entrado?** |
+| Jueves | El que contesta primero se lleva la boda | **Si tardas dos horas en contestar, esa boda ya no es tuya** |
+| Viernes | ¿Cuándo tocaste tu ficha de Google? | **Tu competencia sale antes que tú en Google. No es casualidad** |
+| Sábado | ¿Y si el cliente no paga? | **¿Cuántas veces te han dejado a deber el último pago?** |
+| Domingo | Suma lo que pagas al mes en herramientas | **Estás pagando por separado lo que otros ya tienen gratis** |
+
+El resto del guion no cambia. Cambiar la primera frase es un cambio de cinco
+segundos de grabación, no de vídeo entero.
+
+## La línea entre miedo y humo
+
+Son la misma técnica y se distinguen por una cosa:
+
+- **Miedo honesto**: nombra una pérdida real que el proveedor puede
+  comprobar en su propia experiencia. "¿Cuántas veces te han dejado a deber?"
+  duele porque le ha pasado.
+- **Humo con voz grave**: inventa una amenaza que no puedes demostrar.
+  "Tu negocio va a desaparecer", "el sector está cambiando y te vas a quedar
+  fuera". Suena a miedo pero no hay nada detrás.
+
+Regla práctica: si el gancho no se puede verificar, no es miedo, es humo.
+
+Y una segunda: **un miedo, una salida**. El gancho abre la herida y el CTA la
+cierra en el mismo vídeo. Si abres el miedo y no lo resuelves, has dejado a
+alguien peor de lo que estaba y encima se va.
+
+## Cómo decidir cuál funciona
+
+No lo decidas por sensación, y sobre todo no lo decidas por likes.
+
+**La métrica del gancho es la retención a 3 segundos.** Es lo único que mide
+si la primera frase hizo su trabajo. Instagram y TikTok te la dan en las
+estadísticas de cada Reel.
+
+Pero mide también **altas en `/registro-proveedor`**, porque los dos números
+pueden ir en direcciones opuestas: un gancho acusatorio suele retener más y
+convertir menos, porque el que se siente señalado se queda mirando pero no se
+da de alta. Usa un enlace con UTM distinto por variante para poder separarlos.
+
+Con un vídeo al día tienes muestra suficiente en unas dos semanas: una semana
+con la variante A y otra con la B, mismo día de la semana contra mismo día,
+para no comparar un lunes con un sábado.
