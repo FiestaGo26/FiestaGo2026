@@ -14,7 +14,9 @@
     "cine:voice": "node scripts/gen-cine-voice.mjs",
     "cine:render": "node scripts/render-cine.mjs",
     "cine:daily": "node scripts/daily.mjs",
-    "cine:daily-dry": "node scripts/daily.mjs --dry-run"
+    "cine:daily-dry": "node scripts/daily.mjs --dry-run",
+    "edit": "node scripts/edit.mjs",
+    "transcribe": "node scripts/transcribe.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.0",

@@ -254,3 +254,80 @@ DAILY_VIDEO_PRODUCER=cinematic
 
 y el cron de HeyGen se aparta solo. Para volver atrás, quita la variable —
 no hace falta tocar código ni desplegar nada.
+
+---
+
+# Montar tus propias grabaciones
+
+Tú grabas, esto monta. Hace, por este orden:
+
+1. **Encuadre** a 9:16 (recorta, no deforma)
+2. **Fondo**: lo deja, lo cambia por croma, o lo quita con IA
+3. **Corta los silencios** largos
+4. **Transcribe** en español, en local y gratis
+5. **Quema los subtítulos** con el estilo de la marca + CTA opcional
+
+```bash
+npm install                       # una vez
+pip install faster-whisper        # una vez · transcripción local
+
+node scripts/edit.mjs grabacion.mov --cut-silence --cta 3
+```
+
+Sale en `out/editado.mp4`.
+
+El orden importa: la transcripción va **después** del corte. Al revés, los
+tiempos de los subtítulos no cuadrarían con el vídeo ya cortado.
+
+## Cambiar el fondo
+
+Dos caminos, y el barato es el mejor:
+
+**Croma físico** — una tela verde de 15-25 € detrás de ti:
+
+```bash
+node scripts/edit.mjs grabacion.mov --background chroma --bg-color 0x0F1013
+node scripts/edit.mjs grabacion.mov --background chroma --bg-image fondo.jpg
+```
+
+Gratis, instantáneo y con los bordes limpios. `despill` quita de paso el
+reflejo verde en pelo y hombros, que es lo que delata un croma mal hecho.
+
+**Sin croma, con IA** — la separa el modelo:
+
+```bash
+node scripts/edit.mjs grabacion.mov --background ai --bg-image fondo.jpg
+```
+
+**0,025 $/segundo**: un vídeo de 30 s sale por 0,75 $. Necesita `FAL_KEY` y
+credenciales de Supabase (el vídeo se sube para que fal pueda leerlo). Los
+bordes del pelo salen peor que con croma real.
+
+## Subtítulos
+
+Se agrupan en líneas de 5 palabras **cortando por puntuación**. Agrupar solo
+por número de palabras produce líneas como "dado de alta. Date de", que se
+leen fatal. Ajusta con `--words 4` si los quieres más cortos.
+
+Si prefieres revisar el texto antes de quemarlo:
+
+```bash
+node scripts/transcribe.mjs grabacion.mov transcript.json   # transcribe
+# edita transcript.json a mano
+node scripts/edit.mjs grabacion.mov --transcript transcript.json
+```
+
+## Opciones
+
+| Opción | Qué hace |
+|---|---|
+| `--cut-silence [seg]` | Quita silencios de más de N segundos (0,6 por defecto) |
+| `--cta <seg>` | Tarjeta de CTA al final |
+| `--background chroma\|ai` | Cambia el fondo |
+| `--bg-color` / `--bg-image` | Fondo nuevo: color plano o imagen |
+| `--words <n>` | Palabras por línea de subtítulo |
+| `--model tiny\|base\|small\|medium` | Modelo de whisper (más grande = mejor y más lento) |
+| `--fal` | Transcribe en la nube en vez de en local |
+| `--no-subtitles` | Solo corta, sin subtitular |
+
+La transcripción local no manda tu grabación a ningún sitio.

@@ -53,3 +53,12 @@ export const LIPSYNC_MODEL = {
 export const TTS = {
   modelId: process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2',
 }
+
+// Quitar el fondo de un vídeo SIN croma físico. Devuelve la toma sobre verde
+// puro, y a partir de ahí reutilizamos el chromakey local (que ya está
+// probado) para poner el fondo que queramos.
+// Precio por 30 fotogramas ≈ por segundo a 30fps.
+export const BG_REMOVAL_MODEL = {
+  id:            'veed/video-background-removal/green-screen',
+  usdPerSecond:  0.025,
+}

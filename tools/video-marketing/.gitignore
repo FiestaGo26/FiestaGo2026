@@ -5,3 +5,5 @@ out/*.mp4
 public/shots/
 public/frames/
 .daily-reel.json
+.edit-tmp/
+public/edit/
