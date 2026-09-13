@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import PayFirstButton from './PayFirstButton'
+import { clauseForBooking } from '@/lib/payments/consent'
 
 // Página cliente para pagar el primer tramo (anticipo o 100%) de una
 // reserva ya confirmada por el proveedor. La URL viene en el email de
@@ -9,8 +10,11 @@ import PayFirstButton from './PayFirstButton'
 //   /pago-inicial/{bookingId}?email={client_email}
 //
 // Autenticación soft por email (mismo patrón que /pago-restante).
-// Cuando Stripe esté vivo, este mismo componente disparará el checkout
-// real. En modo TEST usa /api/mock/pay-first para simular.
+//
+// La cláusula de pérdida del anticipo se calcula aquí, en el servidor, y
+// se renderiza visible dentro del formulario de pago. El mismo texto es
+// el que el Server Action guarda en booking_consents: lo que se prueba
+// después es exactamente lo que el cliente tuvo delante al pagar.
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +29,10 @@ export default async function PagoInicialPage({
   searchParams,
 }: {
   params: Promise<{ bookingId: string }>
-  searchParams: Promise<{ email?: string }>
+  searchParams: Promise<{ email?: string; pago?: string }>
 }) {
   const { bookingId } = await params
-  const { email } = await searchParams
+  const { email, pago } = await searchParams
 
   const supabase = createAdminClient()
   const { data: booking } = await supabase
@@ -124,13 +128,23 @@ export default async function PagoInicialPage({
                   )}
                 </div>
 
-                {process.env.FIESTAGO_TEST_MODE === 'true' && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900 leading-relaxed">
-                    <strong>Modo test:</strong> FiestaGo aún no tiene Stripe activo. El botón "Pagar" simula el cobro instantáneamente para poder probar el flujo end-to-end. Cuando se conecte Stripe, aquí saldrá el checkout real con tarjeta.
+                {pago === 'procesado' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-900 leading-relaxed">
+                    <strong>Estamos confirmando tu pago.</strong> Tu banco ya ha autorizado la operación; en cuanto Stripe nos lo confirme (normalmente unos segundos) verás aquí el pago como recibido. Puedes recargar esta página.
                   </div>
                 )}
 
-                <PayFirstButton bookingId={bookingId} email={booking.client_email} amount={amount} />
+                {process.env.FIESTAGO_TEST_MODE === 'true' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900 leading-relaxed">
+                    <strong>Modo test:</strong> Stripe todavía no está activo en este entorno, así que el botón "Pagar" simula el cobro. Tu aceptación de las condiciones SÍ se registra igual que en producción, para poder probar el flujo completo.</div>
+                )}
+
+                <PayFirstButton
+                  bookingId={bookingId}
+                  email={booking.client_email}
+                  amount={amount}
+                  clauseText={clauseForBooking(booking, 'deposit')}
+                />
 
                 <p className="text-[11px] text-ink/45 text-center mt-4 leading-relaxed">
                   Tu pago queda retenido por FiestaGo (escrow) hasta que el evento se complete.

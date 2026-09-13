@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { generateDelegatedInvoice } from '@/lib/invoicing/generator'
-import { emailClientInvoicesReady } from '@/lib/resend'
+import { markSecondPaymentPaid } from '@/lib/payments/mark-paid'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,17 +8,13 @@ export const dynamic = 'force-dynamic'
 /**
  * Mock del cobro del segundo pago · SOLO ACTIVO EN MODO TEST.
  *
- * Marca el segundo pago como pagado sin cobrar dinero real. Sirve para
- * poder recorrer el flujo end-to-end antes de tener Stripe integrado.
- * Cuando Stripe esté vivo, este endpoint se elimina y el pago se marca
- * como pagado desde el webhook de Stripe payment_intent.succeeded.
+ * Marca el segundo pago como pagado sin cobrar dinero real y emite la
+ * factura delegada del tramo si el proveedor tiene el consentimiento
+ * activo. Con Stripe configurado esto lo hace el webhook
+ * (payment_intent.succeeded) con las mismas funciones.
  *
- * Efectos:
- *   1. bookings.second_payment_status = 'paid'
- *   2. bookings.second_payment_paid_at = ahora
- *   3. Si el proveedor tiene consent_delegated_invoicing = true,
- *      emite la factura Verifactu delegada por el segundo tramo
- *      (la del anticipo ya se emitió al confirmar la reserva).
+ * OJO: este atajo NO registra consentimiento. El flujo bueno de pruebas
+ * es /pago-restante, que sí lo registra aunque el cobro sea simulado.
  */
 export async function POST(
   req: NextRequest,
@@ -53,46 +48,10 @@ export async function POST(
     }, { status: 400 })
   }
 
-  const now = new Date().toISOString()
-
-  await supabase.from('bookings').update({
-    second_payment_status:  'paid',
-    second_payment_paid_at: now,
-  }).eq('id', bookingId)
-
-  // Emitir factura delegada del segundo tramo si el proveedor lo tiene activo.
-  // Opción A: el segundo pago es ÍNTEGRAMENTE del proveedor — la Garantía
-  // ya se cobró completa con el anticipo, así que aquí el importe delegado
-  // coincide con secondAmount tal cual.
-  const provider = booking.providers
-  const secondAmount = Number(booking.second_payment_amount || 0)
-  if (provider?.consent_delegated_invoicing && secondAmount > 0) {
-    const result = await generateDelegatedInvoice(supabase as any, booking, provider, {
-      amount: secondAmount,
-      concept: `Resto por servicios para evento del ${booking.event_date} (${booking.event_type || 'evento'})`,
-    })
-    if (result.error) {
-      console.error('delegated invoice (second payment) failed:', result.error)
-    } else if (result.invoiceId) {
-      // Enviar al cliente el enlace a la nueva factura sin obligarle a crear cuenta.
-      try {
-        const { data: inv } = await supabase
-          .from('invoices')
-          .select('id, full_number, total_amount, invoice_type')
-          .eq('id', result.invoiceId).maybeSingle()
-        if (inv) await emailClientInvoicesReady(booking, provider, [inv as any])
-      } catch (e) { console.error('[second payment invoice email] failed', e) }
-    }
+  const result = await markSecondPaymentPaid(supabase, booking, { source: 'mock' })
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error || 'Error simulando el pago' }, { status: 500 })
   }
 
-  // Notificación al admin para trazabilidad
-  await supabase.from('notifications').insert({
-    type:    'mock_second_payment',
-    title:   `✓ Segundo pago MOCK recibido · ${booking.client_name}`,
-    message: `${booking.client_name} completó el segundo pago (modo TEST, ${secondAmount}€) — evento ${booking.event_date}`,
-    data:    { booking_id: bookingId, amount: secondAmount, test_mode: true },
-    action_url: `/admin?booking=${bookingId}`,
-  }).catch(() => {})
-
-  return NextResponse.json({ ok: true, mock: true, amount: secondAmount })
+  return NextResponse.json({ ok: true, mock: true, amount: result.amount })
 }

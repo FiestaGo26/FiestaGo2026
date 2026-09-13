@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import PayRestButton from './PayRestButton'
+import { clauseForBooking } from '@/lib/payments/consent'
 
 // Página cliente para pagar el segundo tramo de una reserva con anticipo.
 // La URL viene en los emails de recordatorio del cron:
@@ -24,10 +25,10 @@ export default async function PagoRestantePage({
   searchParams,
 }: {
   params: Promise<{ bookingId: string }>
-  searchParams: Promise<{ email?: string }>
+  searchParams: Promise<{ email?: string; pago?: string }>
 }) {
   const { bookingId } = await params
-  const { email } = await searchParams
+  const { email, pago } = await searchParams
 
   const supabase = createAdminClient()
   const { data: booking } = await supabase
@@ -129,13 +130,23 @@ export default async function PagoRestantePage({
                   )}
                 </div>
 
-                {process.env.FIESTAGO_TEST_MODE === 'true' && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900 leading-relaxed">
-                    <strong>Modo test:</strong> FiestaGo aún no tiene Stripe activo. El botón "Pagar" simula el cobro instantáneamente para poder probar el flujo end-to-end. Cuando se conecte Stripe, aquí saldrá el checkout real con tarjeta.
+                {pago === 'procesado' && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-900 leading-relaxed">
+                    <strong>Estamos confirmando tu pago.</strong> Tu banco ya ha autorizado la operación; en cuanto Stripe nos lo confirme (normalmente unos segundos) verás aquí el pago como recibido. Puedes recargar esta página.
                   </div>
                 )}
 
-                <PayRestButton bookingId={bookingId} email={booking.client_email} amount={amount} />
+                {process.env.FIESTAGO_TEST_MODE === 'true' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-900 leading-relaxed">
+                    <strong>Modo test:</strong> Stripe todavía no está activo en este entorno, así que el botón "Pagar" simula el cobro. Tu aceptación de las condiciones SÍ se registra igual que en producción, para poder probar el flujo completo.</div>
+                )}
+
+                <PayRestButton
+                  bookingId={bookingId}
+                  email={booking.client_email}
+                  amount={amount}
+                  clauseText={clauseForBooking(booking, 'balance')}
+                />
 
                 <p className="text-[11px] text-ink/45 text-center mt-4 leading-relaxed">
                   Tu pago queda retenido por FiestaGo (escrow) hasta que el evento se complete.

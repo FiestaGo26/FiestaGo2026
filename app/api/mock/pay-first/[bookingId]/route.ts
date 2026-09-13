@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { markFirstPaymentPaid } from '@/lib/payments/mark-paid'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,9 +9,14 @@ export const dynamic = 'force-dynamic'
  * Mock del cobro del PRIMER pago (anticipo o 100% al reservar) · SOLO
  * EN MODO TEST.
  *
- * Marca el primer pago como pagado sin cobrar dinero real. Cuando
- * Stripe esté vivo se elimina este endpoint y el cobro se marca desde
- * el webhook Stripe checkout.session.completed.
+ * Marca el primer pago como pagado sin cobrar dinero real. Con Stripe
+ * configurado este endpoint sobra: el cobro se marca desde el webhook
+ * (payment_intent.succeeded), que usa exactamente las mismas funciones
+ * de lib/payments/mark-paid.
+ *
+ * OJO: este atajo NO registra consentimiento. El flujo bueno de pruebas
+ * es la propia página /pago-inicial, que sí escribe en booking_consents
+ * aunque el cobro sea simulado.
  */
 export async function POST(
   req: NextRequest,
@@ -38,24 +44,15 @@ export async function POST(
     return NextResponse.json({ error: 'El primer pago ya está marcado como pagado' }, { status: 400 })
   }
 
-  const now = new Date().toISOString()
-  await supabase.from('bookings').update({
-    first_payment_status:  'paid',
-    first_payment_paid_at: now,
-  }).eq('id', bookingId)
-
-  await supabase.from('notifications').insert({
-    type:    'mock_first_payment',
-    title:   `✓ Primer pago MOCK recibido · ${booking.client_name}`,
-    message: `${booking.client_name} completó el primer pago (modo TEST, ${booking.first_payment_amount}€) — evento ${booking.event_date}`,
-    data:    { booking_id: bookingId, amount: booking.first_payment_amount, test_mode: true },
-    action_url: `/admin?booking=${bookingId}`,
-  }).catch(() => {})
+  const result = await markFirstPaymentPaid(supabase, booking, { source: 'mock' })
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error || 'Error simulando el pago' }, { status: 500 })
+  }
 
   return NextResponse.json({
     ok: true,
     mock: true,
-    amount: booking.first_payment_amount,
+    amount: result.amount,
     message: 'Primer pago simulado. Ahora el proveedor puede confirmar la reserva y se emitirá la factura automáticamente.',
   })
 }

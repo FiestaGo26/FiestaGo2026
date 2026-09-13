@@ -5,6 +5,7 @@ import {
   emailClientReservationCancelledByNonpayment,
   emailProviderReservationCancelledByNonpayment,
 } from '@/lib/emails/second-payment'
+import { whatsappSecondPaymentReminder } from '@/lib/whatsapp-notify'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient()
   const today    = startOfDayMadrid(new Date())
-  const stats    = { d7: 0, d3: 0, d0: 0, marked_overdue: 0, cancelled: 0, errors: 0 }
+  const stats    = { d7: 0, d3: 0, d0: 0, marked_overdue: 0, cancelled: 0, errors: 0, whatsapp: 0 }
   const logs: string[] = []
 
   // 1) Traer todas las reservas con segundo pago pendiente o en gracia.
@@ -82,6 +83,17 @@ export async function POST(req: NextRequest) {
       const daysUntil = Math.round((due.getTime() - today.getTime()) / 86400_000)
       const graceDays = b.second_payment_grace_days ?? 7
 
+      // WhatsApp además del email. El enlace lleva al checkout del saldo:
+      // el segundo plazo se cobra siempre on-session, con el cliente
+      // autenticándose ante su banco, nunca con la tarjeta guardada.
+      const alsoWhatsapp = async (variant: 'd7' | 'd3' | 'd0' | 'overdue') => {
+        const wa = await whatsappSecondPaymentReminder(b, variant)
+        if (wa.ok) { stats.whatsapp++; logs.push(`  ↳ whatsapp ${variant} · ${b.id}`) }
+        else if (wa.error && !/no configurada|movil válido|móvil válido/i.test(wa.error)) {
+          logs.push(`  ↳ whatsapp ${variant} falló · ${b.id} · ${wa.error}`)
+        }
+      }
+
       // ─── CANCELACIÓN AUTOMÁTICA: pasado el grace period ──────────────
       if (daysUntil <= -graceDays && b.second_payment_status !== 'cancelled') {
         await cancelForNonpayment(supabase, b)
@@ -100,6 +112,7 @@ export async function POST(req: NextRequest) {
         const res = await emailClientSecondPaymentReminder(b, b.providers, 'overdue')
         if (res.ok) stats.marked_overdue++
         else stats.errors++
+        await alsoWhatsapp('overdue')
         logs.push(`⚠ overdue · ${b.id} · vencido hace ${-daysUntil}d`)
         continue
       }
@@ -113,6 +126,7 @@ export async function POST(req: NextRequest) {
             .eq('id', b.id)
           stats.d7++
         } else stats.errors++
+        await alsoWhatsapp('d7')
         logs.push(`↗ d-7 · ${b.id}`)
       }
       else if (daysUntil === 3 && !b.second_payment_reminder_d3_sent_at) {
@@ -123,6 +137,7 @@ export async function POST(req: NextRequest) {
             .eq('id', b.id)
           stats.d3++
         } else stats.errors++
+        await alsoWhatsapp('d3')
         logs.push(`↗ d-3 · ${b.id}`)
       }
       else if (daysUntil === 0 && !b.second_payment_reminder_d0_sent_at) {
@@ -133,6 +148,7 @@ export async function POST(req: NextRequest) {
             .eq('id', b.id)
           stats.d0++
         } else stats.errors++
+        await alsoWhatsapp('d0')
         logs.push(`↗ d-0 · ${b.id}`)
       }
     } catch (err: any) {

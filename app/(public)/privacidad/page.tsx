@@ -58,6 +58,7 @@ export default function PrivacidadPage() {
                   ['Cumplir obligaciones fiscales, contables y de consumo', 'Obligación legal (art. 6.1.c RGPD)'],
                   ['Enviar comunicaciones comerciales propias', 'Consentimiento (art. 6.1.a RGPD), revocable en cualquier momento'],
                   ['Prevenir el fraude y verificar reclamaciones de la Garantía', 'Interés legítimo (art. 6.1.f RGPD)'],
+                  ['Conservar la prueba de aceptación de las condiciones de pago y de la prestación del servicio, para defenderse frente a reclamaciones de cargo ante entidades emisoras de tarjeta', 'Interés legítimo (art. 6.1.f RGPD) — defensa frente a reclamaciones'],
                 ].map(([finalidad, base]) => (
                   <tr key={finalidad} className="border-t border-stone-100 align-top">
                     <td className="p-3">{finalidad}</td>
@@ -93,6 +94,12 @@ export default function PrivacidadPage() {
         <Section title="5. Plazos de conservación">
           <p>
             Los datos se conservan mientras la cuenta esté activa y, tras su cierre, bloqueados durante los plazos de prescripción legal (con carácter general, 6 años a efectos mercantiles y 4 a efectos fiscales). Las facturas emitidas se conservan íntegras junto con su encadenamiento de hash SHA-256 durante el plazo mercantil de 6 años y son inmutables (para anular se emite una factura rectificativa). Los datos de reclamaciones de la Garantía se conservan mientras puedan derivarse responsabilidades.
+          </p>
+          <p className="mt-3">
+            <strong>Registros de aceptación y de prestación del servicio.</strong> Al pagar una reserva se registra la aceptación de las condiciones de pago y reembolso: fecha y hora, dirección IP, navegador, URL de la página y copia literal del texto mostrado en pantalla, junto con la huella SHA-256 del documento aceptado. Se registra igualmente la confirmación del proveedor de haber prestado el servicio, y el expediente de cualquier reclamación de cargo.
+          </p>
+          <p className="mt-2">
+            Estos registros se conservan durante <strong>14 meses desde la fecha del evento</strong>. El plazo responde a que las entidades emisoras de tarjeta admiten reclamaciones hasta 120 días después de la prestación del servicio, y entre el primer pago y el evento pueden transcurrir hasta ocho meses: sin ese margen, FiestaGo no podría acreditar lo que el cliente aceptó ni que el servicio se prestó. La base jurídica es el interés legítimo en la defensa frente a reclamaciones (art. 6.1.f RGPD). Los registros son inmutables por diseño y no se modifican ni se eliminan durante ese periodo, por lo que el ejercicio del derecho de supresión sobre ellos se atenderá mediante bloqueo hasta el vencimiento del plazo.
           </p>
         </Section>
 

@@ -2,6 +2,25 @@
 
 Histórico cronológico de cambios significativos.
 
+## 2026-09-13
+
+Infraestructura de evidencia anti-chargeback (el cliente paga con 6-8 meses de
+antelación y la ventana de reclamación de la tarjeta cuenta desde la fecha del
+servicio, no desde el cobro).
+
+- ✨ Cuatro tablas probatorias inmutables: `terms_versions`, `booking_consents`, `service_confirmations`, `dispute_events` (RLS + triggers que lanzan excepción en UPDATE/DELETE)
+- ✨ Captura de consentimiento en el checkout: cláusula de pérdida del anticipo visible en la página, dos checkboxes separados sin premarcar, Server Action que escribe la fila ANTES de crear el PaymentIntent
+- ✨ IP real detrás de Netlify (`x-nf-client-connection-ip` → `x-forwarded-for` primer valor → `x-real-ip`) + user agent sin truncar
+- ✨ Cobro real con Stripe: PaymentIntent con `statement_descriptor_suffix: 'FIESTAGO'`, metadata completa y 3DS forzado; confirmación on-session con Stripe Elements en los dos tramos
+- ✨ Webhook `/api/webhooks/stripe` con firma verificada: pagos + los cuatro eventos de disputa
+- ✨ Compilación automática de evidencia al abrirse una disputa: tres PDF (servicio, comunicaciones, política de reembolso) generados sin dependencias y subidos a Stripe, adjuntados como BORRADOR (nunca `submit: true` automático)
+- ✨ Alerta por Resend a contacto@fiestago.es con importe, fecha límite y enlace a la disputa
+- ✨ Panel del proveedor: botón "Confirmar servicio prestado" desde el día del evento + recordatorio automático a las 24 h (`/api/cron/service-confirmation-reminders`)
+- ✨ `/admin/disputas`: listado con cuenta atrás, evidencia editable, envío manual e indicador de reservas vulnerables
+- ✨ Recordatorio del segundo pago también por WhatsApp, con enlace al checkout del saldo (on-session, nunca off-session)
+- 📄 Retención de 14 meses desde la fecha del evento documentada en la política de privacidad y en `docs/retencion-evidencia.md`
+- 🛠 `tools/` excluido del type-check raíz: `tools/video-marketing` es un sub-proyecto con su propio `package.json` y rompía `next build`
+
 ## 2026-05-07 / 2026-05-08
 
 - ✨ Sistema de servicios por proveedor con foto/vídeo (`provider_services` + bucket `provider-media`)

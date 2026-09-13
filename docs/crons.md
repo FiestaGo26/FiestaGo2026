@@ -27,7 +27,16 @@ Todos los endpoints requieren autenticación via header `x-cron-secret` con el v
   - Marca la reserva como `overdue` un día después del vencimiento
   - Cancela automáticamente la reserva tras 7 días de gracia sin pago
   - Al cancelar: anticipo va al proveedor como compensación, se libera la fecha, se avisa a ambas partes por email
+  - Envía también el recordatorio por WhatsApp con enlace al checkout del saldo, si `WHATSAPP_SECOND_PAYMENT_TEMPLATE` está configurada (el segundo plazo se cobra siempre on-session, nunca con la tarjeta guardada)
 - **Idempotente**: se puede ejecutar varias veces al día sin duplicar envíos.
+
+### 4 · Recordatorio de confirmación de servicio al proveedor
+
+- **Endpoint**: `POST https://fiestago.es/api/cron/service-confirmation-reminders`
+- **Frecuencia**: 1 vez al día · 10:00 hora Madrid
+- **Qué hace**: busca reservas cuyo evento fue hace entre 1 y 7 días, ya cobradas y sin confirmación del proveedor, y le envía un email pidiéndole que pulse "Confirmar servicio prestado" en su panel.
+- **Por qué importa**: la ventana de reclamación de la tarjeta cuenta desde la fecha del servicio (hasta 120 días después del evento). Una reserva celebrada y sin confirmar es la que perdemos si llega una disputa por "servicio no prestado".
+- **Idempotente**: solo se envía un recordatorio por reserva (`bookings.service_confirmation_reminder_sent_at`).
 
 ## Cómo configurar el cron (2 opciones)
 

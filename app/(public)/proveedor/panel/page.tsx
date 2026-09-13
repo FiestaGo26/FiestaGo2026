@@ -9,6 +9,7 @@ import { precioCliente, formatEuro } from '@/lib/pricing'
 import QuotesTab from './QuotesTab'
 import QuickRepliesTab from './QuickRepliesTab'
 import GmbTab from './GmbTab'
+import { confirmServiceDelivered } from './actions'
 import WelcomeModal from './WelcomeModal'
 
 type ServiceMedia = {
@@ -58,6 +59,8 @@ type Booking = {
   // Reserva gestionada por wedding/event planner en nombre del cliente
   planner_name?: string | null
   planner_email?: string | null
+  // Confirmación de que el servicio se prestó (evidencia anti-chargeback)
+  service_confirmed_at?: string | null
 }
 
 type Provider = {
@@ -1033,6 +1036,37 @@ function ProveedorPanelInner() {
     })
     setBookings(b => b.map(x => x.id === id ? { ...x, status } : x))
     toast.success(status === 'confirmed' ? 'Reserva confirmada ✓' : 'Reserva cancelada')
+  }
+
+  // Confirmación de servicio prestado. Escribe en service_confirmations
+  // (tabla inmutable) vía Server Action: es la prueba que decide una
+  // disputa por "servicio no prestado".
+  async function confirmService(bookingId: string) {
+    if (!provider) return
+    const notes = window.prompt(
+      'Confirmas que prestaste el servicio. Puedes añadir una nota (opcional): hora de llegada, incidencias, quién te recibió…',
+      ''
+    )
+    if (notes === null) return   // el proveedor canceló el diálogo
+
+    const t = toast.loading('Registrando la confirmación…')
+    try {
+      const res = await confirmServiceDelivered({
+        bookingId,
+        providerId: provider.id,
+        notes: notes || undefined,
+        adminPassword: (typeof window !== 'undefined' && adminAsId)
+          ? (localStorage.getItem('fg_admin_pass') || undefined)
+          : undefined,
+      })
+      if (!res.ok) throw new Error(res.error)
+      setBookings(b => b.map(x => x.id === bookingId
+        ? { ...x, service_confirmed_at: res.confirmedAt, status: x.status === 'confirmed' ? 'completed' : x.status }
+        : x))
+      toast.success(res.alreadyConfirmed ? 'Ya estaba confirmado ✓' : 'Servicio confirmado ✓', { id: t })
+    } catch (e: any) {
+      toast.error(e?.message || 'No pude registrar la confirmación', { id: t })
+    }
   }
 
   async function resendBookingEmail(bookingId: string, kind: string) {
@@ -2127,6 +2161,37 @@ function ProveedorPanelInner() {
                     </button>
                   </div>
                 )}
+                {/* Confirmación del servicio prestado · disponible desde el día
+                    del evento. Es la evidencia que se adjunta si el cliente
+                    reclama a su banco meses después. */}
+                {b.status !== 'cancelled' && b.status !== 'pending' && (() => {
+                  const todayMadrid = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' })
+                  const eventPassed  = String(b.event_date).slice(0, 10) <= todayMadrid
+                  if (b.service_confirmed_at) {
+                    return (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-emerald-900">
+                        <div className="font-semibold mb-0.5">✓ Servicio confirmado</div>
+                        <div className="opacity-85">
+                          Registrado el {new Date(b.service_confirmed_at).toLocaleString('es-ES')}. Queda como prueba de que prestaste el servicio.
+                        </div>
+                      </div>
+                    )
+                  }
+                  if (!eventPassed) {
+                    return (
+                      <div className="bg-stone-50 border border-stone-200 rounded-xl px-3 py-2.5 mb-3 text-xs text-ink/55">
+                        Podrás confirmar que prestaste el servicio a partir del día del evento.
+                      </div>
+                    )
+                  }
+                  return (
+                    <button onClick={() => confirmService(b.id)}
+                      className="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-emerald-700 transition-colors mb-3">
+                      ✓ Confirmar servicio prestado
+                    </button>
+                  )
+                })()}
+
                 {/* Reenvío de emails · útil si el cliente los borró o no le llegaron */}
                 <div className="flex flex-wrap gap-2 text-xs">
                   <button onClick={() => resendBookingEmail(b.id, 'client_received')}

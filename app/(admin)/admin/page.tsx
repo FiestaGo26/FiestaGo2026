@@ -1030,6 +1030,7 @@ export default function AdminPage() {
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
     { id:'incidents',    icon:'🚨', label:'Incidencias', badge: incidentsStats.open || 0 },
+    { id:'disputas',     icon:'⚖️', label:'Disputas', href:'/admin/disputas' },
     { id:'customers',    icon:'👥', label:'Socios' },
     { id:'waitlist',     icon:'🎉', label:'Waitlist',     badge: waitlistStats.last7d || 0 },
     { id:'notifications',icon:'🔔', label:'Notificaciones', badge: unread },
@@ -1061,7 +1062,12 @@ export default function AdminPage() {
         </div>
         <nav style={{ padding:'12px 10px', flex:1, overflowY:'auto' }}>
           {NAV.map(item => (
-            <button key={item.id} onClick={() => { setSection(item.id); if(item.id==='notifications') markNotifsRead(); setMobileNavOpen(false); }}
+            <button key={item.id} onClick={() => {
+              // Los items con href son vistas propias fuera del panel de
+              // una sola página (por ejemplo /admin/disputas).
+              if ((item as any).href) { window.location.href = (item as any).href; return }
+              setSection(item.id); if(item.id==='notifications') markNotifsRead(); setMobileNavOpen(false)
+            }}
               style={{ width:'100%', display:'flex', alignItems:'center', gap:9, padding:'8px 11px',
                 borderRadius:10, border:'none', cursor:'pointer', textAlign:'left', marginBottom:3,
                 background: section===item.id ? '#F43F5E22' : 'transparent',
