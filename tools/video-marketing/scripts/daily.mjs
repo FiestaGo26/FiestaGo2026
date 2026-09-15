@@ -106,10 +106,22 @@ lines.forEach((l, i) => console.log(`  ${i + 1}. "${l}"`))
 
 // Un clip real tuyo manda sobre cualquier cara generada: sale más barato y
 // se ve mejor, porque todo menos la boca es metraje de verdad.
-const presenterClip  = process.env.DAILY_PRESENTER_CLIP_URL
+//
+// DAILY_PRESENTER_CLIP_URL admite varias URLs separadas por comas. La ropa
+// no se puede cambiar por software, así que grabar dos o tres clips base con
+// distinta camiseta y rotarlos evita salir igual vestido todos los días.
+// La rotación va por día del año: estable y sin estado que guardar.
+const clips = (process.env.DAILY_PRESENTER_CLIP_URL || '')
+  .split(',').map(u => u.trim()).filter(Boolean)
+const dayOfYear = Math.floor(
+  (Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 0)) / 86400000)
+const presenterClip = clips.length ? clips[dayOfYear % clips.length] : null
 const presenterImage = process.env.DAILY_PRESENTER_IMAGE_URL
 if (presenterClip) {
-  console.log('\n· Presentador: tu grabación real · solo se paga el lipsync')
+  console.log(`\n· Presentador: tu grabación real · solo se paga el lipsync`)
+  if (clips.length > 1) {
+    console.log(`  clip ${(dayOfYear % clips.length) + 1} de ${clips.length} (rotan por día)`)
+  }
 }
 if (!presenterClip && !presenterImage && !dryRun) {
   console.log('\n⚠  Sin DAILY_PRESENTER_IMAGE_URL: se generará una cara nueva ($0,04)')
