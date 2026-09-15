@@ -17,7 +17,8 @@
     "cine:daily-dry": "node scripts/daily.mjs --dry-run",
     "edit": "node scripts/edit.mjs",
     "transcribe": "node scripts/transcribe.mjs",
-    "doctor": "node scripts/doctor.mjs"
+    "doctor": "node scripts/doctor.mjs",
+    "voice-sample": "node scripts/voice-sample.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "^4.0.0",
