@@ -122,7 +122,41 @@ for (const r of reels) {
 
     if (dryRun) {
       makePlaceholder(clipPath, shot)
+      if (shot.clipUrl) console.log('  · (usará tu grabación real)')
       console.log(`  ✓ placeholder ${shot.durationInSeconds}s · 0,00 $`)
+      continue
+    }
+
+    // ─── 0. Clip real ya grabado ────────────────────────────────
+    // Si la toma trae metraje propio, no hay nada que generar: va directo
+    // al lipsync. Ni imagen ni vídeo que pagar.
+    if (shot.clipUrl) {
+      console.log('  · clip real ya grabado · no se genera vídeo (0 $)')
+      let videoUrl = shot.clipUrl
+
+      if (shot.dialogue) {
+        const c = character(shot.dialogue.characterId)
+        process.stdout.write(`  · voz de ${c.name}… `)
+        const mp3 = await speak(shot.dialogue.line, voiceIdFor(c))
+        console.log(`✓ ${(mp3.length / 1024).toFixed(0)} KB`)
+
+        process.stdout.write('  · sincronizando labios… ')
+        const synced = await falRun(LIPSYNC_MODEL.id, {
+          video_url: videoUrl,
+          audio_url: toDataUri(mp3),
+        }, st => process.stdout.write(`${st[0]}`))
+        const syncedUrl = synced.video?.url
+        if (!syncedUrl) {
+          throw new Error(`Lipsync no devolvió vídeo para ${shot.id}: ${JSON.stringify(synced).slice(0, 200)}`)
+        }
+        videoUrl = syncedUrl
+        const lipCost = shot.durationInSeconds * LIPSYNC_MODEL.usdPerSecond
+        spent += lipCost
+        console.log(` ✓ $${lipCost.toFixed(2)}`)
+      }
+
+      const bytes = await download(videoUrl, clipPath)
+      console.log(`  ✓ ${(bytes / 1024 / 1024).toFixed(1)} MB`)
       continue
     }
 

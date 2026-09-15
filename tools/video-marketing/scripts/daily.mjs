@@ -104,8 +104,14 @@ const lines = splitIntoLines(content.script, SPOKEN_SHOTS)
 console.log('▶ Reparto de frases:')
 lines.forEach((l, i) => console.log(`  ${i + 1}. "${l}"`))
 
+// Un clip real tuyo manda sobre cualquier cara generada: sale más barato y
+// se ve mejor, porque todo menos la boca es metraje de verdad.
+const presenterClip  = process.env.DAILY_PRESENTER_CLIP_URL
 const presenterImage = process.env.DAILY_PRESENTER_IMAGE_URL
-if (!presenterImage && !dryRun) {
+if (presenterClip) {
+  console.log('\n· Presentador: tu grabación real · solo se paga el lipsync')
+}
+if (!presenterClip && !presenterImage && !dryRun) {
   console.log('\n⚠  Sin DAILY_PRESENTER_IMAGE_URL: se generará una cara nueva ($0,04)')
   console.log('   y puede no parecerse a la de ayer. Fija una imagen aprobada.\n')
 }
@@ -123,7 +129,7 @@ const reel = {
       id:   `0${i + 1}-habla`,
       durationInSeconds: SHOT_SECONDS,
       characterId: presenterId,
-      ...(presenterImage ? { imageUrl: presenterImage } : {
+      ...(presenterClip ? { clipUrl: presenterClip } : presenterImage ? { imageUrl: presenterImage } : {
         framePrompt:
           `Medium close shot of ${presenter.look}, speaking directly to camera in a bright ` +
           `modern office with soft depth of field behind her, confident and warm, ${LOOK}`,

@@ -13,10 +13,15 @@ name: Vídeo diario para RRSS (HeyGen)
 # Cron único 06:00 UTC = 08:00 Madrid verano / 07:00 invierno.
 # Si quieres mover la hora cambia el cron (https://crontab.guru/).
 
+# ⛔ PROGRAMACIÓN DESACTIVADA — el avatar de HeyGen no convencía y se dejó
+# de pagar. Desde entonces el cron seguía disparándose cada mañana y fallando
+# con 402 insufficient_credit: ruido diario sin ningún valor.
+# El vídeo diario lo produce ahora daily-cinematic-video.yml con la cara real.
+# Para reactivarlo: recupera créditos en HeyGen y descomenta el schedule.
 on:
-  schedule:
-    - cron: '0 6 * * *'
-  workflow_dispatch:        # Permite lanzarlo a mano desde GitHub UI
+  # schedule:
+  #   - cron: '0 6 * * *'
+  workflow_dispatch:        # Sigue pudiendo lanzarse a mano desde Actions
 
 jobs:
   generate-and-poll:
@@ -75,3 +80,28 @@ jobs:
             fi
           done
           echo "⚠️ Polling agotó intentos. El próximo polling manual o el cron de mañana lo cogerá."
+
+      # Este workflow falló 60+ días seguidos sin que nadie se enterara:
+      # HeyGen se quedó sin créditos el 12 de julio y el cron siguió
+      # intentándolo cada mañana en silencio. Un trabajo automático que falla
+      # callado es peor que no tenerlo.
+      - name: Avisar por email si algo ha fallado
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ADMIN_EMAIL:    ${{ secrets.ADMIN_EMAIL }}
+          RUN_URL:        ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$ADMIN_EMAIL" ]; then
+            echo "⚠ Sin RESEND_API_KEY o ADMIN_EMAIL: no puedo avisar por email."
+            exit 0
+          fi
+          curl -sS -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"FiestaGo <contacto@fiestago.es>\",
+              \"to\": [\"$ADMIN_EMAIL\"],
+              \"subject\": \"⚠ El vídeo diario ha fallado\",
+              \"text\": \"El vídeo de hoy no se ha generado.\n\nRevisa el log completo aquí:\n$RUN_URL\n\nCausa más habitual: créditos de HeyGen agotados.\"
+            }" || echo "⚠ No se pudo enviar el aviso, pero el fallo ya está registrado arriba."

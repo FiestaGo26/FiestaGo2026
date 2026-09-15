@@ -23,6 +23,13 @@ export type AiShot = {
    */
   framePrompt?: string
   /**
+   * Clip de vídeo REAL ya grabado (p.ej. tu propia grabación), público.
+   * Se salta la generación entera: no se paga ni imagen ni vídeo, solo el
+   * lipsync que le pone la voz nueva. Es la vía más barata y la que mejor
+   * se ve, porque todo menos la boca es metraje real.
+   */
+  clipUrl?: string
+  /**
    * Imagen pública ya existente de la que partir — p.ej. una que haya
    * generado el agente de marketing del panel y esté en el bucket
    * `social-posts`. Se salta el paso de Flux: solo se paga el vídeo.

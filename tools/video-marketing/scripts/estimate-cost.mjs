@@ -39,14 +39,14 @@ let grandTotal = 0
 
 for (const r of targets) {
   const ai = aiShots(r)
-  const aiSeconds = ai.reduce((a, s) => a + s.durationInSeconds, 0)
+  const aiSeconds = ai.filter(s => !s.clipUrl).reduce((a, s) => a + s.durationInSeconds, 0)
   const motionCount = r.shots.length - ai.length
 
   const dial        = dialogueShots(r)
   const dialSeconds = dial.reduce((a, s) => a + s.durationInSeconds, 0)
   const lipsyncClean= dialSeconds * LIPSYNC_MODEL.usdPerSecond
   const videoClean  = aiSeconds * vm.usdPerSecond
-  const needImage = ai.filter(s => !s.imageUrl).length
+  const needImage = ai.filter(s => !s.imageUrl && !s.clipUrl).length
   const reused    = ai.length - needImage
   const imageClean = needImage * IMAGE_MODEL.usdPerImage
   const clean = videoClean + imageClean + lipsyncClean
