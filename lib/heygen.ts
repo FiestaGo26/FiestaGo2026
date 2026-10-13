@@ -9,7 +9,12 @@
 //
 // Variables de entorno:
 //   HEYGEN_API_KEY      — API key del panel HeyGen (Settings → API)
-//   HEYGEN_AVATAR_ID    — id del avatar custom del usuario
+//   HEYGEN_AVATAR_ID    — id del LOOK a usar (no el del grupo). Se saca de
+//                         la API: list_avatar_looks devuelve un id por look.
+//   HEYGEN_CHARACTER_TYPE — 'avatar' (por defecto, para digital_twin y
+//                         studio_avatar) o 'talking_photo' (para los looks
+//                         de tipo photo_avatar). Si no coincide con el tipo
+//                         real del look, HeyGen rechaza la petición.
 //   HEYGEN_VOICE_ID     — id de la voz clonada del usuario
 //   HEYGEN_BACKGROUND   — opcional, color hex (#f6f6f6 por defecto)
 // ───────────────────────────────────────────────────────────────────────
@@ -77,13 +82,25 @@ export async function generateVideo(opts: {
   if (pitch)   voicePayload.pitch   = pitch
   if (emotion) voicePayload.emotion = emotion
 
+  // HeyGen tiene dos familias de personaje y NO comparten payload:
+  //
+  //   digital_twin / studio_avatar → { type: 'avatar', avatar_id }
+  //   photo_avatar (talking photo) → { type: 'talking_photo', talking_photo_id }
+  //
+  // En la cuenta conviven los dos: el gemelo digital grabado en vídeo y los
+  // looks generados a partir de fotos. Si se cambia de look sin cambiar el
+  // tipo, HeyGen rechaza la petición. Por eso el tipo es configurable.
+  const characterType = process.env.HEYGEN_CHARACTER_TYPE === 'talking_photo'
+    ? 'talking_photo'
+    : 'avatar'
+
+  const character = characterType === 'talking_photo'
+    ? { type: 'talking_photo', talking_photo_id: avatarId }
+    : { type: 'avatar', avatar_id: avatarId, avatar_style: 'normal' }
+
   const body = {
     video_inputs: [{
-      character: {
-        type:         'avatar',
-        avatar_id:    avatarId,
-        avatar_style: 'normal',
-      },
+      character,
       voice: voicePayload,
       background: {
         type:  'color',
