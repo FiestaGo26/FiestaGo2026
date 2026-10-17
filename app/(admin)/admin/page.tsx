@@ -9,6 +9,7 @@ import { buildWebFormDraft } from '@/lib/outreach'
 import WhatsappInbox from './WhatsappInbox'
 import ContentVideos from './ContentVideos'
 import EnvCheckCard from './EnvCheckCard'
+import CeoAgent from './CeoAgent'
 
 const ADMIN_PASS = typeof window !== 'undefined'
   ? localStorage.getItem('fg_admin_pass') || '' : ''
@@ -93,6 +94,11 @@ function LoginScreen({ onLogin }: { onLogin: (pass: string) => void }) {
 export default function AdminPage() {
   const [authed,    setAuthed]    = useState(false)
   const [section,   setSection]   = useState('dashboard')
+  // Deep-link desde emails (p. ej. /admin?section=ceo del informe del CEO)
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get('section')
+    if (s) setSection(s)
+  }, [])
   const [providers, setProviders] = useState<Provider[]>([])
   const [notifs,    setNotifs]    = useState<Notification[]>([])
   const [unread,    setUnread]    = useState(0)
@@ -1025,6 +1031,7 @@ export default function AdminPage() {
   // ── NAV ───────────────────────────────────────────────────────────────────
   const NAV = [
     { id:'dashboard',    icon:'📊', label:'Dashboard' },
+    { id:'ceo',          icon:'🧠', label:'Agente CEO' },
     { id:'metrics',      icon:'📈', label:'Métricas' },
     { id:'financials',   icon:'💰', label:'Cobros y facturación' },
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
@@ -2548,6 +2555,7 @@ export default function AdminPage() {
           {/* ══ WHATSAPP ══ */}
           {section === 'whatsapp' && <WhatsappInbox />}
           {section === 'content'  && <ContentVideos />}
+          {section === 'ceo'      && <CeoAgent />}
         </div>
       </main>
 
