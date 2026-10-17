@@ -56,3 +56,21 @@ solo del que has cambiado + `npm run render -- 01-demand-consultas`.
 - **Voz**: cambia `ELEVENLABS_VOICE_ID` a otra voz de tu cuenta ElevenLabs
 - **Colores/tipografía**: `src/theme.ts`
 - **Duración**: `src/scripts.ts` cada scene tiene `durationInSeconds`
+
+## Vídeo del Agente CEO (`ceo-agente-ia`)
+
+Vídeo vertical de ~56 s estilo TikTok explicativo: checklist de 5 pasos que
+se va marcando, tarjetas de UI animadas (chat, métricas, lista de tareas,
+rutinas, propuestas) y subtítulos con la palabra clave resaltada.
+
+- Guion y escenas: `src/ceo-agent.ts` (en `caption`, lo que va entre `*` sale en violeta)
+- Composición: `src/CeoAgentVideo.tsx`
+- Render solo de este vídeo:
+
+```bash
+node scripts/gen-voices.mjs ceo-agente-ia     # voz con ElevenLabs
+node scripts/render-all.mjs ceo-agente-ia     # → out/ceo-agente-ia.mp4
+```
+
+Si no existe el MP3 de voz, `render-all` lo renderiza mudo en vez de fallar.
+En GitHub: Actions → 🎬 Render marketing videos → slug `ceo-agente-ia`.

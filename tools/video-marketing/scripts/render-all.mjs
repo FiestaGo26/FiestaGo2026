@@ -12,7 +12,7 @@
 
 import { bundle } from '@remotion/bundler'
 import { renderMedia, selectComposition } from '@remotion/renderer'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -30,7 +30,9 @@ const serveUrl = await bundle({
 })
 
 // Cargamos los slugs desde scripts.ts
-const scriptsText = await import('node:fs').then(f => f.readFileSync(join(ROOT, 'src/scripts.ts'), 'utf8'))
+// scripts.ts (los 10 guiones) + ceo-agent.ts (vídeo del Agente CEO)
+const scriptsText = await import('node:fs').then(f =>
+  ['src/scripts.ts', 'src/ceo-agent.ts'].map(p => f.readFileSync(join(ROOT, p), 'utf8')).join('\n'))
 const slugs = []
 const rx = /slug:\s*'([^']+)'/g
 let m
@@ -43,12 +45,15 @@ console.log(`🎬 Renderizando ${targets.length} vídeo${targets.length !== 1 ? 
 
 for (const slug of targets) {
   const outPath = join(OUT_DIR, `${slug}.mp4`)
-  console.log(`▶ ${slug}`)
+  // Sin MP3 de voz (p. ej. sin ElevenLabs) se renderiza mudo en vez de fallar
+  const noVoice = !existsSync(join(ROOT, 'public', 'voices', `${slug}.mp3`))
+  console.log(`▶ ${slug}${noVoice ? ' (sin voz)' : ''}`)
 
   const composition = await selectComposition({
     serveUrl,
     id: slug,
-    inputProps: { slug },
+    ...(process.env.REMOTION_BROWSER ? { browserExecutable: process.env.REMOTION_BROWSER } : {}),
+    inputProps: { slug, noVoice },
   })
 
   await renderMedia({
@@ -56,8 +61,9 @@ for (const slug of targets) {
     serveUrl,
     codec: 'h264',
     outputLocation: outPath,
-    inputProps: { slug },
+    inputProps: { slug, noVoice },
     concurrency: 1,
+    ...(process.env.REMOTION_BROWSER ? { browserExecutable: process.env.REMOTION_BROWSER } : {}),
     onProgress: ({ progress }) => {
       process.stdout.write(`\r  render ${(progress * 100).toFixed(0)}%   `)
     },

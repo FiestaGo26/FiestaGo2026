@@ -161,6 +161,15 @@ node tools/fiegago-content-gen/fiegago-content-gen.mjs --confirm
 
 Recorre 10 ciudades × 12 categorías y genera una imagen editorial por combinación. Salida en `FiestaGo-Contenido/headers/{slug}/imagen.jpg`.
 
+### G. Agente CEO (rutinas automáticas)
+
+Agente IA con rol de CEO (`lib/ceo-agent.ts`). Lee métricas reales de Supabase (proveedores, reservas, waitlist, marketing, alertas, incidencias), las analiza con Claude según su lista de tareas y guarda un informe + hasta 3 propuestas.
+
+- **Rutinas** (`.github/workflows/ceo-agent.yml` → `POST /api/cron/ceo-agent`): parte diario 07:52 y informe semanal los lunes 09:17 (hora Madrid en verano).
+- **Email** a `ADMIN_EMAIL` vía Resend: el semanal siempre; el diario solo si hay problemas o propuestas.
+- **Regla de oro**: el agente no envía nada a proveedores/clientes. Todo queda como propuesta en `/admin` → 🧠 Agente CEO para aprobar/descartar.
+- **Requisitos**: aplicar `tools/migrations/migration-ceo-agent.sql`. Usa `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `CRON_SECRET` (ya existentes). Modelo configurable con `CEO_MODEL`.
+
 ## 6. Setup en un ordenador NUEVO
 
 ```bash

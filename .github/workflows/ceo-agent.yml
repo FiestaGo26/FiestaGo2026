@@ -1,0 +1,48 @@
+name: 🧠 Agente CEO
+
+# Rutinas del Agente CEO de FiestaGo (lib/ceo-agent.ts):
+#   · Parte diario   → cada día 07:52 Madrid (05:52 UTC en verano)
+#   · Informe semanal → cada lunes 09:17 Madrid (07:17 UTC en verano)
+# El agente revisa métricas, detecta problemas y deja propuestas en
+# /admin → 🧠 Agente CEO. Te escribe por email solo si algo importa.
+# Nunca envía nada a proveedores/clientes sin tu aprobación.
+
+on:
+  schedule:
+    - cron: '52 5 * * *'
+    - cron: '17 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: 'daily o weekly'
+        required: false
+        default: 'daily'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ejecutar rutina del CEO
+        env:
+          SITE_URL:    ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -e
+          KIND="${{ inputs.kind }}"
+          if [ -z "$KIND" ]; then
+            if [ "${{ github.event.schedule }}" = "17 7 * * 1" ]; then KIND=weekly; else KIND=daily; fi
+          fi
+          echo "Rutina: $KIND"
+          RESPONSE=$(curl -sS -X POST "$SITE_URL/api/cron/ceo-agent" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -d "{\"kind\":\"$KIND\"}" \
+            -w "\nHTTP_CODE:%{http_code}" \
+            --max-time 90 || true)
+          HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+          BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
+          echo "$BODY" | head -c 2000
+          echo ""
+          echo "HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" != "200" ]; then exit 1; fi

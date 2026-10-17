@@ -34,7 +34,9 @@ if (!API_KEY || !VOICE_ID) {
 // Cargamos los scripts desde el TS (dinámicamente via tsx si es local; con
 // bundler estático si es CI). Aquí simplemente re-declaramos el shape mínimo
 // leyendo el fichero como texto — trivial y sin toolchain extra.
-const scriptsText = await import('node:fs').then(f => f.readFileSync(join(ROOT, 'src/scripts.ts'), 'utf8'))
+// scripts.ts (los 10 guiones) + ceo-agent.ts (vídeo del Agente CEO)
+const scriptsText = await import('node:fs').then(f =>
+  ['src/scripts.ts', 'src/ceo-agent.ts'].map(p => f.readFileSync(join(ROOT, p), 'utf8')).join('\n'))
 // Extraemos slug + voiceover con regex simple. Cada script tiene:
 //   slug: 'xx-yyy', ..., voiceover: 'texto largo'
 const parsed = []
