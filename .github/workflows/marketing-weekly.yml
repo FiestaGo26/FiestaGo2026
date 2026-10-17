@@ -24,14 +24,14 @@ jobs:
           set -e
 
           # 7 prompts variados — uno por día. Mezcla inspiración, tips,
-          # behind-the-scenes, FOMO de lanzamiento, social proof y promo.
+          # behind-the-scenes, urgencia de temporada, social proof y promo.
           PROMPTS=(
             "Post inspiracional para una boda íntima en verano en España. Imagen evocadora, sin texto en pantalla. Caption corto y emotivo."
             "Tip educativo: 3 preguntas que el cliente debe hacer al fotógrafo antes de contratarlo. Formato lista, hook fuerte, caption útil."
-            "Post de behind-the-scenes: mostrando que estamos construyendo FiestaGo, cuenta atrás al lanzamiento del 10 de junio. Tono humano, cercano."
+            "Post de behind-the-scenes: cómo un proveedor de Valencia prepara un evento real con FiestaGo, de la consulta al día del evento. Tono humano, cercano."
             "Promo de la Garantía de Éxito: si tu proveedor falla, te devolvemos hasta el 110%. Visual sobrio, frase clara, posicionar contra Bodas.net sin nombrarlos."
             "Tip para clientes: cómo reservar una comunión sin estrés en 2026. Categoría comuniones. Caption útil con CTA al marketplace."
-            "Post FOMO: faltan pocas semanas para el lanzamiento del 10 de junio. Cuenta atrás visual. Tono emocional, con energía."
+            "Post de urgencia: las mejores fechas de bodas y comuniones de la próxima temporada se reservan con meses de antelación. Visual con calendario, tono emocional, CTA a fiestago.es."
             "Inspiración para cumpleaños infantil: ideas de temática y proveedores que las hacen realidad. Imagen alegre, caption corto."
           )
 

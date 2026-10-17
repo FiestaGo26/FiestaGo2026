@@ -4,13 +4,17 @@
 //   2. Contexto         → snapshot de métricas reales de Supabase
 //   3. Lista de tareas  → MANDATE (monetizar, SEO, captación, bugs...)
 //   4. Rutinas          → cron diario (07:52) + semanal (lunes 09:17)
-//   5. Regla de oro     → nada que salga a la gente sin tu aprobación:
-//                         todo lo que haría queda como PROPUESTA.
+//   5. Ejecución        → acciones del catálogo (lib/ceo-actions.ts) que
+//                         se ejecutan solas con autonomía 'full', o
+//                         esperan tu OK con 'approval'. Pagos y todo lo
+//                         que no está en el catálogo quedan para Mariano.
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/resend'
+import { notifyCeoWhatsapp } from '@/lib/ceo-whatsapp'
+import { ACTION_TYPES, CEO_CATEGORIES, CEO_CITIES, actionCatalogForPrompt, getCeoSettings, sanitizeAction } from '@/lib/ceo-actions'
 
 const MODEL = process.env.CEO_MODEL || 'claude-opus-5-5'
 
@@ -116,6 +120,28 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
       .limit(1),
   )
 
+  const [waOutreachEligible, waOutbound7d] = await Promise.all([
+    count(supabase.from('providers').select('id', head)
+      .or('outreach_sent.is.null,outreach_sent.eq.false')
+      .or('whatsapp_invalid.is.null,whatsapp_invalid.eq.false')
+      .eq('status', 'pending')
+      .or('phone.not.is.null,outreach_whatsapp.not.is.null')),
+    count(supabase.from('whatsapp_messages').select('id', head).eq('direction', 'outbound').gte('created_at', sinceIso(7))),
+  ])
+  const lastWaOutbound = await rows(
+    supabase.from('whatsapp_messages').select('created_at').eq('direction', 'outbound')
+      .order('created_at', { ascending: false }).limit(1),
+  )
+
+  // Lo que el CEO ejecutó últimamente y cómo salió, para que aprenda.
+  const recentActions = await rows(
+    supabase.from('ceo_proposals')
+      .select('title, action, status, result, executed_at')
+      .not('action', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10),
+  )
+
   // Propuestas que siguen sin decidir: el CEO no debe repetirlas.
   const openProposals = await rows(
     supabase.from('ceo_proposals')
@@ -151,6 +177,16 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
       social_posts_pending_approval: socialPending,
       last_daily_video:      lastVideo[0] || null,
     },
+    whatsapp: {
+      providers_never_contacted_with_phone: waOutreachEligible,
+      outbound_messages_7d:  waOutbound7d,
+      last_outbound_at:      lastWaOutbound[0]?.created_at || null,
+    },
+    recent_actions: recentActions.map((a: any) => ({
+      title: a.title, type: a.action?.type, limit: a.action?.limit, status: a.status,
+      executed_at: a.executed_at,
+      result: a.result ? JSON.stringify(a.result).slice(0, 300) : null,
+    })),
     health: {
       open_alerts:           alertsOpen,
       open_incidents:        incidentsOpen,
@@ -172,8 +208,13 @@ ${MANDATE.map(m => `- ${m.label}`).join('\n')}
 Cómo trabajas:
 - Te basas SOLO en las métricas del snapshot que recibes. Si un dato es null, la tabla no está disponible: dilo, no lo inventes.
 - Solo le escribes a Mariano si algo importa. Nada de relleno ni de felicitaciones vacías.
-- Regla de oro: antes de cualquier cosa que salga a la gente (emails, WhatsApps, publicaciones, pagos, cambios de precio) le preguntas primero. Por eso todo lo que harías lo devuelves como "proposals" para que él las apruebe.
-- Propón como máximo 3 acciones, concretas y ejecutables esta semana, priorizadas por impacto. No repitas propuestas que ya están en "open_proposals".
+- Puedes EJECUTAR tú mismo estas acciones (campo "action" de cada propuesta):
+${actionCatalogForPrompt()}
+  Para find_providers indica category (${CEO_CATEGORIES.join(', ')}) y city (${CEO_CITIES.join(', ')}). Para create_post escribe en "prompt" el encargo del post (tema, tono, formato) y nunca menciones fechas ya pasadas. En los campos que no apliquen pon 0 o "".
+- Pagos, cobros, reembolsos y cambios de precio NUNCA los ejecutas: usa type "none" y quedan como tarea para Mariano. Igual con lo que no esté en el catálogo (cambios en la web, publicar en redes, hablar con clientes).
+- Usa el modo de autonomía que recibes: con "full" tus acciones se ejecutan sin esperar; con "approval" esperan su OK. Hay topes diarios de WhatsApps y posts; no los superes.
+- Mira "recent_actions": si algo falló o no dio resultado, no lo repitas igual; ajusta o propón otra cosa.
+- Propón como máximo 5 acciones, priorizadas por impacto en el crecimiento del marketplace (más proveedores activos, más demanda, más reservas). No repitas propuestas que ya están en "open_proposals".
 - Escribe en español de España, tono directo y cercano, tuteando.`
 
 const OUTPUT_SCHEMA = {
@@ -214,7 +255,7 @@ const OUTPUT_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['area', 'title', 'why', 'next_step', 'impact', 'effort'],
+        required: ['area', 'title', 'why', 'next_step', 'impact', 'effort', 'action'],
         properties: {
           area:      { type: 'string', enum: MANDATE.map(m => m.key) },
           title:     { type: 'string' },
@@ -222,6 +263,18 @@ const OUTPUT_SCHEMA = {
           next_step: { type: 'string', description: 'Qué harías exactamente si Mariano lo aprueba' },
           impact:    { type: 'string', enum: ['alto', 'medio', 'bajo'] },
           effort:    { type: 'string', enum: ['alto', 'medio', 'bajo'] },
+          action: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['type', 'limit', 'category', 'city', 'prompt'],
+            properties: {
+              type:     { type: 'string', enum: [...ACTION_TYPES, 'none'] },
+              limit:    { type: 'integer' },
+              category: { type: 'string' },
+              city:     { type: 'string' },
+              prompt:   { type: 'string' },
+            },
+          },
         },
       },
     },
@@ -233,13 +286,13 @@ export type CeoReport = {
   summary:    string
   highlights: Array<{ label: string; value: string; trend: 'up' | 'down' | 'flat' }>
   issues:     Array<{ severity: 'critical' | 'warning' | 'info'; title: string; detail: string }>
-  proposals:  Array<{ area: string; title: string; why: string; next_step: string; impact: string; effort: string }>
+  proposals:  Array<{ area: string; title: string; why: string; next_step: string; impact: string; effort: string; action: any; auto?: boolean }>
 }
 
-export async function thinkAsCeo(kind: CeoKind, snapshot: CeoSnapshot): Promise<CeoReport> {
+export async function thinkAsCeo(kind: CeoKind, snapshot: CeoSnapshot, autonomy: string, caps: string): Promise<CeoReport> {
   const routine = kind === 'weekly'
     ? 'Rutina SEMANAL (lunes): resume la semana, compara con lo esperado y fija las 3 prioridades de esta semana.'
-    : 'Rutina DIARIA: revisa las últimas 24h. Si no ha pasado nada relevante, dilo en una frase y propone como mucho 1 acción.'
+    : 'Rutina DIARIA: revisa las últimas 24h y decide qué ejecutar hoy para hacer crecer el marketplace.'
 
   const resp = await client().messages.create({
     model:      MODEL,
@@ -252,7 +305,7 @@ export async function thinkAsCeo(kind: CeoKind, snapshot: CeoSnapshot): Promise<
     system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{
       role: 'user',
-      content: `${routine}\n\n[Snapshot de métricas]\n${JSON.stringify(snapshot, null, 2)}`,
+      content: `${routine}\n\n[Modo de autonomía] ${autonomy} · ${caps}\n\n[Snapshot de métricas]\n${JSON.stringify(snapshot, null, 2)}`,
     }],
   })
 
@@ -283,9 +336,9 @@ export async function emailCeoReport(kind: CeoKind, report: CeoReport, adminUrl:
     ...(report.highlights.length ? ['Métricas:', ...report.highlights.map(h => `${arrow(h.trend)} ${h.label}: ${h.value}`), ''] : []),
     ...(report.issues.length ? ['Problemas:', ...report.issues.map(i => `[${i.severity}] ${i.title} — ${i.detail}`), ''] : []),
     ...(report.proposals.length
-      ? ['Propuestas (necesitan tu OK):', ...report.proposals.map((p, n) => `${n + 1}. ${p.title}\n   Por qué: ${p.why}\n   Siguiente paso: ${p.next_step}`), '']
+      ? ['Acciones:', ...report.proposals.map((p, n) => `${n + 1}. ${p.auto ? '[LO EJECUTO YO] ' : '[TE TOCA] '}${p.title}\n   Por qué: ${p.why}\n   Siguiente paso: ${p.next_step}`), '']
       : []),
-    `Aprueba o descarta en ${adminUrl}`,
+    `Revisa, pausa o decide en ${adminUrl}`,
   ].join('\n')
 
   const html = `
@@ -298,9 +351,9 @@ export async function emailCeoReport(kind: CeoKind, report: CeoReport, adminUrl:
     <td style="padding:6px 0;border-bottom:1px solid #eee;font-size:14px;text-align:right;font-weight:700">${arrow(h.trend)} ${esc(h.value)}</td></tr>`).join('')}</table>` : ''}
   ${report.issues.length ? `<h2 style="font-size:16px;margin:0 0 8px">Problemas</h2>${report.issues.map(i => `
     <p style="font-size:14px;line-height:1.5;margin:0 0 8px"><b>${i.severity === 'critical' ? '🔴' : i.severity === 'warning' ? '🟠' : '🔵'} ${esc(i.title)}</b><br>${esc(i.detail)}</p>`).join('')}` : ''}
-  ${report.proposals.length ? `<h2 style="font-size:16px;margin:18px 0 8px">Propuestas · necesitan tu OK</h2>${report.proposals.map((p, n) => `
+  ${report.proposals.length ? `<h2 style="font-size:16px;margin:18px 0 8px">Acciones</h2>${report.proposals.map((p, n) => `
     <div style="border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin:0 0 10px">
-      <p style="margin:0 0 4px;font-size:15px;font-weight:700">${n + 1}. ${esc(p.title)}</p>
+      <p style="margin:0 0 4px;font-size:15px;font-weight:700">${n + 1}. ${esc(p.title)} <span style="font-size:11px;font-weight:700;color:${p.auto ? '#059669' : '#B45309'}">${p.auto ? 'LO EJECUTO YO' : 'TE TOCA'}</span></p>
       <p style="margin:0 0 4px;font-size:13px;color:#555">${esc(p.why)}</p>
       <p style="margin:0;font-size:13px"><b>Siguiente paso:</b> ${esc(p.next_step)} · impacto ${p.impact} · esfuerzo ${p.effort}</p>
     </div>`).join('')}` : ''}
@@ -314,10 +367,13 @@ export async function emailCeoReport(kind: CeoKind, report: CeoReport, adminUrl:
 
 export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opts: { adminUrl: string; email?: boolean }) {
   const snapshot = await gatherSnapshot(supabase, kind)
+  const settings = await getCeoSettings(supabase)
+  const autonomy = settings.paused ? 'approval (agente en pausa: no se ejecutará nada)' : settings.autonomy
+  const caps = `topes diarios: ${settings.max_wa_per_day} WhatsApps, ${settings.max_posts_per_day} posts`
 
   let report: CeoReport
   try {
-    report = await thinkAsCeo(kind, snapshot)
+    report = await thinkAsCeo(kind, snapshot, autonomy, caps)
   } catch (err: any) {
     await supabase.from('ceo_reports').insert({ kind, snapshot, model: MODEL, error: err.message })
     throw err
@@ -339,9 +395,22 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
   if (error) throw new Error(`No se pudo guardar el informe: ${error.message}`)
 
   if (report.proposals.length) {
-    await supabase.from('ceo_proposals').insert(
-      report.proposals.map(p => ({ ...p, report_id: saved.id })),
-    )
+    const toInsert = report.proposals.map((p, i) => {
+        const action = sanitizeAction(p.action)
+        // Autonomía total: lo ejecutable queda aprobado por el propio CEO.
+        const auto = !!action && settings.autonomy === 'full'
+        return {
+          ...p,
+          action,
+          report_id:  saved.id,
+          position:   i + 1,
+          status:     auto ? 'approved' : 'pending',
+          decided_by: auto ? 'ceo' : null,
+          decided_at: auto ? new Date().toISOString() : null,
+        }
+      })
+    await supabase.from('ceo_proposals').insert(toInsert)
+    report.proposals.forEach((p, i) => { p.auto = toInsert[i].status === 'approved' })
   }
 
   // El parte diario solo llega al email si hay algo que mirar; el
@@ -354,5 +423,11 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
     if (emailed) await supabase.from('ceo_reports').update({ emailed: true }).eq('id', saved.id)
   }
 
-  return { id: saved.id as string, report, emailed }
+  // Decisiones al móvil por WhatsApp (si ADMIN_WHATSAPP_NUMBER está puesto)
+  let whatsapp: Awaited<ReturnType<typeof notifyCeoWhatsapp>> | null = null
+  if (opts.email !== false && report.proposals.length) {
+    whatsapp = await notifyCeoWhatsapp(supabase, report.headline, report.proposals.filter(p => p.auto).map(p => p.title))
+  }
+
+  return { id: saved.id as string, report, emailed, whatsapp }
 }

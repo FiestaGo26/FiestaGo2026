@@ -43,3 +43,34 @@ create index if not exists ceo_proposals_status_idx on ceo_proposals(status, cre
 -- Solo el service_role (APIs del admin) accede; sin políticas públicas.
 alter table ceo_reports   enable row level security;
 alter table ceo_proposals enable row level security;
+
+-- Orden de la propuesta dentro de su informe (para la lista de WhatsApp).
+alter table ceo_proposals add column if not exists position int;
+
+-- Respuestas del dueño por WhatsApp ya procesadas (Meta reintenta webhooks).
+create table if not exists ceo_wa_commands (
+  wa_message_id text primary key,
+  body          text,
+  created_at    timestamptz default now()
+);
+alter table ceo_wa_commands enable row level security;
+
+-- ── Autonomía: acciones ejecutables (lib/ceo-actions.ts) ─────────
+alter table ceo_proposals add column if not exists action        jsonb;
+alter table ceo_proposals add column if not exists decided_by    text;   -- 'ceo' | 'mariano'
+alter table ceo_proposals add column if not exists executed_at   timestamptz;
+alter table ceo_proposals add column if not exists result        jsonb;
+alter table ceo_proposals drop constraint if exists ceo_proposals_status_check;
+alter table ceo_proposals add constraint ceo_proposals_status_check
+  check (status in ('pending', 'approved', 'rejected', 'executing', 'done', 'failed'));
+
+create table if not exists ceo_settings (
+  id                int primary key default 1 check (id = 1),
+  autonomy          text not null default 'approval' check (autonomy in ('full', 'approval')),
+  paused            boolean not null default false,
+  max_wa_per_day    int not null default 100,
+  max_posts_per_day int not null default 3,
+  updated_at        timestamptz default now()
+);
+insert into ceo_settings (id) values (1) on conflict (id) do nothing;
+alter table ceo_settings enable row level security;
