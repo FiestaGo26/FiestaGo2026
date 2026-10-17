@@ -1,39 +1,56 @@
 name: 🧠 Agente CEO
 
 # Rutinas del Agente CEO de FiestaGo (lib/ceo-agent.ts):
-#   · Parte diario   → cada día 07:52 Madrid (05:52 UTC en verano)
+#   · Parte diario    → cada día 07:52 Madrid (05:52 UTC en verano)
 #   · Informe semanal → cada lunes 09:17 Madrid (07:17 UTC en verano)
-# El agente revisa métricas, detecta problemas y deja propuestas en
-# /admin → 🧠 Agente CEO. Te escribe por email solo si algo importa.
-# Nunca envía nada a proveedores/clientes sin tu aprobación.
+#   · Ejecución       → cada hora, ejecuta las acciones aprobadas
+#                       (por el propio CEO en autonomía total, o por ti
+#                       desde el admin / WhatsApp)
+# Las acciones son endpoints existentes con sus límites (lib/ceo-actions.ts),
+# con topes diarios y pausa en ceo_settings. Pagos nunca.
 
 on:
   schedule:
     - cron: '52 5 * * *'
     - cron: '17 7 * * 1'
+    - cron: '23 * * * *'
   workflow_dispatch:
     inputs:
       kind:
-        description: 'daily o weekly'
+        description: 'daily, weekly o execute (solo ejecutar acciones)'
         required: false
         default: 'daily'
 
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
+    concurrency:
+      group: ceo-agent
+      cancel-in-progress: false
+    env:
+      SITE_URL:    ${{ secrets.SITE_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
     steps:
-      - name: Ejecutar rutina del CEO
-        env:
-          SITE_URL:    ${{ secrets.SITE_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      - name: Decidir rutina
+        id: kind
         run: |
-          set -e
           KIND="${{ inputs.kind }}"
           if [ -z "$KIND" ]; then
-            if [ "${{ github.event.schedule }}" = "17 7 * * 1" ]; then KIND=weekly; else KIND=daily; fi
+            case "${{ github.event.schedule }}" in
+              "17 7 * * 1") KIND=weekly ;;
+              "52 5 * * *") KIND=daily ;;
+              *)            KIND=execute ;;
+            esac
           fi
           echo "Rutina: $KIND"
+          echo "kind=$KIND" >> "$GITHUB_OUTPUT"
+
+      - name: Ejecutar rutina del CEO
+        if: steps.kind.outputs.kind != 'execute'
+        run: |
+          set -e
+          KIND="${{ steps.kind.outputs.kind }}"
           RESPONSE=$(curl -sS -X POST "$SITE_URL/api/cron/ceo-agent" \
             -H "Content-Type: application/json" \
             -H "X-Cron-Secret: $CRON_SECRET" \
@@ -42,7 +59,49 @@ jobs:
             --max-time 90 || true)
           HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
           BODY=$(echo "$RESPONSE" | sed -E 's/HTTP_CODE:[0-9]+$//')
-          echo "$BODY" | head -c 2000
+          echo "$BODY" | head -c 3000
           echo ""
           echo "HTTP $HTTP_CODE"
           if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+
+      - name: Ejecutar acciones aprobadas
+        run: |
+          # Máximo 15 acciones por pasada. Cada una se reclama, se ejecuta
+          # llamando a su endpoint (60s cada uno en Netlify) y se registra.
+          for i in $(seq 1 15); do
+            NEXT=$(curl -sS -X POST "$SITE_URL/api/cron/ceo-execute" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              -d '{"op":"next"}' --max-time 30 || echo '{"none":true,"reason":"error de red"}')
+            if echo "$NEXT" | jq -e '.none' > /dev/null 2>&1; then
+              echo "⏹ $(echo "$NEXT" | jq -r '.reason // "nada pendiente"')"
+              break
+            fi
+            ID=$(echo "$NEXT" | jq -r '.id')
+            ENDPOINT=$(echo "$NEXT" | jq -r '.endpoint')
+            BODY=$(echo "$NEXT" | jq -c '.body')
+            echo "────────────────────────────────────────"
+            echo "▶ $(echo "$NEXT" | jq -r '.type') · $(echo "$NEXT" | jq -r '.title')"
+            echo "  $ENDPOINT $BODY"
+
+            RES=$(curl -sS -X POST "$SITE_URL$ENDPOINT" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              -d "$BODY" \
+              -w "\nHTTP_CODE:%{http_code}" --max-time 90 || true)
+            CODE=$(echo "$RES" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
+            OUT=$(echo "$RES" | sed -E 's/HTTP_CODE:[0-9]+$//')
+            echo "$OUT" | head -c 1500
+            echo ""
+            echo "  HTTP ${CODE:-000}"
+            OK=false; [ "$CODE" = "200" ] && OK=true
+
+            jq -nc --arg id "$ID" --argjson ok "$OK" --arg out "$OUT" --arg code "${CODE:-000}" \
+              '{op:"complete", id:$id, ok:$ok, result:{http:$code, body:($out | fromjson? // $out)}}' \
+              > /tmp/complete.json
+            curl -sS -X POST "$SITE_URL/api/cron/ceo-execute" \
+              -H "Content-Type: application/json" \
+              -H "X-Cron-Secret: $CRON_SECRET" \
+              --data-binary @/tmp/complete.json --max-time 30 > /dev/null || true
+            sleep 5
+          done

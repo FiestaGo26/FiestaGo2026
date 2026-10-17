@@ -35,7 +35,34 @@ type Proposal = {
   next_step:  string | null
   impact:     'alto' | 'medio' | 'bajo' | null
   effort:     'alto' | 'medio' | 'bajo' | null
-  status:     'pending' | 'approved' | 'rejected' | 'done'
+  status:     'pending' | 'approved' | 'rejected' | 'executing' | 'done' | 'failed'
+  action:     { type: string; limit: number; category: string; city: string; prompt: string } | null
+  decided_by: string | null
+  executed_at: string | null
+  result:     any
+}
+
+type Settings = {
+  autonomy:          'full' | 'approval'
+  paused:            boolean
+  max_wa_per_day:    number
+  max_posts_per_day: number
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  whatsapp_outreach:       'WhatsApp · 1er contacto',
+  whatsapp_followup:       'WhatsApp · seguimiento',
+  whatsapp_remind_signups: 'WhatsApp · recordatorio alta',
+  email_followup:          'Email · seguimiento',
+  find_providers:          'Buscar proveedores',
+  create_post:             'Crear post',
+}
+
+function actionSummary(a: NonNullable<Proposal['action']>) {
+  const base = ACTION_LABELS[a.type] || a.type
+  if (a.type === 'find_providers') return `${base} · ${a.category} en ${a.city} (${a.limit})`
+  if (a.type === 'create_post') return base
+  return `${base} · hasta ${a.limit}`
 }
 
 const C = {
@@ -55,7 +82,7 @@ const STEPS = [
   'Contexto: métricas reales de FiestaGo',
   'Lista de tareas (monetizar, captar, SEO, bugs…)',
   'Rutinas: parte diario + informe semanal',
-  'Regla de oro: nada sale sin tu OK',
+  'Ejecuta solo lo que hace crecer (pagos nunca)',
 ]
 
 const TASKS = [
@@ -87,6 +114,7 @@ export default function CeoAgent() {
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading,   setLoading]   = useState(false)
   const [running,   setRunning]   = useState<null | 'daily' | 'weekly'>(null)
+  const [settings,  setSettings]  = useState<Settings | null>(null)
 
   async function load() {
     setLoading(true)
@@ -96,6 +124,7 @@ export default function CeoAgent() {
       if (!res.ok) throw new Error(data.error || 'Error cargando')
       setReports(data.reports)
       setProposals(data.proposals)
+      setSettings(data.settings || null)
     } catch (e: any) {
       toast.error(e.message)
     }
@@ -118,6 +147,20 @@ export default function CeoAgent() {
       toast.error(e.message)
     }
     setRunning(null)
+  }
+
+  async function saveSettings(patch: Partial<Settings>) {
+    try {
+      const res = await fetch('/api/admin/ceo', {
+        method: 'PATCH', headers: adminHeaders(), body: JSON.stringify({ settings: patch }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar')
+      setSettings(data.settings)
+      toast.success('Ajustes guardados')
+    } catch (e: any) {
+      toast.error(e.message)
+    }
   }
 
   async function decide(id: string, status: Proposal['status']) {
@@ -143,7 +186,7 @@ export default function CeoAgent() {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#F9FAFB' }}>🧠 Agente CEO</h1>
           <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
-            Dirige FiestaGo cada día y te pregunta antes de cualquier cosa que salga a la gente.
+            Dirige FiestaGo cada día y ejecuta las acciones de crecimiento. Los pagos siempre te los deja a ti.
           </p>
         </div>
         <button onClick={load} disabled={loading}
@@ -151,6 +194,36 @@ export default function CeoAgent() {
           {loading ? 'Cargando…' : '↻ Actualizar'}
         </button>
       </div>
+
+      {/* Autonomía */}
+      {settings && (
+        <div style={{ background: C.card, border: `1px solid ${settings.paused ? C.bad : settings.autonomy === 'full' ? C.ok : C.border}`, borderRadius: 14, padding: 16, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
+              {settings.paused ? '⏸ En pausa: no ejecuta nada'
+                : settings.autonomy === 'full' ? '⚙️ Autonomía total: ejecuta sin esperar tu OK'
+                : '✋ Pide permiso antes de ejecutar'}
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
+              Tope diario: {settings.max_wa_per_day} WhatsApps · {settings.max_posts_per_day} posts. Por WhatsApp: escribe PAUSA o SEGUIR.
+            </div>
+          </div>
+          <label style={{ fontSize: 12, color: C.muted, display: 'flex', alignItems: 'center', gap: 6 }}>
+            WhatsApps/día
+            <input type="number" min={0} max={500} defaultValue={settings.max_wa_per_day}
+              onBlur={e => { const v = Number(e.target.value); if (v !== settings.max_wa_per_day) saveSettings({ max_wa_per_day: v }) }}
+              style={{ width: 64, background: '#0B0F19', color: C.text, border: `1px solid ${C.border}`, borderRadius: 6, padding: '4px 6px' }} />
+          </label>
+          <button onClick={() => saveSettings({ autonomy: settings.autonomy === 'full' ? 'approval' : 'full' })}
+            style={{ background: 'transparent', color: C.text, border: `1px solid ${C.border}`, borderRadius: 8, padding: '7px 12px', fontSize: 12, cursor: 'pointer' }}>
+            {settings.autonomy === 'full' ? 'Pedir permiso' : 'Dar autonomía total'}
+          </button>
+          <button onClick={() => saveSettings({ paused: !settings.paused })}
+            style={{ background: settings.paused ? C.ok : C.bad, color: '#fff', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            {settings.paused ? '▶ Reanudar' : '⏸ Pausar'}
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
         {/* Los 5 pasos */}
@@ -257,6 +330,7 @@ export default function CeoAgent() {
               </div>
               {p.why && <p style={{ fontSize: 13, color: '#D1D5DB', marginTop: 6 }}>{p.why}</p>}
               {p.next_step && <p style={{ fontSize: 12, color: C.muted, marginTop: 4 }}><b>Siguiente paso:</b> {p.next_step}</p>}
+              {p.action && <p style={{ fontSize: 12, color: C.violet, marginTop: 4 }}>⚙️ Al aprobar se ejecuta: {actionSummary(p.action)}</p>}
               <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <button onClick={() => decide(p.id, 'approved')}
                   style={{ background: C.ok, color: '#04120C', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>✓ Aprobar</button>
@@ -269,12 +343,20 @@ export default function CeoAgent() {
 
         {decided.length > 0 && (
           <div style={{ marginTop: 16 }}>
-            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.faint, marginBottom: 6 }}>Decididas</div>
+            <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.faint, marginBottom: 6 }}>Actividad</div>
             {decided.map(p => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.muted, padding: '5px 0', borderTop: `1px solid ${C.border}` }}>
-                <span>{p.status === 'approved' ? '✅' : p.status === 'done' ? '🏁' : '✕'}</span>
-                <span style={{ flex: 1 }}>{p.title}</span>
-                {p.status === 'approved' && (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.muted, padding: '5px 0', borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+                <span title={p.status}>
+                  {p.status === 'executing' ? '⏳' : p.status === 'done' ? '🏁' : p.status === 'failed' ? '⚠️' : p.status === 'approved' ? (p.action ? '🕒' : '✅') : '✕'}
+                </span>
+                <span style={{ flex: 1, minWidth: 180 }}>
+                  {p.title}
+                  {p.action && <span style={{ color: C.violet }}> · {actionSummary(p.action)}</span>}
+                  {p.decided_by === 'ceo' && <span style={{ color: C.faint }}> · decidido por el CEO</span>}
+                  {p.status === 'approved' && p.action && <span style={{ color: C.faint }}> · en cola</span>}
+                  {p.status === 'failed' && <span style={{ color: C.bad }}> · falló{p.result?.http ? ` (HTTP ${p.result.http})` : ''}</span>}
+                </span>
+                {p.status === 'approved' && !p.action && (
                   <button onClick={() => decide(p.id, 'done')}
                     style={{ background: 'transparent', color: C.ok, border: `1px solid ${C.ok}55`, borderRadius: 6, padding: '2px 8px', fontSize: 11, cursor: 'pointer' }}>Marcar hecha</button>
                 )}

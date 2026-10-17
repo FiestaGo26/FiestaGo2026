@@ -7,6 +7,7 @@
 //   SI TODO     → aprueba todas las pendientes
 //   NO 2        → descarta la 2
 //   CEO         → vuelve a mandar la lista de pendientes
+//   PAUSA       → para toda ejecución automática · SEGUIR la reanuda
 //
 // Los números son la posición en la lista de pendientes (más antiguas
 // primero), la misma que se envió en el último mensaje.
@@ -63,7 +64,7 @@ function formatList(list: PendingProposal[], headline?: string): string {
     '',
     lines.join('\n\n'),
     '',
-    'Responde *SI 1*, *NO 2*, *SI TODO* o *CEO* para volver a ver la lista.',
+    'Responde *SI 1*, *NO 2*, *SI TODO*, *CEO* para ver la lista o *PAUSA* para pararme.',
   ].join('\n').slice(0, 4000)
 }
 
@@ -71,22 +72,26 @@ function formatList(list: PendingProposal[], headline?: string): string {
 export async function notifyCeoWhatsapp(
   supabase: SupabaseClient,
   headline: string,
+  autoTitles: string[] = [],
 ): Promise<{ ok: boolean; via?: 'text' | 'template'; error?: string }> {
   const to = adminNumber()
   if (!to) return { ok: false, error: 'ADMIN_WHATSAPP_NUMBER no configurado' }
 
   const list = await pendingProposals(supabase)
-  if (!list.length) return { ok: false, error: 'sin propuestas pendientes' }
+  if (!list.length && !autoTitles.length) return { ok: false, error: 'nada que contar' }
 
+  const auto = autoTitles.length
+    ? `⚙️ *Hoy ejecuto yo:*\n${autoTitles.map(t => `• ${t}`).join('\n')}\n(escribe *PAUSA* para pararme)\n\n`
+    : ''
   try {
-    await sendText(to, formatList(list, headline))
+    await sendText(to, `${auto}${list.length ? formatList(list, headline) : `🧠 *CEO FiestaGo*\n${headline}`}`.slice(0, 4000))
     return { ok: true, via: 'text' }
   } catch (err: any) {
     // Fuera de la ventana de 24h → plantilla para "despertar" el chat.
     const template = process.env.CEO_WHATSAPP_TEMPLATE
     if (!template) return { ok: false, error: `texto libre falló y no hay CEO_WHATSAPP_TEMPLATE: ${err.message}` }
     try {
-      await sendTemplate(to, { template, bodyParams: [String(list.length)] })
+      await sendTemplate(to, { template, bodyParams: [String(list.length + autoTitles.length)] })
       return { ok: true, via: 'template' }
     } catch (tplErr: any) {
       return { ok: false, error: tplErr.message }
@@ -107,6 +112,18 @@ export async function handleCeoWhatsappCommand(
   const clean = text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   const m = clean.match(/^(si|ok|vale|no)\b\s*(.*)$/)
   const wantsList = /^(ceo|ver|lista|decisiones)\b/.test(clean)
+
+  // Interruptor de emergencia desde el móvil.
+  const pause  = /^(pausa|stop)\b/.test(clean)
+  const resume = /^(seguir|reanudar)\b/.test(clean)
+  if (pause || resume) {
+    await supabase.from('ceo_settings').update({ paused: pause, updated_at: new Date().toISOString() }).eq('id', 1)
+    await sendText(from, pause
+      ? '⏸ CEO en pausa. No ejecutaré nada hasta que escribas *SEGUIR*.'
+      : '▶️ CEO activo otra vez. Sigo ejecutando las acciones aprobadas.')
+    return true
+  }
+
   const list = await pendingProposals(supabase)
 
   if (wantsList) {
