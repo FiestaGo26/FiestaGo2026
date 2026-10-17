@@ -39,3 +39,7 @@ create table if not exists ceo_proposals (
 );
 
 create index if not exists ceo_proposals_status_idx on ceo_proposals(status, created_at desc);
+
+-- Solo el service_role (APIs del admin) accede; sin políticas públicas.
+alter table ceo_reports   enable row level security;
+alter table ceo_proposals enable row level security;
