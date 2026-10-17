@@ -11,6 +11,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/resend'
+import { notifyCeoWhatsapp } from '@/lib/ceo-whatsapp'
 
 const MODEL = process.env.CEO_MODEL || 'claude-opus-5-5'
 
@@ -340,7 +341,7 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
 
   if (report.proposals.length) {
     await supabase.from('ceo_proposals').insert(
-      report.proposals.map(p => ({ ...p, report_id: saved.id })),
+      report.proposals.map((p, i) => ({ ...p, report_id: saved.id, position: i + 1 })),
     )
   }
 
@@ -354,5 +355,11 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
     if (emailed) await supabase.from('ceo_reports').update({ emailed: true }).eq('id', saved.id)
   }
 
-  return { id: saved.id as string, report, emailed }
+  // Decisiones al móvil por WhatsApp (si ADMIN_WHATSAPP_NUMBER está puesto)
+  let whatsapp: Awaited<ReturnType<typeof notifyCeoWhatsapp>> | null = null
+  if (opts.email !== false && report.proposals.length) {
+    whatsapp = await notifyCeoWhatsapp(supabase, report.headline)
+  }
+
+  return { id: saved.id as string, report, emailed, whatsapp }
 }

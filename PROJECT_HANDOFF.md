@@ -168,6 +168,7 @@ Agente IA con rol de CEO (`lib/ceo-agent.ts`). Lee métricas reales de Supabase 
 - **Rutinas** (`.github/workflows/ceo-agent.yml` → `POST /api/cron/ceo-agent`): parte diario 07:52 y informe semanal los lunes 09:17 (hora Madrid en verano).
 - **Email** a `ADMIN_EMAIL` vía Resend: el semanal siempre; el diario solo si hay problemas o propuestas.
 - **Regla de oro**: el agente no envía nada a proveedores/clientes. Todo queda como propuesta en `/admin` → 🧠 Agente CEO para aprobar/descartar.
+- **WhatsApp**: si hay propuestas, te llegan a `ADMIN_WHATSAPP_NUMBER` numeradas. Respondes `SI 1`, `NO 2`, `SI TODO` o `CEO` (ver lista) y queda registrado (`lib/ceo-whatsapp.ts`, enganchado en el webhook). Fuera de la ventana de 24h de Meta se usa la plantilla `CEO_WHATSAPP_TEMPLATE` ({{1}} = nº de decisiones).
 - **Requisitos**: aplicar `tools/migrations/migration-ceo-agent.sql`. Usa `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `CRON_SECRET` (ya existentes). Modelo configurable con `CEO_MODEL`.
 
 ## 6. Setup en un ordenador NUEVO

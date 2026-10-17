@@ -43,3 +43,14 @@ create index if not exists ceo_proposals_status_idx on ceo_proposals(status, cre
 -- Solo el service_role (APIs del admin) accede; sin políticas públicas.
 alter table ceo_reports   enable row level security;
 alter table ceo_proposals enable row level security;
+
+-- Orden de la propuesta dentro de su informe (para la lista de WhatsApp).
+alter table ceo_proposals add column if not exists position int;
+
+-- Respuestas del dueño por WhatsApp ya procesadas (Meta reintenta webhooks).
+create table if not exists ceo_wa_commands (
+  wa_message_id text primary key,
+  body          text,
+  created_at    timestamptz default now()
+);
+alter table ceo_wa_commands enable row level security;

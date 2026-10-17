@@ -13,6 +13,7 @@ import {
   transcribeAudio,
   type WhatsappStatusEvent,
 } from '@/lib/whatsapp'
+import { handleCeoWhatsappCommand } from '@/lib/ceo-whatsapp'
 import { generateReply, countPlazasConSelloRestantes, mentionsQuoteGen, getButtonReply, type AgentTurn } from '@/lib/fiestago-agent'
 
 // El webhook recibe datos externos (Meta) y llama a Claude → forzamos runtime
@@ -150,6 +151,10 @@ async function handleInbound(supabase: any, msg: any) {
       }
     }
   }
+
+  // 0b) Respuestas del dueño al Agente CEO ("SI 1", "NO 2", "CEO"…).
+  //     Solo desde ADMIN_WHATSAPP_NUMBER; el resto sigue el flujo normal.
+  if (fromNumber && body && await handleCeoWhatsappCommand(supabase, fromNumber, body, msg.id)) return
 
   // 1) Localizar al proveedor por su número (heurística: últimos 9 dígitos).
   const provider = fromNumber ? await findProviderByPhone(supabase, fromNumber) : null
