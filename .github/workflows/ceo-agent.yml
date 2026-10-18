@@ -1,19 +1,21 @@
 name: 🧠 Agente CEO
 
 # Rutinas del Agente CEO de FiestaGo (lib/ceo-agent.ts):
-#   · Parte diario    → cada día 07:52 Madrid (05:52 UTC en verano)
-#   · Informe semanal → cada lunes 09:17 Madrid (07:17 UTC en verano)
-#   · Ejecución       → cada hora, ejecuta las acciones aprobadas
-#                       (por el propio CEO en autonomía total, o por ti
-#                       desde el admin / WhatsApp)
+#   · Parte diario    → la primera pasada desde las 07:00 Madrid
+#   · Informe semanal → la primera pasada del lunes desde las 09:00
+#   · Ejecución       → en cada pasada, las acciones aprobadas (por el
+#                       propio CEO en autonomía total, o por ti desde el
+#                       admin / WhatsApp)
 # Las acciones son endpoints existentes con sus límites (lib/ceo-actions.ts),
 # con topes diarios y pausa en ceo_settings. Pagos nunca.
-
+#
+# Los crons de GitHub se retrasan horas o se saltan en horas punta, así
+# que no dependemos de cuál disparó: cada pasada (cada 20 min) mira la
+# hora de Madrid y pide la rutina con if_missing (el servidor la salta
+# si ya hay informe hoy / esta semana), y luego ejecuta la cola.
 on:
   schedule:
-    - cron: '52 5 * * *'
-    - cron: '17 7 * * 1'
-    - cron: '23 * * * *'
+    - cron: '*/20 * * * *'
   workflow_dispatch:
     inputs:
       kind:
@@ -36,15 +38,18 @@ jobs:
         id: kind
         run: |
           KIND="${{ inputs.kind }}"
+          IF_MISSING=false
           if [ -z "$KIND" ]; then
-            case "${{ github.event.schedule }}" in
-              "17 7 * * 1") KIND=weekly ;;
-              "52 5 * * *") KIND=daily ;;
-              *)            KIND=execute ;;
-            esac
+            HOUR=$(TZ=Europe/Madrid date +%-H)
+            DOW=$(TZ=Europe/Madrid date +%u)   # 1 = lunes
+            if [ "$DOW" = "1" ] && [ "$HOUR" -ge 9 ]; then KIND=weekly
+            elif [ "$HOUR" -ge 7 ]; then KIND=daily
+            else KIND=execute; fi
+            IF_MISSING=true
           fi
-          echo "Rutina: $KIND"
+          echo "Rutina: $KIND (if_missing=$IF_MISSING)"
           echo "kind=$KIND" >> "$GITHUB_OUTPUT"
+          echo "if_missing=$IF_MISSING" >> "$GITHUB_OUTPUT"
 
       - name: Ejecutar rutina del CEO
         if: steps.kind.outputs.kind != 'execute'
@@ -54,7 +59,7 @@ jobs:
           RESPONSE=$(curl -sS -X POST "$SITE_URL/api/cron/ceo-agent" \
             -H "Content-Type: application/json" \
             -H "X-Cron-Secret: $CRON_SECRET" \
-            -d "{\"kind\":\"$KIND\"}" \
+            -d "{\"kind\":\"$KIND\",\"if_missing\":${{ steps.kind.outputs.if_missing }}}" \
             -w "\nHTTP_CODE:%{http_code}" \
             --max-time 90 || true)
           HTTP_CODE=$(echo "$RESPONSE" | grep -oE 'HTTP_CODE:[0-9]+' | cut -d: -f2)
