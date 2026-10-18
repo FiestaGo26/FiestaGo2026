@@ -1,7 +1,8 @@
 -- ═════════════════════════════════════════════════════════════════
--- FiestaGo · Waitlist pre-lanzamiento
--- Captura emails de clientes interesados antes del 10 de junio 2026.
--- Cada inscripción genera un email de confirmación + entra al sorteo.
+-- FiestaGo · Lista de clientes interesados
+-- Emails que deja la gente en el quiz, la calculadora, etc.
+-- Cada inscripción genera un email de confirmación.
+-- Aplicada en producción el 18-10-2026 (con RLS activado).
 -- ═════════════════════════════════════════════════════════════════
 
 create table if not exists waitlist (
@@ -28,5 +29,8 @@ create unique index if not exists waitlist_email_unique on waitlist(lower(email)
 create index if not exists waitlist_created_at_idx on waitlist(created_at desc);
 create index if not exists waitlist_city_idx        on waitlist(city)        where city is not null;
 create index if not exists waitlist_event_type_idx  on waitlist(event_type)  where event_type is not null;
+
+-- Solo el servidor (service role) lee y escribe: los emails no son públicos.
+alter table waitlist enable row level security;
 
 select 'OK · tabla waitlist + índices creados' as resultado;
