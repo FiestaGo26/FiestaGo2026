@@ -45,8 +45,6 @@ const JSON_LD = {
 }
 
 export default function AlternativasBodasNetPage() {
-  const launchDays = Math.max(0, Math.ceil((new Date('2026-06-10').getTime() - Date.now()) / 86_400_000))
-
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}/>
@@ -181,13 +179,13 @@ export default function AlternativasBodasNetPage() {
         <section className="bg-gradient-to-br from-coral to-coral-dark text-white">
           <div className="max-w-3xl mx-auto px-6 py-14 text-center">
             <div className="text-xs font-bold uppercase tracking-[0.25em] opacity-80 mb-3">
-              Faltan {launchDays} días para el lanzamiento
+              Inscripción gratuita
             </div>
             <h2 className="font-serif text-3xl md:text-4xl font-bold leading-tight">
-              Únete antes del 10 de junio y entra en el catálogo inicial
+              Únete a FiestaGo y empieza a recibir reservas
             </h2>
             <p className="text-sm md:text-base opacity-90 mt-3 max-w-xl mx-auto">
-              Los primeros profesionales tienen mejor posición en los resultados y aparecen destacados sin coste extra.
+              Sin cuotas ni permanencia: cobras el 100 % de tu precio y la comisión la paga el cliente.
               Registrarse lleva 60 segundos.
             </p>
             <div className="mt-7 flex flex-wrap gap-3 justify-center">

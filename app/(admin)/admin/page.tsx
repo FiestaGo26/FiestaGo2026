@@ -1515,7 +1515,7 @@ export default function AdminPage() {
                 <div>
                   <h1 style={{ fontFamily:'Fraunces,serif', fontSize:28, fontWeight:600 }}>🎉 Waitlist pre-lanzamiento</h1>
                   <div style={{ fontSize:13, color:'#9CA3AF', marginTop:4 }}>
-                    Clientes interesados en el lanzamiento del 10 de junio.
+                    Clientes que han dejado su email (quiz, calculadora…).
                   </div>
                 </div>
                 <a href="/api/admin/waitlist?format=csv" download

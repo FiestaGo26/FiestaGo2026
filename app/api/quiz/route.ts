@@ -1,43 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import {
+  EVENT_OPTIONS, AUDIENCE_OPTIONS, KIDS_AGE_OPTIONS, CORP_OPTIONS, getProfile, budgetSplit,
+  type EventType, type Audience, type KidsAge, type CorpKind,
+} from '@/lib/quiz'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// POST /api/quiz — body: { event_type, budget_total, guests, city, vibe }
-// Devuelve top 3 proveedores por cada una de las 3-4 categorías
-// principales del tipo de evento, scored por presupuesto + ciudad + vibe.
-
-const CATEGORIES_BY_EVENT: Record<string, string[]> = {
-  boda:        ['foto','catering','espacios','musica','flores','planner'],
-  cumpleanos:  ['catering','espacios','pastel','animacion','foto'],
-  comunion:    ['catering','espacios','pastel','foto','papeleria'],
-  corporativo: ['catering','espacios','musica','animacion'],
-  otro:        ['catering','espacios','musica','animacion','foto'],
-}
-
-// Reparto sugerido del presupuesto por categoría (% sobre total).
-// Útil para puntuar fit de proveedores cuyo precio se acerque al
-// "trozo" que esa categoría debería tener en la celebración.
-const BUDGET_SHARE: Record<string, number> = {
-  catering:   0.45,
-  espacios:   0.18,
-  foto:       0.08,
-  musica:     0.06,
-  flores:     0.07,
-  pastel:     0.04,
-  planner:    0.05,
-  animacion:  0.04,
-  belleza:    0.04,
-  transporte: 0.03,
-  papeleria:  0.02,
-  joyeria:    0.10,
-}
+// POST /api/quiz — body: { event_type, audience?, kids_age?, corp_kind?,
+// budget_total, guests, city, vibe, email? }
+// El perfil (lib/quiz.ts) decide qué categorías recomendar y cómo repartir
+// el presupuesto: un cumpleaños infantil no necesita lo mismo que uno de
+// adultos. Devuelve los 3 mejores proveedores de cada categoría.
 
 function scoreProvider(p: any, opts: {
   budget_for_cat: number
-  vibe: string
-  guests: number
+  styleKeywords: string[]
+  audienceKeywords: string[]
 }): number {
   let score = 0
 
@@ -60,35 +40,30 @@ function scoreProvider(p: any, opts: {
   // Featured
   if (p.featured) score += 5
 
-  // Vibe match en descripción/especialidades (heurística)
-  if (opts.vibe) {
-    const text = `${p.description || ''} ${(p.specialties || []).join(' ')}`.toLowerCase()
-    const vibeKeywords: Record<string, string[]> = {
-      clasico:   ['clásico', 'tradicional', 'elegante', 'formal'],
-      moderno:   ['moderno', 'minimalista', 'contemporáneo', 'urbano'],
-      rustico:   ['rústico', 'natural', 'campo', 'boho', 'masía'],
-      lujo:      ['premium', 'lujo', 'exclusivo', 'alta gama'],
-      intimo:    ['íntimo', 'pequeño', 'familiar', 'cercano'],
-      divertido: ['divertido', 'fiesta', 'energía', 'animación', 'show'],
-    }
-    const keys = vibeKeywords[opts.vibe] || []
-    const hits = keys.filter(k => text.includes(k)).length
-    score += hits * 8
-  }
+  // Estilo y público en descripción/especialidades/nombre (heurística)
+  const text = `${p.name || ''} ${p.description || ''} ${(p.specialties || []).join(' ')}`.toLowerCase()
+  score += opts.styleKeywords.filter(k => text.includes(k)).length * 8
+  score += Math.min(18, opts.audienceKeywords.filter(k => text.includes(k)).length * 6)
 
   return score
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
-  const eventType   = (body.event_type   || 'boda').toString()
-  const budgetTotal = Math.max(500, Math.min(parseInt(body.budget_total) || 5000, 200_000))
-  const guests      = Math.max(1, Math.min(parseInt(body.guests) || 50, 1500))
+  const eventType   = (EVENT_OPTIONS.some(o => o.id === body.event_type) ? body.event_type : 'otro') as EventType
+  const audience    = (AUDIENCE_OPTIONS.some(o => o.id === body.audience) ? body.audience : '') as Audience | ''
+  const kidsAge     = (KIDS_AGE_OPTIONS.some(o => o.id === body.kids_age) ? body.kids_age : '') as KidsAge | ''
+  const corpKind    = (CORP_OPTIONS.some(o => o.id === body.corp_kind) ? body.corp_kind : '') as CorpKind | ''
+  const profile     = getProfile(eventType, { audience, age: kidsAge, corp: corpKind })
+  const budgetTotal = Math.max(50, Math.min(parseInt(body.budget_total) || profile.budget.initial, 200_000))
+  const guests      = Math.max(1, Math.min(parseInt(body.guests) || profile.guests, 1500))
   const city        = (body.city  || '').toString().trim()
   const vibe        = (body.vibe  || '').toString().trim().toLowerCase()
   const email       = (body.email || '').toString().trim().toLowerCase()
 
-  const categories = CATEGORIES_BY_EVENT[eventType] || CATEGORIES_BY_EVENT.boda
+  const categories = Object.keys(profile.shares)
+  const split      = budgetSplit(profile, budgetTotal)
+  const style      = profile.styles.find(s => s.id === vibe)
   const supabase = createAdminClient()
 
   // Si llega email, lo añadimos a waitlist con source=quiz para
@@ -97,9 +72,10 @@ export async function POST(req: NextRequest) {
     supabase.from('waitlist').insert({
       email,
       city: city || null,
-      event_type: eventType,
+      event_type: profile.key.slice(0, 40),
+      guests,
       source: 'quiz',
-    }).then(() => {}).catch(() => {})
+    }).then(() => {}, () => {})
   }
 
   let query = supabase
@@ -116,33 +92,35 @@ export async function POST(req: NextRequest) {
 
   // Para cada categoría, escogemos top 3 según score
   const matchesByCategory: Record<string, any[]> = {}
-  let totalEstimate = 0
   for (const cat of categories) {
-    const share          = BUDGET_SHARE[cat] || 0.05
-    const budgetForCat   = Math.round(budgetTotal * share)
-    const isPerPerson    = ['catering','pastel','belleza','papeleria'].includes(cat)
-    const unitBudget     = isPerPerson ? Math.round(budgetForCat / guests) : budgetForCat
+    const budgetForCat = split[cat]
+    const isPerPerson  = ['catering', 'belleza', 'papeleria'].includes(cat)
+    const unitBudget   = isPerPerson ? Math.round(budgetForCat / guests) : budgetForCat
 
-    const inCat = all
+    matchesByCategory[cat] = all
       .filter((p: any) => p.category === cat)
       .map((p: any) => ({
         ...p,
-        _score: scoreProvider(p, { budget_for_cat: unitBudget, vibe, guests }),
+        _score: scoreProvider(p, {
+          budget_for_cat: unitBudget,
+          styleKeywords: style?.keywords || [],
+          audienceKeywords: profile.keywords,
+        }),
       }))
       .sort((a: any, b: any) => b._score - a._score)
       .slice(0, 3)
-
-    matchesByCategory[cat] = inCat
-    totalEstimate += budgetForCat
   }
 
   return NextResponse.json({
     eventType,
+    profileKey: profile.key,
+    title: profile.title,
     guests,
     city,
     vibe,
     budgetTotal,
-    estimatedTotal: totalEstimate,
+    budgetSplit: split,
+    categories,
     matchesByCategory,
   })
 }

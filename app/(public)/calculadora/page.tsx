@@ -371,7 +371,7 @@ export default function CalculadoraPage() {
                   <div className="text-3xl mb-2">📧</div>
                   <h3 className="font-serif text-xl font-bold">¿Quieres este presupuesto en tu correo?</h3>
                   <p className="text-sm opacity-90 mt-1">
-                    Te mandamos el desglose + 3 proveedores recomendados de tu ciudad. Y te avisamos cuando abramos reservas el 10 de junio.
+                    Déjanos tu email y te avisamos cuando lleguen proveedores nuevos a tu ciudad.
                   </p>
                 </div>
                 <form onSubmit={handleEmailCapture} className="flex flex-col sm:flex-row gap-2">
@@ -383,13 +383,13 @@ export default function CalculadoraPage() {
                     Enviármelo
                   </button>
                 </form>
-                <p className="text-[10px] opacity-75 text-center mt-3">Cero spam. Solo te escribimos para el lanzamiento.</p>
+                <p className="text-xs opacity-75 text-center mt-3">Cero spam. Puedes darte de baja cuando quieras.</p>
               </div>
             ) : (
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-5 text-center">
                 <div className="text-2xl mb-1">✅</div>
-                <div className="font-semibold text-sm">Apuntado en la waitlist</div>
-                <p className="text-xs opacity-85 mt-1">Te avisaremos cuando abramos reservas el 10 de junio.</p>
+                <div className="font-semibold text-sm">¡Apuntado!</div>
+                <p className="text-xs opacity-85 mt-1">Te avisaremos cuando haya proveedores nuevos en tu ciudad.</p>
               </div>
             )}
 

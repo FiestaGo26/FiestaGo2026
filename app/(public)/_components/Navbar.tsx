@@ -48,7 +48,7 @@ export default function Navbar() {
 
   const panelHref = auth.isProvider ? '/proveedor/panel' : '/mi-cuenta'
 
-  const link = 'text-[15px] font-semibold text-ink px-3 py-2 hover:underline underline-offset-[6px] decoration-2'
+  const link = 'whitespace-nowrap text-[15px] font-semibold text-ink px-3 py-2 hover:underline underline-offset-[6px] decoration-2'
 
   return (
     <header className="sticky top-0 z-50 bg-[#f4f1ec] font-[family-name:var(--font-schibsted)] tracking-[-0.01em]">
@@ -116,7 +116,7 @@ export default function Navbar() {
 
           <Link href="/profesionales" className={`${link} hidden xl:inline-flex`}>Soy proveedor</Link>
           <Link href="/login" className={`${link} hidden sm:inline-flex`}>Acceder</Link>
-          <Link href="/registro" className={`${link} hidden md:inline-flex`}>Hazte socio</Link>
+          <Link href="/registro" className={`${link} hidden 2xl:inline-flex`}>Hazte socio</Link>
           <Link href="/servicios"
             className="inline-flex items-center h-11 px-5 bg-[#0a0a0a] text-[#f4f1ec] text-[15px] font-semibold hover:bg-[#2a2826] active:translate-y-px transition-colors">
             Reservar

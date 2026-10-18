@@ -108,7 +108,7 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
             <p className="text-base md:text-lg opacity-90 mt-4 max-w-2xl leading-relaxed">
               {hasAny
                 ? `${providers.length} profesional${providers.length === 1 ? '' : 'es'} de ${cat.label.toLowerCase()} en ${city} y alrededores. Reservas con Garantía de Éxito, sin cuota anual ni intermediarios.`
-                : `Reserva ${cat.label.toLowerCase()} en ${city} con FiestaGo. Lanzamiento el 10 de junio de 2026.`}
+                : `Reserva ${cat.label.toLowerCase()} en ${city} con FiestaGo: precio cerrado y Garantía de Éxito incluida.`}
             </p>
             {(minPrice && avgPrice) ? (
               <div className="mt-5 inline-flex items-center gap-4 bg-white/10 rounded-xl px-4 py-2 backdrop-blur-sm"
@@ -175,7 +175,7 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
                 Aún no hay proveedores de {cat.label.toLowerCase()} en {city}
               </h2>
               <p className="text-sm text-ink/60 mb-5 max-w-md mx-auto">
-                Estamos construyendo el catálogo para el lanzamiento del 10 de junio. Si tienes un evento concreto, apúntate y avisamos cuando haya disponibilidad.
+                Cada semana se suman profesionales nuevos. Mientras tanto, mira los de otras ciudades cercanas o el resto de categorías.
               </p>
               <Link href="/proveedores" className="inline-block bg-coral text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">
                 Ver otros profesionales
@@ -214,7 +214,7 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
             <Link href="/profesionales" className="bg-white border border-stone-200 rounded-2xl p-6 hover:border-coral transition-colors group">
               <div className="text-3xl mb-2">🛠</div>
               <h3 className="font-serif text-lg text-ink font-bold mb-1 group-hover:text-coral">¿Eres profesional?</h3>
-              <p className="text-sm text-ink/60 leading-relaxed">Inscríbete gratis antes del lanzamiento del 10 de junio y entra en el catálogo inicial.</p>
+              <p className="text-sm text-ink/60 leading-relaxed">Inscríbete gratis y empieza a recibir reservas en {city}. Sin cuotas ni permanencia.</p>
             </Link>
           </div>
         </section>

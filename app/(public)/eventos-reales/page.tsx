@@ -89,7 +89,7 @@ export default function EventosRealesPage() {
             <div className="text-5xl mb-3">📸</div>
             <h2 className="font-serif text-xl text-ink font-bold mb-2">Aún no hay eventos publicados</h2>
             <p className="text-sm text-ink/60 mb-5 max-w-md mx-auto">
-              Estamos preparando la galería para el lanzamiento del 10 de junio.
+              Estamos preparando la galería con las primeras celebraciones.
               Vuelve pronto.
             </p>
             <Link href="/proveedores" className="inline-block bg-coral text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">

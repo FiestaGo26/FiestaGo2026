@@ -373,27 +373,20 @@ export async function emailProviderWelcome(provider: any) {
   return sendEmail({ to: provider.email, subject, text, html })
 }
 
-// Email de confirmación a quien se apunta a la waitlist pre-lanzamiento.
-// Confirma inscripción + comunica el beneficio (sorteo entre primeros 100
-// + acceso prioritario el día del lanzamiento).
+// Email de confirmación a quien deja su email (quiz, calculadora…):
+// confirma la suscripción y le lleva al catálogo.
 export async function emailWaitlistWelcome(entry: any) {
   if (!entry?.email) return { ok: false, error: 'Sin email' }
   const firstName = (entry.name || '').split(' ')[0] || 'hola'
-  const subject = `🎉 Estás en la lista de FiestaGo — lanzamiento 10 de junio`
+  const subject = `Estás en la lista de FiestaGo`
   const text = [
     `${firstName === 'hola' ? '¡Hola!' : `¡Hola ${firstName}!`}`,
     ``,
-    `Te confirmo que estás en la waitlist de FiestaGo. Eres de los primeros y eso tiene premio.`,
-    ``,
-    `Qué pasa ahora:`,
-    ``,
-    `🔓 Acceso prioritario el 10 de junio — entras antes de que abramos al público y reservas las mejores fechas del verano.`,
-    ``,
-    `🎁 Sorteo entre los primeros 100 inscritos — un evento completo de hasta 300€ para uno de vosotros (fotógrafo, decoración, animación… lo que elijas del catálogo).`,
+    `Te confirmo que estás en la lista de FiestaGo: te avisaremos cuando lleguen proveedores nuevos que encajen con tu celebración.`,
     ``,
     `🛡️ Garantía de Éxito incluida en todas tus reservas — si tu proveedor falla, te respondemos económicamente. Esto no lo encontrarás en Bodas.net ni Zankyou.`,
     ``,
-    `Mientras tanto, ya puedes ojear el catálogo y guardar tus favoritos:`,
+    `Ya puedes ver el catálogo, reservar y guardar tus favoritos:`,
     `https://fiestago.es/proveedores`,
     ``,
     `Si tienes una fecha en mente o quieres avisar a tu pareja, comparte tu shortlist con un solo link desde la sección de favoritos.`,
@@ -1538,9 +1531,9 @@ export async function emailProviderOutreach(
         </td></tr>
         <tr><td style="padding:16px 36px 0;">
           <div style="background:#1A1612;color:#FBF7F0;border-radius:12px;padding:14px 18px;text-align:center;">
-            <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;font-weight:700;margin-bottom:4px;">🚀 Lanzamiento oficial</div>
-            <div style="font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:500;line-height:1.2;">10 de junio de 2026</div>
-            <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:4px;line-height:1.4;">Estamos construyendo el catálogo. Los primeros profesionales tienen <strong style="color:#FBF7F0;">mejor posición</strong> en los resultados.</div>
+            <div style="font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:#E8553E;font-weight:700;margin-bottom:4px;">Ya abiertos en toda España</div>
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:500;line-height:1.2;">Inscripción gratuita</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.65);margin-top:4px;line-height:1.4;">Sin cuotas ni permanencia. Cobras el <strong style="color:#FBF7F0;">100 % de tu precio</strong>: la comisión la paga el cliente.</div>
           </div>
         </td></tr>
         <tr><td style="padding:28px 36px 8px;">${safeBody}</td></tr>

@@ -245,8 +245,7 @@ export default function ProfesionalesPage() {
       {/* CTA final */}
       <section className="max-w-3xl mx-auto px-6 py-16 text-center">
         <h2 className="font-serif text-3xl md:text-4xl font-black text-ink mb-4 leading-tight">
-          Lanzamiento el <span className="italic font-light">10 de junio</span>.
-          Entra antes y te llevas el sello fundador.
+          Entra ahora y te llevas <span className="italic font-light">el sello fundador</span>.
         </h2>
         <p className="text-ink/65 mb-8 max-w-xl mx-auto">
           Los primeros profesionales que se inscriban tendrán visibilidad

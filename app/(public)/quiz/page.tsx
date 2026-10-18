@@ -5,67 +5,84 @@ import Link from 'next/link'
 import { CATEGORIES, CITIES, getPhoto } from '@/lib/constants'
 import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import { toggleFavorite, useIsFavorite } from '@/lib/favorites'
+import {
+  EVENT_OPTIONS, AUDIENCE_OPTIONS, KIDS_AGE_OPTIONS, CORP_OPTIONS, getProfile, needsDetail,
+  type EventType, type Audience, type KidsAge, type CorpKind,
+} from '@/lib/quiz'
 import toast from 'react-hot-toast'
+import '../home.css'
+import './quiz.css'
 
-type EventType = 'boda' | 'cumpleanos' | 'comunion' | 'corporativo' | 'otro'
-type Vibe      = 'clasico' | 'moderno' | 'rustico' | 'lujo' | 'intimo' | 'divertido'
+type Step = 'evento' | 'detalle' | 'invitados' | 'ciudad' | 'estilo' | 'presupuesto' | 'email'
 
-const STEPS = ['evento', 'invitados', 'ciudad', 'vibe', 'presupuesto', 'email'] as const
-type Step = typeof STEPS[number]
+const catLabel = (id: string) => (CATEGORIES.find((c: any) => c.id === id)?.label || id)
 
-const EVENT_OPTIONS: Array<{ id: EventType; label: string; icon: string }> = [
-  { id: 'boda',        label: 'Boda',          icon: '💍' },
-  { id: 'cumpleanos',  label: 'Cumpleaños',    icon: '🎂' },
-  { id: 'comunion',    label: 'Comunión',      icon: '✨' },
-  { id: 'corporativo', label: 'Corporativo',   icon: '🏢' },
-  { id: 'otro',        label: 'Otro',          icon: '🎉' },
-]
-
-const VIBE_OPTIONS: Array<{ id: Vibe; label: string; icon: string; desc: string }> = [
-  { id: 'clasico',   label: 'Clásico',   icon: '🤍', desc: 'Elegante, tradicional' },
-  { id: 'moderno',   label: 'Moderno',   icon: '⚪', desc: 'Minimalista, urbano' },
-  { id: 'rustico',   label: 'Rústico',   icon: '🌿', desc: 'Natural, campo, boho' },
-  { id: 'lujo',      label: 'Premium',   icon: '✨', desc: 'Alta gama, exclusivo' },
-  { id: 'intimo',    label: 'Íntimo',    icon: '🕯️', desc: 'Familiar, cercano' },
-  { id: 'divertido', label: 'Divertido', icon: '🎊', desc: 'Fiesta con mucha energía' },
-]
-
-function FavBtn({ id }: { id: string }) {
+function FavBtn({ id, name }: { id: string; name: string }) {
   const fav = useIsFavorite(id)
   return (
-    <button onClick={(e) => {
+    <button type="button" aria-pressed={fav} aria-label={`${fav ? 'Quitar' : 'Guardar'} ${name} de favoritos`}
+      className="qz-fav"
+      onClick={(e) => {
         e.preventDefault()
         const next = toggleFavorite(id)
-        toast.success(next ? 'Guardado' : 'Quitado')
-      }}
-      className={`text-xs px-2 py-1 rounded-md border font-semibold transition-colors
-        ${fav ? 'bg-coral/10 border-coral text-coral' : 'border-stone-200 text-ink/60 hover:border-coral'}`}>
-      {fav ? '❤️' : '🤍'}
+        toast.success(next ? 'Guardado en favoritos' : 'Quitado de favoritos')
+      }}>
+      <svg width="20" height="18" viewBox="0 0 24 22" aria-hidden="true">
+        <path d="M12 20.5S2 14.3 2 7.6A5.1 5.1 0 0 1 12 5a5.1 5.1 0 0 1 10 2.6c0 6.7-10 12.9-10 12.9Z"
+          fill={fav ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+    </button>
+  )
+}
+
+function Choice({ selected, label, hint, onClick }: { selected: boolean; label: string; hint?: string; onClick: () => void }) {
+  return (
+    <button type="button" className="qz-choice" aria-pressed={selected} onClick={onClick}>
+      <strong>{label}</strong>
+      {hint && <span>{hint}</span>}
     </button>
   )
 }
 
 export default function QuizPage() {
-  const [step, setStep] = useState<Step>('evento')
-  const [eventType,  setEventType]  = useState<EventType>('boda')
-  const [guests,     setGuests]     = useState(100)
-  const [city,       setCity]       = useState('')
-  const [vibe,       setVibe]       = useState<Vibe | ''>('')
-  const [budget,     setBudget]     = useState(15000)
-  const [email,      setEmail]      = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [result,     setResult]     = useState<any>(null)
+  const [step, setStep]           = useState<Step>('evento')
+  const [eventType, setEventType] = useState<EventType>('boda')
+  const [audience, setAudience]   = useState<Audience | ''>('')
+  const [kidsAge, setKidsAge]     = useState<KidsAge | ''>('')
+  const [corpKind, setCorpKind]   = useState<CorpKind | ''>('')
+  const [guests, setGuests]       = useState(100)
+  const [city, setCity]           = useState('')
+  const [vibe, setVibe]           = useState('')
+  const [budget, setBudget]       = useState(15000)
+  const [email, setEmail]         = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [result, setResult]       = useState<any>(null)
 
-  const stepIdx = STEPS.indexOf(step)
-  const progress = ((stepIdx + 1) / STEPS.length) * 100
+  const profile = getProfile(eventType, { audience, age: kidsAge, corp: corpKind })
+  const steps: Step[] = ['evento', ...(needsDetail(eventType) ? ['detalle' as Step] : []), 'invitados', 'ciudad', 'estilo', 'presupuesto', 'email']
+  const stepIdx = steps.indexOf(step)
+  const progress = ((stepIdx + 1) / steps.length) * 100
 
-  function next() {
-    const i = STEPS.indexOf(step)
-    if (i < STEPS.length - 1) setStep(STEPS[i + 1])
+  // Al cambiar el perfil, los valores por defecto pasan a ser los suyos
+  function applyDefaults(e: EventType, a: Audience | '', age: KidsAge | '', c: CorpKind | '') {
+    const p = getProfile(e, { audience: a, age, corp: c })
+    setGuests(p.guests)
+    setBudget(p.budget.initial)
+    setVibe('')
   }
-  function prev() {
-    const i = STEPS.indexOf(step)
-    if (i > 0) setStep(STEPS[i - 1])
+
+  const go = (s: Step) => { setStep(s); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const next = () => { if (stepIdx < steps.length - 1) go(steps[stepIdx + 1]) }
+  const prev = () => { if (stepIdx > 0) go(steps[stepIdx - 1]) }
+
+  const detailDone = eventType === 'cumpleanos'
+    ? audience !== '' && (audience !== 'ninos' || kidsAge !== '')
+    : eventType === 'corporativo' ? corpKind !== '' : true
+
+  function pickEvent(e: EventType) {
+    setEventType(e); setAudience(''); setKidsAge(''); setCorpKind('')
+    applyDefaults(e, '', '', '')
+    go(needsDetail(e) ? 'detalle' : 'invitados')
   }
 
   async function submit() {
@@ -75,8 +92,8 @@ export default function QuizPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event_type: eventType, guests, city, vibe,
-          budget_total: budget,
+          event_type: eventType, audience, kids_age: kidsAge, corp_kind: corpKind,
+          guests, city, vibe, budget_total: budget,
           email: email || undefined,
         }),
       })
@@ -85,7 +102,7 @@ export default function QuizPage() {
         toast.error(data.error || 'Algo salió mal')
       } else {
         setResult(data)
-        setTimeout(() => document.getElementById('resultado')?.scrollIntoView({ behavior:'smooth' }), 80)
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     } catch {
       toast.error('Sin conexión')
@@ -94,108 +111,84 @@ export default function QuizPage() {
   }
 
   function handleShare() {
-    if (!result) return
     const url = window.location.href.split('?')[0]
     if (navigator.share) {
-      navigator.share({
-        title: '¿Conoces FiestaGo? Mira mis matches',
-        text:  `Mi evento es una ${eventType} para ${guests} personas. Mira qué proveedores me recomienda FiestaGo:`,
-        url,
-      }).catch(() => {})
+      navigator.share({ title: 'Mis proveedores en FiestaGo', text: `Estoy preparando un ${profile.title}. Mira lo que me recomienda FiestaGo:`, url }).catch(() => {})
       return
     }
-    navigator.clipboard.writeText(url).then(() => toast.success('Link copiado'))
+    navigator.clipboard.writeText(url).then(() => toast.success('Enlace copiado'))
   }
 
   // ── RESULTADO ─────────────────────────────────────────────────────
   if (result) {
+    const found = result.categories.filter((c: string) => result.matchesByCategory[c]?.length > 0)
+    const missing = result.categories.filter((c: string) => !result.matchesByCategory[c]?.length)
     return (
-      <main id="resultado" className="bg-cream min-h-screen">
-        <section className="bg-gradient-to-br from-ink via-ink to-coral text-white">
-          <div className="max-w-4xl mx-auto px-6 py-12 text-center">
-            <div className="text-xs font-bold uppercase tracking-[0.25em] opacity-75 mb-2">Tus matches</div>
-            <h1 className="font-serif text-3xl md:text-4xl font-bold leading-tight">
-              Estos son los proveedores que mejor encajan contigo
-            </h1>
-            <p className="text-sm md:text-base opacity-90 mt-3 max-w-xl mx-auto">
-              Basado en tu {eventType}, {result.guests} invitados{city ? `, ${city}` : ''} y presupuesto.
-            </p>
-            <div className="mt-6 flex gap-3 justify-center flex-wrap">
-              <button onClick={handleShare}
-                className="bg-white text-coral font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-cream transition-colors">
-                🔗 Compartir mis matches
-              </button>
-              <Link href="/favoritos"
-                className="border border-white/30 text-white font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-white/10 transition-colors">
-                Ver mis favoritos
-              </Link>
-            </div>
+      <main className="fg qz">
+        <section className="qz-result-head">
+          <h1>Tus proveedores</h1>
+          <p className="lead">
+            Para tu {result.title}, {result.guests} invitados{result.city ? ` en ${result.city}` : ''} y {formatEuro(result.budgetTotal, { showCents: 'never' })} de presupuesto.
+          </p>
+          <div className="qz-result-actions">
+            <button type="button" className="fg-btn fg-btn--ink" onClick={handleShare}>Compartir</button>
+            <Link href="/favoritos" className="fg-link">Ver mis favoritos</Link>
+            <button type="button" className="fg-link qz-linkbtn" onClick={() => { setResult(null); go('evento') }}>Rehacer el quiz</button>
           </div>
         </section>
 
-        <section className="max-w-5xl mx-auto px-6 py-10 space-y-8">
-          {Object.entries(result.matchesByCategory).map(([catId, providers]: [string, any]) => {
-            const cat = CATEGORIES.find(c => c.id === catId)
-            if (!cat || !providers || providers.length === 0) return null
-            return (
-              <div key={catId}>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className="text-2xl">{cat.icon}</span>
-                  <h2 className="font-serif text-2xl font-bold text-ink">{cat.label}</h2>
-                </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {providers.map((p: any) => (
-                    <div key={p.id} className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
-                      <Link href={`/proveedores/${p.id}`} className="block relative h-36 bg-stone-100 overflow-hidden">
-                        <img src={p.photo_url || getPhoto(p.category, p.photo_idx || 0, 400, 250)} alt={p.name}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform"/>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"/>
-                        {p.rating > 0 && (
-                          <div className="absolute bottom-2 right-2 bg-white/90 rounded-full px-2 py-0.5 text-xs font-bold flex items-center gap-1">
-                            <span className="text-gold">★</span>{Number(p.rating).toFixed(1)}
-                          </div>
-                        )}
-                      </Link>
-                      <div className="p-3">
-                        <Link href={`/proveedores/${p.id}`}>
-                          <h3 className="font-serif text-base font-bold text-ink leading-tight hover:text-coral">{p.name}</h3>
-                        </Link>
-                        <div className="text-xs text-ink/55 mt-1 mb-2">📍 {p.city}</div>
-                        <div className="flex items-center justify-between gap-2">
-                          {p.price_base ? (
-                            <div title={textoGarantiaIncluida(p.price_base)}>
-                              <span className="text-[10px] text-ink/45">desde </span>
-                              <span className="font-serif font-bold text-base" style={{ color: cat.color }}>
-                                {formatEuro(precioCliente(p.price_base))}
-                              </span>
-                              <div className="text-[10px] text-ink/45">garantía incl.</div>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-ink/40">Consultar</span>
-                          )}
-                          <FavBtn id={p.id}/>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        <section className="qz-results">
+          {found.map((catId: string) => (
+            <div key={catId} className="qz-cat">
+              <div className="qz-cat__head">
+                <h2>{catLabel(catId)}</h2>
+                <p>Reparto orientativo: <b className="num">{formatEuro(result.budgetSplit[catId], { showCents: 'never' })}</b></p>
               </div>
-            )
-          })}
-
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 text-center mt-8">
-            <h3 className="font-serif text-xl font-bold text-ink mb-2">¿Quieres comparar dos o más lado a lado?</h3>
-            <p className="text-sm text-ink/60 mb-4">Guarda los que más te gusten como favoritos y úsalos en el comparador.</p>
-            <div className="flex gap-3 justify-center flex-wrap">
-              <Link href="/favoritos" className="bg-coral text-white font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-coral-dark transition-colors">
-                Ir a mis favoritos
-              </Link>
-              <button onClick={() => { setResult(null); setStep('evento') }}
-                className="border border-stone-200 text-ink font-semibold px-5 py-2.5 rounded-xl text-sm hover:border-coral hover:text-coral transition-colors">
-                Rehacer el quiz
-              </button>
+              <div className="qz-cards">
+                {result.matchesByCategory[catId].map((p: any) => (
+                  <Link key={p.id} href={`/proveedores/${p.slug || p.id}`} className="qz-card">
+                    <div className="qz-card__img">
+                      <img src={p.photo_url || getPhoto(p.category, p.photo_idx || 0, 600, 450)} alt={`${p.name}, ${catLabel(p.category).toLowerCase()} en ${p.city}`} loading="lazy" />
+                    </div>
+                    <div className="qz-card__body">
+                      <div>
+                        <strong>{String(p.name).trim()}</strong>
+                        <span>{p.city}{p.rating > 0 ? ` · ★ ${Number(p.rating).toFixed(1)}` : ''}{p.verified ? ' · verificado' : ''}</span>
+                        <span title={p.price_base ? textoGarantiaIncluida(p.price_base) : undefined}>
+                          {p.price_base ? <>desde <b className="num">{formatEuro(precioCliente(p.price_base), { showCents: 'never' })}</b></> : 'Precio a consultar'}
+                        </span>
+                      </div>
+                      <FavBtn id={p.id} name={p.name} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          ))}
+
+          {missing.length > 0 && (
+            <div className="qz-missing">
+              <h2>Aún sin proveedores{result.city ? ` en ${result.city}` : ''}</h2>
+              <p>Todavía no tenemos estas categorías para tu búsqueda. Cada semana se suman profesionales nuevos.</p>
+              <ul>
+                {missing.map((c: string) => (
+                  <li key={c}>
+                    <Link href={`/proveedores?categoria=${c}`} className="qz-missing__item">
+                      <span>{catLabel(c)}</span>
+                      <span className="num">{formatEuro(result.budgetSplit[c], { showCents: 'never' })}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {found.length === 0 && (
+            <p className="qz-empty">
+              No hemos encontrado proveedores con precio para esta búsqueda.{' '}
+              <Link href="/proveedores" className="fg-link">Ver todos los proveedores</Link>
+            </p>
+          )}
         </section>
       </main>
     )
@@ -203,161 +196,145 @@ export default function QuizPage() {
 
   // ── QUIZ ──────────────────────────────────────────────────────────
   return (
-    <main className="bg-cream min-h-screen">
-      <section className="bg-gradient-to-br from-ink via-ink to-coral text-white">
-        <div className="max-w-3xl mx-auto px-6 py-10 text-center">
-          <div className="text-xs font-bold uppercase tracking-[0.25em] opacity-75 mb-2">Quiz · 2 minutos</div>
-          <h1 className="font-serif text-3xl md:text-4xl font-bold leading-tight">
-            Encuentra tu proveedor ideal
-          </h1>
-          <p className="text-sm md:text-base opacity-90 mt-3">
-            6 preguntas. Te recomendamos los proveedores que mejor encajan contigo.
-          </p>
+    <main className="fg qz">
+      <section className="qz-sheet">
+        <div className="qz-top">
+          <span className="small">Pregunta {stepIdx + 1} de {steps.length}</span>
+          <div className="qz-bar" aria-hidden="true"><span style={{ width: `${progress}%` }} /></div>
         </div>
-      </section>
 
-      <section className="max-w-2xl mx-auto px-6 -mt-6 pb-16">
-        <div className="bg-white border border-stone-200 rounded-3xl shadow-xl p-6 md:p-8">
-          {/* Progress bar */}
-          <div className="mb-6">
-            <div className="flex justify-between text-xs text-ink/55 mb-1.5">
-              <span>Pregunta {stepIdx + 1} de {STEPS.length}</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
-              <div className="h-full bg-coral transition-all" style={{ width: `${progress}%` }}/>
+        {step === 'evento' && (
+          <div className="qz-step">
+            <h1>¿Qué celebras?</h1>
+            <p>Te recomendamos proveedores según el tipo de celebración, tu ciudad y tu presupuesto.</p>
+            <div className="qz-grid">
+              {EVENT_OPTIONS.map(o => (
+                <Choice key={o.id} selected={eventType === o.id} label={o.label} hint={o.hint} onClick={() => pickEvent(o.id)} />
+              ))}
             </div>
           </div>
+        )}
 
-          {/* Step: Evento */}
-          {step === 'evento' && (
-            <div>
-              <h2 className="font-serif text-2xl text-ink font-bold mb-4">¿Qué celebras?</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {EVENT_OPTIONS.map(opt => (
-                  <button key={opt.id}
-                    onClick={() => { setEventType(opt.id); next() }}
-                    className={`p-4 rounded-xl border-2 text-center transition-colors
-                      ${eventType === opt.id ? 'border-coral bg-coral/10 text-coral' : 'border-stone-200 text-ink hover:border-coral/40'}`}>
-                    <div className="text-3xl mb-1">{opt.icon}</div>
-                    <div className="text-sm font-semibold">{opt.label}</div>
-                  </button>
-                ))}
-              </div>
+        {step === 'detalle' && eventType === 'cumpleanos' && (
+          <div className="qz-step">
+            <h1>¿Para quién es?</h1>
+            <p>No se organiza igual un cumpleaños de 5 años que uno de 40.</p>
+            <div className="qz-grid qz-grid--3">
+              {AUDIENCE_OPTIONS.map(o => (
+                <Choice key={o.id} selected={audience === o.id} label={o.label} hint={o.hint}
+                  onClick={() => {
+                    setAudience(o.id); setKidsAge('')
+                    applyDefaults('cumpleanos', o.id, '', '')
+                    if (o.id !== 'ninos') go('invitados')
+                  }} />
+              ))}
             </div>
-          )}
-
-          {/* Step: Invitados */}
-          {step === 'invitados' && (
-            <div>
-              <h2 className="font-serif text-2xl text-ink font-bold mb-2">¿Cuántos invitados?</h2>
-              <p className="text-sm text-ink/55 mb-6">Aproximado, no hace falta cifra exacta.</p>
-              <div className="flex items-center gap-3 mb-4">
-                <input type="number" min={1} max={1500} value={guests}
-                  onChange={e => setGuests(parseInt(e.target.value) || 1)}
-                  className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none text-2xl font-serif font-bold text-center"/>
-                <span className="text-ink/60 font-semibold">personas</span>
-              </div>
-              <div className="grid grid-cols-4 gap-2 mb-6">
-                {[20, 50, 100, 200].map(n => (
-                  <button key={n} type="button"
-                    onClick={() => setGuests(n)}
-                    className={`py-2 rounded-lg border text-sm font-semibold transition-colors
-                      ${guests === n ? 'border-coral bg-coral/10 text-coral' : 'border-stone-200 text-ink/65 hover:border-coral/40'}`}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step: Ciudad */}
-          {step === 'ciudad' && (
-            <div>
-              <h2 className="font-serif text-2xl text-ink font-bold mb-2">¿En qué ciudad?</h2>
-              <p className="text-sm text-ink/55 mb-6">Si tienes una ciudad pensada, nos ayuda a ajustar las recomendaciones.</p>
-              <select value={city} onChange={e => setCity(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none text-base bg-white mb-2">
-                <option value="">Toda España / aún no lo sé</option>
-                {CITIES.map((c: string) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Step: Vibe */}
-          {step === 'vibe' && (
-            <div>
-              <h2 className="font-serif text-2xl text-ink font-bold mb-2">¿Qué estilo te imaginas?</h2>
-              <p className="text-sm text-ink/55 mb-6">Elige el que más se acerque (no hay respuesta mala).</p>
-              <div className="grid grid-cols-2 gap-2">
-                {VIBE_OPTIONS.map(opt => (
-                  <button key={opt.id} type="button"
-                    onClick={() => setVibe(opt.id)}
-                    className={`p-4 rounded-xl border-2 text-left transition-colors
-                      ${vibe === opt.id ? 'border-coral bg-coral/10' : 'border-stone-200 hover:border-coral/40'}`}>
-                    <div className="text-2xl mb-1">{opt.icon}</div>
-                    <div className={`text-sm font-bold ${vibe === opt.id ? 'text-coral' : 'text-ink'}`}>{opt.label}</div>
-                    <div className="text-[10px] text-ink/55">{opt.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step: Presupuesto */}
-          {step === 'presupuesto' && (
-            <div>
-              <h2 className="font-serif text-2xl text-ink font-bold mb-2">¿Cuál es tu presupuesto total?</h2>
-              <p className="text-sm text-ink/55 mb-6">Aproximado, para ajustar la búsqueda a tu rango.</p>
-              <div className="text-center mb-4">
-                <div className="font-serif text-4xl font-bold text-coral">
-                  {budget.toLocaleString()} €
+            {audience === 'ninos' && (
+              <div className="qz-sub">
+                <h2>¿Cuántos años cumple?</h2>
+                <div className="qz-chips">
+                  {KIDS_AGE_OPTIONS.map(o => (
+                    <button key={o.id} type="button" className="fg-filter" aria-pressed={kidsAge === o.id}
+                      onClick={() => { setKidsAge(o.id); go('invitados') }}>
+                      {o.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <input type="range" min={500} max={60000} step={500} value={budget}
-                onChange={e => setBudget(parseInt(e.target.value))}
-                className="w-full accent-coral mb-2"/>
-              <div className="flex justify-between text-[10px] text-ink/50 mb-6">
-                <span>500€</span><span>30k€</span><span>60k€+</span>
-              </div>
-            </div>
-          )}
-
-          {/* Step: Email */}
-          {step === 'email' && (
-            <div>
-              <h2 className="font-serif text-2xl text-ink font-bold mb-2">¿Te mandamos los matches al email?</h2>
-              <p className="text-sm text-ink/55 mb-6">
-                Opcional. Si nos lo dejas, te avisamos también del lanzamiento del 10 de junio
-                y entras en el sorteo de un evento de 300€.
-              </p>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="tu@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:border-coral focus:ring-2 focus:ring-coral/20 focus:outline-none text-base mb-2"/>
-              <p className="text-[10px] text-ink/45">Sin spam, prometido.</p>
-            </div>
-          )}
-
-          {/* Navegación */}
-          <div className="flex gap-3 mt-8">
-            {stepIdx > 0 && (
-              <button onClick={prev}
-                className="px-5 py-3 rounded-xl border border-stone-200 text-ink/65 font-semibold text-sm hover:border-coral hover:text-coral transition-colors">
-                ← Atrás
-              </button>
-            )}
-            {step !== 'email' ? (
-              <button onClick={next}
-                className="flex-1 px-5 py-3 rounded-xl bg-coral text-white font-bold text-sm hover:bg-coral-dark transition-colors">
-                Siguiente →
-              </button>
-            ) : (
-              <button onClick={submit} disabled={loading}
-                className="flex-1 px-5 py-3 rounded-xl bg-coral text-white font-bold text-sm hover:bg-coral-dark transition-colors disabled:opacity-60">
-                {loading ? 'Calculando matches…' : 'Ver mis matches →'}
-              </button>
             )}
           </div>
+        )}
+
+        {step === 'detalle' && eventType === 'corporativo' && (
+          <div className="qz-step">
+            <h1>¿Qué tipo de evento?</h1>
+            <p>Así sabemos si pesa más el espacio, el catering o la actividad.</p>
+            <div className="qz-grid">
+              {CORP_OPTIONS.map(o => (
+                <Choice key={o.id} selected={corpKind === o.id} label={o.label} hint={o.hint}
+                  onClick={() => { setCorpKind(o.id); applyDefaults('corporativo', '', '', o.id); go('invitados') }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 'invitados' && (
+          <div className="qz-step">
+            <h1>¿Cuántos invitados?</h1>
+            <p>Una cifra aproximada es suficiente.</p>
+            <label className="qz-number">
+              <input type="number" inputMode="numeric" min={1} max={1500} value={guests}
+                onChange={e => setGuests(Math.max(1, parseInt(e.target.value) || 1))} />
+              <span>personas</span>
+            </label>
+            <div className="qz-chips">
+              {profile.guestPresets.map(n => (
+                <button key={n} type="button" className="fg-filter" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 'ciudad' && (
+          <div className="qz-step">
+            <h1>¿En qué ciudad?</h1>
+            <p>Si ya sabes dónde, ajustamos las recomendaciones a profesionales de la zona.</p>
+            <select className="qz-select" value={city} onChange={e => setCity(e.target.value)} aria-label="Ciudad">
+              <option value="">Toda España / aún no lo sé</option>
+              {CITIES.map((c: string) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
+
+        {step === 'estilo' && (
+          <div className="qz-step">
+            <h1>¿Qué estilo te imaginas?</h1>
+            <p>Elige el que más se acerque. Puedes saltarte esta pregunta.</p>
+            <div className="qz-grid">
+              {profile.styles.map(o => (
+                <Choice key={o.id} selected={vibe === o.id} label={o.label} hint={o.hint} onClick={() => setVibe(vibe === o.id ? '' : o.id)} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 'presupuesto' && (
+          <div className="qz-step">
+            <h1>¿Cuál es tu presupuesto?</h1>
+            <p>El total aproximado para tu {profile.title}. Lo repartimos entre las categorías que más pesan.</p>
+            <output className="qz-budget num" htmlFor="qz-range">{formatEuro(budget, { showCents: 'never' })}</output>
+            <input id="qz-range" type="range" className="qz-range"
+              min={profile.budget.min} max={profile.budget.max} step={profile.budget.step}
+              value={Math.min(Math.max(budget, profile.budget.min), profile.budget.max)}
+              onChange={e => setBudget(parseInt(e.target.value))} aria-label="Presupuesto total" />
+            <div className="qz-range-ends small num">
+              <span>{formatEuro(profile.budget.min, { showCents: 'never' })}</span>
+              <span>{formatEuro(profile.budget.max, { showCents: 'never' })} o más</span>
+            </div>
+          </div>
+        )}
+
+        {step === 'email' && (
+          <div className="qz-step">
+            <h1>¿Te avisamos de novedades?</h1>
+            <p>Opcional. Si nos dejas tu email, te escribimos cuando lleguen proveedores nuevos que encajen con tu {profile.title}.</p>
+            <input type="email" className="qz-select" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="tu@email.com" aria-label="Email (opcional)" autoComplete="email" />
+            <p className="small qz-note">Sin spam. Puedes darte de baja cuando quieras.</p>
+          </div>
+        )}
+
+        <div className="qz-nav">
+          {stepIdx > 0 && <button type="button" className="fg-cell qz-back" onClick={prev}>Atrás</button>}
+          {step === 'email' ? (
+            <button type="button" className="fg-btn qz-next" onClick={submit} disabled={loading}>
+              {loading ? 'Buscando…' : 'Ver mis proveedores'}
+            </button>
+          ) : step !== 'evento' && (
+            <button type="button" className="fg-btn qz-next" onClick={next} disabled={step === 'detalle' && !detailDone}>
+              Siguiente
+            </button>
+          )}
         </div>
       </section>
     </main>
