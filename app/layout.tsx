@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
-import { DM_Sans, Fraunces, IBM_Plex_Mono } from 'next/font/google'
+import { DM_Sans, Fraunces, IBM_Plex_Mono, Schibsted_Grotesk } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
@@ -25,6 +25,13 @@ const ibmMono = IBM_Plex_Mono({
   display: 'swap',
 })
 
+const schibsted = Schibsted_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '600', '800'],
+  variable: '--font-schibsted',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: { default: 'FiestaGo — Reserva tu celebración perfecta', template: '%s | FiestaGo' },
   description: 'El marketplace de celebraciones #1 en España. Bodas, cumpleaños, bautizos y más. Los mejores proveedores verificados.',
@@ -45,7 +52,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${dmSans.variable} ${fraunces.variable} ${ibmMono.variable}`}>
+    <html lang="es" className={`${dmSans.variable} ${fraunces.variable} ${ibmMono.variable} ${schibsted.variable}`}>
       <body className="font-sans bg-cream text-ink antialiased">
         {/* Google Analytics 4 — solo se carga si NEXT_PUBLIC_GA_ID está configurado */}
         {GA_ID && (

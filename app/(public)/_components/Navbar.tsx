@@ -48,96 +48,77 @@ export default function Navbar() {
 
   const panelHref = auth.isProvider ? '/proveedor/panel' : '/mi-cuenta'
 
+  const link = 'text-[15px] font-semibold text-ink px-3 py-2 hover:underline underline-offset-[6px] decoration-2'
+
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-stone-200 shadow-sm">
-      <nav className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center" aria-label="FiestaGo — inicio">
-          <img src="/logo.svg" alt="FiestaGo — Celebra sin complicarte" className="h-14 md:h-16 w-auto" />
+    <header className="sticky top-0 z-50 bg-[#f4f1ec] font-[family-name:var(--font-schibsted)] tracking-[-0.01em]">
+      <nav className="max-w-[1440px] mx-auto px-4 md:px-8 h-20 flex items-center justify-between gap-4">
+        <Link href="/" className="flex items-center gap-3" aria-label="FiestaGo — inicio">
+          <img src="/logo.svg" alt="" className="h-12 w-auto" />
+          <span className="hidden sm:inline text-[22px] font-extrabold tracking-[-0.06em] text-ink">FiestaGo</span>
         </Link>
-        <div className="hidden md:flex items-center gap-1">
-          <Link href="/servicios" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            Servicios
-          </Link>
+        <div className="hidden lg:flex items-center gap-1">
+          <Link href="/proveedores" className={link}>Proveedores</Link>
+          <Link href="/servicios" className={link}>Servicios</Link>
           <div className="relative group">
-            <button className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors inline-flex items-center gap-1">
-              Celebraciones <span className="text-[10px]">▾</span>
+            <button className={`${link} inline-flex items-center gap-1.5`}>
+              Celebraciones
+              <svg width="10" height="7" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
             </button>
-            <div className="absolute top-full left-0 pt-1 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-150 z-50">
-              <div className="bg-white border border-stone-200 rounded-2xl shadow-xl py-2 min-w-[220px]">
-                <Link href="/cumpleanos" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
-                  🎂 Cumpleaños
-                </Link>
-                <Link href="/comuniones" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
-                  ✨ Comuniones y bautizos
-                </Link>
-                <Link href="/corporativo" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
-                  🏢 Eventos corporativos
-                </Link>
-                <Link href="/proveedores?categoria=planner" className="block px-4 py-2 text-sm text-ink/80 hover:text-coral hover:bg-cream transition-colors">
-                  💍 Bodas
-                </Link>
+            <div className="absolute top-full left-0 pt-2 invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity duration-150 z-50">
+              <div className="bg-[#f4f1ec] shadow-[0_12px_40px_rgba(10,10,10,0.14)] py-2 min-w-[240px]">
+                {[
+                  ['Bodas', '/proveedores?categoria=planner'],
+                  ['Cumpleaños', '/cumpleanos'],
+                  ['Comuniones y bautizos', '/comuniones'],
+                  ['Eventos de empresa', '/corporativo'],
+                ].map(([label, href]) => (
+                  <Link key={href} href={href} className="block px-5 py-2.5 text-[15px] text-ink hover:bg-[#dedad3] transition-colors">
+                    {label}
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
-          <Link href="/calculadora" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            🧮 Calculadora
-          </Link>
-          <Link href="/quiz" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            ✨ Quiz
-          </Link>
-          <Link href="/eventos-reales" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-            📸 Inspírate
-          </Link>
+          <Link href="/calculadora" className={link}>Calculadora</Link>
+          <Link href="/eventos-reales" className={link}>Inspírate</Link>
           {auth.email && !auth.isProvider && (
-            <Link href="/mi-evento" className="text-sm font-medium text-ink/70 hover:text-coral px-3 py-2 rounded-xl transition-colors">
-              📅 Mi evento
-            </Link>
+            <Link href="/mi-evento" className={link}>Mi evento</Link>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Corazón de favoritos — siempre visible, badge con count si hay alguno */}
+        <div className="flex items-center gap-1 sm:gap-2">
           <Link href="/favoritos"
             aria-label="Mis favoritos"
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-lg
-              border border-stone-200 text-ink hover:border-coral hover:text-coral transition-colors">
-            <span>{favs.length > 0 ? '❤️' : '🤍'}</span>
+            className="relative w-11 h-11 flex items-center justify-center text-ink hover:bg-[#dedad3] transition-colors">
+            <svg width="22" height="20" viewBox="0 0 24 22" aria-hidden="true">
+              <path d="M12 20.5S2 14.3 2 7.6A5.1 5.1 0 0 1 12 5a5.1 5.1 0 0 1 10 2.6c0 6.7-10 12.9-10 12.9Z"
+                fill={favs.length > 0 ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            </svg>
             {favs.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-coral text-white text-[10px] font-bold flex items-center justify-center px-1">
+              <span className="absolute top-1 right-0.5 min-w-[18px] h-[18px] rounded-full bg-[#256f82] text-white text-[11px] font-semibold flex items-center justify-center px-1">
                 {favs.length > 99 ? '99+' : favs.length}
               </span>
             )}
           </Link>
 
-          {/* Mi panel + Salir SOLO si está logueado (extra, antes de los botones de auth) */}
           {auth.email && !auth.loading && (
             <>
-              <Link href={panelHref}
-                className="text-sm font-semibold bg-ink text-white px-4 py-2 rounded-xl hover:bg-ink/85 transition-colors hidden md:inline-flex items-center gap-2">
-                {auth.isProvider ? '🛠 Mi panel' : '📅 Mi cuenta'}
+              <Link href={panelHref} className={`${link} hidden md:inline-flex`}>
+                {auth.isProvider ? 'Mi panel' : 'Mi cuenta'}
               </Link>
               <button onClick={handleLogout}
-                className="text-xs text-ink/50 hover:text-coral px-2 transition-colors hidden lg:block">
+                className="text-[14px] text-ink/70 hover:text-ink px-2 transition-colors hidden lg:block">
                 Salir
               </button>
             </>
           )}
 
-          {/* Botones de auth SIEMPRE visibles (logueado o no) */}
-          <Link href="/profesionales"
-            className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors">
-            🛠 Soy proveedor
-          </Link>
-          <Link href="/login"
-            className="text-sm font-semibold border border-stone-200 text-ink px-4 py-2 rounded-xl hover:border-coral hover:text-coral transition-colors hidden sm:block">
-            Acceder
-          </Link>
-          <Link href="/registro"
-            className="text-sm font-semibold border border-coral/40 text-coral px-4 py-2 rounded-xl hover:bg-coral hover:text-white transition-colors hidden sm:block">
-            Hazte socio
-          </Link>
+          <Link href="/profesionales" className={`${link} hidden xl:inline-flex`}>Soy proveedor</Link>
+          <Link href="/login" className={`${link} hidden sm:inline-flex`}>Acceder</Link>
+          <Link href="/registro" className={`${link} hidden md:inline-flex`}>Hazte socio</Link>
           <Link href="/servicios"
-            className="text-sm font-bold bg-coral text-white px-5 py-2 rounded-xl hover:bg-coral-dark transition-colors shadow-coral">
+            className="inline-flex items-center h-11 px-5 bg-[#0a0a0a] text-[#f4f1ec] text-[15px] font-semibold hover:bg-[#2a2826] active:translate-y-px transition-colors">
             Reservar
           </Link>
         </div>
