@@ -41,6 +41,28 @@ async function getPacks() {
   return data || []
 }
 
+// Guirnalda de banderines sobre la tarjeta: el cordel es una curva
+// cuadrática y cada banderín cuelga del punto de la curva que le toca.
+const FLAGS = 15
+function Bunting() {
+  return (
+    <div className="fg-bunting" aria-hidden="true">
+      <svg viewBox="0 0 100 76" preserveAspectRatio="none">
+        <path d="M0 4 Q50 76 100 4" fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      </svg>
+      {Array.from({ length: FLAGS }, (_, n) => {
+        const t = (n + 1) / (FLAGS + 1)
+        const y = (4 + 144 * t * (1 - t)) / 108 * 100
+        return (
+          <span key={n} style={{ left: `${t * 100}%`, top: `${y}%`, ['--n' as any]: n }}>
+            <i />
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 function packGroup(name: string) {
   if (/boda|comuni/i.test(name)) return 'Bodas y comuniones'
   if (/cumple|casa|fiesta/i.test(name)) return 'Cumpleaños y fiestas'
@@ -83,9 +105,7 @@ export default async function HomePage() {
       {/* ─────────── La invitación ─────────── */}
       <section className="fg-hero" aria-labelledby="hero-h">
         <div className="fg-card">
-          <div className="fg-stripe" aria-hidden="true">
-            {Array.from({ length: 48 }, (_, n) => <span key={n} />)}
-          </div>
+          <Bunting />
           <div className="fg-card__body">
             <span className="fg-wordmark">FiestaGo</span>
             <h1 id="hero-h">Tu celebración, sin sustos.</h1>
