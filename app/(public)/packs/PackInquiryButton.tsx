@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { formatEuro } from '@/lib/pricing'
+import { getAcquisition } from '@/lib/attribution'
 
 // ─── Botón + modal de solicitud sobre un pack ──────────────────────────
 // Como el pack no tiene proveedor asignado (es un combo que el admin
@@ -57,6 +58,7 @@ export default function PackInquiryButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           booking_type: 'pack',
+          acquisition: getAcquisition(),
           pack_id:      packId,
           client_name:  name,
           client_email: email,

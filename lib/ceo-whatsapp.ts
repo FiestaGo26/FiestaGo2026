@@ -73,25 +73,28 @@ export async function notifyCeoWhatsapp(
   supabase: SupabaseClient,
   headline: string,
   autoTitles: string[] = [],
+  /** Avisos extra, p. ej. anuncios que el CEO propone y Mariano decide. */
+  extra: string[] = [],
 ): Promise<{ ok: boolean; via?: 'text' | 'template'; error?: string }> {
   const to = adminNumber()
   if (!to) return { ok: false, error: 'ADMIN_WHATSAPP_NUMBER no configurado' }
 
   const list = await pendingProposals(supabase)
-  if (!list.length && !autoTitles.length) return { ok: false, error: 'nada que contar' }
+  if (!list.length && !autoTitles.length && !extra.length) return { ok: false, error: 'nada que contar' }
 
   const auto = autoTitles.length
     ? `⚙️ *Hoy ejecuto yo:*\n${autoTitles.map(t => `• ${t}`).join('\n')}\n(escribe *PAUSA* para pararme)\n\n`
     : ''
+  const extraBlock = extra.length ? `💶 *Te propongo (decides tú en el panel):*\n${extra.map(t => `• ${t}`).join('\n')}\n\n` : ''
   try {
-    await sendText(to, `${auto}${list.length ? formatList(list, headline) : `🧠 *CEO FiestaGo*\n${headline}`}`.slice(0, 4000))
+    await sendText(to, `${auto}${extraBlock}${list.length ? formatList(list, headline) : `🧠 *CEO FiestaGo*\n${headline}`}`.slice(0, 4000))
     return { ok: true, via: 'text' }
   } catch (err: any) {
     // Fuera de la ventana de 24h → plantilla para "despertar" el chat.
     const template = process.env.CEO_WHATSAPP_TEMPLATE
     if (!template) return { ok: false, error: `texto libre falló y no hay CEO_WHATSAPP_TEMPLATE: ${err.message}` }
     try {
-      await sendTemplate(to, { template, bodyParams: [String(list.length + autoTitles.length)] })
+      await sendTemplate(to, { template, bodyParams: [String(list.length + autoTitles.length + extra.length)] })
       return { ok: true, via: 'template' }
     } catch (tplErr: any) {
       return { ok: false, error: tplErr.message }

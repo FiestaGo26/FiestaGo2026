@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast'
 import '../home.css'
 import './quiz.css'
+import { getAcquisition } from '@/lib/attribution'
 
 type Step = 'evento' | 'detalle' | 'invitados' | 'ciudad' | 'estilo' | 'presupuesto' | 'email'
 
@@ -95,6 +96,7 @@ export default function QuizPage() {
           event_type: eventType, audience, kids_age: kidsAge, corp_kind: corpKind,
           guests, city, vibe, budget_total: budget,
           email: email || undefined,
+          acquisition: getAcquisition(),
         }),
       })
       const data = await res.json()

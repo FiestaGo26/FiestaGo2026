@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import GrowthPanel from './GrowthPanel'
 
 // ─── Pestaña 🧠 CEO · agente IA que dirige FiestaGo ──────────────────────────
 // Muestra los 5 pasos del agente (rol, contexto, tareas, rutinas, regla de
@@ -47,6 +48,10 @@ type Settings = {
   paused:            boolean
   max_wa_per_day:    number
   max_posts_per_day: number
+  ads_budget_eur:    number
+  supply_threshold:  number
+  wa_braked_at:      string | null
+  wa_brake_reason:   string | null
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -92,6 +97,7 @@ const TASKS = [
   'optimizar SEO y páginas para chatbots',
   'arrancar y mantener una newsletter',
   'mantener viva la cola de IG/TikTok',
+  'experimentar, medir y aprender qué canal trae proveedores y clientes',
   'vigilar bugs, alertas e incidencias',
   'tenerte al día de lo que importa',
 ]
@@ -115,6 +121,7 @@ export default function CeoAgent() {
   const [loading,   setLoading]   = useState(false)
   const [running,   setRunning]   = useState<null | 'daily' | 'weekly'>(null)
   const [settings,  setSettings]  = useState<Settings | null>(null)
+  const [experiments, setExperiments] = useState<any[]>([])
 
   async function load() {
     setLoading(true)
@@ -125,6 +132,7 @@ export default function CeoAgent() {
       setReports(data.reports)
       setProposals(data.proposals)
       setSettings(data.settings || null)
+      setExperiments(data.experiments || [])
     } catch (e: any) {
       toast.error(e.message)
     }
@@ -149,7 +157,7 @@ export default function CeoAgent() {
     setRunning(null)
   }
 
-  async function saveSettings(patch: Partial<Settings>) {
+  async function saveSettings(patch: Partial<Settings> & Record<string, unknown>) {
     try {
       const res = await fetch('/api/admin/ceo', {
         method: 'PATCH', headers: adminHeaders(), body: JSON.stringify({ settings: patch }),
@@ -224,6 +232,8 @@ export default function CeoAgent() {
           </button>
         </div>
       )}
+
+      <GrowthPanel experiments={experiments} settings={settings} reload={load} saveSettings={saveSettings} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
         {/* Los 5 pasos */}

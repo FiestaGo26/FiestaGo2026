@@ -4,6 +4,7 @@ import { calcCommission } from '@/lib/constants'
 import { emailAdminNewBooking, emailAdminPackInquiry, emailProviderNewBooking, emailClientBookingReceived } from '@/lib/resend'
 import { requireClientAuth } from '@/lib/auth'
 import { computePaymentSchedule } from '@/lib/booking-payments'
+import { sanitizeAcquisition } from '@/lib/attribution'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from('bookings')
       .insert({
+        acquisition:  sanitizeAcquisition(body?.acquisition),
         booking_type: booking_type || 'provider',
         provider_id:  provider_id || null,
         pack_id:      pack_id || null,

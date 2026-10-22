@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/resend'
 import { notifyCeoWhatsapp } from '@/lib/ceo-whatsapp'
 import { ACTION_TYPES, CEO_CATEGORIES, CEO_CITIES, actionCatalogForPrompt, getCeoSettings, sanitizeAction } from '@/lib/ceo-actions'
+import { AUDIENCES, CHANNELS, applyExperimentDecisions, gatherGrowth, type ExperimentClose, type ExperimentPlan } from '@/lib/ceo-growth'
 
 const MODEL = process.env.CEO_MODEL || 'claude-opus-5-5'
 
@@ -36,6 +37,7 @@ export const MANDATE: Array<{ key: string; label: string }> = [
   { key: 'seo',          label: 'Optimizar SEO y páginas que leen los chatbots de IA' },
   { key: 'newsletter',   label: 'Arrancar y mantener una newsletter' },
   { key: 'marketing',    label: 'Mantener viva la cola de contenido de IG/TikTok' },
+  { key: 'growth',       label: 'Experimentar, medir y aprender qué canal, formato y mensaje traen proveedores y clientes' },
   { key: 'bugs',         label: 'Vigilar bugs, alertas e incidencias abiertas' },
   { key: 'reporte',      label: 'Tenerte al día de lo que importa, sin ruido' },
 ]
@@ -142,6 +144,9 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
       .limit(10),
   )
 
+  // Motor de crecimiento: embudos, experimentos y lo aprendido.
+  const growth = await gatherGrowth(supabase, await getCeoSettings(supabase))
+
   // Propuestas que siguen sin decidir: el CEO no debe repetirlas.
   const openProposals = await rows(
     supabase.from('ceo_proposals')
@@ -196,6 +201,7 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
       latest_alerts:         alerts,
     },
     open_proposals: openProposals,
+    growth,
   }
 }
 
@@ -219,12 +225,26 @@ ${actionCatalogForPrompt()}
 - Usa el modo de autonomía que recibes: con "full" tus acciones se ejecutan sin esperar; con "approval" esperan su OK. Hay topes diarios de WhatsApps y posts; no los superes.
 - Mira "recent_actions": si algo falló o no dio resultado, no lo repitas igual; ajusta o propón otra cosa.
 - Propón como máximo 5 acciones, priorizadas por impacto en el crecimiento del marketplace (más proveedores activos, más demanda, más reservas). No repitas propuestas que ya están en "open_proposals".
-- Escribe en español de España, tono directo y cercano, tuteando.`
+- Escribe en español de España, tono directo y cercano, tuteando.
+
+Método de crecimiento (lo más importante; datos en "growth"):
+- Trabajas como responsable de crecimiento: toda acción de marketing pertenece a un experimento que prueba UNA cosa (canal, formato o mensaje) con un público concreto. Los experimentos se crean en "experiments.start" y se cierran en "experiments.close".
+- Primero proveedores, luego clientes. Solo puedes captar clientes en las celdas ciudad · categoría de "supply_ready_for_clients"; el sistema descarta cualquier experimento de clientes fuera de ellas. Mientras no haya celdas listas, todo el esfuerzo va a proveedores, empezando por las categorías y ciudades de "supply_gaps".
+- Canales para proveedores: whatsapp (la plantilla de Meta es fija; lo que varías es categoría, ciudad y segmento, pasando category, city y experiment en la acción whatsapp_outreach), email, instagram y tiktok (posts que hablen a profesionales). Para clientes: instagram, tiktok, seo y anuncios (meta_ads, tiktok_ads).
+- Formatos de Instagram y TikTok: reel, carrusel, story o imagen. create_post genera una imagen para la cola; los vídeos salen de la cola diaria de vídeos. Pon el formato en "format" y el ángulo concreto del mensaje en "variant".
+- Decides con datos: lee "experiments_running[].metrics" y "learnings". Con enough_data=false no declares ganador ni perdedor; deja correr el experimento, o ciérralo como "stopped" si ya venció (overdue) sin volumen. Gana lo que convierte (altas de proveedores, emails, reservas), no lo que tiene más likes.
+- Explora y explota: alrededor del 80 % del volumen va a lo que ya ha funcionado según "learnings" y el 20 % a probar algo nuevo. No pases de limits.max_running_experiments.
+- Cada propuesta de acción ligada a un experimento lleva en action.experiment el slug del experimento (si ya existe) o la "key" del experimento que creas en este mismo informe. Las acciones sin experimento llevan "".
+- Anuncios: este mes quedan ads.remaining_eur euros. Solo los PROPONES (canal meta_ads o tiktok_ads, con budget_eur, público, ciudad y la creatividad en "variant"); Mariano decide y paga. Nunca más de lo que queda. Un anuncio solo tiene sentido para clientes en celdas listas, o para proveedores en una ciudad concreta.
+- WhatsApp: si whatsapp_health.braked es true, no propongas acciones de WhatsApp y explica a Mariano por qué saltó el freno.
+- Instagram y TikTok no se publican solos: los posts quedan en la cola para que Mariano los publique y él mete sus métricas en el panel. Si un experimento social no tiene métricas pasada una semana, pídeselas en el resumen.
+- Al cerrar un experimento, escribe en "learning" una frase reutilizable con cifras, por ejemplo: "A fotógrafos de Valencia, el WhatsApp tuvo un 18 % de respuesta frente a un 2 % del email".
+- Rutina semanal: evalúa, cierra lo vencido y decide los experimentos de la semana. Rutina diaria: ejecuta lotes dentro de los experimentos en marcha; abre o cierra solo si está claro.`
 
 const OUTPUT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['headline', 'summary', 'highlights', 'issues', 'proposals'],
+  required: ['headline', 'summary', 'highlights', 'issues', 'proposals', 'experiments'],
   properties: {
     headline: { type: 'string', description: 'Titular de una línea, máximo 90 caracteres' },
     summary:  { type: 'string', description: 'Mensaje a Mariano, 3-6 frases' },
@@ -270,13 +290,54 @@ const OUTPUT_SCHEMA = {
           action: {
             type: 'object',
             additionalProperties: false,
-            required: ['type', 'limit', 'category', 'city', 'prompt'],
+            required: ['type', 'limit', 'category', 'city', 'prompt', 'experiment'],
             properties: {
               type:     { type: 'string', enum: [...ACTION_TYPES, 'none'] },
               limit:    { type: 'integer' },
               category: { type: 'string' },
               city:     { type: 'string' },
               prompt:   { type: 'string' },
+              experiment: { type: 'string', description: 'Slug o key del experimento; "" si no aplica' },
+            },
+          },
+        },
+      },
+    },
+    experiments: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['start', 'close'],
+      properties: {
+        start: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['key', 'audience', 'channel', 'format', 'hypothesis', 'variant', 'city', 'category', 'duration_days', 'budget_eur'],
+            properties: {
+              key:           { type: 'string', description: 'Identificador corto para referenciarlo desde las acciones, p. ej. "e1"' },
+              audience:      { type: 'string', enum: [...AUDIENCES] },
+              channel:       { type: 'string', enum: [...CHANNELS] },
+              format:        { type: 'string' },
+              hypothesis:    { type: 'string', description: 'Qué esperas que pase y por qué' },
+              variant:       { type: 'string', description: 'El mensaje, ángulo o creatividad concreta que se prueba' },
+              city:          { type: 'string' },
+              category:      { type: 'string' },
+              duration_days: { type: 'integer' },
+              budget_eur:    { type: 'number', description: 'Solo anuncios; 0 en el resto' },
+            },
+          },
+        },
+        close: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['slug', 'verdict', 'learning'],
+            properties: {
+              slug:     { type: 'string' },
+              verdict:  { type: 'string', enum: ['won', 'lost', 'stopped'] },
+              learning: { type: 'string' },
             },
           },
         },
@@ -291,6 +352,9 @@ export type CeoReport = {
   highlights: Array<{ label: string; value: string; trend: 'up' | 'down' | 'flat' }>
   issues:     Array<{ severity: 'critical' | 'warning' | 'info'; title: string; detail: string }>
   proposals:  Array<{ area: string; title: string; why: string; next_step: string; impact: string; effort: string; action: any; auto?: boolean }>
+  experiments: { start: ExperimentPlan[]; close: ExperimentClose[] }
+  /** Lo que el código hizo con los experimentos (creados, descartados, cerrados). */
+  experiment_log?: string[]
 }
 
 export async function thinkAsCeo(kind: CeoKind, snapshot: CeoSnapshot, autonomy: string, caps: string): Promise<CeoReport> {
@@ -342,6 +406,7 @@ export async function emailCeoReport(kind: CeoKind, report: CeoReport, adminUrl:
     ...(report.proposals.length
       ? ['Acciones:', ...report.proposals.map((p, n) => `${n + 1}. ${p.auto ? '[LO EJECUTO YO] ' : '[TE TOCA] '}${p.title}\n   Por qué: ${p.why}\n   Siguiente paso: ${p.next_step}`), '']
       : []),
+    ...(report.experiment_log?.length ? ['Experimentos:', ...report.experiment_log.map(l => `· ${l}`), ''] : []),
     `Revisa, pausa o decide en ${adminUrl}`,
   ].join('\n')
 
@@ -361,6 +426,7 @@ export async function emailCeoReport(kind: CeoKind, report: CeoReport, adminUrl:
       <p style="margin:0 0 4px;font-size:13px;color:#555">${esc(p.why)}</p>
       <p style="margin:0;font-size:13px"><b>Siguiente paso:</b> ${esc(p.next_step)} · impacto ${p.impact} · esfuerzo ${p.effort}</p>
     </div>`).join('')}` : ''}
+  ${report.experiment_log?.length ? `<h2 style="font-size:16px;margin:18px 0 8px">Experimentos</h2><ul style="font-size:14px;line-height:1.6;margin:0;padding-left:18px">${report.experiment_log.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
   <p style="margin:22px 0 0"><a href="${adminUrl}" style="background:#7C3AED;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px">Abrir panel del CEO</a></p>
 </div>`
 
@@ -398,14 +464,24 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
     .single()
   if (error) throw new Error(`No se pudo guardar el informe: ${error.message}`)
 
+  // Experimentos: cierres y altas (con las reglas duras del código)
+  const exp = await applyExperimentDecisions(
+    supabase, settings, snapshot.growth,
+    report.experiments?.start || [], report.experiments?.close || [], saved.id,
+  )
+  report.experiment_log = exp.log
+  const resolveExperiment = (ref: string) => exp.keyToSlug[ref] || ref
+
   if (report.proposals.length) {
     const toInsert = report.proposals.map((p, i) => {
         const action = sanitizeAction(p.action)
+        if (action?.experiment) action.experiment = resolveExperiment(action.experiment)
         // Autonomía total: lo ejecutable queda aprobado por el propio CEO.
         const auto = !!action && settings.autonomy === 'full'
         return {
           ...p,
           action,
+          experiment_slug: action?.experiment || null,
           report_id:  saved.id,
           position:   i + 1,
           status:     auto ? 'approved' : 'pending',
@@ -420,6 +496,7 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
   // El parte diario solo llega al email si hay algo que mirar; el
   // semanal llega siempre.
   const worthEmail = kind === 'weekly' || report.issues.some(i => i.severity !== 'info') || report.proposals.length > 0
+    || (report.experiment_log?.length || 0) > 0
   let emailed = false
   if (opts.email !== false && worthEmail) {
     const send = await emailCeoReport(kind, report, opts.adminUrl)
@@ -429,8 +506,9 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
 
   // Decisiones al móvil por WhatsApp (si ADMIN_WHATSAPP_NUMBER está puesto)
   let whatsapp: Awaited<ReturnType<typeof notifyCeoWhatsapp>> | null = null
-  if (opts.email !== false && report.proposals.length) {
-    whatsapp = await notifyCeoWhatsapp(supabase, report.headline, report.proposals.filter(p => p.auto).map(p => p.title))
+  const adProposals = (report.experiment_log || []).filter(l => l.startsWith('Propuesto (anuncio)'))
+  if (opts.email !== false && (report.proposals.length || adProposals.length)) {
+    whatsapp = await notifyCeoWhatsapp(supabase, report.headline, report.proposals.filter(p => p.auto).map(p => p.title), adProposals)
   }
 
   return { id: saved.id as string, report, emailed, whatsapp }

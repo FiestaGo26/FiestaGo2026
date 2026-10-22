@@ -8,6 +8,7 @@ import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee } from '@/
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import FavoriteButton from '../../_components/FavoriteButton'
+import { getAcquisition } from '@/lib/attribution'
 
 type Provider = {
   id: string
@@ -342,6 +343,7 @@ export default function ProviderDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           booking_type: 'provider',
+          acquisition: getAcquisition(),
           provider_id:  provider.id,
           service_id:   selectedSvc?.id || null,
           client_name:  form.client_name,

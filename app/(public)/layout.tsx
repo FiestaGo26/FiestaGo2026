@@ -3,6 +3,7 @@ import { ReactNode } from 'react'
 import Navbar from './_components/Navbar'
 import PwaInit from './_components/PwaInit'
 import CookieBanner from './_components/CookieBanner'
+import AttributionCapture from './_components/AttributionCapture'
 
 const FOOTER_LINKS = [
   { title: 'Celebraciones', links: [['Bodas', '/proveedores?categoria=planner'], ['Cumpleaños', '/cumpleanos'], ['Comuniones', '/comuniones'], ['Empresa', '/corporativo'], ['Packs', '/#packs']] },
@@ -62,6 +63,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <div className="flex-1">{children}</div>
       <Footer/>
       <PwaInit/>
+      <AttributionCapture/>
       <CookieBanner/>
     </div>
   )

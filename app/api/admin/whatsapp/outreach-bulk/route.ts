@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const limit  = Math.min(Math.max(parseInt(String(body.limit)) || 50, 1), 200)
   const dryRun = body.dry_run === true
+  // Filtros opcionales del Agente CEO: lote dentro de un experimento
+  const category   = typeof body.category === 'string' ? body.category.trim() : ''
+  const city       = typeof body.city === 'string' ? body.city.trim() : ''
+  const experiment = typeof body.experiment === 'string' ? body.experiment.trim().slice(0, 80) : ''
 
   const supabase = createAdminClient()
 
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest) {
   //    Ordenados por agent_fit_score DESC (los de mayor encaje primero), y
   //    como tiebreak created_at ASC para que los más antiguos del catálogo
   //    salgan antes (justo).
-  const { data: rows, error } = await supabase
+  let candidates = supabase
     .from('providers')
     .select('id, name, category, city, phone, outreach_whatsapp, agent_fit_score, created_at')
     .or('outreach_sent.is.null,outreach_sent.eq.false')
@@ -53,6 +57,9 @@ export async function POST(req: NextRequest) {
     .order('agent_fit_score', { ascending: false, nullsFirst: false })
     .order('created_at',      { ascending: true })
     .limit(limit * 2)   // un colchón por si filtramos algunos por teléfono malo
+  if (category) candidates = candidates.eq('category', category)
+  if (city)     candidates = candidates.ilike('city', `%${city}%`)
+  const { data: rows, error } = await candidates
 
   if (error) {
     return NextResponse.json({ error: `Query candidatos falló: ${error.message}` }, { status: 500 })
@@ -137,6 +144,7 @@ export async function POST(req: NextRequest) {
         outreach_sent: true,
         outreach_at:   new Date().toISOString(),
         contacted_via: 'whatsapp',
+        ...(experiment ? { outreach_experiment: experiment } : {}),
       }).eq('id', p.id)
 
       sent++

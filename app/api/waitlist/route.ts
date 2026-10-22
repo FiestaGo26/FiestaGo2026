@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { emailWaitlistWelcome } from '@/lib/resend'
+import { sanitizeAcquisition } from '@/lib/attribution'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -45,6 +46,8 @@ export async function POST(req: NextRequest) {
   if (body.guests)      insertable.guests      = parseInt(body.guests) || null
   if (body.source)      insertable.source      = body.source.toString().slice(0, 80)
   if (body.referred_by) insertable.referred_by = body.referred_by.toString().slice(0, 80)
+  const acquisition = sanitizeAcquisition(body.acquisition)
+  if (acquisition)      insertable.acquisition = acquisition
 
   const { data, error } = await supabase
     .from('waitlist')

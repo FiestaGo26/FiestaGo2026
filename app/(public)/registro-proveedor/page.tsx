@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { CATEGORIES, CITIES } from '@/lib/constants'
 import toast from 'react-hot-toast'
+import { getAcquisition } from '@/lib/attribution'
 
 function RegistroProveedorInner() {
   const router = useRouter()
@@ -123,6 +124,7 @@ function RegistroProveedorInner() {
         specialties: [],
         source:      'web',
         referred_by: refParam,
+        acquisition: getAcquisition(),
         accept_terms: true,
       }),
     })

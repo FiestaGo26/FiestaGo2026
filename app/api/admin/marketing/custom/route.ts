@@ -164,6 +164,8 @@ export async function POST(req: NextRequest) {
         prompt_used:       plan.visual_prompt,
         topic:             userPrompt.slice(0, 200),
         status:            'pending',
+        // Experimento del Agente CEO al que pertenece el post (si lo hay)
+        context:           typeof body.experiment === 'string' && body.experiment ? { experiment: body.experiment.slice(0, 80) } : null,
       })
       .select()
       .single()

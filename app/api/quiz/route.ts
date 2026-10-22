@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { sanitizeAcquisition } from '@/lib/attribution'
 import {
   EVENT_OPTIONS, AUDIENCE_OPTIONS, KIDS_AGE_OPTIONS, CORP_OPTIONS, getProfile, budgetSplit,
   type EventType, type Audience, type KidsAge, type CorpKind,
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
       event_type: profile.key.slice(0, 40),
       guests,
       source: 'quiz',
+      acquisition: sanitizeAcquisition(body.acquisition),
     }).then(() => {}, () => {})
   }
 

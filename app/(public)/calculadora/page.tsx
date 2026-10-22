@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { CATEGORIES, CITIES, getPhoto } from '@/lib/constants'
 import { precioCliente, formatEuro, textoGarantiaIncluida } from '@/lib/pricing'
 import toast from 'react-hot-toast'
+import { getAcquisition } from '@/lib/attribution'
 
 type EventType = 'boda' | 'cumpleanos' | 'comunion' | 'corporativo' | 'otro'
 
@@ -159,6 +160,7 @@ export default function CalculadoraPage() {
           city,
           event_type: eventType,
           source: 'calculadora',
+          acquisition: getAcquisition(),
         }),
       })
       const data = await res.json()

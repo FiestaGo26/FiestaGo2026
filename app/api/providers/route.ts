@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { sanitizeAcquisition } from '@/lib/attribution'
 import { emailAdminNewProvider, emailProviderWelcome } from '@/lib/resend'
 
 // Wrapper que dispara un email y, si Resend devuelve {ok:false} o lanza una
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
   const { name, category, city, email, phone, website, instagram,
           description, price_base, price_unit, specialties, referred_by,
           accept_terms } = body
+  const acquisition = sanitizeAcquisition(body.acquisition)
 
   if (!name || !category || !city || !email) {
     return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 })
@@ -138,6 +140,7 @@ export async function POST(req: NextRequest) {
         merged.specialties = specialties
       }
       if (referred_by && !existing.referred_by) merged.referred_by = referred_by
+      if (acquisition && !existing.acquisition) merged.acquisition = acquisition
 
       const { data: updated } = await supabase
         .from('providers').update(merged).eq('id', existing.id).select().single()
@@ -176,6 +179,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from('providers')
     .insert({
+      acquisition,
       name, category, city, email,
       phone:        phone || null,
       website:      website || null,

@@ -27,6 +27,8 @@ export type CeoAction = {
   category: string
   city:     string
   prompt:   string
+  /** Slug del experimento de marketing al que pertenece ('' si ninguno). */
+  experiment: string
 }
 
 type ActionDef = {
@@ -46,7 +48,7 @@ export const ACTIONS = {
     label: 'Primer WhatsApp a proveedores sin contactar',
     endpoint: '/api/admin/whatsapp/outreach-bulk',
     wa: true, post: false, maxLimit: 15,
-    body: (_a, limit) => ({ limit }),
+    body: (a, limit) => ({ limit, category: a.category, city: a.city, experiment: a.experiment }),
   },
   whatsapp_followup: {
     label: 'Segundo WhatsApp a quien no respondió (≥7 días)',
@@ -76,7 +78,7 @@ export const ACTIONS = {
     label: 'Crear un post de IG/TikTok para la cola de marketing',
     endpoint: '/api/admin/marketing/custom',
     wa: false, post: true, maxLimit: 1,
-    body: a => ({ prompt: a.prompt }),
+    body: a => ({ prompt: a.prompt, experiment: a.experiment }),
   },
 } satisfies Record<string, ActionDef>
 
@@ -88,9 +90,22 @@ export type CeoSettings = {
   paused:            boolean
   max_wa_per_day:    number
   max_posts_per_day: number
+  /** Presupuesto mensual de anuncios: el CEO solo propone, Mariano paga. */
+  ads_budget_eur:    number
+  /** Proveedores publicados mínimos en ciudad+categoría para captar clientes allí. */
+  supply_threshold:  number
+  /** Freno de WhatsApp: tasa de bajas o de fallos (7 días) que lo detiene. */
+  wa_brake_optout:   number
+  wa_brake_failed:   number
+  wa_braked_at:      string | null
+  wa_brake_reason:   string | null
 }
 
-const DEFAULT_SETTINGS: CeoSettings = { autonomy: 'approval', paused: false, max_wa_per_day: 100, max_posts_per_day: 3 }
+const DEFAULT_SETTINGS: CeoSettings = {
+  autonomy: 'approval', paused: false, max_wa_per_day: 100, max_posts_per_day: 3,
+  ads_budget_eur: 50, supply_threshold: 3, wa_brake_optout: 0.05, wa_brake_failed: 0.20,
+  wa_braked_at: null, wa_brake_reason: null,
+}
 
 export async function getCeoSettings(supabase: SupabaseClient): Promise<CeoSettings> {
   const { data } = await supabase.from('ceo_settings').select('*').eq('id', 1).maybeSingle()
@@ -107,8 +122,10 @@ export function sanitizeAction(raw: any): CeoAction | null {
     type:     raw.type,
     limit,
     category: CEO_CATEGORIES.includes(raw.category) ? raw.category : '',
-    city:     CEO_CITIES.includes(raw.city) ? raw.city : '',
+    city:     CEO_CITIES.includes(raw.city) || (raw.type === 'whatsapp_outreach' && typeof raw.city === 'string')
+                ? String(raw.city).slice(0, 60) : '',
     prompt:   String(raw.prompt || '').slice(0, 1500),
+    experiment: typeof raw.experiment === 'string' ? raw.experiment.slice(0, 80) : '',
   }
   if (action.type === 'find_providers' && (!action.category || !action.city)) return null
   if (action.type === 'create_post' && action.prompt.length < 20) return null
@@ -170,6 +187,10 @@ export async function claimNextAction(supabase: SupabaseClient) {
       continue
     }
     const def: ActionDef = ACTIONS[action.type]
+
+    // Freno de WhatsApp: con demasiadas bajas o fallos no sale ni uno más
+    // hasta que Mariano lo reactive desde el panel.
+    if (def.wa && settings.wa_braked_at) continue
 
     // Ajustar al cupo que queda hoy; si no queda, se queda para mañana.
     if (def.wa) {
