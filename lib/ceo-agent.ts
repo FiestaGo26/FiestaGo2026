@@ -239,7 +239,7 @@ Método de crecimiento (lo más importante; datos en "growth"):
 - WhatsApp: si whatsapp_health.braked es true, no propongas acciones de WhatsApp y explica a Mariano por qué saltó el freno.
 - Instagram y TikTok no se publican solos: los posts quedan en la cola para que Mariano los publique y él mete sus métricas en el panel. Si un experimento social no tiene métricas pasada una semana, pídeselas en el resumen.
 - Al cerrar un experimento, escribe en "learning" una frase reutilizable con cifras, por ejemplo: "A fotógrafos de Valencia, el WhatsApp tuvo un 18 % de respuesta frente a un 2 % del email".
-- Rutina semanal: evalúa, cierra lo vencido y decide los experimentos de la semana. Rutina diaria: ejecuta lotes dentro de los experimentos en marcha; abre o cierra solo si está claro.`
+- Rutina semanal: evalúa, cierra lo vencido y decide los experimentos de la semana. Rutina diaria: ejecuta lotes dentro de los experimentos en marcha; abre o cierra solo si está claro. Si no hay ningún experimento en marcha, cualquier rutina abre los primeros (2 o 3) sin esperar al lunes.`
 
 const OUTPUT_SCHEMA = {
   type: 'object',
