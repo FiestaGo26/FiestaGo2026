@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { sendTemplate, normalizePhone, isValidPhoneE164ES, InvalidPhoneError } from '@/lib/whatsapp'
 import { buildOutreachDescriptor } from '@/lib/fiestago-agent'
+import { junkLeadReason } from '@/lib/lead-quality'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -113,8 +114,10 @@ export async function POST(req: NextRequest) {
   }
   const respondedIds = new Set((inboundRows || []).map((r: { provider_id: string | null }) => r.provider_id))
 
+  // No insistir con leads basura de la captación (ver lib/lead-quality.ts).
   const eligible = allCandidates
     .filter(p => !respondedIds.has(p.id))
+    .filter(p => !junkLeadReason(p.name))
     .filter(p => p.phone || p.outreach_whatsapp)
     .slice(0, limit)
 

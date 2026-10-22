@@ -38,17 +38,20 @@ type ActionDef = {
   body:     (a: CeoAction, limit: number) => Record<string, unknown>
 }
 
+// Lotes pequeños: con 50 WhatsApps o una búsqueda de 10, Netlify cortaba
+// la función por timeout ("Inactivity Timeout") y la acción quedaba
+// fallida. El workflow pasa cada 20 min, así que varios lotes llegan igual.
 export const ACTIONS = {
   whatsapp_outreach: {
     label: 'Primer WhatsApp a proveedores sin contactar',
     endpoint: '/api/admin/whatsapp/outreach-bulk',
-    wa: true, post: false, maxLimit: 50,
+    wa: true, post: false, maxLimit: 15,
     body: (_a, limit) => ({ limit }),
   },
   whatsapp_followup: {
     label: 'Segundo WhatsApp a quien no respondió (≥7 días)',
     endpoint: '/api/admin/whatsapp/followup',
-    wa: true, post: false, maxLimit: 50,
+    wa: true, post: false, maxLimit: 15,
     body: (_a, limit) => ({ limit }),
   },
   whatsapp_remind_signups: {
@@ -66,7 +69,7 @@ export const ACTIONS = {
   find_providers: {
     label: 'Buscar proveedores nuevos (categoría + ciudad)',
     endpoint: '/api/admin/agent/free-run',
-    wa: false, post: false, maxLimit: 10,
+    wa: false, post: false, maxLimit: 4,
     body: (a, limit) => ({ category: a.category, city: a.city, count: limit }),
   },
   create_post: {

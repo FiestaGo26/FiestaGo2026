@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { sendTemplate, normalizePhone, isValidPhoneE164ES, InvalidPhoneError } from '@/lib/whatsapp'
 import { buildOutreachDescriptor } from '@/lib/fiestago-agent'
+import { junkLeadReason } from '@/lib/lead-quality'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -57,7 +58,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Query candidatos falló: ${error.message}` }, { status: 500 })
   }
 
+  // Leads basura de la captación (títulos de webs, cursos, otra provincia):
+  // no se les escribe y se marcan para que no vuelvan a salir.
+  const junk = (rows || []).filter((p: any) => junkLeadReason(p.name))
+  if (junk.length && !dryRun) {
+    for (const p of junk) {
+      await supabase.from('providers').update({
+        whatsapp_invalid:        true,
+        whatsapp_invalid_reason: `Lead descartado por filtro de calidad: ${junkLeadReason(p.name)}`,
+      }).eq('id', p.id)
+    }
+  }
+
   const eligible = (rows || [])
+    .filter((p: any) => !junkLeadReason(p.name))
     .filter((p: any) => p.phone || p.outreach_whatsapp)
     .slice(0, limit)
 
