@@ -1,11 +1,71 @@
 {
   "version": 1,
   "skills": {
+    "canvas-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/canvas-design/SKILL.md",
+      "computedHash": "3fa7ea60170023ad8268bf9fd734ea75dd404279a2ef8ddf5abaa1102ad8e5f4"
+    },
+    "cfo-advisor": {
+      "source": "alirezarezvani/claude-skills",
+      "sourceType": "github",
+      "skillPath": "c-level-advisor/skills/cfo-advisor/SKILL.md",
+      "computedHash": "aea5b112d852de0642db76851acdc3980ed898e475380683061fafea15d7a0d2"
+    },
+    "connect-recommend": {
+      "source": "stripe/ai",
+      "sourceType": "github",
+      "skillPath": "skills/connect-recommend/SKILL.md",
+      "computedHash": "7f9386b43dab44012469ea6359ca13359ed0dbfb5510a9fc08d72f7dc7f42139"
+    },
+    "content-calendar": {
+      "source": "OpenClaudia/openclaudia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/content-calendar/SKILL.md",
+      "computedHash": "ffa5ad109a51feb48cac064bb80d20a3cca2e2b0e81892b88260b9e9e656bc30"
+    },
+    "content-humanizer": {
+      "source": "alirezarezvani/claude-skills",
+      "sourceType": "github",
+      "skillPath": "marketing-skill/skills/content-humanizer/SKILL.md",
+      "computedHash": "110e5ec4ca9778b30ee1016dfaf028d02feb13a4ef4f7436af3bd769112f2703"
+    },
+    "content-repurposing": {
+      "source": "OpenClaudia/openclaudia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/content-repurposing/SKILL.md",
+      "computedHash": "eb7e411c9a2deb5a2314c5db1a05b08385273e0217f229fa6d29c1073f3a2c72"
+    },
+    "contract-and-proposal-writer": {
+      "source": "alirezarezvani/claude-skills",
+      "sourceType": "github",
+      "skillPath": "business-growth/skills/contract-and-proposal-writer/SKILL.md",
+      "computedHash": "adb94cac8385431cee74166616e1f0ea876d84d3a6937f8c7ee0a77e89ad15ae"
+    },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/taste-skill/SKILL.md",
       "computedHash": "18f81679d2b0247ce9da298b03ed8e47ecd3c206f2951d70eefb1b65d3219345"
+    },
+    "email-subject-lines": {
+      "source": "OpenClaudia/openclaudia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/email-subject-lines/SKILL.md",
+      "computedHash": "0149237a7012c324a15f481d4da7c9702159d89d1f0bac829fd66a1f903eb32e"
+    },
+    "financial-analyst": {
+      "source": "alirezarezvani/claude-skills",
+      "sourceType": "github",
+      "skillPath": "finance/skills/financial-analyst/SKILL.md",
+      "computedHash": "72361a37e1078b8dc774aa8f6704f0782cdeef81e1d8a20e78c67373b9886756"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
     },
     "image-to-code": {
       "source": "Leonxlnx/taste-skill",
@@ -13,11 +73,119 @@
       "skillPath": "skills/image-to-code-skill/SKILL.md",
       "computedHash": "58517b03b2a01f4c9ba65861559d03df931400871bbc200978c975b24bb92c73"
     },
+    "local-seo-manager": {
+      "source": "alirezarezvani/claude-skills",
+      "sourceType": "github",
+      "skillPath": "marketing-skill/skills/local-seo-manager/SKILL.md",
+      "computedHash": "24a3b80db073ac0a3fba2adde437d43bc98a12509cf0737687ab21b7965ee321"
+    },
+    "newsletter": {
+      "source": "OpenClaudia/openclaudia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/newsletter/SKILL.md",
+      "computedHash": "8e17f1c47dfd51881f70e3428f4c8660f85e417ccba0f0df54f770caf7e70b0b"
+    },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-best-practices/SKILL.md",
+      "computedHash": "92e53378d50fe2309923f2f67b0a120d86619441ae6f12f8c7ee1e503ffd4144"
+    },
+    "remotion-captions": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-captions/SKILL.md",
+      "computedHash": "c1b1810fc54d44d62a52900c112960943a131075fa2c3ce1fd78b9b7acdbd6aa"
+    },
+    "remotion-docs": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-docs/SKILL.md",
+      "computedHash": "5a79632ae8bcfebf5658d953242f02fd8507a7e9ba0f93bffc3f598b6b26f18a"
+    },
+    "remotion-markup": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-markup/SKILL.md",
+      "computedHash": "16aac140d34dfd73bd72594430b57f5b95e24830a4be31574b9992c2a2ea8e2b"
+    },
+    "remotion-render": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-render/SKILL.md",
+      "computedHash": "48222eabed23301c8fbfd01bcd48fb0a439fa1a4217a5f2d48076fecf9ab9ac2"
+    },
+    "remotion-studio": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-studio/SKILL.md",
+      "computedHash": "6e02ca4083c034a28c6d5a18eb675529fdb860bc1694aac2f3ecdd3523ba2ae5"
+    },
+    "seo-content-brief": {
+      "source": "OpenClaudia/openclaudia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/seo-content-brief/SKILL.md",
+      "computedHash": "2aa1c447f0a063390b23b391495e345cba2dc9e38c8790b8c36f90686284d58d"
+    },
+    "social-media-manager": {
+      "source": "alirezarezvani/claude-skills",
+      "sourceType": "github",
+      "skillPath": "marketing-skill/skills/social-media-manager/SKILL.md",
+      "computedHash": "4e6fb3c727fe8c1ca6a4ab5e9e86a21ba857f13ab8da6b95b9bfcaf6c09803ff"
+    },
+    "stripe-best-practices": {
+      "source": "stripe/ai",
+      "sourceType": "github",
+      "skillPath": "skills/stripe-best-practices/SKILL.md",
+      "computedHash": "671199d8bc7445ac6eaedabac838c562042476a8b353cb970bdfc6777bafebea"
+    },
+    "stripe-dispute": {
+      "source": "OpenClaudia/openclaudia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/stripe-dispute/SKILL.md",
+      "computedHash": "916ff1effd614b41a3ecb584957aa994ac572c6f4be6c2715855587ac57de7dd"
+    },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "211141fd078b4b3645803868528d54221bc7755d24d5c8af45a366785c151dba"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "e14e276241805c97dbcfe40dcbea1a3035269cc7293cac4b1832dda41a835e60"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
+    },
+    "video-content-strategist": {
+      "source": "alirezarezvani/claude-skills",
+      "sourceType": "github",
+      "skillPath": "marketing-skill/video-content-strategist/skills/video-content-strategist/SKILL.md",
+      "computedHash": "6fb2808150471ca7311ec13c2de53b8d5f0f3e47712ec539758637e313446c30"
+    },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/web-design-guidelines/SKILL.md",
       "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    },
+    "webapp-testing": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/webapp-testing/SKILL.md",
+      "computedHash": "ad5b1fc52807e9afa4635e59218a026b164dc58b6c3f41b0f7c644dcd6ccf572"
+    },
+    "write-blog": {
+      "source": "OpenClaudia/openclaudia-skills",
+      "sourceType": "github",
+      "skillPath": "skills/write-blog/SKILL.md",
+      "computedHash": "6bc8e462f41c1468abfe3ae1679a02b075975230cb23a2f35e6fdf3bd66f9a91"
     }
   }
 }
