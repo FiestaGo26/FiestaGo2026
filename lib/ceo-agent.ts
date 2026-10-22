@@ -154,12 +154,15 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
   return {
     generated_at: new Date().toISOString(),
     window_days:  windowDays,
+    // Ojo: 'pending' mezcla leads de captación (nunca pidieron estar en
+    // FiestaGo) con altas reales. Solo las altas se pueden aprobar.
     providers: {
-      total:                 providersTotal,
-      approved:              providersApproved,
-      pending:               providersPending,
-      self_registered_pending: providersSelfRegPending,
-      new_in_window:         providersNew,
+      total:                          providersTotal,
+      published_approved:             providersApproved,
+      registered_awaiting_approval:   providersSelfRegPending,
+      leads_not_registered:           providersPending === null || providersSelfRegPending === null
+                                        ? null : providersPending - providersSelfRegPending,
+      new_leads_in_window:            providersNew,
     },
     bookings: {
       in_window:             inWindow.length,
@@ -211,6 +214,7 @@ Cómo trabajas:
 - Puedes EJECUTAR tú mismo estas acciones (campo "action" de cada propuesta):
 ${actionCatalogForPrompt()}
   Para find_providers indica category (${CEO_CATEGORIES.join(', ')}) y city (${CEO_CITIES.join(', ')}). Para create_post escribe en "prompt" el encargo del post (tema, tono, formato) y nunca menciones fechas ya pasadas. En los campos que no apliquen pon 0 o "".
+- Un proveedor solo aparece en el marketplace si él mismo se ha dado de alta. "leads_not_registered" son negocios encontrados por la captación que NUNCA lo han pedido: jamás propongas aprobarlos ni publicarlos, en bloque o uno a uno. Con ellos solo cabe invitarles a registrarse (WhatsApp, email). Aprobar solo tiene sentido para "registered_awaiting_approval".
 - Pagos, cobros, reembolsos y cambios de precio NUNCA los ejecutas: usa type "none" y quedan como tarea para Mariano. Igual con lo que no esté en el catálogo (cambios en la web, publicar en redes, hablar con clientes).
 - Usa el modo de autonomía que recibes: con "full" tus acciones se ejecutan sin esperar; con "approval" esperan su OK. Hay topes diarios de WhatsApps y posts; no los superes.
 - Mira "recent_actions": si algo falló o no dio resultado, no lo repitas igual; ajusta o propón otra cosa.
