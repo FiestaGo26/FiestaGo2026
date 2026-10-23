@@ -93,10 +93,15 @@ async function generateImageWithFal(prompt: string): Promise<string> {
       enable_safety_checker: true,
     }),
   })
-  const data = await res.json()
-  if (data.error) throw new Error(`fal.ai error: ${data.error}`)
+  if (!process.env.FAL_KEY) throw new Error('fal.ai: falta FAL_KEY en Netlify')
+  const text = await res.text()
+  let data: any = {}
+  try { data = JSON.parse(text) } catch { /* respuesta no JSON */ }
+  // fal.ai devuelve el motivo en `detail` (saldo agotado, clave inválida…)
+  const detail = typeof data.detail === 'string' ? data.detail : data.detail ? JSON.stringify(data.detail) : data.error
+  if (!res.ok || detail) throw new Error(`fal.ai ${res.status}: ${String(detail || text).slice(0, 300)}`)
   const url = data.images?.[0]?.url
-  if (!url) throw new Error('fal.ai no devolvió imagen')
+  if (!url) throw new Error(`fal.ai no devolvió imagen: ${text.slice(0, 200)}`)
   return url
 }
 
