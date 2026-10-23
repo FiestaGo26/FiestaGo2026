@@ -54,7 +54,8 @@ Rechaza (ok=false) si el texto:
 - menciona fechas, lanzamientos o promociones ya pasadas (por ejemplo el lanzamiento del 10 de junio de 2026) o sorteos;
 - promete algo que FiestaGo no ofrece, habla mal de un competidor por su nombre o puede resultar ofensivo;
 - no está en español de España.
-Datos verdaderos que sí puede usar: alta gratis para profesionales sin cuotas ni permanencia; el proveedor cobra el 100 % de su precio y el 8 % lo paga el cliente como Garantía de Éxito; si el proveedor cancela y no hay sustituto en 48 h se devuelve el 110 %; si no se presenta, el 100 % más una compensación de hasta 3.000 €; pago retenido hasta el evento.
+Datos verdaderos que sí puede usar: alta gratis para profesionales sin cuotas ni permanencia; el proveedor cobra el 100 % de su precio y el 8 % lo paga el cliente como Garantía de Éxito; si el proveedor cancela y no hay sustituto en 48 h se devuelve el 110 %; si no se presenta, el 100 % más una compensación de hasta 3.000 €; pago retenido hasta el evento; proveedores verificados (se comprueba DNI/CIF y seguro de responsabilidad civil); precio cerrado sin pedir presupuestos.
+Consejos generales del sector sin cifras concretas son aceptables; las cifras de mercado sin fuente no.
 Si el texto es aceptable pero mejorable (erratas, emojis excesivos, hashtags de más de 12), devuelve ok=true con la versión corregida. Si lo rechazas, explica por qué en "reasons" y devuelve los textos tal cual. En TikTok el texto debe ser corto (máximo unos 300 caracteres). En ambos, si hay llamada a la acción con enlace, usa "enlace en la bio" en lugar de una URL.`,
     messages: [{ role: 'user', content: `Contexto: ${context}\n\n[Instagram]\n${captionIg}\n\n[TikTok]\n${captionTt}` }],
   })
@@ -64,7 +65,18 @@ Si el texto es aceptable pero mejorable (erratas, emojis excesivos, hashtags de 
 
 // ─── Publicar ─────────────────────────────────────────────────────
 
+/** Publica una pieza; si la revisión rechaza una, prueba con la siguiente (máx. 3). */
 export async function publishNext(supabase: SupabaseClient) {
+  const tried: any[] = []
+  for (let i = 0; i < 3; i++) {
+    const r = await publishOne(supabase)
+    tried.push(r)
+    if (!('rejected' in r)) break
+  }
+  return tried.length === 1 ? tried[0] : { steps: tried, ...tried[tried.length - 1] }
+}
+
+async function publishOne(supabase: SupabaseClient): Promise<Record<string, any>> {
   if (!isUploadPostConfigured()) return { skipped: 'Upload-Post sin configurar (UPLOADPOST_API_KEY / UPLOADPOST_USER)' }
   const settings: any = await getCeoSettings(supabase)
   if (settings.paused) return { skipped: 'Agente CEO en pausa' }
