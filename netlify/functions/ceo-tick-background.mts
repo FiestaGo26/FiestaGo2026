@@ -1,0 +1,106 @@
+// ───────────────────────────────────────────────────────────────────────
+// Latido del Agente CEO (función de segundo plano de Netlify: hasta 15 min,
+// sin el corte de 30-60 s de las funciones normales).
+//
+// Lo dispara Supabase (pg_cron + pg_net) cada 10 minutos, puntual, en
+// lugar de depender de los crons de GitHub, que se retrasan horas.
+// En cada latido:
+//   1. Si toca y aún no hay informe (diario desde las 07:00, semanal el
+//      lunes desde las 09:00, hora de Madrid), ejecuta la rutina del CEO.
+//   2. Ejecuta la cola de acciones aprobadas. La búsqueda de proveedores
+//      corre aquí mismo (antes fallaba siempre por tiempo); el resto llama
+//      a su endpoint de siempre.
+// El workflow de GitHub "🧠 Agente CEO" sigue de respaldo: la rutina se
+// salta si ya hay informe y las acciones se reclaman de forma atómica.
+//
+// Auth: cabecera x-tick-secret = CEO_TICK_SECRET (variable de Netlify).
+// ───────────────────────────────────────────────────────────────────────
+
+import { createAdminClient } from '../../lib/supabase'
+import { runCeoRoutine, type CeoKind } from '../../lib/ceo-agent'
+import { claimNextAction, completeAction } from '../../lib/ceo-actions'
+import { runProviderSearch } from '../../lib/provider-search'
+
+const MAX_ACTIONS = 20
+
+function madridNow() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid', hour: 'numeric', hour12: false, weekday: 'short',
+  }).formatToParts(new Date())
+  const hour = Number(parts.find(p => p.type === 'hour')?.value ?? 0)
+  const weekday = parts.find(p => p.type === 'weekday')?.value
+  return { hour, monday: weekday === 'Mon' }
+}
+
+async function routineIfMissing(supabase: any, base: string) {
+  const { hour, monday } = madridNow()
+  const kind: CeoKind | null = monday && hour >= 9 ? 'weekly' : hour >= 7 ? 'daily' : null
+  if (!kind) return 'antes de las 07:00, sin rutina'
+
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' })
+  const since = kind === 'weekly'
+    ? new Date(Date.now() - 6 * 86400_000).toISOString()
+    : new Date(`${today}T00:00:00+02:00`).toISOString()
+  const { count } = await supabase.from('ceo_reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('kind', kind).is('error', null).gte('created_at', since)
+  if ((count ?? 0) > 0) return `${kind}: ya hay informe`
+
+  const r = await runCeoRoutine(supabase, kind, { adminUrl: `${base}/admin?section=ceo`, email: true })
+  return `${kind}: informe ${r.id}`
+}
+
+async function runQueue(supabase: any, base: string) {
+  const log: string[] = []
+  for (let i = 0; i < MAX_ACTIONS; i++) {
+    const next: any = await claimNextAction(supabase)
+    if (next.none) { log.push(`cola: ${next.reason}`); break }
+
+    if (next.type === 'find_providers') {
+      const res = await runProviderSearch(next.body)
+      await completeAction(supabase, next.id, !res.error, {
+        saved: res.saved, target: res.target, skippedDup: res.skippedDup, skippedNoWa: res.skippedNoWa,
+        error: res.error, logs: res.logs.slice(-15),
+      })
+      log.push(`${next.title}: ${res.error ? `error ${res.error}` : `${res.saved} guardados`}`)
+      continue
+    }
+
+    try {
+      const resp = await fetch(base + next.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.CRON_SECRET || '' },
+        body: JSON.stringify(next.body),
+        signal: AbortSignal.timeout(120_000),
+      })
+      const text = await resp.text()
+      let body: unknown = text.slice(0, 3000)
+      try { body = JSON.parse(text) } catch { /* HTML de error */ }
+      await completeAction(supabase, next.id, resp.ok, { http: String(resp.status), body })
+      log.push(`${next.title}: HTTP ${resp.status}`)
+    } catch (err: any) {
+      await completeAction(supabase, next.id, false, { error: err.message })
+      log.push(`${next.title}: ${err.message}`)
+    }
+  }
+  return log
+}
+
+export default async (req: Request) => {
+  if (!process.env.CEO_TICK_SECRET || req.headers.get('x-tick-secret') !== process.env.CEO_TICK_SECRET) {
+    return new Response('No autorizado', { status: 401 })
+  }
+  const base = (process.env.NEXT_PUBLIC_APP_URL || process.env.URL || 'https://fiestago.es').replace(/\/$/, '')
+  const supabase = createAdminClient()
+  const out: Record<string, unknown> = { at: new Date().toISOString() }
+  try {
+    out.routine = await routineIfMissing(supabase, base)
+  } catch (err: any) {
+    out.routine = `error: ${err.message}`
+  }
+  out.queue = await runQueue(supabase, base)
+  // Las funciones de segundo plano no devuelven nada al cliente: lo
+  // dejamos en los logs de Netlify (Functions → ceo-tick-background).
+  console.log('[ceo-tick]', JSON.stringify(out))
+  return new Response('ok')
+}
