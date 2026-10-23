@@ -56,6 +56,19 @@ export type PublishInput = {
   idempotencyKey: string
 }
 
+// TikTok limita el título a 90 caracteres contando cada emoji como 2.
+// Usamos la primera frase sin emojis (≤ 80) como título y el texto
+// completo va en la descripción.
+const EMOJI = new RegExp('\\p{Extended_Pictographic}|\\uFE0F|\\u200D', 'gu')
+export function tiktokTitle(text: string, max = 80) {
+  // Primera frase: corta en signo de cierre, salto de línea o emoji
+  const first = text.replace(EMOJI, '\n').split(/[.!?\n]/).map(t => t.replace(/\s+/g, ' ').trim()).find(Boolean) || ''
+  if (first.length <= max) return first
+  const cut = first.slice(0, max - 1)
+  const sp = cut.lastIndexOf(' ')
+  return `${(sp > 40 ? cut.slice(0, sp) : cut).trim()}…`
+}
+
 function commonForm(input: PublishInput) {
   const form = new FormData()
   form.append('user', process.env.UPLOADPOST_USER!)
@@ -64,7 +77,8 @@ function commonForm(input: PublishInput) {
   form.append('title', input.captionInstagram.slice(0, 2200))
   if (ps.includes('instagram')) form.append('instagram_title', input.captionInstagram.slice(0, 2200))
   if (ps.includes('tiktok')) {
-    form.append('tiktok_title', input.captionTiktok.slice(0, 2200))
+    form.append('tiktok_title', tiktokTitle(input.captionTiktok))
+    form.append('tiktok_description', input.captionTiktok.slice(0, 2200))
     form.append('privacy_level', 'PUBLIC_TO_EVERYONE')
     // Contenido generado con IA: TikTok exige declararlo
     form.append('tiktok_is_ai_generated', 'true')
