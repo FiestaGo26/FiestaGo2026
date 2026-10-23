@@ -88,8 +88,10 @@ async function runQueue(supabase: any, base: string) {
 
 export default async (req: Request) => {
   if (!process.env.CEO_TICK_SECRET || req.headers.get('x-tick-secret') !== process.env.CEO_TICK_SECRET) {
+    console.log('[ceo-tick] rechazado:', process.env.CEO_TICK_SECRET ? 'clave incorrecta' : 'falta CEO_TICK_SECRET')
     return new Response('No autorizado', { status: 401 })
   }
+  console.log('[ceo-tick] inicio')
   const base = (process.env.NEXT_PUBLIC_APP_URL || process.env.URL || 'https://fiestago.es').replace(/\/$/, '')
   const supabase = createAdminClient()
   const out: Record<string, unknown> = { at: new Date().toISOString() }
@@ -98,7 +100,11 @@ export default async (req: Request) => {
   } catch (err: any) {
     out.routine = `error: ${err.message}`
   }
-  out.queue = await runQueue(supabase, base)
+  try {
+    out.queue = await runQueue(supabase, base)
+  } catch (err: any) {
+    out.queue = `error: ${err.message}`
+  }
   // Las funciones de segundo plano no devuelven nada al cliente: lo
   // dejamos en los logs de Netlify (Functions → ceo-tick-background).
   console.log('[ceo-tick]', JSON.stringify(out))
