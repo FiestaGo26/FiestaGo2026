@@ -29,6 +29,8 @@ type Experiment = {
 }
 
 type Settings = {
+  social_autopublish: boolean
+  social_max_per_day: number
   ads_budget_eur: number
   supply_threshold: number
   wa_braked_at: string | null
@@ -176,6 +178,20 @@ export default function GrowthPanel({ experiments, settings, reload, saveSetting
           <button onClick={() => saveSettings({ wa_unbrake: true })} style={btn(C.bad, '#fff')}>Reactivar WhatsApp</button>
         </div>
       )}
+
+      <div style={{ ...card, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <label style={{ fontSize: 13, color: C.text, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input type="checkbox" checked={settings?.social_autopublish !== false}
+            onChange={e => saveSettings({ social_autopublish: e.target.checked })} />
+          Publicar solo en Instagram y TikTok (Upload-Post, con revisión automática)
+        </label>
+        <label style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, alignItems: 'center' }}>
+          Máximo al día
+          <input type="number" min={0} max={10} defaultValue={settings?.social_max_per_day ?? 2}
+            onBlur={e => { const n = Number(e.target.value); if (n !== settings?.social_max_per_day) saveSettings({ social_max_per_day: n }) }}
+            style={{ width: 60, background: '#0B1220', border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: '5px 8px' }} />
+        </label>
+      </div>
 
       <div style={{ ...card, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ fontSize: 13, color: C.text }}>

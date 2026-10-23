@@ -54,6 +54,8 @@ export async function PATCH(req: NextRequest) {
     if (Number.isFinite(s.ads_budget_eur))    update.ads_budget_eur    = Math.min(Math.max(Number(s.ads_budget_eur), 0), 100000)
     if (Number.isFinite(s.supply_threshold))  update.supply_threshold  = Math.min(Math.max(Math.round(s.supply_threshold), 1), 50)
     if (s.wa_unbrake === true) { update.wa_braked_at = null; update.wa_brake_reason = null }
+    if (typeof s.social_autopublish === 'boolean') update.social_autopublish = s.social_autopublish
+    if (Number.isFinite(s.social_max_per_day))     update.social_max_per_day = Math.min(Math.max(Math.round(s.social_max_per_day), 0), 10)
     const { error } = await supabase.from('ceo_settings').update(update).eq('id', 1)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ ok: true, settings: await getCeoSettings(supabase) })

@@ -99,12 +99,16 @@ export type CeoSettings = {
   wa_brake_failed:   number
   wa_braked_at:      string | null
   wa_brake_reason:   string | null
+  /** Publicación automática en Instagram/TikTok (Upload-Post) y su tope diario. */
+  social_autopublish: boolean
+  social_max_per_day: number
 }
 
 const DEFAULT_SETTINGS: CeoSettings = {
   autonomy: 'approval', paused: false, max_wa_per_day: 100, max_posts_per_day: 3,
   ads_budget_eur: 50, supply_threshold: 3, wa_brake_optout: 0.05, wa_brake_failed: 0.20,
   wa_braked_at: null, wa_brake_reason: null,
+  social_autopublish: true, social_max_per_day: 2,
 }
 
 export async function getCeoSettings(supabase: SupabaseClient): Promise<CeoSettings> {

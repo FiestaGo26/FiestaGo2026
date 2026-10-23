@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CeoSettings } from '@/lib/ceo-actions'
+import { isUploadPostConfigured } from '@/lib/uploadpost'
 
 export const AUDIENCES = ['proveedores', 'clientes'] as const
 export const CHANNELS = ['whatsapp', 'email', 'instagram', 'tiktok', 'meta_ads', 'tiktok_ads', 'seo', 'otro'] as const
@@ -211,6 +212,29 @@ export async function gatherGrowth(supabase: SupabaseClient, settings: CeoSettin
 
   const wa = await checkWaBrake(supabase, settings)
 
+  // Redes: qué se ha publicado solo y cómo ha ido (métricas de Upload-Post)
+  const [pubPosts, pubVideos, queue] = await Promise.all([
+    safe<any>(supabase.from('social_posts')
+      .select('topic, template_label, context, published_at, metric_views, metric_likes, metric_comments, metric_shares, publish_error, status, rejected_reason')
+      .gte('published_at', d30).order('published_at', { ascending: false }).limit(40)),
+    safe<any>(supabase.from('content_videos')
+      .select('topic, pillar, published_at, metrics, publish_error')
+      .gte('published_at', d30).order('published_at', { ascending: false }).limit(30)),
+    safe<any>(supabase.from('social_posts').select('id').in('status', ['pending', 'approved']).gte('created_at', since(7))),
+  ])
+  const rejected = await safe<any>(supabase.from('social_posts')
+    .select('topic, rejected_reason').eq('status', 'rejected').like('rejected_reason', 'Revisión automática%')
+    .gte('created_at', since(7)).limit(5))
+  const piece = (kind: string, topic: string, m: any, exp?: string) => ({
+    kind, topic: String(topic || '').slice(0, 80), experiment: exp || null,
+    views: Number(m?.views ?? m?.metric_views ?? 0), likes: Number(m?.likes ?? m?.metric_likes ?? 0),
+    comments: Number(m?.comments ?? m?.metric_comments ?? 0), shares: Number(m?.shares ?? m?.metric_shares ?? 0),
+  })
+  const pieces = [
+    ...pubPosts.map(p => piece('imagen', p.topic || p.template_label, p, p.context?.experiment)),
+    ...pubVideos.map(v => piece('vídeo', v.topic || v.pillar, v.metrics)),
+  ].sort((a, b) => b.views - a.views)
+
   return {
     phase: ready.length ? 'proveedores + clientes donde hay oferta' : 'solo proveedores (aún no hay ninguna ciudad+categoría con oferta suficiente)',
     supply_threshold: settings.supply_threshold,
@@ -242,6 +266,15 @@ export async function gatherGrowth(supabase: SupabaseClient, settings: CeoSettin
       monthly_budget_eur: settings.ads_budget_eur,
       committed_this_month_eur: adsCommitted,
       remaining_eur: Math.max(0, settings.ads_budget_eur - adsCommitted),
+    },
+    social: {
+      autopublish: isUploadPostConfigured() && settings.social_autopublish !== false,
+      max_per_day: settings.social_max_per_day,
+      queue_ready_7d: queue.length,
+      published_30d: pieces.length,
+      top: pieces.slice(0, 5),
+      bottom: pieces.length > 5 ? pieces.slice(-3) : [],
+      rejected_by_review_7d: rejected.map(r => ({ topic: r.topic, reason: r.rejected_reason })),
     },
     whatsapp_health: { braked: wa.braked, reason: settings.wa_brake_reason || (wa as any).reason || null, ...wa.health },
     limits: { max_running_experiments: MAX_RUNNING, running_now: running.length },

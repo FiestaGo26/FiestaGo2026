@@ -52,6 +52,8 @@ type Settings = {
   supply_threshold:  number
   wa_braked_at:      string | null
   wa_brake_reason:   string | null
+  social_autopublish: boolean
+  social_max_per_day: number
 }
 
 const ACTION_LABELS: Record<string, string> = {
