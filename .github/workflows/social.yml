@@ -4,6 +4,8 @@ name: 📲 Redes · publicar y medir
 # Agente CEO y el vídeo diario, tras una revisión automática de marca,
 # y trae las métricas de cada publicación para que el CEO aprenda.
 # Tope diario y pausa en ceo_settings (panel → CEO).
+# También vigila el saldo de fal.ai y HeyGen y avisa por WhatsApp/email
+# antes de que se acabe (lib/balance-watch.ts).
 #
 # Requisitos en Netlify: UPLOADPOST_API_KEY y UPLOADPOST_USER.
 # Sin ellos el endpoint responde "sin configurar" y no hace nada.
@@ -40,4 +42,12 @@ jobs:
             -H "Content-Type: application/json" \
             -H "X-Cron-Secret: $CRON_SECRET" \
             -d '{"op":"metrics"}' --max-time 60 || true
+          echo ""
+
+      - name: Vigilar saldos (fal.ai, HeyGen)
+        run: |
+          curl -sS -X POST "$SITE_URL/api/cron/social" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            -d '{"op":"balances"}' --max-time 60 || true
           echo ""
