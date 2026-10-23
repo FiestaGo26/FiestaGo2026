@@ -1,5 +1,7 @@
 import crypto from 'crypto'
-import { google } from 'googleapis'
+import { calendar as gcalendar } from '@googleapis/calendar'
+import { oauth2 as goauth2 } from '@googleapis/oauth2'
+import { OAuth2Client } from 'google-auth-library'
 
 // ─── Google Calendar — cliente de bajo nivel ─────────────────────────────────
 //
@@ -31,7 +33,7 @@ export function oauthClient() {
   const id = process.env.GOOGLE_CLIENT_ID
   const secret = process.env.GOOGLE_CLIENT_SECRET
   if (!id || !secret) throw new Error('Faltan GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET')
-  return new google.auth.OAuth2(id, secret, redirectUri())
+  return new OAuth2Client(id, secret, redirectUri())
 }
 
 // ─── "state" firmado para el flujo OAuth (evita CSRF / manipulación) ─────────
@@ -84,7 +86,7 @@ export async function exchangeCode(code: string) {
   // Email del usuario (para mostrarlo en el panel)
   let email: string | null = null
   try {
-    const oauth2 = google.oauth2({ version: 'v2', auth: client })
+    const oauth2 = goauth2({ version: 'v2', auth: client })
     const me = await oauth2.userinfo.get()
     email = me.data.email ?? null
   } catch {
@@ -135,7 +137,7 @@ export async function queryBusy(
   timeMax: Date
 ): Promise<{ busy: { start: string; end: string }[]; refreshed: any }> {
   const { client, refreshed } = await authedClient(conn)
-  const calendar = google.calendar({ version: 'v3', auth: client })
+  const calendar = gcalendar({ version: 'v3', auth: client })
   const res = await calendar.freebusy.query({
     requestBody: {
       timeMin: timeMin.toISOString(),
@@ -155,7 +157,7 @@ export async function createAllDayEvent(
   opts: { date: string; summary: string; description?: string }
 ): Promise<{ eventId: string | null; refreshed: any }> {
   const { client, refreshed } = await authedClient(conn)
-  const calendar = google.calendar({ version: 'v3', auth: client })
+  const calendar = gcalendar({ version: 'v3', auth: client })
   // Evento de día completo: end = día siguiente (exclusivo)
   const end = new Date(opts.date + 'T00:00:00Z')
   end.setUTCDate(end.getUTCDate() + 1)
@@ -174,7 +176,7 @@ export async function createAllDayEvent(
 
 export async function deleteEvent(conn: GCalConnection, eventId: string) {
   const { client, refreshed } = await authedClient(conn)
-  const calendar = google.calendar({ version: 'v3', auth: client })
+  const calendar = gcalendar({ version: 'v3', auth: client })
   try {
     await calendar.events.delete({
       calendarId: conn.calendar_id || 'primary',
@@ -196,7 +198,7 @@ export async function watchCalendar(conn: GCalConnection): Promise<{
   refreshed: any
 }> {
   const { client, refreshed } = await authedClient(conn)
-  const calendar = google.calendar({ version: 'v3', auth: client })
+  const calendar = gcalendar({ version: 'v3', auth: client })
   const channelId = crypto.randomUUID()
   const res = await calendar.events.watch({
     calendarId: conn.calendar_id || 'primary',
@@ -217,7 +219,7 @@ export async function watchCalendar(conn: GCalConnection): Promise<{
 
 export async function stopWatch(conn: GCalConnection, channelId: string, resourceId: string) {
   const { client } = await authedClient(conn)
-  const calendar = google.calendar({ version: 'v3', auth: client })
+  const calendar = gcalendar({ version: 'v3', auth: client })
   try {
     await calendar.channels.stop({ requestBody: { id: channelId, resourceId } })
   } catch {
