@@ -67,6 +67,9 @@ jobs:
           echo "$BODY" | head -c 3000
           echo ""
           echo "HTTP $HTTP_CODE"
+          # 504 = el proxy de Netlify corta a los ~30 s, pero la función sigue
+          # y guarda el informe. No paramos: hay que ejecutar la cola igual.
+          if [ "$HTTP_CODE" = "504" ]; then echo "::warning::Rutina cortada por timeout del proxy; el informe se guarda igualmente"; exit 0; fi
           if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
 
       - name: Ejecutar acciones aprobadas
