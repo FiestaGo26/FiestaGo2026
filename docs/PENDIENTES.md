@@ -75,8 +75,22 @@ Resultado de la 2.ª simulación (mismas 152 personas): la confianza en la web p
 2,41 a 2,89 sobre 5, la claridad de 3,52 a 3,93, quien entra en la web del 38 % al 64 %
 y el quiz del 5 % al 16 %. El perfil de clientes ya no empeora a nadie (antes al 100 %).
 Reservas: siguen en 0. Freno: reseñas, catálogo corto, dudas sobre el 8 % y el dinero.
-3.ª simulación: catálogo hipotético de 3 proveedores por categoría, para decidir a partir
-de cuántos proveedores compensa hacer marketing de clientes en una ciudad.
+3.ª simulación (run `b4e8c06f`, catálogo hipotético de 3 por categoría): la confianza no
+sube (2,89) y siguen 0 reservas. Con 3 por categoría NO compensa una campaña de ciudad;
+sí un piloto de cumple infantil en Valencia y l'Horta. Lo que cuenta es tener el servicio
+central de cada evento (restaurante/salón y catering para comuniones, finca y banquete
+para bodas, pack completo para cumples), no 3 de cada categoría. Ganador transversal:
+"¿Dónde está tu dinero?" (Stripe), 65 % entra a la web, confianza 3,23. Garantía con
+números, solo a su público (la de cumple: mejor post para el 56 % de familias de cumple
+infantil). Frase más criticada: "el fin de semana te atiende el asistente".
+Límite: el catálogo hipotético se describió muy uniforme y pudo sonar a plantilla.
+
+Decisiones pendientes tras la 3.ª simulación:
+- [ ] ¿Una persona atiende WhatsApp los sábados por la mañana (p. ej. 10-14 h)?
+- [ ] ¿Piloto de cumple infantil en Valencia y l'Horta (anuncios pequeños, 3-4 semanas,
+  con un pack de precio total)? Requiere animadores + merienda/espacio en el catálogo.
+- [ ] ¿Cambiamos la regla del CEO para captar clientes: en vez de "3 por categoría", tener
+  el servicio central del tipo de evento en la zona (supply_threshold por evento)?
 
 - [ ] **Reseñas reales lo antes posible**: pedir opinión tras cada evento; ofrecer a los
   primeros clientes algo a cambio de una reseña real (descuento o regalo, declarándolo);
