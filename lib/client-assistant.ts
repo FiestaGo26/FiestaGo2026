@@ -12,16 +12,18 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const MODEL = process.env.CLIENT_ASSISTANT_MODEL || 'claude-sonnet-5-5'
 
-export const HUMAN_HOURS = 'de lunes a viernes, de 10:00 a 20:00'
+export const HUMAN_HOURS = 'de lunes a viernes de 10:00 a 20:00 y los sábados de 10:00 a 14:00'
 
-/** ¿Hay una persona atendiendo ahora? (L-V 10:00-20:00, hora de Madrid) */
+/** ¿Hay una persona atendiendo ahora? (L-V 10-20 y sábado 10-14, hora de Madrid) */
 export function isHumanHours(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/Madrid', hour: 'numeric', hour12: false, weekday: 'short',
   }).formatToParts(now)
   const hour = Number(parts.find(p => p.type === 'hour')?.value ?? 0)
   const weekday = parts.find(p => p.type === 'weekday')?.value || ''
-  return !['Sat', 'Sun'].includes(weekday) && hour >= 10 && hour < 20
+  if (weekday === 'Sun') return false
+  if (weekday === 'Sat') return hour >= 10 && hour < 14
+  return hour >= 10 && hour < 20
 }
 
 const SYSTEM = `Eres el asistente de WhatsApp de FiestaGo (fiestago.es), un marketplace de proveedores para bodas, comuniones, bautizos, cumpleaños infantiles y de adultos, despedidas y eventos de empresa en toda España. Atiendes a CLIENTES (personas que organizan una celebración) fuera del horario en que responde una persona del equipo (${HUMAN_HOURS}).

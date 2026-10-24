@@ -27,7 +27,13 @@ const AGENT_MODEL   = process.env.SIM_AGENT_MODEL   || 'claude-haiku-5-5'
 const REPORT_MODEL  = process.env.SIM_REPORT_MODEL  || 'claude-opus-5-5'
 const CONCURRENCY   = 12
 
-export type Stimulus = { id: string; label: string; text: string }
+/** segments: si se indica, solo lo ven esas personas (anuncio segmentado). */
+export type Stimulus = { id: string; label: string; text: string; segments?: string[] }
+
+/** Posts que ve cada persona según su segmento. */
+function postsFor(cfg: SimConfig, p: Persona) {
+  return cfg.posts.filter(s => !s.segments || s.segments.includes(p.segment))
+}
 
 export type SimConfig = {
   personas: number
@@ -38,7 +44,7 @@ export type SimConfig = {
   /** Agregados de una simulación anterior con las mismas personas, para comparar. */
   previous?: { label: string; aggregates: unknown }
   /** 'hypothetical_3': catálogo simulado de 3 proveedores por categoría en la zona. */
-  catalog?: 'real' | 'hypothetical_3'
+  catalog?: 'real' | 'hypothetical_3' | 'plan_fase1'
 }
 
 export const ACTIONS = ['ignorar', 'ver_perfil', 'entrar_web', 'hacer_quiz', 'apuntarse', 'reservar'] as const
@@ -79,6 +85,40 @@ export function defaultConfig(providers: { total: number; byCategory: Record<str
       { id: 'proveedor_real', label: 'Proveedor presentado con su trabajo', text: 'Carrusel: "Te presentamos a Lucía, fotógrafa de bodas en tu zona". Fotos de 4 bodas que ha hecho, qué incluye su paquete y su precio total con garantía incluida (1.250 €). "Verificada por FiestaGo. Consulta su disponibilidad: enlace en la bio."' },
     ],
     profile: `Cuenta de Instagram y TikTok de FiestaGo para clientes (renovada: ya no hay posts para proveedores, que tienen su propia cuenta). Bio: "Bodas, comuniones y cumpleaños sin sustos ✨ Proveedores verificados · Pago retenido hasta tu evento · Pregúntanos por WhatsApp 👇 fiestago.es". Destacados: "Quiénes somos" (Mariano con su foto), "Garantía" (ejemplos con números), "Tu dinero" (Stripe), "Cómo reservar", "WhatsApp". Los posts del perfil son los que acabas de ver, más otros proveedores presentados con su nombre, trabajos y precio, de bodas, comuniones y cumpleaños infantiles y de adultos. Cuenta nueva: pocos seguidores y aún pocos comentarios, aunque responden rápido a los que hay.`,
+  }
+}
+
+// ─── Plan de confianza (simulación 4) ─────────────────────────────
+// La web y las redes tal y como quedarían tras aplicar el plan de confianza
+// (fase 0 y fase 1): primer paso sin riesgo, señal y cancelación gratis,
+// persona también el sábado, navegación por evento con packs, catálogo
+// local real y primeras reseñas reales de eventos fundadores. Es hipotético:
+// sirve para comprobar el plan antes de construirlo entero.
+
+const SEG = { boda: 'Pareja boda 2027', comunion: 'Familia comunión', infantil: 'Familia cumple infantil', adulto: 'Adulto cumple especial' }
+
+export function planConfig(): Omit<SimConfig, 'personas' | 'segments'> {
+  return {
+    web: `fiestago.es (versión con el plan de confianza aplicado):
+- Portada: "Tu celebración, sin sustos." Cuatro entradas grandes: Cumple infantil, Comunión, Boda y Cumple adulto. Cada una abre una página con packs de ejemplo con PRECIO TOTAL, por ejemplo: "Cumple para 20 niños: animador 2 h + merienda + sala, 420 € todo incluido"; "Comunión para 30 personas en restaurante: menú, tarta y fotógrafo 2 h, 1.890 € todo incluido"; "Cumple de 40 para 40 personas: catering + DJ 4 h, 1.640 € todo incluido". Todo con la Garantía de Éxito incluida.
+- Catálogo por zona, con nombres, pueblo, fotos de trabajos, precio y disponibilidad por fecha sin registrarse. Ejemplo en Valencia y l'Horta: 7 fotógrafos, 4 caterings (uno con menú halal y sin cerdo), 3 restaurantes y 2 salones para comuniones, 5 animadores infantiles, 2 ludotecas con merienda, 4 DJ, 2 fincas para bodas, 3 pastelerías. En comarcas (Safor, Ribera, Camp de Morvedre, Requena-Utiel) hay menos y se dice con claridad; si tu pueblo no está, un aviso: "aún no estamos en tu pueblo, déjanos tu correo y te avisamos".
+- Reseñas: 11 reseñas reales con nombre, foto y fecha de los primeros "eventos fundadores" (6 cumples infantiles, 3 comuniones, 2 cumples de adulto; aún ninguna boda). Cada ficha de proveedor muestra además su nota y enlace a sus reseñas de Google (por ejemplo 4,8 con 63 opiniones).
+- Primer paso sin riesgo: botón "Pide presupuesto o bloquea tu fecha 48 h gratis", sin pagar nada. Para reservar: señal desde el 30 % y el resto 2 meses antes del evento; cancelación gratis durante 14 días tras reservar si faltan más de 60 días para el evento.
+- El dinero: "Tu pago lo guarda Stripe, la plataforma de pagos que usan muchas tiendas online, y no llega al proveedor hasta que termina tu evento."
+- Garantía en una sola página con tres casos claros: si el proveedor cancela (sustituto que cumpla las mismas funciones a precio similar en 48 h o te devolvemos el 110 %), si no se presenta (te devolvemos lo pagado más una compensación de 300 € a 3.000 €), si cancelas tú (gratis los primeros 14 días; después, la política de cada servicio, que se ve en su ficha). Reembolsos en máximo 5 días hábiles. Qué no cubre: lluvia, cambios pedidos por el cliente. Incluida en todos los servicios.
+- Atención: WhatsApp atendido por una persona de lunes a viernes de 10:00 a 20:00 y sábados de 10:00 a 14:00, "te respondemos en menos de 2 horas en horario de atención", y opción de pedir una llamada de 10 minutos. Email.
+- "Quiénes somos": foto de Mariano González Tejedo, el fundador, texto en primera persona; datos del titular (Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, Oviedo). FiestaGo atiende celebraciones en toda España. Proveedores verificados (DNI/CIF y seguro de responsabilidad civil).`,
+    posts: [
+      { id: 'dinero_faq', label: 'FAQ: ¿dónde está tu dinero?', text: 'Carrusel de preguntas frecuentes: "¿Dónde está tu dinero hasta el día del evento? Lo guarda Stripe, la plataforma de pagos que usan muchas tiendas online. El proveedor no lo cobra hasta que termina tu celebración. ¿Y si cancelas tú? Los primeros 14 días, gratis. ¿Y si falla el proveedor? Te buscamos otro en 48 h o te devolvemos el 110 %." "Enlace en la bio."' },
+      { id: 'primer_paso', label: 'Bloquea tu fecha gratis', text: 'Imagen: calendario con una fecha rodeada.\nTexto: "¿Has visto al proveedor perfecto pero aún no te decides? Bloquea tu fecha 48 h gratis o pide presupuesto sin pagar nada. Y si reservas, empiezas con una señal desde el 30 %. Pregúntanos lo que quieras por WhatsApp: te contesta una persona, también los sábados por la mañana. Enlace en la bio."' },
+      { id: 'resena_cumple', label: 'Reseña real: cumple infantil', segments: [SEG.infantil, SEG.adulto], text: 'Carrusel con fotos de la fiesta: "El cumple de Martina (6 años), en Paterna. Animador 2 h + merienda + ludoteca para 18 niños, 410 €. Lo que dice su madre, Rocío: \'Reservé con señal, me contestaron un sábado y el animador llegó media hora antes. Repetiremos.\'" "Uno de nuestros primeros eventos. Enlace en la bio."' },
+      { id: 'pack_cumple', label: 'Pack cumple infantil con precio total', segments: [SEG.infantil], text: 'Imagen: mesa de merienda infantil y un animador.\nTexto: "Cumple para 20 niños en Valencia y alrededores: animador 2 h + merienda + sala, 420 € todo incluido. Garantía de Éxito incluida: si el animador cancela, te buscamos otro en 48 h o te devolvemos el 110 %. Bloquea tu fecha gratis 48 h. Enlace en la bio."' },
+      { id: 'pack_comunion', label: 'Pack comunión con precio total', segments: [SEG.comunion], text: 'Carrusel: "Comunión para 30 personas en un restaurante de l\'Horta: menú, tarta y fotógrafo 2 h, 1.890 € todo incluido. 3 restaurantes y 2 salones para elegir, con su menú y fotos. Reseña de una familia de Mislata: \'Todo cerrado en una tarde y sin sorpresas.\' Pide presupuesto sin compromiso: enlace en la bio."' },
+      { id: 'garantia_boda', label: 'Garantía con números (boda)', segments: [SEG.boda], text: 'Carrusel: "Tu boda, con garantía incluida". 1) Reservas fotógrafo por 1.250 €, precio final con todo incluido. 2) Pagas una señal y el resto 2 meses antes; el dinero espera en Stripe. 3) Si cancela: te buscamos otro en 48 h. 4) Si no hay: te devolvemos el 110 %. 5) Si no se presenta: lo pagado y 500 € más. "Si todo va bien, no pagas nada más. Enlace en la bio."' },
+      { id: 'proveedor_zona', label: 'Proveedor de tu zona con su trabajo', text: 'Carrusel: "Te presentamos a Pau, DJ en la Safor". Fotos y un vídeo corto de sesiones reales, qué incluye (equipo, 4 h, desplazamiento en la comarca) y precio total con garantía incluida (690 €). Nota en Google: 4,9 (41 opiniones). "Verificado por FiestaGo. Consulta su disponibilidad: enlace en la bio."' },
+      { id: 'mariano_responde', label: 'Una persona responde', text: 'Vídeo corto: Mariano a cámara: "Soy Mariano, de FiestaGo. Cada semana nos preguntáis lo mismo: ¿quién guarda el dinero?, ¿y si llueve?, ¿y si cancelo yo? Os lo contesto en 30 segundos." Responde las tres. "Escríbenos por WhatsApp: entre semana y los sábados por la mañana te contesta una persona. Enlace en la bio."' },
+    ],
+    profile: `Cuenta de Instagram y TikTok de FiestaGo para clientes. Bio: "Bodas, comuniones y cumpleaños sin sustos ✨ Proveedores verificados · Tu dinero espera en Stripe · Bloquea tu fecha gratis 👇 fiestago.es". Destacados: "Opiniones" (11 reseñas reales de los primeros eventos, con fotos), "Cumples", "Comuniones", "Bodas", "Tu dinero", "Quiénes somos". Contenido equilibrado entre cumples infantiles, comuniones, bodas y cumples de adulto, con fotos de eventos reales. Cuenta joven (unos cientos de seguidores), pero con comentarios de clientes reales y respuestas firmadas ("Te contesta Mariano").`,
   }
 }
 
@@ -200,10 +240,10 @@ Acciones posibles, de menos a más compromiso: ignorar, ver_perfil, entrar_web, 
 async function runRound1(cfg: SimConfig, p: Persona): Promise<Round1> {
   const schema = obj({
     web: obj({ confianza: int15, claridad: int15, accion: action, lo_que_mas_gusta: str, lo_que_falta: str, objecion: str }),
-    posts: { type: 'array', items: obj({ id: { type: 'string', enum: cfg.posts.map(s => s.id) }, atencion: int15, confianza: int15, accion: action, comentario: str, objecion: str }) },
+    posts: { type: 'array', items: obj({ id: { type: 'string', enum: postsFor(cfg, p).map(s => s.id) }, atencion: int15, confianza: int15, accion: action, comentario: str, objecion: str }) },
     perfil: obj({ entiende_que_es_para_clientes: { type: 'boolean' }, efecto: { type: 'string', enum: ['mejora', 'neutro', 'empeora'] }, reaccion: str }),
   })
-  const posts = shuffle(cfg.posts).map(s => `[${s.id}]\n${s.text}`).join('\n\n')
+  const posts = shuffle(postsFor(cfg, p)).map(s => `[${s.id}]\n${s.text}`).join('\n\n')
   return askJson<Round1>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
     `Mientras haces scroll en Instagram o TikTok te aparecen estos posts patrocinados de FiestaGo, una marca que no conocías:\n\n${posts}\n\n` +
     `Imagina además que entras en la web y ves esto:\n${cfg.web}\n\n` +
@@ -218,7 +258,7 @@ export type Round2 = { mejor_post: string; cambia_opinion: boolean; accion_final
 
 async function runRound2(cfg: SimConfig, p: Persona, r1: Round1, others: string[]): Promise<Round2> {
   const schema = obj({
-    mejor_post: { type: 'string', enum: [...cfg.posts.map(s => s.id), 'ninguno'] },
+    mejor_post: { type: 'string', enum: [...postsFor(cfg, p).map(s => s.id), 'ninguno'] },
     cambia_opinion: { type: 'boolean' }, accion_final: action, motivo: str, que_te_haria_reservar: str,
   })
   const mine = r1.posts.map(x => `[${x.id}] atención ${x.atencion}, confianza ${x.confianza}, ${x.accion}: "${x.comentario}"`).join('\n')
@@ -242,11 +282,15 @@ function aggregate(cfg: SimConfig, personas: Persona[], r1: Array<Round1 | null>
     const posts: Record<string, unknown> = {}
     for (const s of cfg.posts) {
       const rs = idx.map(i => r1[i]!.posts.find(x => x.id === s.id)).filter(Boolean) as Round1['posts']
+      if (!rs.length) continue // post segmentado que este grupo no ve
+      // Denominador: quienes vieron el post (con anuncios segmentados no lo ven todos)
+      const seen = idx.filter(i => r1[i]!.posts.some(x => x.id === s.id))
       posts[s.id] = {
+        n_vistos: rs.length,
         atencion: avg(rs.map(r => r.atencion)), confianza: avg(rs.map(r => r.confianza)),
         pct_entra_web_o_mas: pct(rs.filter(r => ACTION_RANK[r.accion] >= 2).length, rs.length),
         pct_ignora: pct(rs.filter(r => r.accion === 'ignorar').length, rs.length),
-        pct_mejor_post_ronda2: pct(idx.filter(i => r2[i]?.mejor_post === s.id).length, idx.length),
+        pct_mejor_post_ronda2: pct(seen.filter(i => r2[i]?.mejor_post === s.id).length, seen.length),
       }
     }
     const final = idx.map(i => r2[i]?.accion_final).filter(Boolean) as Action[]
@@ -286,6 +330,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown): Promi
     messages: [{
       role: 'user',
       content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\n` +
+        (cfg.catalog === 'plan_fase1' ? 'En esta simulación la web y las redes son HIPOTÉTICAS: así quedarían tras aplicar el plan de confianza (primer paso sin pagar, señal y cancelación gratis 14 días, persona también el sábado, navegación por evento con packs de precio total, catálogo local con nombres, 11 reseñas reales de eventos fundadores y notas de Google de los proveedores). Cada persona solo ve los posts de su tipo de evento, como con anuncios segmentados (n_vistos). Preguntas clave, cada una con su sección: ¿qué objeciones desaparecen y cuáles quedan?; ¿aparecen ya intenciones de apuntarse o reservar, en qué segmento y por qué?; ¿qué parte del plan pesa más (para priorizar qué construir primero)?\n\n' : '') +
         (cfg.catalog === 'hypothetical_3' ? 'En esta simulación el catálogo es HIPOTÉTICO: 3 proveedores de cada servicio que cubren la zona de cada persona. La pregunta clave es si con ese mínimo ya compensa hacer marketing de clientes en una ciudad, o qué más haría falta (y para qué tipo de evento y servicio). Dedícale una sección propia con una recomendación clara.\n\n' : '') +
         (cfg.previous ? `IMPORTANTE: son las mismas personas de una simulación anterior (${cfg.previous.label}). Compara SIEMPRE con ella (confianza en la web, efecto del perfil, acciones finales, posts repetidos) y di qué ha mejorado y qué no. Agregados de la anterior (JSON):\n${JSON.stringify(cfg.previous.aggregates)}\n\n` : '') +
         `Posts probados:\n${cfg.posts.map(s => `[${s.id}] ${s.label}: ${s.text}`).join('\n\n')}\n\nAgregados por segmento (JSON):\n${JSON.stringify(agg)}\n\nMuestra de reacciones (JSON):\n${JSON.stringify(quotes)}\n\n` +
@@ -306,7 +351,10 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   const save = (patch: Record<string, unknown>) => supabase.from('sim_runs').update({ ...patch, usage, updated_at: new Date().toISOString() }).eq('id', runId)
 
   let cfg = run.config as SimConfig | null
-  if (!cfg || !cfg.posts) {
+  if (cfg?.catalog === 'plan_fase1' && !cfg.posts) {
+    const base = defaultConfig({ total: 0, byCategory: {}, cities: [] })
+    cfg = { ...base, ...planConfig(), ...cfg }
+  } else if (!cfg || !cfg.posts) {
     let catalog: { total: number; byCategory: Record<string, number>; cities: string[] }
     if (cfg?.catalog === 'hypothetical_3') {
       // Catálogo hipotético: 3 proveedores por categoría que cubren la zona de

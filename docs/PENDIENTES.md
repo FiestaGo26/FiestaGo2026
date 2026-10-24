@@ -66,8 +66,13 @@ Después, las bios:
 - Dinero retenido: **en Stripe**. Pendiente: activar los cobros reales con Stripe y
   quitar el modo prueba (ver "Otros").
 - Oviedo: no hace falta explicarlo. FiestaGo se presenta **abierto a toda España**.
-- WhatsApp: persona de lunes a viernes 10-20 h; **fuera de ese horario contesta la IA**
-  (hecho). Sin teléfono de momento.
+- WhatsApp: persona de lunes a viernes 10-20 h **y sábados 10-14 h**; fuera de ese horario
+  contesta la IA, sin anunciarlo en los posts (hecho). Sin teléfono de momento.
+- **Plan de confianza aprobado** (ver sección 2): eventos fundadores (los 10 primeros con
+  la garantía de regalo a cambio de una reseña honesta con fotos), señal desde el 30 %
+  y el resto 2 meses antes, cancelación gratis 14 días tras reservar si faltan más de
+  60 días, bloqueo de fecha / presupuesto gratis 48 h, piloto de cumple infantil en
+  Valencia y l'Horta, regla del CEO por "servicio central del evento".
 
 ## 2. Lo que hace Claude cuando lo anterior esté listo
 
@@ -85,12 +90,25 @@ números, solo a su público (la de cumple: mejor post para el 56 % de familias 
 infantil). Frase más criticada: "el fin de semana te atiende el asistente".
 Límite: el catálogo hipotético se describió muy uniforme y pudo sonar a plantilla.
 
-Decisiones pendientes tras la 3.ª simulación:
-- [ ] ¿Una persona atiende WhatsApp los sábados por la mañana (p. ej. 10-14 h)?
-- [ ] ¿Piloto de cumple infantil en Valencia y l'Horta (anuncios pequeños, 3-4 semanas,
-  con un pack de precio total)? Requiere animadores + merienda/espacio en el catálogo.
-- [ ] ¿Cambiamos la regla del CEO para captar clientes: en vez de "3 por categoría", tener
-  el servicio central del tipo de evento en la zona (supply_threshold por evento)?
+4.ª simulación (pendiente de lanzar): la web y las redes como quedarían con el plan de
+confianza aplicado (`catalog: 'plan_fase1'` en `sim_runs`), con posts segmentados por
+tipo de evento. Sirve para priorizar qué construir primero.
+
+### Plan de confianza: qué construir (orden según la 4.ª simulación)
+- [ ] Botón "Pide presupuesto o bloquea tu fecha 48 h gratis" en las fichas.
+- [ ] Señal desde el 30 % + cancelación gratis 14 días (si faltan >60 días) en reserva,
+  ficha, garantía y términos. Ojo: el reembolso de esos 14 días lo asume FiestaGo o el
+  proveedor; definirlo antes de activarlo.
+- [ ] Portada por tipo de evento con packs de precio total (precios reales de proveedores).
+- [ ] Catálogo por zona con nombres y aviso "aún no estamos en tu pueblo".
+- [ ] Garantía en una página con tres casos (cancela el proveedor / no se presenta /
+  cancelas tú) y plazos de devolución.
+- [ ] Reseñas: sistema de reseñas tras cada evento + nota y enlace de Google en la ficha.
+- [ ] Programa de eventos fundadores (10 primeros, garantía de regalo a cambio de reseña).
+- [ ] "Te respondemos en menos de 2 h en horario" + pedir llamada de 10 minutos.
+- [ ] Reglas del CEO: servicio central por evento; prioridad a animadores y ludotecas
+  para el piloto de cumple infantil; posts según lo aprendido.
+- [ ] Piloto de cumple infantil en Valencia y l'Horta (anuncios pequeños, 3-4 semanas).
 
 - [ ] **Reseñas reales lo antes posible**: pedir opinión tras cada evento; ofrecer a los
   primeros clientes algo a cambio de una reseña real (descuento o regalo, declarándolo);

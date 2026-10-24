@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 const PHOTO = '/mariano.jpeg'
 const hasPhoto = true
-const HOURS = 'De lunes a viernes, de 10:00 a 20:00'
+const HOURS = 'De lunes a viernes de 10:00 a 20:00 y los sábados de 10:00 a 14:00'
 
 export default async function QuienesSomosPage() {
   const wa = await getBusinessWhatsapp()
@@ -70,7 +70,7 @@ export default async function QuienesSomosPage() {
               className="bg-white border border-stone-200 rounded-2xl p-6 hover:border-coral transition-colors">
               <div className="text-[10px] font-bold uppercase tracking-widest text-ink/50 mb-2">WhatsApp</div>
               <div className="font-serif text-2xl font-black text-ink">{wa.display}</div>
-              <p className="text-sm text-ink/60 mt-2">Te responde una persona del equipo {HOURS.toLowerCase()}. Fuera de ese horario, deja tu mensaje y te contesta nuestro asistente.</p>
+              <p className="text-sm text-ink/60 mt-2">Te responde una persona del equipo {HOURS.toLowerCase()}. Si escribes fuera de ese horario, te respondemos en cuanto abrimos.</p>
             </a>
           )}
           <a href="mailto:contacto@fiestago.es"
