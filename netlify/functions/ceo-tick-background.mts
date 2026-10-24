@@ -20,6 +20,7 @@ import { createAdminClient } from '../../lib/supabase'
 import { runCeoRoutine, type CeoKind } from '../../lib/ceo-agent'
 import { claimNextAction, completeAction } from '../../lib/ceo-actions'
 import { runProviderSearch } from '../../lib/provider-search'
+import { releaseHolds } from '../../lib/date-holds'
 
 const MAX_ACTIONS = 20
 
@@ -104,6 +105,12 @@ export default async (req: Request) => {
     out.queue = await runQueue(supabase, base)
   } catch (err: any) {
     out.queue = `error: ${err.message}`
+  }
+  // Libera las fechas bloqueadas 48 h gratis que han caducado sin reserva
+  try {
+    out.holds_expired = await releaseHolds(supabase, { expired: true, status: 'expired' })
+  } catch (err: any) {
+    out.holds_expired = `error: ${err.message}`
   }
   // Las funciones de segundo plano no devuelven nada al cliente: lo
   // dejamos en los logs de Netlify (Functions → ceo-tick-background).

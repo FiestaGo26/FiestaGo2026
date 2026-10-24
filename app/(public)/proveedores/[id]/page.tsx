@@ -137,6 +137,10 @@ export default function ProviderDetailPage() {
   const [signupPwd, setSignupPwd] = useState('')
   const [creatingAccount, setCreatingAccount] = useState(false)
   const [blockedDates, setBlockedDates] = useState<string[]>([])  // YYYY-MM-DD para el servicio seleccionado
+  const [heldDates,    setHeldDates]    = useState<string[]>([])  // bloqueos provisionales de 48 h
+  // Primer paso sin pagar: bloquear la fecha 48 h o pedir presupuesto
+  const [holding,  setHolding]  = useState(false)
+  const [holdSent, setHoldSent] = useState<{ kind: 'hold' | 'quote'; expires_at: string | null } | null>(null)
 
   // Videollamada pre-venta (solo si el proveedor la ofrece).
   const [showVideoCallModal, setShowVideoCallModal] = useState(false)
@@ -284,11 +288,11 @@ export default function ProviderDetailPage() {
   // Cargar fechas bloqueadas SIEMPRE que cambie el servicio seleccionado
   // (sea por click manual o por ?svc=ID en la URL)
   useEffect(() => {
-    if (!selectedSvc) { setBlockedDates([]); return }
+    if (!selectedSvc) { setBlockedDates([]); setHeldDates([]); return }
     fetch(`/api/services/availability?service_id=${selectedSvc.id}&months=6`)
       .then(r => r.json())
-      .then(d => setBlockedDates(d.blocked_dates || []))
-      .catch(() => setBlockedDates([]))
+      .then(d => { setBlockedDates(d.blocked_dates || []); setHeldDates(d.held_dates || []) })
+      .catch(() => { setBlockedDates([]); setHeldDates([]) })
   }, [selectedSvc])
 
   function selectService(svc: Service) {
@@ -307,6 +311,43 @@ export default function ProviderDetailPage() {
       trackEvent(provider.id, 'booking_started', svc.id)
     }
     toast.success(`Servicio seleccionado: ${svc.name}`)
+  }
+
+  // "Bloquea tu fecha 48 h gratis" (con servicio y fecha) o "Pide presupuesto gratis"
+  async function handleHold() {
+    if (!provider) return
+    if (!form.client_name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.client_email.trim())) {
+      toast.error('Pon tu nombre y tu email para que podamos responderte')
+      return
+    }
+    const kind: 'hold' | 'quote' = selectedSvc && form.event_date ? 'hold' : 'quote'
+    setHolding(true)
+    try {
+      const res = await fetch('/api/holds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind,
+          acquisition:  getAcquisition(),
+          provider_id:  provider.id,
+          service_id:   selectedSvc?.id || null,
+          event_date:   form.event_date || null,
+          client_name:  form.client_name,
+          client_email: form.client_email,
+          client_phone: form.client_phone || null,
+          event_type:   form.event_type,
+          guests:       parseInt(form.guests) || null,
+          message:      form.message || null,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status} del servidor`)
+      setHoldSent({ kind: data.hold?.kind || kind, expires_at: data.hold?.expires_at || null })
+      if (provider?.id) trackEvent(provider.id, kind === 'hold' ? 'date_hold' : 'quote_request', selectedSvc?.id)
+    } catch (err: any) {
+      toast.error(err.message || 'No se ha podido enviar')
+    }
+    setHolding(false)
   }
 
   async function handleBook(e: React.FormEvent) {
@@ -928,6 +969,26 @@ export default function ProviderDetailPage() {
                     </Link>
                   )}
                 </div>
+              ) : holdSent ? (
+                <div className="py-2 text-center">
+                  <div className="text-4xl mb-3">{holdSent.kind === 'hold' ? '📅' : '💬'}</div>
+                  <div className="font-bold text-ink mb-2">
+                    {holdSent.kind === 'hold' ? '¡Fecha bloqueada 48 h!' : '¡Petición enviada!'}
+                  </div>
+                  <div className="text-sm text-ink/60 leading-relaxed">
+                    {holdSent.kind === 'hold' && holdSent.expires_at
+                      ? <>Nadie más puede reservar ese día con {provider.name} hasta el{' '}
+                          {new Date(holdSent.expires_at).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}.
+                          No has pagado nada. Te hemos enviado un email con el enlace para reservar cuando lo tengas claro.</>
+                      : <>{provider.name} te responderá con un presupuesto. No has pagado nada y no te llamaremos si no lo pides.</>}
+                  </div>
+                  {holdSent.kind === 'hold' && (
+                    <button type="button" onClick={() => setHoldSent(null)}
+                      className="mt-4 w-full py-3 rounded-xl font-semibold text-sm text-white bg-coral hover:bg-coral-dark transition-colors">
+                      Ya lo tengo claro: reservar ahora
+                    </button>
+                  )}
+                </div>
               ) : (
                 <form onSubmit={handleBook} className="flex flex-col gap-3">
                   {/* Toggle · reserva en nombre de un cliente (wedding planners) */}
@@ -1025,12 +1086,13 @@ export default function ProviderDetailPage() {
                             const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
                             const isPast    = new Date(dateStr) < today
                             const isBlocked = blockedDates.includes(dateStr)
+                            const isHeld    = heldDates.includes(dateStr)
                             const isSelected= form.event_date === dateStr
                             const disabled  = isPast || isBlocked
                             return (
                               <button key={dateStr} type="button" disabled={disabled}
                                 onClick={() => setForm(f => ({ ...f, event_date: dateStr }))}
-                                title={isBlocked ? 'No disponible' : isPast ? 'Fecha pasada' : ''}
+                                title={isBlocked ? 'No disponible' : isPast ? 'Fecha pasada' : isHeld ? 'Bloqueada 48 h por un cliente: solo puede reservarla quien la bloqueó' : ''}
                                 className={`aspect-square rounded-lg text-xs transition-all ${
                                   isSelected
                                     ? 'bg-coral text-white font-bold shadow-sm'
@@ -1038,6 +1100,8 @@ export default function ProviderDetailPage() {
                                     ? 'bg-red-100 text-red-400 line-through cursor-not-allowed border border-red-200'
                                     : isPast
                                     ? 'text-ink/20 cursor-not-allowed bg-stone-50'
+                                    : isHeld
+                                    ? 'bg-amber-50 text-amber-600 border border-amber-200'
                                     : 'text-ink hover:bg-coral/10 hover:text-coral border border-transparent hover:border-coral/30'
                                 }`}>
                                 {day}
@@ -1050,6 +1114,9 @@ export default function ProviderDetailPage() {
                         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-coral rounded inline-block"/> Elegida</span>
                         {selectedSvc && blockedDates.length > 0 && (
                           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-red-100 border border-red-200 rounded inline-block"/> No disponible</span>
+                        )}
+                        {selectedSvc && heldDates.length > 0 && (
+                          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-amber-50 border border-amber-200 rounded inline-block"/> Bloqueo provisional 48 h</span>
                         )}
                         {!selectedSvc && (
                           <span className="text-[10px] text-ink/40 italic">Elige un servicio arriba para ver disponibilidad</span>
@@ -1093,6 +1160,17 @@ export default function ProviderDetailPage() {
                   <p className="text-center text-xs text-ink/40">
                     Sin compromiso · Respuesta en menos de 24h
                   </p>
+                  <div className="border-t border-stone-200 pt-3 mt-1">
+                    <button type="button" onClick={handleHold} disabled={holding}
+                      className="w-full py-3 rounded-xl font-semibold text-sm text-coral border border-coral hover:bg-coral/5 transition-colors disabled:opacity-50">
+                      {holding ? 'Enviando...'
+                        : selectedSvc && form.event_date ? '📅 Bloquear esta fecha 48 h gratis'
+                        : '💬 Pedir presupuesto gratis'}
+                    </button>
+                    <p className="text-center text-[11px] text-ink/45 mt-1.5 leading-relaxed">
+                      ¿Aún no lo tienes claro? Sin pagar, sin tarjeta, sin DNI<br/>y no te llamaremos si no lo pides.
+                    </p>
+                  </div>
                 </form>
               )}
             </div>

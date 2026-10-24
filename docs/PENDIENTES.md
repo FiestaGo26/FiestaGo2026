@@ -110,8 +110,9 @@ Decisiones pendientes tras la 4.ª simulación:
   lleva FiestaGo. Hoy no se dice (decisión del 24-10). Mantener o explicar en una línea.
 
 ### Plan de confianza: qué construir (orden según la 4.ª simulación)
-- [ ] Botón "Pide presupuesto o bloquea tu fecha 48 h gratis" en las fichas, con "sin
-  tarjeta, sin DNI y no te llamaremos si no lo pides".
+- [x] Botón "Bloquear esta fecha 48 h gratis" / "Pedir presupuesto gratis" en las fichas,
+  con "sin pagar, sin tarjeta, sin DNI y no te llamaremos si no lo pides" (hecho 24-10).
+- [ ] Contar bloqueos y presupuestos (`date_holds`) en el embudo del CEO y del panel.
 - [ ] Garantía: cifras coherentes en web y posts (compensación según importe, con tabla).
 - [ ] Packs con precio por número de invitados (rangos: 8-14 niños, 15-25 niños; comunión
   30, 50, 80 personas), no un solo tamaño.
@@ -167,6 +168,10 @@ Decisiones pendientes tras la 4.ª simulación:
 ## 3. Hecho
 
 ### 24-10-2026
+- Primer paso sin pagar en la ficha de proveedor (`/api/holds`, `lib/date-holds.ts`, tabla
+  `date_holds`): con servicio y fecha bloquea el día 48 h (sale en ámbar en el calendario y
+  solo lo puede reservar quien lo bloqueó); sin fecha, pide presupuesto. Emails al cliente,
+  al proveedor y a Mariano. El latido del CEO libera los bloqueos caducados.
 - Garantía para clientes sin hablar del 8 %: "incluida en todos los servicios"; pago
   retenido en Stripe en garantía, portada y quiénes somos; FiestaGo abierto a toda España.
 - Asistente de WhatsApp para clientes fuera de horario (`lib/client-assistant.ts`):

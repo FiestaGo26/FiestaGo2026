@@ -23,13 +23,16 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('service_availability')
-    .select('blocked_date')
+    .select('blocked_date, source')
     .eq('service_id', serviceId)
     .gte('blocked_date', fromStr)
     .lte('blocked_date', toStr)
     .order('blocked_date', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  const blockedDates = (data || []).map((b: any) => b.blocked_date)
-  return NextResponse.json({ blocked_dates: blockedDates })
+  // held_dates: bloqueos provisionales de 48 h (sin pagar). Solo puede reservarlos
+  // quien hizo el bloqueo; /api/bookings lo comprueba por email.
+  const blockedDates = (data || []).filter((b: any) => b.source !== 'hold').map((b: any) => b.blocked_date)
+  const heldDates    = (data || []).filter((b: any) => b.source === 'hold').map((b: any) => b.blocked_date)
+  return NextResponse.json({ blocked_dates: blockedDates, held_dates: heldDates })
 }

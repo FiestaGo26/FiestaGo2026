@@ -5,6 +5,7 @@ import { emailAdminNewBooking, emailAdminPackInquiry, emailProviderNewBooking, e
 import { requireClientAuth } from '@/lib/auth'
 import { computePaymentSchedule } from '@/lib/booking-payments'
 import { sanitizeAcquisition } from '@/lib/attribution'
+import { releaseHolds } from '@/lib/date-holds'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,12 +32,20 @@ export async function POST(req: NextRequest) {
     if (service_id) {
       const { data: blocked } = await supabase
         .from('service_availability')
-        .select('id')
+        .select('id, source')
         .eq('service_id', service_id)
         .eq('blocked_date', event_date)
         .maybeSingle()
-      if (blocked) {
+      // Si la fecha la tiene bloqueada este mismo cliente (bloqueo de 48 h
+      // gratis), la reserva la convierte: el bloqueo pasa a ser de la reserva.
+      const ownHold = blocked?.source === 'hold'
+        ? await releaseHolds(supabase, { service_id, event_date, client_email: String(client_email).trim(), status: 'converted' })
+        : 0
+      if (blocked && !ownHold) {
         return NextResponse.json({ error: 'La fecha seleccionada ya no está disponible para este servicio. Elige otra.' }, { status: 409 })
+      }
+      if (ownHold) {
+        await supabase.from('service_availability').update({ source: 'manual', reason: `Reservado por ${client_name}` }).eq('id', blocked!.id)
       }
     }
 
