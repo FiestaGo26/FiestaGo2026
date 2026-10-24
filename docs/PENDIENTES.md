@@ -5,19 +5,15 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
 
 ## Necesita datos o decisiones de Mariano
 
-- [ ] **Foto para "Quiénes somos"**: subirla a `public/mariano.jpg` y poner
-  `hasPhoto = true` en `app/(public)/quienes-somos/page.tsx`.
-- [ ] **Horario de atención** del WhatsApp (opcional, para mostrarlo).
-- [ ] **Datos fiscales de facturación** en Netlify siguen siendo de prueba
-  (`FIESTAGO_TAX_ADDRESS`, `FIESTAGO_TAX_ID`, `FIESTAGO_TAX_NAME`, `FIESTAGO_TEST_MODE`):
-  cambiarlos antes de emitir facturas reales (falta la dirección completa).
-- [ ] **Definir "sustituto equivalente"** en la garantía: qué cuenta como equivalente
-  y si el cliente puede elegir el reembolso del 110 % si no le convence.
+- [ ] **Salir del modo prueba** (`FIESTAGO_TEST_MODE=true` en Netlify) cuando se
+  vaya a cobrar de verdad: los datos fiscales ya son los reales.
 - [ ] **Instagram/TikTok**: decidir si se abre una cuenta aparte para proveedores
   (tipo @fiestago.pro) o se mantiene una sola con 3 posts fijados para clientes
   (quiénes somos, cómo funciona la garantía, cómo pedir presupuesto).
-- [ ] **Borrar o corregir el post** publicado que dice "pagas comisión solo cuando
-  vendes": es falso (el proveedor cobra el 100 % y el 8 % lo paga el cliente).
+- [ ] **Borrar a mano el post** "¿Cansado de pagar cuota cada mes sin clientes?…
+  pagas comisión solo cuando vendes" (publicado el 15-05-2026) en Instagram y TikTok:
+  es falso y sus APIs no permiten borrar publicaciones. Ya está marcado como
+  retirado en `social_posts`.
 - [ ] **Recargar la API de HeyGen** (0 segundos de vídeo: no hay vídeo diario).
 - [ ] **Enlaces de la bio** de Instagram y TikTok (prompt de Cowork ya dado).
 - [ ] **Marcar como secretas en Netlify** las claves que están en texto plano
@@ -42,6 +38,13 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
   se pueden reutilizar las mismas personas).
 
 ## Hecho el 24-10-2026
+
+- Foto y horario (L-V 10:00-20:00) en /quienes-somos y en el acuse de WhatsApp.
+- "Sustituto equivalente" definido en garantía y términos: mismas funciones que
+  las contratadas, a un precio similar.
+- Datos fiscales reales en Netlify (Francisco Mariano González Tejedo, 09437664M,
+  C/ Turina 6, 33011 Oviedo); las facturas llevan "FiestaGo" arriba y estos datos
+  como emisor. Dirección también en aviso legal y quiénes somos.
 
 - Página /quienes-somos (Mariano, NIF, Oviedo, WhatsApp leído de la cuenta de
   WhatsApp Business, email) enlazada desde portada, pie y garantía.

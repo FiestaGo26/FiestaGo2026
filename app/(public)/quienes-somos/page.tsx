@@ -8,9 +8,9 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://fiestago.es/quienes-somos' },
 }
 
-// Foto en public/mariano.jpg. Mientras no esté subida, se ven las iniciales.
-const PHOTO = '/mariano.jpg'
-const hasPhoto = false
+const PHOTO = '/mariano.jpeg'
+const hasPhoto = true
+const HOURS = 'De lunes a viernes, de 10:00 a 20:00'
 
 export default async function QuienesSomosPage() {
   const wa = await getBusinessWhatsapp()
@@ -70,7 +70,7 @@ export default async function QuienesSomosPage() {
               className="bg-white border border-stone-200 rounded-2xl p-6 hover:border-coral transition-colors">
               <div className="text-[10px] font-bold uppercase tracking-widest text-ink/50 mb-2">WhatsApp</div>
               <div className="font-serif text-2xl font-black text-ink">{wa.display}</div>
-              <p className="text-sm text-ink/60 mt-2">Escríbenos y te responde una persona del equipo.</p>
+              <p className="text-sm text-ink/60 mt-2">Te responde una persona del equipo. {HOURS}.</p>
             </a>
           )}
           <a href="mailto:contacto@fiestago.es"
@@ -109,7 +109,7 @@ export default async function QuienesSomosPage() {
       <section className="max-w-3xl mx-auto px-6 py-16">
         <div className="bg-stone-100 border border-stone-200 rounded-xl p-5 text-sm text-ink/65 leading-relaxed">
           <strong className="text-ink">Datos del titular.</strong> FiestaGo (fiestago.es) es una actividad de
-          Francisco Mariano González Tejedo, NIF 09437664M, con domicilio profesional en Oviedo (Asturias), España.
+          Francisco Mariano González Tejedo, NIF 09437664M, con domicilio en C/ Turina 6, 33011 Oviedo (Asturias), España.
           Contacto: <a href="mailto:contacto@fiestago.es" className="text-coral underline">contacto@fiestago.es</a>.
           Más información en el <Link href="/aviso-legal" className="text-coral underline">aviso legal</Link>.
         </div>

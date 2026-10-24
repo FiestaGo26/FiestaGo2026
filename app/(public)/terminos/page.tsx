@@ -83,7 +83,7 @@ export default function TerminosPage() {
             El Cliente abona el precio del servicio fijado por el Proveedor más una tarifa de servicio del 8% en concepto de Garantía de Éxito. Esta tarifa da acceso a la cobertura descrita en la página <Link href="/garantia" className="text-coral underline">Garantía de Éxito</Link>, cuyas condiciones forman parte integrante de estos Términos:
           </p>
           <ul className="list-disc pl-5 mt-3 space-y-2">
-            <li>Si el Proveedor cancela una reserva confirmada, FiestaGo proporcionará un sustituto equivalente en un máximo de 48 horas o reembolsará al Cliente el 110% del importe pagado.</li>
+            <li>Si el Proveedor cancela una reserva confirmada, FiestaGo proporcionará un sustituto equivalente en un máximo de 48 horas o reembolsará al Cliente el 110% del importe pagado. Se entiende por sustituto equivalente un proveedor capaz de cumplir las mismas funciones que las contratadas, a un precio similar.</li>
             <li>Si el Proveedor no se presenta el día del evento, el Cliente recibirá el reembolso del 100% del importe pagado más una compensación adicional de entre 300€ y 3.000€ según el importe de la reserva, conforme a la tabla publicada en la página de la Garantía.</li>
             <li>En caso de fuerza mayor del Cliente debidamente acreditada (fallecimiento de familiar directo, hospitalización), el evento podrá aplazarse hasta 12 meses sin coste adicional.</li>
           </ul>

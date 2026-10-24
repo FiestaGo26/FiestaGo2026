@@ -507,7 +507,7 @@ async function findProviderByPhone(supabase: any, normalized: string) {
   return null
 }
 
-const CLIENT_ACK = '¡Hola! Gracias por escribir a FiestaGo 👋 Te responde una persona del equipo lo antes posible. Mientras, si nos cuentas qué celebras, la fecha y la ciudad, te ayudamos a encontrar proveedor. (Si eres profesional y quieres darte de alta, dínoslo también.)'
+const CLIENT_ACK = '¡Hola! Gracias por escribir a FiestaGo 👋 Te responde una persona del equipo lo antes posible (atendemos de lunes a viernes, de 10:00 a 20:00). Mientras, si nos cuentas qué celebras, la fecha y la ciudad, te ayudamos a encontrar proveedor. (Si eres profesional y quieres darte de alta, dínoslo también.)'
 
 async function acknowledgeUnknownSender(supabase: any, fromNumber: string, body: string) {
   const { count } = await supabase.from('whatsapp_messages')

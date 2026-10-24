@@ -226,6 +226,8 @@ export default function GarantiaPage() {
              'No. El precio que ves en cada ficha y en cada pack ya incluye la Garantía de Éxito. Lo que ves es lo que pagas.'],
             ['¿Se cobra aunque todo salga bien?',
              'Sí, como cualquier seguro: se paga en cada reserva y es lo que financia los sustitutos y los reembolsos cuando algo falla. Además, el proveedor no cobra hasta que termina tu evento.'],
+            ['¿Qué es un "sustituto equivalente"?',
+             'Un proveedor que pueda cumplir las mismas funciones que las que contrataste, a un precio similar. Si no lo encontramos en 48 h, te devolvemos el 110 % de lo pagado.'],
             ['¿Por qué cobráis al cliente y no al proveedor?',
              'Porque cobrar al cliente como servicio (no como comisión oculta) es lo que nos permite ofrecer la Garantía de Éxito de verdad. Bodas.net y compañía cobran al proveedor cuotas anuales pero no asumen ninguna responsabilidad cuando hay un problema. Nosotros sí.'],
             ['¿Cuánto tarda un reembolso?',

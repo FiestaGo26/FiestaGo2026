@@ -25,7 +25,7 @@ export default function AvisoLegalPage() {
 
         <Section title="1. Titular del sitio web">
           <p>
-            El sitio web <a href="https://fiestago.es" className="text-coral underline">fiestago.es</a> (en adelante, "la Plataforma") es titularidad de <strong>Francisco Mariano González Tejedo</strong>, con NIF <span className="font-mono">09437664M</span>, domicilio profesional en Oviedo (Asturias), España, y correo electrónico de contacto <a href="mailto:contacto@fiestago.es" className="text-coral underline">contacto@fiestago.es</a>.
+            El sitio web <a href="https://fiestago.es" className="text-coral underline">fiestago.es</a> (en adelante, "la Plataforma") es titularidad de <strong>Francisco Mariano González Tejedo</strong>, con NIF <span className="font-mono">09437664M</span>, domicilio en C/ Turina 6, 33011 Oviedo (Asturias), España, y correo electrónico de contacto <a href="mailto:contacto@fiestago.es" className="text-coral underline">contacto@fiestago.es</a>.
           </p>
           <p className="text-xs text-ink/50 italic mt-3">
             Estos datos se actualizarán con la constitución de la sociedad operadora en el momento en que se produzca.
