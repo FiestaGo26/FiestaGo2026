@@ -74,8 +74,13 @@ async function checkHeygen(): Promise<Check | null> {
   }
 }
 
+/** Saldo actual de cada servicio, sin avisar a nadie (para el snapshot del CEO). */
+export async function currentBalances() {
+  return (await Promise.all([checkFal(), checkHeygen()])).filter((c): c is Check => !!c)
+}
+
 export async function checkBalances(supabase: SupabaseClient) {
-  const checks = (await Promise.all([checkFal(), checkHeygen()])).filter((c): c is Check => !!c)
+  const checks = await currentBalances()
   const sent: string[] = []
 
   for (const c of checks.filter(c => c.low)) {

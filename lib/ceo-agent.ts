@@ -16,6 +16,7 @@ import { sendEmail } from '@/lib/resend'
 import { notifyCeoWhatsapp } from '@/lib/ceo-whatsapp'
 import { ACTION_TYPES, CEO_CATEGORIES, CEO_CITIES, actionCatalogForPrompt, getCeoSettings, sanitizeAction } from '@/lib/ceo-actions'
 import { AUDIENCES, CHANNELS, applyExperimentDecisions, gatherGrowth, type ExperimentClose, type ExperimentPlan } from '@/lib/ceo-growth'
+import { currentBalances } from '@/lib/balance-watch'
 
 const MODEL = process.env.CEO_MODEL || 'claude-opus-5-5'
 
@@ -144,6 +145,13 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
       .limit(10),
   )
 
+  // Saldo real de fal.ai y HeyGen ahora mismo: manda sobre los fallos
+  // antiguos de recent_actions (p. ej. un "sin saldo" de antes de recargar).
+  const services = (await currentBalances().catch(() => [])).map(c => ({
+    service: c.service, ok: c.ok, balance: c.value ?? null, unit: c.unit ?? null,
+    low: c.low ?? null, error: c.error ?? null,
+  }))
+
   // Motor de crecimiento: embudos, experimentos y lo aprendido.
   const growth = await gatherGrowth(supabase, await getCeoSettings(supabase))
 
@@ -201,6 +209,7 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
       latest_alerts:         alerts,
     },
     open_proposals: openProposals,
+    services,
     growth,
   }
 }
@@ -223,6 +232,7 @@ ${actionCatalogForPrompt()}
 - Un proveedor solo aparece en el marketplace si él mismo se ha dado de alta. "leads_not_registered" son negocios encontrados por la captación que NUNCA lo han pedido: jamás propongas aprobarlos ni publicarlos, en bloque o uno a uno. Con ellos solo cabe invitarles a registrarse (WhatsApp, email). Aprobar solo tiene sentido para "registered_awaiting_approval".
 - Pagos, cobros, reembolsos y cambios de precio NUNCA los ejecutas: usa type "none" y quedan como tarea para Mariano. Igual con lo que no esté en el catálogo (cambios en la web, publicar en redes, hablar con clientes).
 - Usa el modo de autonomía que recibes: con "full" tus acciones se ejecutan sin esperar; con "approval" esperan su OK. Hay topes diarios de WhatsApps y posts; no los superes.
+- "services" es el saldo REAL de fal.ai y HeyGen en este momento. Si un fallo de recent_actions dice que no había saldo pero services muestra saldo (low=false), ya se recargó: no lo repitas como problema y vuelve a usar ese servicio.
 - Mira "recent_actions": si algo falló o no dio resultado, no lo repitas igual; ajusta o propón otra cosa.
 - Propón como máximo 5 acciones, priorizadas por impacto en el crecimiento del marketplace (más proveedores activos, más demanda, más reservas). No repitas propuestas que ya están en "open_proposals".
 - Escribe en español de España, tono directo y cercano, tuteando.
