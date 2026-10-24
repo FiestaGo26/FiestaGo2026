@@ -25,7 +25,9 @@ Las cuentas de siempre (@fiestago) pasan a ser **de clientes**; las de **proveed
   cobrar de verdad. Los datos fiscales ya son los reales.
 - [ ] Opcional: marcar como secretas el resto de claves de Netlify que sigan en texto
   plano (las importantes ya lo están) y activar en Supabase la protección contra
-  contraseñas filtradas.
+  contraseñas filtradas. **No marcar como secretas** `SECRETS_SCAN_OMIT_KEYS` ni las
+  `NEXT_PUBLIC_*`: no son claves, aparecen en el código o en la web y el escáner de
+  Netlify bloquea el despliegue (pasó el 24-10-2026).
 
 ### Texto para Cowork (copiar y pegar)
 
