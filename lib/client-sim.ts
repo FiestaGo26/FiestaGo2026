@@ -87,7 +87,7 @@ function client() {
   return _client
 }
 
-const usage = { input: 0, output: 0, calls: 0 }
+const usage = { input: 0, output: 0, calls: 0, failed: 0, last_error: '' }
 
 async function askJson<T>(model: string, system: string, user: string, schema: Record<string, unknown>, maxTokens = 4000): Promise<T> {
   let lastErr: unknown
@@ -119,7 +119,11 @@ async function pool<I, O>(items: I[], fn: (item: I, i: number) => Promise<O>): P
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     while (next < items.length) {
       const i = next++
-      try { out[i] = await fn(items[i], i) } catch { out[i] = null }
+      try { out[i] = await fn(items[i], i) } catch (err: any) {
+        out[i] = null
+        usage.failed++
+        usage.last_error = String(err?.message || err).slice(0, 300)
+      }
     }
   }))
   return out
@@ -135,7 +139,8 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const str = { type: 'string' }
-const int15 = { type: 'integer', minimum: 1, maximum: 5 }
+// Los esquemas JSON de la API no admiten minimum/maximum: la escala 1-5 va en el prompt
+const int15 = { type: 'integer', description: 'de 1 a 5' }
 const action = { type: 'string', enum: [...ACTIONS] }
 const obj = (properties: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) })
 
@@ -287,7 +292,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown): Promi
 // ─── Orquestación ─────────────────────────────────────────────────
 
 export async function runClientSim(supabase: SupabaseClient, runId: string) {
-  const { data: run } = await supabase.from('sim_runs').select('id, config').eq('id', runId).single()
+  const { data: run } = await supabase.from('sim_runs').select('id, config, personas').eq('id', runId).single()
   if (!run) throw new Error(`No existe la simulación ${runId}`)
   const save = (patch: Record<string, unknown>) => supabase.from('sim_runs').update({ ...patch, usage, updated_at: new Date().toISOString() }).eq('id', runId)
 
@@ -300,11 +305,13 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   }
 
   await save({ status: 'personas', config: cfg })
-  const personas = await generatePersonas(cfg)
+  // Si la fila ya trae personas (p. ej. copiadas de otra simulación), se reutilizan
+  const personas: Persona[] = Array.isArray(run.personas) && run.personas.length ? run.personas : await generatePersonas(cfg)
   await save({ status: 'ronda1', personas })
 
   const r1 = await pool(personas, p => runRound1(cfg!, p))
   await save({ status: 'ronda2', round1: r1 })
+  if (r1.filter(Boolean).length < personas.length / 2) throw new Error(`Ronda 1: solo ${r1.filter(Boolean).length}/${personas.length} respuestas. Último error: ${usage.last_error}`)
 
   // Cada persona lee 6 comentarios de otras, de segmentos variados
   const voices = personas.flatMap((p, i) => (r1[i]?.posts || []).map(x => ({ i, text: `${p.nombre} (${p.segment.toLowerCase()}), sobre el post "${cfg!.posts.find(s => s.id === x.id)?.label}": "${x.comentario}"` })))
