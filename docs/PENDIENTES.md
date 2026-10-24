@@ -5,11 +5,12 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
 
 ## Necesita datos o decisiones de Mariano
 
-- [ ] **Página "Quiénes somos"** (objeción nº 1: "no sé quién está detrás").
-  Hacen falta: nombre (y foto si quieres), empresa o autónomo con CIF/NIF real,
-  dirección o ciudad, teléfono/WhatsApp visible y horario de atención.
-  Ojo: los datos fiscales actuales de Netlify son de prueba
-  (`FIESTAGO_TAX_ADDRESS`, `FIESTAGO_TAX_ID`, `FIESTAGO_TAX_NAME`).
+- [ ] **Foto para "Quiénes somos"**: subirla a `public/equipo/mariano.jpg` y poner
+  `hasPhoto = true` en `app/(public)/quienes-somos/page.tsx`.
+- [ ] **Horario de atención** del WhatsApp (opcional, para mostrarlo).
+- [ ] **Datos fiscales de facturación** en Netlify siguen siendo de prueba
+  (`FIESTAGO_TAX_ADDRESS`, `FIESTAGO_TAX_ID`, `FIESTAGO_TAX_NAME`, `FIESTAGO_TEST_MODE`):
+  cambiarlos antes de emitir facturas reales (falta la dirección completa).
 - [ ] **Definir "sustituto equivalente"** en la garantía: qué cuenta como equivalente
   y si el cliente puede elegir el reembolso del 110 % si no le convence.
 - [ ] **Instagram/TikTok**: decidir si se abre una cuenta aparte para proveedores
@@ -26,9 +27,9 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
 
 ## Lo hago yo cuando tenga lo anterior
 
-- [ ] Publicar "Quiénes somos" (web + destacados de redes) con los datos reales.
-- [ ] Contacto humano antes de pagar: WhatsApp/teléfono visible en fichas,
-  garantía y portada; el primer paso pasa a ser "pide presupuesto / pregúntanos".
+- [ ] "Quiénes somos" en los destacados de Instagram/TikTok.
+- [ ] Botón de WhatsApp también en las fichas de proveedor; el primer paso
+  pasa a ser "pide presupuesto / pregúntanos".
 - [ ] Texto final de "sustituto equivalente" en la garantía y en los términos.
 - [ ] Separar el contenido de proveedores y clientes en el publicador automático
   según la decisión de cuentas.
@@ -41,6 +42,12 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
   se pueden reutilizar las mismas personas).
 
 ## Hecho el 24-10-2026
+
+- Página /quienes-somos (Mariano, NIF, Oviedo, WhatsApp leído de la cuenta de
+  WhatsApp Business, email) enlazada desde portada, pie y garantía.
+- NIF real en el aviso legal (antes salía "{NIF}").
+- WhatsApp: si escribe un número que no es proveedor (cliente), recibe un acuse
+  de recibo fijo (máx. 1 cada 24 h) y llega un email a ADMIN_EMAIL.
 
 - Garantía con ejemplo en euros y el 8 % aclarado (incluido en el precio, se paga siempre).
 - Portada sin "reserva en dos minutos"; el sustituto va antes que el reembolso.

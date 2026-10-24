@@ -262,7 +262,7 @@ export default function GarantiaPage() {
           Buscar proveedores →
         </Link>
         <p className="text-xs text-ink/40 mt-4">
-          ¿Dudas? Escribe a <a href="mailto:contacto@fiestago.es" className="text-coral hover:underline">contacto@fiestago.es</a>
+          ¿Dudas antes de reservar? <Link href="/quienes-somos" className="text-coral hover:underline">Habla con nosotros</Link> o escribe a <a href="mailto:contacto@fiestago.es" className="text-coral hover:underline">contacto@fiestago.es</a>
         </p>
       </section>
 

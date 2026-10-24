@@ -8,7 +8,7 @@ import AttributionCapture from './_components/AttributionCapture'
 const FOOTER_LINKS = [
   { title: 'Celebraciones', links: [['Bodas', '/proveedores?categoria=planner'], ['Cumpleaños', '/cumpleanos'], ['Comuniones', '/comuniones'], ['Empresa', '/corporativo'], ['Packs', '/#packs']] },
   { title: 'Profesionales', links: [['Saber más', '/profesionales'], ['Inscribirse', '/registro-proveedor'], ['Acceder a mi panel', '/proveedor/login'], ['Compromisos', '/proveedor/compromisos']] },
-  { title: 'FiestaGo', links: [['Garantía de Éxito', '/garantia'], ['Términos de uso', '/terminos'], ['Aviso legal', '/aviso-legal'], ['Privacidad', '/privacidad'], ['Cookies', '/cookies']] },
+  { title: 'FiestaGo', links: [['Quiénes somos', '/quienes-somos'], ['Garantía de Éxito', '/garantia'], ['Términos de uso', '/terminos'], ['Aviso legal', '/aviso-legal'], ['Privacidad', '/privacidad'], ['Cookies', '/cookies']] },
 ]
 
 // El pie es el reverso de la invitación: un panel de papel con el borde

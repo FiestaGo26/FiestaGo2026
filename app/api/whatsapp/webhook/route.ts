@@ -14,6 +14,7 @@ import {
   type WhatsappStatusEvent,
 } from '@/lib/whatsapp'
 import { handleCeoWhatsappCommand } from '@/lib/ceo-whatsapp'
+import { sendEmail } from '@/lib/resend'
 import { generateReply, countPlazasConSelloRestantes, mentionsQuoteGen, getButtonReply, type AgentTurn } from '@/lib/fiestago-agent'
 
 // El webhook recibe datos externos (Meta) y llama a Claude → forzamos runtime
@@ -178,9 +179,13 @@ async function handleInbound(supabase: any, msg: any) {
     throw insertErr
   }
 
-  // 3) Si no hay proveedor conocido, lo dejamos en la bandeja sin auto-responder.
+  // 3) Número desconocido: casi siempre un cliente que escribe desde la web.
+  //    No pasa por el agente (que habla con proveedores): queda en la bandeja,
+  //    se avisa a Mariano por email y el cliente recibe un acuse de recibo
+  //    fijo, como mucho uno cada 24 h.
   if (!provider) {
     console.warn('[whatsapp webhook] mensaje de número no asociado a proveedor:', fromNumber)
+    if (fromNumber) await acknowledgeUnknownSender(supabase, fromNumber, body)
     return
   }
 
@@ -500,6 +505,37 @@ async function findProviderByPhone(supabase: any, normalized: string) {
   }
 
   return null
+}
+
+const CLIENT_ACK = '¡Hola! Gracias por escribir a FiestaGo 👋 Te responde una persona del equipo lo antes posible. Mientras, si nos cuentas qué celebras, la fecha y la ciudad, te ayudamos a encontrar proveedor. (Si eres profesional y quieres darte de alta, dínoslo también.)'
+
+async function acknowledgeUnknownSender(supabase: any, fromNumber: string, body: string) {
+  const { count } = await supabase.from('whatsapp_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('direction', 'outbound').eq('to_number', fromNumber)
+    .gte('created_at', new Date(Date.now() - 86400_000).toISOString())
+  if (count) return
+
+  try {
+    const waId = await sendText(fromNumber, CLIENT_ACK)
+    await supabase.from('whatsapp_messages').insert({
+      wa_message_id: waId || null,
+      direction:     'outbound',
+      from_number:   process.env.WHATSAPP_PHONE_NUMBER_ID ?? null,
+      to_number:     fromNumber,
+      type:          'text',
+      body:          CLIENT_ACK,
+      status:        'sent',
+    })
+  } catch (err: any) {
+    console.error('[whatsapp webhook] acuse a número desconocido falló:', err?.message)
+  }
+
+  await sendEmail({
+    to:      process.env.ADMIN_EMAIL || 'contacto@fiestago.es',
+    subject: `💬 WhatsApp nuevo de +${fromNumber} · FiestaGo`,
+    text:    `Te ha escrito un número que no es proveedor (probablemente un cliente):\n\n+${fromNumber}\n"${(body || '').slice(0, 1000)}"\n\nSe le ha enviado un acuse de recibo automático. Contesta desde el panel: https://fiestago.es/admin`,
+  }).catch(() => {})
 }
 
 // Marca un proveedor como WhatsApp inválido para no reintentar.

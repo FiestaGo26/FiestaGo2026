@@ -133,6 +133,7 @@ export default async function HomePage() {
           </div>
           <nav className="fg-card__links" aria-label="Accesos rápidos">
             <Link href="/garantia" className="fg-link">Garantía de Éxito</Link>
+            <Link href="/quienes-somos" className="fg-link">Quiénes somos</Link>
             <Link href="/quiz" className="fg-link">Quiz de 2 minutos</Link>
             <Link href="/profesionales" className="fg-link">Soy profesional</Link>
           </nav>

@@ -24,6 +24,32 @@ function cfg() {
   return { phoneNumberId, token }
 }
 
+// ─── Número público del negocio ──────────────────────────────────────────────
+// El número que se muestra en la web (Quiénes somos, garantía…) se lee de la
+// propia cuenta de WhatsApp Business, así no hay que copiarlo a mano.
+// Next cachea la respuesta un día. Si falla, devuelve null y la web muestra
+// solo el email.
+export async function getBusinessWhatsapp(): Promise<{ display: string; link: string } | null> {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+  const token = process.env.WHATSAPP_TOKEN
+  if (!phoneNumberId || !token) return null
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}?fields=display_phone_number`,
+      { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 86400 } } as RequestInit,
+    )
+    if (!res.ok) return null
+    const data: any = await res.json()
+    const display = String(data?.display_phone_number || '').trim()
+    const digits = display.replace(/\D/g, '')
+    if (!digits) return null
+    const text = encodeURIComponent('Hola FiestaGo, tengo una duda sobre mi celebración: ')
+    return { display, link: `https://wa.me/${digits}?text=${text}` }
+  } catch {
+    return null
+  }
+}
+
 // ─── Normalización de números ────────────────────────────────────────────────
 // WhatsApp espera el número en formato E.164 sin '+', solo dígitos.
 // Si el número parece español (9 dígitos) le anteponemos 34.
