@@ -88,9 +88,9 @@ export default async function HomePage() {
     { title: 'Primero, qué celebras', body: 'Boda, cumpleaños, comunión o cena de empresa. Con fecha y ciudad te enseñamos quién está libre.' },
     { title: 'Luego, precios a la vista', body: 'Cada servicio tiene su precio cerrado. Nada de pedir diez presupuestos y esperar dos semanas.' },
     { title: 'Después, tu lista corta', body: 'Guarda favoritos y compártelos con tu pareja o tu familia antes de decidir.' },
-    { title: 'Reservas en dos minutos', body: 'Eliges fecha, completas tus datos y pagas de forma segura, sin transferencias a desconocidos.' },
+    { title: 'Reservas cuando lo tengas claro', body: 'Eliges fecha y pagas de forma segura dentro de FiestaGo, sin transferencias a desconocidos. ¿Dudas antes? Escríbenos.' },
     { title: 'El dinero espera', body: 'Lo retenemos hasta que termina el evento. El proveedor cobra cuando ha cumplido.' },
-    { title: 'Y tú, a celebrar', body: 'Si algo falla el día del evento, respondemos con nuestro dinero, no con un formulario.' },
+    { title: 'Y tú, a celebrar', body: 'Si tu proveedor cancela, te buscamos un sustituto en 48 h. Si no lo hay, respondemos con nuestro dinero.' },
   ].map((m, n) => {
     const p = pick(n + 4)
     return { ...m, photo: p ? p.photo : getPhoto('party', n, 600, 750), alt: p ? `${p.name}, ${p.categoryLabel.toLowerCase()} en ${p.city}` : 'Celebración' }
@@ -110,7 +110,7 @@ export default async function HomePage() {
             <span className="fg-wordmark">FiestaGo</span>
             <h1 id="hero-h">Tu celebración, sin sustos.</h1>
             <p className="fg-card__lede">
-              Fotografía, catering, música y animación con precio cerrado. Si tu proveedor falla, te devolvemos el 110 %.
+              Fotografía, catering, música y animación con precio cerrado. Si tu proveedor cancela, te buscamos sustituto en 48 h o te devolvemos el 110 %.
             </p>
             <form action="/buscar" method="get" className="fg-search">
               <input type="hidden" name="tipo" value="servicios" />
@@ -188,7 +188,7 @@ export default async function HomePage() {
                 </ul>
               </div>
             ))}
-            <p className="fg-sheet__foot">Garantía de Éxito incluida en cada precio.<br />Reserva en menos de dos minutos.</p>
+            <p className="fg-sheet__foot">Garantía de Éxito incluida en cada precio.<br />El pago queda retenido hasta el día del evento.</p>
           </div>
           <span className="fg-credit">Foto: Vadim Sherbakov · Unsplash</span>
         </section>

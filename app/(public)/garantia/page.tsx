@@ -28,7 +28,7 @@ export default function GarantiaPage() {
             <span className="italic font-light text-coral">respondemos.</span>
           </h1>
           <p className="text-lg md:text-xl text-white/85 leading-relaxed">
-            Mientras Bodas.net o Zankyou se desentienden cuando hay un problema, en FiestaGo respaldamos cada reserva con nuestro propio dinero. Esto es exactamente qué cubrimos y cómo.
+            Lo primero es salvar tu evento: si tu proveedor cancela, te buscamos un sustituto equivalente. Si no lo encontramos, respondemos con nuestro propio dinero. Esto es exactamente qué cubrimos, cuánto cuesta y cómo funciona.
           </p>
         </div>
       </section>
@@ -47,6 +47,37 @@ export default function GarantiaPage() {
               <p className="text-sm text-ink/70 leading-relaxed">{c.body}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* CUÁNTO CUESTA, CON UN EJEMPLO */}
+      <section className="max-w-4xl mx-auto px-6 py-12">
+        <h2 className="font-serif text-3xl md:text-4xl font-black text-ink mb-3">
+          Cuánto cuesta, con un ejemplo
+        </h2>
+        <p className="text-ink/55 mb-8 leading-relaxed">
+          La garantía es el 8 % del precio del proveedor y <strong className="text-ink">ya va incluida en el precio que ves</strong> en cada ficha. No hay suplementos al pagar. Se paga en todas las reservas, también cuando todo sale bien, igual que un seguro: es lo que nos permite responder cuando algo falla.
+        </p>
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8">
+          <p className="text-sm text-ink/70 mb-5">Reservas un fotógrafo cuyo precio es <strong className="text-ink">1.000 €</strong>:</p>
+          <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
+              <dt className="text-ink/65">Precio que ves y pagas</dt><dd className="font-bold text-ink whitespace-nowrap">1.080 €</dd>
+            </div>
+            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
+              <dt className="text-ink/65">De eso, para el fotógrafo</dt><dd className="font-bold text-ink whitespace-nowrap">1.000 €</dd>
+            </div>
+            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
+              <dt className="text-ink/65">Garantía de Éxito (8 %)</dt><dd className="font-bold text-ink whitespace-nowrap">80 €</dd>
+            </div>
+            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
+              <dt className="text-ink/65">El fotógrafo cobra</dt><dd className="font-bold text-ink whitespace-nowrap">después del evento</dd>
+            </div>
+          </dl>
+          <div className="mt-6 space-y-3 text-sm text-ink/75 leading-relaxed">
+            <p><strong className="text-ink">Si cancela:</strong> te buscamos otro fotógrafo equivalente en menos de 48 h. Si no lo encontramos, te devolvemos el 110 %: <strong className="text-coral">1.188 €</strong>.</p>
+            <p><strong className="text-ink">Si no se presenta el día del evento:</strong> te devolvemos lo pagado (1.080 €) más una compensación de 500 €: <strong className="text-coral">1.580 €</strong>.</p>
+          </div>
         </div>
       </section>
 
@@ -191,6 +222,10 @@ export default function GarantiaPage() {
         </h2>
         <div className="space-y-3">
           {[
+            ['¿El 8 % se suma al precio al pagar?',
+             'No. El precio que ves en cada ficha y en cada pack ya incluye la Garantía de Éxito. Lo que ves es lo que pagas.'],
+            ['¿Se cobra aunque todo salga bien?',
+             'Sí, como cualquier seguro: se paga en cada reserva y es lo que financia los sustitutos y los reembolsos cuando algo falla. Además, el proveedor no cobra hasta que termina tu evento.'],
             ['¿Por qué cobráis al cliente y no al proveedor?',
              'Porque cobrar al cliente como servicio (no como comisión oculta) es lo que nos permite ofrecer la Garantía de Éxito de verdad. Bodas.net y compañía cobran al proveedor cuotas anuales pero no asumen ninguna responsabilidad cuando hay un problema. Nosotros sí.'],
             ['¿Cuánto tarda un reembolso?',
