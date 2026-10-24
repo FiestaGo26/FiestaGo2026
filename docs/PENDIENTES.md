@@ -90,12 +90,36 @@ números, solo a su público (la de cumple: mejor post para el 56 % de familias 
 infantil). Frase más criticada: "el fin de semana te atiende el asistente".
 Límite: el catálogo hipotético se describió muy uniforme y pudo sonar a plantilla.
 
-4.ª simulación (pendiente de lanzar): la web y las redes como quedarían con el plan de
-confianza aplicado (`catalog: 'plan_fase1'` en `sim_runs`), con posts segmentados por
-tipo de evento. Sirve para priorizar qué construir primero.
+4.ª simulación (run `1bd9af2d`, web y redes hipotéticas con el plan de confianza aplicado,
+posts segmentados): confianza 2,89 → 3,35; claridad 4,02; nadie ignora la web; por
+primera vez hay intención de apuntarse (13,8 % tras ver la web, 4,6 % al final tras leer
+comentarios; cumple infantil 26 % → 13 %, cumple adulto 17 % → 9 %, bodas 11 % → 2 %).
+Reservas: 0. Lo que más pesa: 1) dinero en Stripe y cobro al final, 2) primer paso sin
+pagar, 3) persona que responde (sábado incluido), 4) packs con precio total. Objeciones que
+quedan: no hay bodas, "¿y si FiestaGo cierra?", cifras de la garantía que no cuadran
+(500 € frente a 300-3.000 €), packs de un solo tamaño, zonas sin cobertura, sin teléfono.
+
+Decisiones pendientes tras la 4.ª simulación:
+- [ ] **"¿Y si FiestaGo cierra con mi dinero dentro?"**: necesitamos una respuesta VERDADERA.
+  Depende de cómo se configure Stripe (p. ej. Stripe Connect con el dinero en la cuenta
+  conectada del proveedor y pago retenido). Hay que decidirlo al activar los cobros reales.
+- [ ] **Teléfono** para llamar (lo piden los mayores de 50).
+- [ ] **Señal**: el 30 % asusta en bodas grandes; ¿señal menor o tope en euros por encima
+  de cierto importe?
+- [ ] **Comisión**: algunos (escépticos, parejas que van al céntimo) quieren saber cuánto se
+  lleva FiestaGo. Hoy no se dice (decisión del 24-10). Mantener o explicar en una línea.
 
 ### Plan de confianza: qué construir (orden según la 4.ª simulación)
-- [ ] Botón "Pide presupuesto o bloquea tu fecha 48 h gratis" en las fichas.
+- [ ] Botón "Pide presupuesto o bloquea tu fecha 48 h gratis" en las fichas, con "sin
+  tarjeta, sin DNI y no te llamaremos si no lo pides".
+- [ ] Garantía: cifras coherentes en web y posts (compensación según importe, con tabla).
+- [ ] Packs con precio por número de invitados (rangos: 8-14 niños, 15-25 niños; comunión
+  30, 50, 80 personas), no un solo tamaño.
+- [ ] Mostrar cada proveedor y cada reseña solo a su público y su zona.
+- [ ] Bodas: no anunciar bodas hasta tener 2-3 bodas reales hechas; empezar por cumples
+  (infantil y adulto) y comuniones.
+- [ ] Comentarios en redes: responder con detalle y firmado (los comentarios enfrían la
+  intención del 13,8 % al 4,6 % en la simulación).
 - [ ] Señal desde el 30 % + cancelación gratis 14 días (si faltan >60 días) en reserva,
   ficha, garantía y términos. Ojo: el reembolso de esos 14 días lo asume FiestaGo o el
   proveedor; definirlo antes de activarlo.
