@@ -12,14 +12,25 @@
 //
 // Variables de entorno (Netlify):
 //   UPLOADPOST_API_KEY    clave de la API
-//   UPLOADPOST_USER       nombre del perfil en Upload-Post (p. ej. "fiestago")
+//   UPLOADPOST_USER       perfil de las cuentas de CLIENTES (p. ej. "fiestago")
+//   UPLOADPOST_USER_PRO   perfil de las cuentas de PROVEEDORES; sin él, los
+//                         posts para proveedores esperan en la cola
 //   UPLOADPOST_PLATFORMS  opcional, por defecto "instagram,tiktok"
 // ───────────────────────────────────────────────────────────────────────
 
 const API = 'https://api.upload-post.com/api'
 
+export type Audience = 'clientes' | 'proveedores'
+export const AUDIENCES: Audience[] = ['clientes', 'proveedores']
+
+/** Perfil de Upload-Post de cada público (null si aún no está conectado). */
+export function profileFor(audience: Audience): string | null {
+  const user = audience === 'proveedores' ? process.env.UPLOADPOST_USER_PRO : process.env.UPLOADPOST_USER
+  return process.env.UPLOADPOST_API_KEY && user ? user : null
+}
+
 export function isUploadPostConfigured() {
-  return !!(process.env.UPLOADPOST_API_KEY && process.env.UPLOADPOST_USER)
+  return AUDIENCES.some(a => profileFor(a))
 }
 
 function platforms(): string[] {
@@ -48,6 +59,8 @@ async function call(path: string, init: { method?: string; body?: FormData; quer
 }
 
 export type PublishInput = {
+  /** Perfil de Upload-Post al que se publica (ver profileFor). */
+  user: string
   /** Texto para Instagram (pie de foto completo, con hashtags). */
   captionInstagram: string
   /** Texto para TikTok (más corto). */
@@ -71,7 +84,7 @@ export function tiktokTitle(text: string, max = 80) {
 
 function commonForm(input: PublishInput) {
   const form = new FormData()
-  form.append('user', process.env.UPLOADPOST_USER!)
+  form.append('user', input.user)
   const ps = platforms()
   ps.forEach(p => form.append('platform[]', p))
   form.append('title', input.captionInstagram.slice(0, 2200))

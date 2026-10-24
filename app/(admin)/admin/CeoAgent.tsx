@@ -68,7 +68,7 @@ const ACTION_LABELS: Record<string, string> = {
 function actionSummary(a: NonNullable<Proposal['action']>) {
   const base = ACTION_LABELS[a.type] || a.type
   if (a.type === 'find_providers') return `${base} · ${a.category} en ${a.city} (${a.limit})`
-  if (a.type === 'create_post') return base
+  if (a.type === 'create_post') return (a as any).audience ? `${base} · ${(a as any).audience}` : base
   return `${base} · hasta ${a.limit}`
 }
 

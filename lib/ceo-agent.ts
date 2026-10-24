@@ -247,7 +247,8 @@ Método de crecimiento (lo más importante; datos en "growth"):
 - Cada propuesta de acción ligada a un experimento lleva en action.experiment el slug del experimento (si ya existe) o la "key" del experimento que creas en este mismo informe. Las acciones sin experimento llevan "".
 - Anuncios: este mes quedan ads.remaining_eur euros. Solo los PROPONES (canal meta_ads o tiktok_ads, con budget_eur, público, ciudad y la creatividad en "variant"); Mariano decide y paga. Nunca más de lo que queda. Un anuncio solo tiene sentido para clientes en celdas listas, o para proveedores en una ciudad concreta.
 - WhatsApp: si whatsapp_health.braked es true, no propongas acciones de WhatsApp y explica a Mariano por qué saltó el freno.
-- Instagram y TikTok: si growth.social.autopublish es true, lo que creas con create_post (y el vídeo diario) se publica SOLO tras una revisión automática de marca, hasta social.max_per_day piezas al día, y las métricas llegan solas cada pocas horas. Usa social.top y social.bottom para decidir temas y formatos, y si la revisión rechaza posts (rejected_by_review_7d) corrige el encargo. Si autopublish es false, los posts esperan a que Mariano los publique y él mete las métricas en el panel.
+- Instagram y TikTok tienen DOS pares de cuentas: las de CLIENTES (las de siempre) y las de PROVEEDORES (nuevas). Cada create_post lleva action.audience: "clientes" o "proveedores", y el texto tiene que hablarle solo a ese público. growth.social.accounts dice qué cuentas están conectadas: si una no lo está, sus posts esperan en la cola. En la cuenta de clientes, aunque todavía no haya celdas listas para captar, sí puedes crear contenido de confianza (quién hay detrás, cómo funciona la garantía con un ejemplo en euros, cómo preguntar antes de reservar, proveedores reales ya publicados): según la simulación de clientes, el ángulo que más funciona es la tranquilidad ("¿y si el proveedor no aparece?") y lo que más frena es no saber quién está detrás. Los experimentos y anuncios de captación de clientes siguen limitados a las celdas listas.
+- Si growth.social.autopublish es true, lo que creas con create_post (y el vídeo diario, que va a proveedores) se publica SOLO tras una revisión automática de marca, hasta social.max_per_day piezas al día por cada par de cuentas, y las métricas llegan solas cada pocas horas. Usa social.top y social.bottom para decidir temas y formatos, y si la revisión rechaza posts (rejected_by_review_7d) corrige el encargo. Si autopublish es false, los posts esperan a que Mariano los publique y él mete las métricas en el panel.
 - Al cerrar un experimento, escribe en "learning" una frase reutilizable con cifras, por ejemplo: "A fotógrafos de Valencia, el WhatsApp tuvo un 18 % de respuesta frente a un 2 % del email".
 - Rutina semanal: evalúa, cierra lo vencido y decide los experimentos de la semana. Rutina diaria: ejecuta lotes dentro de los experimentos en marcha; abre o cierra solo si está claro. Si no hay ningún experimento en marcha, cualquier rutina abre los primeros (2 o 3) sin esperar al lunes.`
 
@@ -300,7 +301,7 @@ const OUTPUT_SCHEMA = {
           action: {
             type: 'object',
             additionalProperties: false,
-            required: ['type', 'limit', 'category', 'city', 'prompt', 'experiment'],
+            required: ['type', 'limit', 'category', 'city', 'prompt', 'experiment', 'audience'],
             properties: {
               type:     { type: 'string', enum: [...ACTION_TYPES, 'none'] },
               limit:    { type: 'integer' },
@@ -308,6 +309,7 @@ const OUTPUT_SCHEMA = {
               city:     { type: 'string' },
               prompt:   { type: 'string' },
               experiment: { type: 'string', description: 'Slug o key del experimento; "" si no aplica' },
+              audience: { type: 'string', enum: ['clientes', 'proveedores', ''], description: 'create_post: a qué cuentas va; "" en el resto' },
             },
           },
         },

@@ -18,7 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CeoSettings } from '@/lib/ceo-actions'
-import { isUploadPostConfigured } from '@/lib/uploadpost'
+import { isUploadPostConfigured, profileFor } from '@/lib/uploadpost'
 
 export const AUDIENCES = ['proveedores', 'clientes'] as const
 export const CHANNELS = ['whatsapp', 'email', 'instagram', 'tiktok', 'meta_ads', 'tiktok_ads', 'seo', 'otro'] as const
@@ -269,6 +269,7 @@ export async function gatherGrowth(supabase: SupabaseClient, settings: CeoSettin
     },
     social: {
       autopublish: isUploadPostConfigured() && settings.social_autopublish !== false,
+      accounts: { clientes: !!profileFor('clientes'), proveedores: !!profileFor('proveedores') },
       max_per_day: settings.social_max_per_day,
       queue_ready_7d: queue.length,
       published_30d: pieces.length,

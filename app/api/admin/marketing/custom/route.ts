@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { CATEGORIES, CITIES } from '@/lib/constants'
+import type { Audience } from '@/lib/uploadpost'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60  // Netlify Pro permite hasta 26s sync; background functions hasta 15min. Para imagen suele bastar.
@@ -28,15 +29,26 @@ type PostPlan = {
   visual_prompt:  string          // prompt detallado para fal.ai
 }
 
-async function planPostWithClaude(userPrompt: string): Promise<PostPlan> {
+const AUDIENCE_BRIEF: Record<Audience, string> = {
+  clientes: `Este post va a las cuentas de CLIENTES: parejas, familias y personas que organizan una boda, comunión, cumpleaños o evento. Háblales solo a ellos (nunca a profesionales). Lo que más les preocupa es que el proveedor falle y no saber quién está detrás; lo que más les tranquiliza es el pago retenido hasta el evento y la garantía. Termina con una llamada suave: "enlace en la bio" o "pregúntanos por WhatsApp".`,
+  proveedores: `Este post va a las cuentas de PROVEEDORES: fotógrafos, catering, música, animación, decoración y demás profesionales de eventos. Háblales solo a ellos. Termina invitando a darse de alta gratis ("enlace en la bio").`,
+}
+
+const FACTS = `Datos verdaderos (no inventes otros, ni cifras, reseñas, testimonios o clientes): alta gratis para profesionales, sin cuotas ni permanencia; el proveedor cobra el 100 % de su precio y el cliente paga un 8 % de Garantía de Éxito, ya incluido en el precio que ve; si el proveedor cancela, se busca un sustituto equivalente en 48 h y, si no lo hay, se devuelve el 110 %; si no se presenta, el 100 % más una compensación de hasta 3.000 €; el pago queda retenido hasta el evento; proveedores verificados (DNI/CIF y seguro de responsabilidad civil); precio cerrado; detrás está Mariano González, el fundador, y se puede preguntar por WhatsApp de lunes a viernes de 10:00 a 20:00.`
+
+async function planPostWithClaude(userPrompt: string, audience: Audience): Promise<PostPlan> {
   const sysPrompt = `Eres el agente de marketing de FiestaGo, un marketplace español de celebraciones (bodas, cumpleaños, eventos privados).
+
+${AUDIENCE_BRIEF[audience]}
+
+${FACTS}
 
 Categorías disponibles (id : etiqueta):
 ${CATEGORIES.map((c: any) => `- ${c.id}: ${c.label}`).join('\n')}
 
 Ciudades habituales: ${CITIES.join(', ')}.
 
-El admin de FiestaGo te pide que crees UN post para publicar en Instagram y TikTok (@fiestagospain). Devuelve SOLO un JSON con esta estructura exacta (sin explicaciones, sin markdown):
+El admin de FiestaGo te pide que crees UN post para publicar en Instagram y TikTok. Devuelve SOLO un JSON con esta estructura exacta (sin explicaciones, sin markdown):
 
 {
   "post_type":      "inspiration | tip_educational | pack_promo | social_proof | behind_scenes | fomo_seasonal | custom",
@@ -44,7 +56,7 @@ El admin de FiestaGo te pide que crees UN post para publicar en Instagram y TikT
   "category":       "foto|catering|...|null si no aplica",
   "format":         "image | video",
   "hook_overlay":   "Texto MUY corto (máx 40 chars) que aparecerá en pantalla. Atractivo, gancho.",
-  "caption_es":     "Caption para Instagram, 80-150 palabras, tono vibrante y joven, emojis sí, hashtags NO van aquí. Termina invitando a 'reserva en fiestago.es' o similar.",
+  "caption_es":     "Caption para Instagram, 80-150 palabras, tono vibrante y joven, emojis sí, hashtags NO van aquí. Termina con la llamada a la acción indicada arriba.",
   "caption_short_tiktok": "Versión corta para TikTok, máx 100 caracteres",
   "hashtags":       ["max", "12", "hashtags", "sin", "almohadilla", "todos", "en", "minusculas"],
   "visual_prompt":  "Prompt DETALLADO en INGLÉS para un modelo de imagen profesional (Flux). Descripción visual cinematográfica, 50-80 palabras. Estilo editorial, elegante, foto-realista, marca FiestaGo (NO menciones la marca en el visual). Para bodas/eventos en España, look mediterráneo, luz natural cálida."
@@ -136,8 +148,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Falta el prompt' }, { status: 400 })
     }
 
+    // Cuentas de destino: clientes (las de siempre) o proveedores (las nuevas)
+    const audience: Audience = body.audience === 'clientes' ? 'clientes' : 'proveedores'
+
     // 1) Plan del post con Claude
-    const plan = await planPostWithClaude(userPrompt)
+    const plan = await planPostWithClaude(userPrompt, audience)
 
     // 2) Forzar formato 'image' por ahora (vídeo lo manejará el agente diario por timeout)
     const format: 'image' | 'video' = 'image'
@@ -169,6 +184,7 @@ export async function POST(req: NextRequest) {
         prompt_used:       plan.visual_prompt,
         topic:             userPrompt.slice(0, 200),
         status:            'pending',
+        audience,
         // Experimento del Agente CEO al que pertenece el post (si lo hay)
         context:           typeof body.experiment === 'string' && body.experiment ? { experiment: body.experiment.slice(0, 80) } : null,
       })

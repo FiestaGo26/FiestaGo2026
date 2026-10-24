@@ -15,7 +15,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getCeoSettings } from '@/lib/ceo-actions'
-import { isUploadPostConfigured, publishPhotos, publishVideo, getPostMetrics, getUploadStatus, extractUrls } from '@/lib/uploadpost'
+import { AUDIENCES, isUploadPostConfigured, profileFor, publishPhotos, publishVideo, getPostMetrics, getUploadStatus, extractUrls, type Audience } from '@/lib/uploadpost'
 
 const REVIEW_MODEL = process.env.SOCIAL_REVIEW_MODEL || 'claude-haiku-5-5'
 const MAX_ATTEMPTS = 3
@@ -42,19 +42,25 @@ const REVIEW_SCHEMA = {
   },
 } as const
 
-async function reviewCaption(captionIg: string, captionTt: string, context: string): Promise<Review> {
+const AUDIENCE_RULE: Record<Audience, string> = {
+  clientes: 'Esta pieza va a la cuenta de CLIENTES (parejas, familias y personas que organizan una celebración). Rechaza si habla a profesionales o proveedores (alta, cuotas, conseguir clientes, registrarse como proveedor).',
+  proveedores: 'Esta pieza va a la cuenta de PROVEEDORES (fotógrafos, catering, música, animación…). Rechaza si habla a clientes finales en lugar de a profesionales.',
+}
+
+async function reviewCaption(captionIg: string, captionTt: string, context: string, audience: Audience): Promise<Review> {
   const today = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid', day: 'numeric', month: 'long', year: 'numeric' })
   const resp = await new Anthropic().messages.create({
     model: REVIEW_MODEL,
     max_tokens: 2000,
     output_config: { format: { type: 'json_schema', schema: REVIEW_SCHEMA as unknown as Record<string, unknown> } },
     system: `Revisas publicaciones de Instagram y TikTok de FiestaGo (fiestago.es), un marketplace español de proveedores para bodas, cumpleaños, comuniones y eventos, antes de que se publiquen solas. Hoy es ${today}.
+${AUDIENCE_RULE[audience]}
 Rechaza (ok=false) si el texto:
 - inventa cifras, testimonios, reseñas, clientes, premios o nombres de proveedores;
 - menciona fechas, lanzamientos o promociones ya pasadas (por ejemplo el lanzamiento del 10 de junio de 2026) o sorteos;
 - promete algo que FiestaGo no ofrece, habla mal de un competidor por su nombre o puede resultar ofensivo;
 - no está en español de España.
-Datos verdaderos que sí puede usar: alta gratis para profesionales sin cuotas ni permanencia; el proveedor cobra el 100 % de su precio y el 8 % lo paga el cliente como Garantía de Éxito; si el proveedor cancela y no hay sustituto en 48 h se devuelve el 110 %; si no se presenta, el 100 % más una compensación de hasta 3.000 €; pago retenido hasta el evento; proveedores verificados (se comprueba DNI/CIF y seguro de responsabilidad civil); precio cerrado sin pedir presupuestos.
+Datos verdaderos que sí puede usar: alta gratis para profesionales sin cuotas ni permanencia; el proveedor cobra el 100 % de su precio y el 8 % lo paga el cliente como Garantía de Éxito (ya incluido en el precio que ve el cliente); si el proveedor cancela se busca un sustituto equivalente (mismas funciones, precio similar) en 48 h y, si no lo hay, se devuelve el 110 %; si no se presenta, el 100 % más una compensación de hasta 3.000 €; pago retenido hasta el evento; proveedores verificados (se comprueba DNI/CIF y seguro de responsabilidad civil); precio cerrado sin pedir presupuestos; detrás está Mariano González, el fundador, y se puede preguntar por WhatsApp antes de reservar (de lunes a viernes, de 10:00 a 20:00).
 Consejos generales del sector sin cifras concretas son aceptables; las cifras de mercado sin fuente no.
 Si el texto es aceptable pero mejorable (erratas, emojis excesivos, hashtags de más de 12), devuelve ok=true con la versión corregida. Si lo rechazas, explica por qué en "reasons" y devuelve los textos tal cual. En TikTok el texto debe ser corto (máximo unos 300 caracteres). En ambos, si hay llamada a la acción con enlace, usa "enlace en la bio" en lugar de una URL.`,
     messages: [{ role: 'user', content: `Contexto: ${context}\n\n[Instagram]\n${captionIg}\n\n[TikTok]\n${captionTt}` }],
@@ -65,27 +71,37 @@ Si el texto es aceptable pero mejorable (erratas, emojis excesivos, hashtags de 
 
 // ─── Publicar ─────────────────────────────────────────────────────
 
-/** Publica una pieza; si la revisión rechaza una, prueba con la siguiente (máx. 3). */
+/**
+ * Publica una pieza por cada público con cuenta conectada (clientes en las
+ * cuentas de siempre, proveedores en las nuevas). Si la revisión rechaza
+ * una, prueba con la siguiente (máx. 3 por público).
+ */
 export async function publishNext(supabase: SupabaseClient) {
-  const tried: any[] = []
-  for (let i = 0; i < 3; i++) {
-    const r = await publishOne(supabase)
-    tried.push(r)
-    if (!('rejected' in r)) break
+  const out: Record<string, any> = {}
+  for (const audience of AUDIENCES) {
+    const user = profileFor(audience)
+    if (!user) { out[audience] = { skipped: `Sin perfil de Upload-Post para ${audience}${audience === 'proveedores' ? ' (UPLOADPOST_USER_PRO)' : ' (UPLOADPOST_USER)'}` }; continue }
+    const tried: any[] = []
+    for (let i = 0; i < 3; i++) {
+      const r = await publishOne(supabase, audience, user)
+      tried.push(r)
+      if (!('rejected' in r)) break
+    }
+    out[audience] = tried.length === 1 ? tried[0] : { steps: tried, ...tried[tried.length - 1] }
   }
-  return tried.length === 1 ? tried[0] : { steps: tried, ...tried[tried.length - 1] }
+  return out
 }
 
-async function publishOne(supabase: SupabaseClient): Promise<Record<string, any>> {
-  if (!isUploadPostConfigured()) return { skipped: 'Upload-Post sin configurar (UPLOADPOST_API_KEY / UPLOADPOST_USER)' }
+async function publishOne(supabase: SupabaseClient, audience: Audience, user: string): Promise<Record<string, any>> {
   const settings: any = await getCeoSettings(supabase)
   if (settings.paused) return { skipped: 'Agente CEO en pausa' }
   if (settings.social_autopublish === false) return { skipped: 'Publicación automática desactivada' }
 
+  // Tope diario por público (cada par de cuentas tiene el suyo)
   const since = madridDayStartIso()
   const [{ count: postsToday }, { count: videosToday }] = await Promise.all([
-    supabase.from('social_posts').select('id', { count: 'exact', head: true }).gte('published_at', since).not('uploadpost_request_id', 'is', null),
-    supabase.from('content_videos').select('id', { count: 'exact', head: true }).gte('published_at', since).not('uploadpost_request_id', 'is', null),
+    supabase.from('social_posts').select('id', { count: 'exact', head: true }).eq('audience', audience).gte('published_at', since).not('uploadpost_request_id', 'is', null),
+    supabase.from('content_videos').select('id', { count: 'exact', head: true }).eq('audience', audience).gte('published_at', since).not('uploadpost_request_id', 'is', null),
   ])
   const cap = Number(settings.social_max_per_day ?? 2)
   if ((postsToday || 0) + (videosToday || 0) >= cap) return { skipped: `Tope diario alcanzado (${cap})` }
@@ -93,6 +109,7 @@ async function publishOne(supabase: SupabaseClient): Promise<Record<string, any>
   // 1 · Vídeo diario terminado (más alcance que una imagen)
   const { data: video } = await supabase.from('content_videos')
     .select('id, caption, hashtags, topic, video_url, publish_attempts, experiment')
+    .eq('audience', audience)
     .eq('heygen_status', 'completed').not('video_url', 'is', null)
     .is('published_at', null).lt('publish_attempts', MAX_ATTEMPTS)
     .gte('created_at', daysAgo(3))
@@ -101,13 +118,13 @@ async function publishOne(supabase: SupabaseClient): Promise<Record<string, any>
   if (video) {
     const caption = [video.caption, (video.hashtags || []).map((h: string) => `#${h.replace(/^#/, '')}`).join(' ')].filter(Boolean).join('\n\n')
     await supabase.from('content_videos').update({ publish_attempts: (video.publish_attempts || 0) + 1 }).eq('id', video.id)
-    const review = await reviewCaption(caption, caption.slice(0, 300), `Vídeo diario: ${video.topic || ''}`)
+    const review = await reviewCaption(caption, caption.slice(0, 300), `Vídeo diario: ${video.topic || ''}`, audience)
     if (!review.ok) {
       await supabase.from('content_videos').update({ publish_error: `Revisión: ${review.reasons.join('; ')}`, publish_attempts: MAX_ATTEMPTS }).eq('id', video.id)
       return { rejected: 'video', id: video.id, reasons: review.reasons }
     }
     try {
-      const res = await publishVideo(video.video_url, { captionInstagram: review.caption_instagram, captionTiktok: review.caption_tiktok, idempotencyKey: `video-${video.id}` })
+      const res = await publishVideo(video.video_url, { user, captionInstagram: review.caption_instagram, captionTiktok: review.caption_tiktok, idempotencyKey: `video-${video.id}` })
       await supabase.from('content_videos').update({
         uploadpost_request_id: res.request_id || null, published_at: new Date().toISOString(),
         published_channels: ['instagram', 'tiktok'], publish_error: null,
@@ -122,6 +139,7 @@ async function publishOne(supabase: SupabaseClient): Promise<Record<string, any>
   // 2 · Post de la cola: primero los de experimentos del CEO, luego el resto reciente
   const { data: posts } = await supabase.from('social_posts')
     .select('id, media_url, media_type, caption_instagram, caption_tiktok, hashtags, topic, context, publish_attempts')
+    .eq('audience', audience)
     .in('status', ['pending', 'approved']).not('media_url', 'is', null)
     .is('uploadpost_request_id', null).lt('publish_attempts', MAX_ATTEMPTS)
     .gte('created_at', daysAgo(7))
@@ -134,7 +152,7 @@ async function publishOne(supabase: SupabaseClient): Promise<Record<string, any>
   const tt = post.caption_tiktok || post.caption_instagram || ''
   await supabase.from('social_posts').update({ publish_attempts: (post.publish_attempts || 0) + 1 }).eq('id', post.id)
 
-  const review = await reviewCaption(ig, tt, `Post: ${post.topic || ''}`)
+  const review = await reviewCaption(ig, tt, `Post: ${post.topic || ''}`, audience)
   if (!review.ok) {
     await supabase.from('social_posts').update({
       status: 'rejected', rejected_reason: `Revisión automática: ${review.reasons.join('; ')}`.slice(0, 500), review,
@@ -143,7 +161,7 @@ async function publishOne(supabase: SupabaseClient): Promise<Record<string, any>
   }
 
   try {
-    const input = { captionInstagram: review.caption_instagram, captionTiktok: review.caption_tiktok, idempotencyKey: `post-${post.id}` }
+    const input = { user, captionInstagram: review.caption_instagram, captionTiktok: review.caption_tiktok, idempotencyKey: `post-${post.id}` }
     const res = post.media_type === 'video'
       ? await publishVideo(post.media_url, input)
       : await publishPhotos([post.media_url], input)

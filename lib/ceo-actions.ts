@@ -29,6 +29,8 @@ export type CeoAction = {
   prompt:   string
   /** Slug del experimento de marketing al que pertenece ('' si ninguno). */
   experiment: string
+  /** create_post: a qué cuentas va (clientes = las de siempre, proveedores = las nuevas). */
+  audience: 'clientes' | 'proveedores' | ''
 }
 
 type ActionDef = {
@@ -78,7 +80,7 @@ export const ACTIONS = {
     label: 'Crear un post de IG/TikTok para la cola de marketing',
     endpoint: '/api/admin/marketing/custom',
     wa: false, post: true, maxLimit: 1,
-    body: a => ({ prompt: a.prompt, experiment: a.experiment }),
+    body: a => ({ prompt: a.prompt, experiment: a.experiment, audience: a.audience || 'proveedores' }),
   },
 } satisfies Record<string, ActionDef>
 
@@ -130,9 +132,10 @@ export function sanitizeAction(raw: any): CeoAction | null {
                 ? String(raw.city).slice(0, 60) : '',
     prompt:   String(raw.prompt || '').slice(0, 1500),
     experiment: typeof raw.experiment === 'string' ? raw.experiment.slice(0, 80) : '',
+    audience:   raw.audience === 'clientes' || raw.audience === 'proveedores' ? raw.audience : '',
   }
   if (action.type === 'find_providers' && (!action.category || !action.city)) return null
-  if (action.type === 'create_post' && action.prompt.length < 20) return null
+  if (action.type === 'create_post' && (action.prompt.length < 20 || !action.audience)) return null
   return action
 }
 

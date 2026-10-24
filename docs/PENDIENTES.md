@@ -7,9 +7,15 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
 
 - [ ] **Salir del modo prueba** (`FIESTAGO_TEST_MODE=true` en Netlify) cuando se
   vaya a cobrar de verdad: los datos fiscales ya son los reales.
-- [ ] **Instagram/TikTok**: decidir si se abre una cuenta aparte para proveedores
-  (tipo @fiestago.pro) o se mantiene una sola con 3 posts fijados para clientes
-  (quiénes somos, cómo funciona la garantía, cómo pedir presupuesto).
+- [ ] **Redes separadas** (decidido: las cuentas de siempre = clientes; nuevas = proveedores):
+  1. Vaciar las cuentas actuales de Instagram y TikTok (borrar todos los posts).
+  2. Crear las cuentas nuevas de proveedores en Instagram y TikTok.
+  3. En Upload-Post, crear un segundo perfil (p. ej. `fiestago-pro`) y conectar ahí
+     las cuentas nuevas (comprobar que el plan permite 2 perfiles).
+  4. Guardar en Netlify `UPLOADPOST_USER_PRO` con el nombre de ese perfil.
+  5. Bio de cada cuenta: clientes → fiestago.es · proveedores → fiestago.es/profesionales.
+  Mientras no exista `UPLOADPOST_USER_PRO`, los posts para proveedores esperan en cola
+  y la cuenta de siempre solo publica posts para clientes.
 - [ ] **Borrar a mano el post** "¿Cansado de pagar cuota cada mes sin clientes?…
   pagas comisión solo cuando vendes" (publicado el 15-05-2026) en Instagram y TikTok:
   es falso y sus APIs no permiten borrar publicaciones. Ya está marcado como
@@ -27,8 +33,6 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
 - [ ] Botón de WhatsApp también en las fichas de proveedor; el primer paso
   pasa a ser "pide presupuesto / pregúntanos".
 - [ ] Texto final de "sustituto equivalente" en la garantía y en los términos.
-- [ ] Separar el contenido de proveedores y clientes en el publicador automático
-  según la decisión de cuentas.
 - [ ] Cuando el CEO pase a captar clientes: usar el ángulo "tranquilidad"
   (fue el claro ganador, 81 %) adaptado a cada tipo de evento con su imagen.
 - [ ] Reseñas reales: pedir opinión tras cada evento y mostrarlas por tipo de evento.
@@ -38,6 +42,10 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
   se pueden reutilizar las mismas personas).
 
 ## Hecho el 24-10-2026
+
+- Publicador por públicos: cada post/vídeo lleva `audience` (clientes/proveedores);
+  `UPLOADPOST_USER` publica para clientes y `UPLOADPOST_USER_PRO` para proveedores,
+  con tope diario y revisión de marca propios. El CEO elige el público de cada post.
 
 - Foto y horario (L-V 10:00-20:00) en /quienes-somos y en el acuse de WhatsApp.
 - "Sustituto equivalente" definido en garantía y términos: mismas funciones que
