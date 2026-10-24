@@ -39,7 +39,7 @@ export default function GarantiaPage() {
           {[
             { num:'48h',  label:'Para resolverte una cancelación', body:'Si tu proveedor cancela, te conseguimos un sustituto equivalente en 48h o te reembolsamos.' },
             { num:'110%', label:'Reembolso máximo',                body:'Si tu proveedor cancela y no encontramos sustituto en 48h, te devolvemos el 110% — sin importar cuándo cancele.' },
-            { num:'24/7', label:'Pago retenido',                   body:'El dinero del cliente no llega al proveedor hasta que la celebración termina. FiestaGo retiene el escrow.' },
+            { num:'24/7', label:'Pago retenido',                   body:'Tu pago queda retenido en Stripe, una entidad de pagos regulada, y no llega al proveedor hasta que termina tu celebración.' },
           ].map(c => (
             <div key={c.num} className="bg-white border border-stone-200 rounded-2xl p-6">
               <div className="font-serif text-4xl font-black text-coral mb-2">{c.num}</div>
@@ -50,32 +50,19 @@ export default function GarantiaPage() {
         </div>
       </section>
 
-      {/* CUÁNTO CUESTA, CON UN EJEMPLO */}
+      {/* INCLUIDA, CON UN EJEMPLO */}
       <section className="max-w-4xl mx-auto px-6 py-12">
         <h2 className="font-serif text-3xl md:text-4xl font-black text-ink mb-3">
-          Cuánto cuesta, con un ejemplo
+          Incluida en todos los servicios
         </h2>
         <p className="text-ink/55 mb-8 leading-relaxed">
-          La garantía es el 8 % del precio del proveedor y <strong className="text-ink">ya va incluida en el precio que ves</strong> en cada ficha. No hay suplementos al pagar. Se paga en todas las reservas, también cuando todo sale bien, igual que un seguro: es lo que nos permite responder cuando algo falla.
+          Todos los servicios que reservas en FiestaGo llevan la Garantía de Éxito <strong className="text-ink">incluida en el precio que ves</strong>. No hay suplementos ni letra pequeña al pagar.
         </p>
         <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8">
-          <p className="text-sm text-ink/70 mb-5">Reservas un fotógrafo cuyo precio es <strong className="text-ink">1.000 €</strong>:</p>
-          <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
-              <dt className="text-ink/65">Precio que ves y pagas</dt><dd className="font-bold text-ink whitespace-nowrap">1.080 €</dd>
-            </div>
-            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
-              <dt className="text-ink/65">De eso, para el fotógrafo</dt><dd className="font-bold text-ink whitespace-nowrap">1.000 €</dd>
-            </div>
-            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
-              <dt className="text-ink/65">Garantía de Éxito (8 %)</dt><dd className="font-bold text-ink whitespace-nowrap">80 €</dd>
-            </div>
-            <div className="flex justify-between gap-4 border-b border-stone-100 pb-3">
-              <dt className="text-ink/65">El fotógrafo cobra</dt><dd className="font-bold text-ink whitespace-nowrap">después del evento</dd>
-            </div>
-          </dl>
-          <div className="mt-6 space-y-3 text-sm text-ink/75 leading-relaxed">
-            <p><strong className="text-ink">Si cancela:</strong> te buscamos otro fotógrafo equivalente en menos de 48 h. Si no lo encontramos, te devolvemos el 110 %: <strong className="text-coral">1.188 €</strong>.</p>
+          <p className="text-sm text-ink/70 mb-5">Un ejemplo: reservas un fotógrafo por <strong className="text-ink">1.080 €</strong>. Tu pago queda retenido en Stripe y el fotógrafo no cobra hasta que termina tu evento.</p>
+          <div className="space-y-3 text-sm text-ink/75 leading-relaxed">
+            <p><strong className="text-ink">Si todo va bien:</strong> disfrutas de tu día y no pagas nada más.</p>
+            <p><strong className="text-ink">Si cancela:</strong> te buscamos otro fotógrafo que cumpla las mismas funciones a un precio similar en menos de 48 h. Si no lo encontramos, te devolvemos el 110 %: <strong className="text-coral">1.188 €</strong>.</p>
             <p><strong className="text-ink">Si no se presenta el día del evento:</strong> te devolvemos lo pagado (1.080 €) más una compensación de 500 €: <strong className="text-coral">1.580 €</strong>.</p>
           </div>
         </div>
@@ -156,7 +143,7 @@ export default function GarantiaPage() {
           </table>
         </div>
         <p className="text-xs text-ink/45 mt-4 leading-relaxed">
-          Ejemplo: si reservaste un proveedor por 1.000 € y no se presenta, recibes 1.080 € (reembolso) + 500 € (compensación) = <strong className="text-ink">1.580 €</strong>. La compensación la asume el proveedor que falla, no se carga al resto de la comunidad.
+          Ejemplo: si reservaste un proveedor por 1.080 € y no se presenta, recibes 1.080 € (reembolso) + 500 € (compensación) = <strong className="text-ink">1.580 €</strong>. La compensación la asume el proveedor que falla, no se carga al resto de la comunidad.
         </p>
       </section>
 
@@ -222,14 +209,12 @@ export default function GarantiaPage() {
         </h2>
         <div className="space-y-3">
           {[
-            ['¿El 8 % se suma al precio al pagar?',
-             'No. El precio que ves en cada ficha y en cada pack ya incluye la Garantía de Éxito. Lo que ves es lo que pagas.'],
-            ['¿Se cobra aunque todo salga bien?',
-             'Sí, como cualquier seguro: se paga en cada reserva y es lo que financia los sustitutos y los reembolsos cuando algo falla. Además, el proveedor no cobra hasta que termina tu evento.'],
+            ['¿La garantía tiene un coste aparte?',
+             'No. Todos los servicios llevan la Garantía de Éxito incluida en el precio que ves en cada ficha y en cada pack. Lo que ves es lo que pagas.'],
+            ['¿Dónde está mi dinero hasta el evento?',
+             'Retenido en Stripe, una entidad de pagos regulada. No llega al proveedor hasta que termina tu celebración.'],
             ['¿Qué es un "sustituto equivalente"?',
              'Un proveedor que pueda cumplir las mismas funciones que las que contrataste, a un precio similar. Si no lo encontramos en 48 h, te devolvemos el 110 % de lo pagado.'],
-            ['¿Por qué cobráis al cliente y no al proveedor?',
-             'Porque cobrar al cliente como servicio (no como comisión oculta) es lo que nos permite ofrecer la Garantía de Éxito de verdad. Bodas.net y compañía cobran al proveedor cuotas anuales pero no asumen ninguna responsabilidad cuando hay un problema. Nosotros sí.'],
             ['¿Cuánto tarda un reembolso?',
              'Una vez aprobada la incidencia, transferimos en máximo 5 días hábiles. Si la incidencia ocurre la misma semana del evento, lo priorizamos y suele estar en 24-48h.'],
             ['¿Qué pasa si yo (el cliente) cancelo?',

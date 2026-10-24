@@ -89,7 +89,7 @@ export default async function HomePage() {
     { title: 'Luego, precios a la vista', body: 'Cada servicio tiene su precio cerrado. Nada de pedir diez presupuestos y esperar dos semanas.' },
     { title: 'Después, tu lista corta', body: 'Guarda favoritos y compártelos con tu pareja o tu familia antes de decidir.' },
     { title: 'Reservas cuando lo tengas claro', body: 'Eliges fecha y pagas de forma segura dentro de FiestaGo, sin transferencias a desconocidos. ¿Dudas antes? Escríbenos.' },
-    { title: 'El dinero espera', body: 'Lo retenemos hasta que termina el evento. El proveedor cobra cuando ha cumplido.' },
+    { title: 'El dinero espera', body: 'Tu pago queda retenido en Stripe hasta que termina el evento. El proveedor cobra cuando ha cumplido.' },
     { title: 'Y tú, a celebrar', body: 'Si tu proveedor cancela, te buscamos un sustituto en 48 h. Si no lo hay, respondemos con nuestro dinero.' },
   ].map((m, n) => {
     const p = pick(n + 4)

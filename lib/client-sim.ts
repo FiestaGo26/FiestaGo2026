@@ -20,6 +20,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { CATEGORIES } from '@/lib/constants'
 
 const PERSONA_MODEL = process.env.SIM_PERSONA_MODEL || 'claude-sonnet-5-5'
 const AGENT_MODEL   = process.env.SIM_AGENT_MODEL   || 'claude-haiku-5-5'
@@ -36,6 +37,8 @@ export type SimConfig = {
   profile: string
   /** Agregados de una simulación anterior con las mismas personas, para comparar. */
   previous?: { label: string; aggregates: unknown }
+  /** 'hypothetical_3': catálogo simulado de 3 proveedores por categoría en la zona. */
+  catalog?: 'real' | 'hypothetical_3'
 }
 
 export const ACTIONS = ['ignorar', 'ver_perfil', 'entrar_web', 'hacer_quiz', 'apuntarse', 'reservar'] as const
@@ -56,26 +59,26 @@ export function defaultConfig(providers: { total: number; byCategory: Record<str
       { name: 'Escéptico', share: 0.15, brief: 'Persona que ya usa Bodas.net, Google o recomendaciones de conocidos y desconfía de webs nuevas; cualquier tipo de evento.' },
     ],
     web: `fiestago.es, portada:
-- Titular: "Tu celebración, sin sustos." Buscador por servicio y ciudad. Enlaces a "Garantía de Éxito", "Quiz de 2 minutos" y "Soy profesional".
-- Sección "Ya están aquí": ${providers.total} proveedores publicados (${cats}). Ciudades: ${providers.cities.join(', ')}. La mayoría están en Valencia.
-- Cómo funciona: 1) Qué celebras: boda, cumpleaños, comunión o cena de empresa, con fecha y ciudad te enseñamos quién está libre. 2) Precios a la vista: cada servicio tiene precio cerrado, sin pedir diez presupuestos. 3) Tu lista corta: guarda favoritos y compártelos con tu pareja o familia. 4) Reservas cuando lo tengas claro, pagando de forma segura dentro de FiestaGo; si tienes dudas antes, escríbenos. 5) El dinero espera: se retiene hasta que termina el evento. 6) Si tu proveedor cancela, te buscamos sustituto en 48 h; si no lo hay, respondemos con nuestro dinero.
-- Página "Quiénes somos": foto de Mariano González Tejedo, el fundador, con un texto en primera persona ("si tienes cualquier duda antes de reservar, escríbeme"). WhatsApp visible, atendido por una persona de lunes a viernes de 10:00 a 20:00, y email. Datos del titular: Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, Oviedo. Proveedores verificados (DNI/CIF y seguro de responsabilidad civil). Empiezan por la zona de Valencia.
-- Página de garantía con ejemplo en euros: "Fotógrafo de 1.000 €: pagas 1.080 € (80 € son la Garantía de Éxito, ya incluida en el precio que ves; se paga siempre, como un seguro). Si cancela, te buscamos otro que cumpla las mismas funciones a un precio similar en 48 h; si no lo hay, te devolvemos 1.188 € (110 %). Si no se presenta, 1.080 € + 500 € de compensación = 1.580 €." También explica qué no cubre (lluvia, cambios pedidos por el cliente…).
+- Titular: "Tu celebración, sin sustos." Buscador por servicio y ciudad. Enlaces a "Garantía de Éxito", "Quiénes somos", "Quiz de 2 minutos" y "Soy profesional". FiestaGo está abierto a celebraciones en toda España.
+- Sección "Ya están aquí": ${providers.total} proveedores publicados (${cats}). ${providers.cities.join(', ')}.
+- Cómo funciona: 1) Qué celebras: boda, cumpleaños, comunión o cena de empresa, con fecha y ciudad te enseñamos quién está libre. 2) Precios a la vista: cada servicio tiene precio cerrado, sin pedir diez presupuestos. 3) Tu lista corta: guarda favoritos y compártelos con tu pareja o familia. 4) Reservas cuando lo tengas claro, pagando de forma segura dentro de FiestaGo; si tienes dudas antes, escríbenos. 5) El dinero espera: tu pago queda retenido en Stripe hasta que termina el evento. 6) Si tu proveedor cancela, te buscamos sustituto en 48 h; si no lo hay, respondemos con nuestro dinero.
+- Página "Quiénes somos": foto de Mariano González Tejedo, el fundador, con un texto en primera persona ("si tienes cualquier duda antes de reservar, escríbeme"). WhatsApp visible: contesta una persona de lunes a viernes de 10:00 a 20:00 y, fuera de ese horario, un asistente automático; también email. Datos del titular: Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, Oviedo. Proveedores verificados (DNI/CIF y seguro de responsabilidad civil).
+- Página de garantía: "Todos los servicios llevan la Garantía de Éxito incluida en el precio que ves; no hay suplementos. Ejemplo: reservas un fotógrafo por 1.080 €; tu pago queda retenido en Stripe, una entidad de pagos regulada, y el fotógrafo no cobra hasta que termina tu evento. Si todo va bien, no pagas nada más. Si cancela, te buscamos otro que cumpla las mismas funciones a un precio similar en 48 h; si no lo hay, te devolvemos 1.188 € (110 %). Si no se presenta, 1.080 € + 500 € de compensación = 1.580 €." También explica qué no cubre (lluvia, cambios pedidos por el cliente…) y que los reembolsos tardan como máximo 5 días hábiles.
 - Packs con todo dentro: un precio, un pago y una persona que lo coordina.
 - Quiz de 2 minutos para orientar qué necesitas. Lista de espera para avisarte.
 - Marca nueva: aún no tiene reseñas de clientes publicadas.`,
-    // Posts para clientes pensados para dar confianza. 'tranquilidad' y
-    // 'precio' se repiten de la primera simulación para poder comparar.
+    // Posts para clientes según lo aprendido en la 2.ª simulación.
+    // 'fundador', 'pregunta_antes' y 'verificacion' se repiten para comparar.
     posts: [
-      { id: 'tranquilidad', label: 'Tranquilidad / garantía', text: 'Imagen: pareja riendo en una boda al aire libre en Valencia.\nTexto: "¿Y si el fotógrafo no aparece? En FiestaGo no pagas al proveedor hasta que termina tu evento. Si cancela y no encontramos sustituto en 48 h, te devolvemos el 110 %. Proveedores verificados con DNI/CIF y seguro. 👉 fiestago.es"' },
-      { id: 'precio', label: 'Precio claro', text: 'Imagen: tarta de comunión con etiqueta de precio.\nTexto: "Comunión 2027: sabes lo que cuesta antes de reservar. Precios cerrados, sin sorpresas ni letra pequeña, y el pago queda retenido hasta el día del evento. Compara proveedores de Valencia 👉 fiestago.es"' },
-      { id: 'fundador', label: 'Quién hay detrás', text: 'Imagen: foto real de Mariano, sonriente, con americana.\nTexto: "Soy Mariano y estoy detrás de FiestaGo. Lo creé porque organizar una celebración no debería ser pagar por adelantado a alguien que no conoces y cruzar los dedos. Si tienes dudas antes de reservar, escríbeme por WhatsApp: te contesto yo, de lunes a viernes de 10 a 20 h. Enlace en la bio."' },
-      { id: 'garantia_euros', label: 'Garantía con ejemplo en euros', text: 'Carrusel: "Así funciona la garantía, con números". 1) Reservas un fotógrafo de 1.000 €: pagas 1.080 €. 2) El fotógrafo no cobra hasta que acaba tu boda. 3) Si cancela: te buscamos otro en 48 h. 4) Si no hay: te devolvemos 1.188 €. 5) Si no se presenta: 1.580 €. "Sin letra pequeña: lo tienes todo en la web. Enlace en la bio."' },
-      { id: 'pregunta_antes', label: 'Habla con una persona antes de pagar', text: 'Imagen: captura de un chat de WhatsApp con una consulta tipo "¿el DJ incluye equipo de sonido?" y la respuesta.\nTexto: "¿Dudas antes de reservar? Pregúntanos por WhatsApp: qué incluye un servicio, disponibilidad para tu fecha o cómo funciona la garantía. Te responde una persona, no un bot. Reservas solo cuando lo tengas claro. Enlace en la bio."' },
+      { id: 'garantia_boda', label: 'Garantía con números (boda)', text: 'Carrusel: "Tu boda, con garantía incluida". 1) Reservas fotógrafo por 1.080 €: es el precio final, con la garantía incluida. 2) Tu pago queda retenido en Stripe hasta que acaba tu boda. 3) Si cancela: te buscamos otro en 48 h. 4) Si no hay: te devolvemos 1.188 €. 5) Si no se presenta: 1.580 €. "Si todo va bien, no pagas nada más. Enlace en la bio."' },
+      { id: 'garantia_cumple', label: 'Garantía con números (cumple infantil)', text: 'Carrusel: "El cumple de tu peque, sin sustos". 1) Reservas animador por 250 €, garantía incluida. 2) El dinero espera en Stripe hasta que acaba la fiesta. 3) ¿El animador cancela? Te buscamos otro en 48 h o te devolvemos 275 €. 4) ¿No aparece? Te devolvemos 250 € y 300 € más de compensación. 5) Animadores verificados con seguro de responsabilidad civil. "Enlace en la bio."' },
+      { id: 'fundador', label: 'Quién hay detrás', text: 'Imagen: foto real de Mariano, sonriente, con americana.\nTexto: "Soy Mariano y estoy detrás de FiestaGo. Lo creé porque organizar una celebración no debería ser pagar por adelantado a alguien que no conoces y cruzar los dedos. Si tienes dudas antes de reservar, escríbeme por WhatsApp: entre semana te contesto yo y el fin de semana te atiende nuestro asistente. Enlace en la bio."' },
+      { id: 'pregunta_antes', label: 'Habla con una persona antes de pagar', text: 'Imagen: captura de un chat de WhatsApp con una consulta tipo "¿el DJ incluye equipo de sonido?" y la respuesta.\nTexto: "¿Dudas antes de reservar? Pregúntanos por WhatsApp: qué incluye un servicio, disponibilidad para tu fecha o cómo funciona la garantía. Entre semana te responde una persona; el fin de semana, nuestro asistente, y el lunes lo retomamos. Reservas solo cuando lo tengas claro. Enlace en la bio."' },
       { id: 'verificacion', label: 'Cómo verificamos a los proveedores', text: 'Reel corto: "Antes de que un proveedor aparezca en FiestaGo, comprobamos su DNI o CIF y su seguro de responsabilidad civil. Si no lo tiene, no entra." Se ve una lista de comprobación marcándose. "Tu celebración, en manos de profesionales de verdad. Enlace en la bio."' },
-      { id: 'pago_retenido', label: 'Tu dinero espera', text: 'Imagen: hucha con lazo de fiesta.\nTexto: "Tu dinero no llega al proveedor hasta que termina tu evento. Si algo falla, lo tenemos nosotros, no un desconocido. Así de simple. Comuniones, cumpleaños y bodas en Valencia. Enlace en la bio."' },
+      { id: 'dinero_stripe', label: '¿Dónde está tu dinero?', text: 'Post de pregunta frecuente: "¿Dónde está tu dinero hasta el día del evento? En Stripe, una entidad de pagos regulada. No llega al proveedor hasta que termina tu celebración. Y si algo falla, la garantía va incluida en todos los servicios. Enlace en la bio."' },
+      { id: 'proveedor_real', label: 'Proveedor presentado con su trabajo', text: 'Carrusel: "Te presentamos a Lucía, fotógrafa de bodas en tu zona". Fotos de 4 bodas que ha hecho, qué incluye su paquete y su precio total con garantía incluida (1.250 €). "Verificada por FiestaGo. Consulta su disponibilidad: enlace en la bio."' },
     ],
-    profile: `Cuenta de Instagram y TikTok de FiestaGo para clientes (renovada: ya no hay posts para proveedores, que tienen su propia cuenta). Bio: "Bodas, comuniones y cumpleaños sin sustos · Proveedores verificados · Pago retenido hasta tu evento · Pregúntanos por WhatsApp 👇 fiestago.es". Destacados: "Quiénes somos" (Mariano, el fundador, con su foto), "Garantía" (el ejemplo en euros), "Cómo reservar", "WhatsApp". Los posts del perfil son los mismos que acabas de ver, más algún proveedor de Valencia presentado con su nombre y trabajos. Cuenta nueva: pocos seguidores y aún pocos comentarios.`,
+    profile: `Cuenta de Instagram y TikTok de FiestaGo para clientes (renovada: ya no hay posts para proveedores, que tienen su propia cuenta). Bio: "Bodas, comuniones y cumpleaños sin sustos ✨ Proveedores verificados · Pago retenido hasta tu evento · Pregúntanos por WhatsApp 👇 fiestago.es". Destacados: "Quiénes somos" (Mariano con su foto), "Garantía" (ejemplos con números), "Tu dinero" (Stripe), "Cómo reservar", "WhatsApp". Los posts del perfil son los que acabas de ver, más otros proveedores presentados con su nombre, trabajos y precio, de bodas, comuniones y cumpleaños infantiles y de adultos. Cuenta nueva: pocos seguidores y aún pocos comentarios, aunque responden rápido a los que hay.`,
   }
 }
 
@@ -283,6 +286,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown): Promi
     messages: [{
       role: 'user',
       content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\n` +
+        (cfg.catalog === 'hypothetical_3' ? 'En esta simulación el catálogo es HIPOTÉTICO: 3 proveedores de cada servicio que cubren la zona de cada persona. La pregunta clave es si con ese mínimo ya compensa hacer marketing de clientes en una ciudad, o qué más haría falta (y para qué tipo de evento y servicio). Dedícale una sección propia con una recomendación clara.\n\n' : '') +
         (cfg.previous ? `IMPORTANTE: son las mismas personas de una simulación anterior (${cfg.previous.label}). Compara SIEMPRE con ella (confianza en la web, efecto del perfil, acciones finales, posts repetidos) y di qué ha mejorado y qué no. Agregados de la anterior (JSON):\n${JSON.stringify(cfg.previous.aggregates)}\n\n` : '') +
         `Posts probados:\n${cfg.posts.map(s => `[${s.id}] ${s.label}: ${s.text}`).join('\n\n')}\n\nAgregados por segmento (JSON):\n${JSON.stringify(agg)}\n\nMuestra de reacciones (JSON):\n${JSON.stringify(quotes)}\n\n` +
         'Escribe el informe en Markdown con estas secciones:\n1. Resumen en 5 líneas' + (cfg.previous ? ' (empieza por el antes y el después)' : '') + '\n2. Qué mensaje gana, en general y por segmento (con las cifras), y qué tipo de post conviene hacer más\n3. La web: qué convence y qué frena (y las 5 objeciones más repetidas con frases literales)\n4. El perfil actual de Instagram/TikTok visto por un cliente\n5. Qué les haría reservar\n6. Recomendaciones concretas y priorizadas (posts, web, perfil)\n7. Qué conviene validar con experimentos reales y cómo medirlo\nLímites de la simulación al final, en 2-3 líneas.',
@@ -303,10 +307,20 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
 
   let cfg = run.config as SimConfig | null
   if (!cfg || !cfg.posts) {
-    const { data: provs } = await supabase.from('providers').select('category, city').eq('status', 'approved')
-    const byCategory: Record<string, number> = {}
-    for (const p of provs || []) byCategory[p.category] = (byCategory[p.category] || 0) + 1
-    cfg = { ...defaultConfig({ total: provs?.length || 0, byCategory, cities: Array.from(new Set((provs || []).map(p => p.city))) }), ...(cfg || {}) }
+    let catalog: { total: number; byCategory: Record<string, number>; cities: string[] }
+    if (cfg?.catalog === 'hypothetical_3') {
+      // Catálogo hipotético: 3 proveedores por categoría que cubren la zona de
+      // cada persona. Sirve para saber si con ese mínimo ya compensa hacer
+      // marketing de clientes en una ciudad (ceo_settings.supply_threshold).
+      const byCategory = Object.fromEntries(CATEGORIES.map((c: any) => [c.label, 3]))
+      catalog = { total: CATEGORIES.length * 3, byCategory, cities: ['En tu zona hay 3 proveedores de cada servicio, cada uno con su ficha, fotos de trabajos y precio, y todos cubren tu municipio'] }
+    } else {
+      const { data: provs } = await supabase.from('providers').select('category, city').eq('status', 'approved')
+      const byCategory: Record<string, number> = {}
+      for (const p of provs || []) byCategory[p.category] = (byCategory[p.category] || 0) + 1
+      catalog = { total: provs?.length || 0, byCategory, cities: [`Ciudades: ${Array.from(new Set((provs || []).map(p => p.city))).join(', ')}. La mayoría están en Valencia`] }
+    }
+    cfg = { ...defaultConfig(catalog), ...(cfg || {}) }
   }
 
   await save({ status: 'personas', config: cfg })

@@ -15,6 +15,7 @@ import {
 } from '@/lib/whatsapp'
 import { handleCeoWhatsappCommand } from '@/lib/ceo-whatsapp'
 import { sendEmail } from '@/lib/resend'
+import { generateClientReply, isHumanHours, type ClientTurn } from '@/lib/client-assistant'
 import { generateReply, countPlazasConSelloRestantes, mentionsQuoteGen, getButtonReply, type AgentTurn } from '@/lib/fiestago-agent'
 
 // El webhook recibe datos externos (Meta) y llama a Claude → forzamos runtime
@@ -180,12 +181,15 @@ async function handleInbound(supabase: any, msg: any) {
   }
 
   // 3) Número desconocido: casi siempre un cliente que escribe desde la web.
-  //    No pasa por el agente (que habla con proveedores): queda en la bandeja,
-  //    se avisa a Mariano por email y el cliente recibe un acuse de recibo
-  //    fijo, como mucho uno cada 24 h.
+  //    No pasa por el agente de proveedores. En horario humano (L-V 10-20)
+  //    recibe un acuse de recibo y Mariano un email; fuera de horario le
+  //    contesta el asistente de clientes.
   if (!provider) {
     console.warn('[whatsapp webhook] mensaje de número no asociado a proveedor:', fromNumber)
-    if (fromNumber) await acknowledgeUnknownSender(supabase, fromNumber, body)
+    if (fromNumber) {
+      if (isHumanHours()) await acknowledgeUnknownSender(supabase, fromNumber, body)
+      else await answerClientOutOfHours(supabase, fromNumber, body)
+    }
     return
   }
 
@@ -505,6 +509,64 @@ async function findProviderByPhone(supabase: any, normalized: string) {
   }
 
   return null
+}
+
+// Conversación con un número que no es proveedor (salientes sin provider_id)
+async function clientHistory(supabase: any, number: string): Promise<{ turns: ClientTurn[]; outbound: number[] }> {
+  const { data } = await supabase.from('whatsapp_messages')
+    .select('direction, body, type, created_at')
+    .is('provider_id', null)
+    .or(`from_number.eq.${number},to_number.eq.${number}`)
+    .order('created_at', { ascending: false }).limit(30)
+  const rows = (data || []).reverse()
+  return {
+    turns: rows.filter((r: any) => r.body && !String(r.body).startsWith('[ERROR'))
+      .map((r: any) => ({ role: r.direction === 'inbound' ? 'user' : 'assistant', text: r.body })),
+    outbound: rows.filter((r: any) => r.direction === 'outbound').map((r: any) => new Date(r.created_at).getTime()),
+  }
+}
+
+async function answerClientOutOfHours(supabase: any, fromNumber: string, body: string) {
+  const { turns, outbound } = await clientHistory(supabase, fromNumber)
+  const now = Date.now()
+  // Frenos anti-bucle, como con proveedores: 60 s entre respuestas y 8 por hora
+  if (outbound.length && now - outbound[outbound.length - 1] < 60_000) return
+  if (outbound.filter(t => now - t < 3_600_000).length >= 8) return
+
+  let reply = ''
+  try {
+    reply = await generateClientReply(turns)
+  } catch (err: any) {
+    console.error('[whatsapp webhook] asistente de clientes falló:', err?.message)
+  }
+  if (!reply || reply.length < 15) {
+    // Sin respuesta útil del modelo: al menos el acuse de recibo
+    await acknowledgeUnknownSender(supabase, fromNumber, body)
+    return
+  }
+  try {
+    const waId = await sendText(fromNumber, reply)
+    await supabase.from('whatsapp_messages').insert({
+      wa_message_id: waId || null, direction: 'outbound',
+      from_number: process.env.WHATSAPP_PHONE_NUMBER_ID ?? null, to_number: fromNumber,
+      type: 'text', body: reply, status: 'sent',
+    })
+  } catch (err: any) {
+    console.error('[whatsapp webhook] respuesta del asistente de clientes no enviada:', err?.message)
+  }
+
+  // Aviso a Mariano, uno por conversación y día, para que lo retome en horario
+  const { count } = await supabase.from('whatsapp_messages')
+    .select('id', { count: 'exact', head: true })
+    .is('provider_id', null).eq('direction', 'inbound').eq('from_number', fromNumber)
+    .gte('created_at', new Date(now - 86400_000).toISOString())
+  if ((count || 0) <= 1) {
+    await sendEmail({
+      to:      process.env.ADMIN_EMAIL || 'contacto@fiestago.es',
+      subject: `💬 WhatsApp de cliente fuera de horario: +${fromNumber} · FiestaGo`,
+      text:    `Un cliente ha escrito fuera de horario y le ha contestado el asistente:\n\n+${fromNumber}\n"${(body || '').slice(0, 1000)}"\n\nRespuesta del asistente:\n"${reply.slice(0, 1000)}"\n\nRetómalo en horario desde el panel: https://fiestago.es/admin`,
+    }).catch(() => {})
+  }
 }
 
 const CLIENT_ACK = '¡Hola! Gracias por escribir a FiestaGo 👋 Te responde una persona del equipo lo antes posible (atendemos de lunes a viernes, de 10:00 a 20:00). Mientras, si nos cuentas qué celebras, la fecha y la ciudad, te ayudamos a encontrar proveedor. (Si eres profesional y quieres darte de alta, dínoslo también.)'

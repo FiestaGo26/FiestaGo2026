@@ -58,16 +58,16 @@ Después, las bios:
 9. Al terminar, hazme un resumen de lo que has cambiado.
 ```
 
-### Decisiones tras la 2.ª simulación (24-10-2026, run `f66c74d3` en `sim_runs`)
-- [ ] **Primeras reseñas**: ¿ofrecemos los primeros eventos sin el 8 % de garantía a cambio
-  de una reseña pública con foto? (lo que más frena: "ni una reseña").
-- [ ] **Dónde está el dinero retenido**: los pagos aún son simulados. Hay que elegir cómo
-  cobrar de verdad (p. ej. Stripe Connect, entidad de pago regulada) para poder decir
-  en la web "tu dinero está en [entidad], a tu nombre, hasta el evento".
-- [ ] **Horario y canal**: ¿abrimos WhatsApp el sábado por la mañana? ¿mostramos un
-  teléfono para llamar? (lo piden quien trabaja entre semana y los mayores de 50).
-- [ ] **Oviedo**: dos líneas para "Quiénes somos" explicando por qué el titular está en
-  Oviedo y por qué empezamos en Valencia (o un contacto en Valencia si lo hay).
+### Decisiones tomadas el 24-10-2026
+- Reseñas: **no se publican reseñas inventadas** (ilegal en España: práctica desleal
+  sancionable; además Google/Meta las retiran). Alternativas en la sección 2.
+- Garantía: a los clientes solo se les dice que **todos los servicios la llevan incluida
+  en el precio**; no se menciona el 8 %. (Hecho en web, revisor y generador de posts.)
+- Dinero retenido: **en Stripe**. Pendiente: activar los cobros reales con Stripe y
+  quitar el modo prueba (ver "Otros").
+- Oviedo: no hace falta explicarlo. FiestaGo se presenta **abierto a toda España**.
+- WhatsApp: persona de lunes a viernes 10-20 h; **fuera de ese horario contesta la IA**
+  (hecho). Sin teléfono de momento.
 
 ## 2. Lo que hace Claude cuando lo anterior esté listo
 
@@ -75,11 +75,15 @@ Resultado de la 2.ª simulación (mismas 152 personas): la confianza en la web p
 2,41 a 2,89 sobre 5, la claridad de 3,52 a 3,93, quien entra en la web del 38 % al 64 %
 y el quiz del 5 % al 16 %. El perfil de clientes ya no empeora a nadie (antes al 100 %).
 Reservas: siguen en 0. Freno: reseñas, catálogo corto, dudas sobre el 8 % y el dinero.
+3.ª simulación: catálogo hipotético de 3 proveedores por categoría, para decidir a partir
+de cuántos proveedores compensa hacer marketing de clientes en una ciudad.
 
-- [ ] **Garantía v2** (web y post): "si todo va bien, pagas 1.080 € y ya está; los 80 €
-  son el seguro, como el de un viaje"; dejar claro que es un 8 % (animador de 250 € →
-  20 €); tabla cubre / no cubre (lluvia, cambio de fecha, si cancelas tú); quién decide
-  el sustituto y en cuántos días se devuelve el dinero.
+- [ ] **Reseñas reales lo antes posible**: pedir opinión tras cada evento; ofrecer a los
+  primeros clientes algo a cambio de una reseña real (descuento o regalo, declarándolo);
+  mostrar las reseñas de Google de cada proveedor en su ficha (con su permiso); mientras
+  no haya, decirlo con naturalidad ("somos nuevos: estos son nuestros primeros eventos").
+- [ ] **Garantía**: tabla cubre / no cubre más visible (lluvia, cambio de fecha, si cancelas
+  tú) y quién decide el sustituto.
 - [ ] **Posts de clientes**: el mejor para llevar a la web es "garantía con ejemplo en
   euros" (83 % entra), hacer una versión por evento. Serie "una persona responde"
   (fundador + pregúntanos por WhatsApp + cómo verificamos): es lo que más confianza da y
@@ -107,6 +111,10 @@ Reservas: siguen en 0. Freno: reseñas, catálogo corto, dudas sobre el 8 % y el
 ## 3. Hecho
 
 ### 24-10-2026
+- Garantía para clientes sin hablar del 8 %: "incluida en todos los servicios"; pago
+  retenido en Stripe en garantía, portada y quiénes somos; FiestaGo abierto a toda España.
+- Asistente de WhatsApp para clientes fuera de horario (`lib/client-assistant.ts`):
+  responde con datos cerrados, no confirma reservas ni precios, y avisa por email.
 - Redes por públicos: cada post/vídeo lleva `audience` (clientes/proveedores);
   `UPLOADPOST_USER` publica para clientes y `UPLOADPOST_USER_PRO` para proveedores,
   con tope diario y revisión de marca propios. El CEO elige el público de cada post.

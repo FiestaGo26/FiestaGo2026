@@ -70,7 +70,7 @@ export default async function QuienesSomosPage() {
               className="bg-white border border-stone-200 rounded-2xl p-6 hover:border-coral transition-colors">
               <div className="text-[10px] font-bold uppercase tracking-widest text-ink/50 mb-2">WhatsApp</div>
               <div className="font-serif text-2xl font-black text-ink">{wa.display}</div>
-              <p className="text-sm text-ink/60 mt-2">Te responde una persona del equipo. {HOURS}.</p>
+              <p className="text-sm text-ink/60 mt-2">Te responde una persona del equipo {HOURS.toLowerCase()}. Fuera de ese horario, deja tu mensaje y te contesta nuestro asistente.</p>
             </a>
           )}
           <a href="mailto:contacto@fiestago.es"
@@ -89,7 +89,7 @@ export default async function QuienesSomosPage() {
           <div className="grid md:grid-cols-3 gap-5">
             {[
               { t: 'Proveedores verificados', b: 'Antes de publicar a un profesional comprobamos su DNI o CIF y su seguro de responsabilidad civil.' },
-              { t: 'Tu dinero, retenido', b: 'Pagas dentro de FiestaGo y el proveedor no cobra hasta que termina tu evento.' },
+              { t: 'Tu dinero, retenido', b: 'Tu pago queda retenido en Stripe, una entidad de pagos regulada, y el proveedor no cobra hasta que termina tu evento.' },
               { t: 'Si algo falla, respondemos', b: 'Si tu proveedor cancela, te buscamos sustituto en 48 h o te devolvemos el 110 %.' },
             ].map(c => (
               <div key={c.t} className="border border-stone-200 rounded-2xl p-6">
@@ -99,7 +99,7 @@ export default async function QuienesSomosPage() {
             ))}
           </div>
           <p className="text-sm text-ink/55 mt-8 leading-relaxed">
-            Empezamos por la zona de Valencia y vamos sumando proveedores y ciudades cada semana.{' '}
+            FiestaGo está abierto a celebraciones en toda España y cada semana se suman proveedores nuevos.{' '}
             <Link href="/garantia" className="text-coral underline">Lee la Garantía de Éxito completa</Link>.
           </p>
         </div>
