@@ -1,67 +1,93 @@
 # Pendientes FiestaGo
 
-Lo que queda por hacer tras la simulación de clientes del 24-10-2026
-(152 clientes sintéticos, tabla `sim_runs` en Supabase). Ordenado por prioridad.
+Lista única de lo que falta. Se actualiza cada vez que se avanza.
+Última revisión: 24-10-2026.
 
-## Necesita datos o decisiones de Mariano
+## 1. Lo que tiene que hacer Mariano (en este orden)
 
-- [ ] **Salir del modo prueba** (`FIESTAGO_TEST_MODE=true` en Netlify) cuando se
-  vaya a cobrar de verdad: los datos fiscales ya son los reales.
-- [ ] **Redes separadas** (decidido: las cuentas de siempre = clientes; nuevas = proveedores):
-  1. Vaciar las cuentas actuales de Instagram y TikTok (borrar todos los posts).
-  2. Crear las cuentas nuevas de proveedores en Instagram y TikTok.
-  3. En Upload-Post, crear un segundo perfil (p. ej. `fiestago-pro`) y conectar ahí
-     las cuentas nuevas (comprobar que el plan permite 2 perfiles).
-  4. Guardar en Netlify `UPLOADPOST_USER_PRO` con el nombre de ese perfil.
-  5. Bio de cada cuenta: clientes → fiestago.es · proveedores → fiestago.es/profesionales.
-  Mientras no exista `UPLOADPOST_USER_PRO`, los posts para proveedores esperan en cola
-  y la cuenta de siempre solo publica posts para clientes.
-- [ ] **Borrar a mano el post** "¿Cansado de pagar cuota cada mes sin clientes?…
-  pagas comisión solo cuando vendes" (publicado el 15-05-2026) en Instagram y TikTok:
-  es falso y sus APIs no permiten borrar publicaciones. Ya está marcado como
-  retirado en `social_posts`.
+### Redes separadas (decidido el 24-10-2026)
+Las cuentas de siempre (@fiestago) pasan a ser **de clientes**; las de **proveedores** son nuevas.
+
+- [ ] **1.1 Vaciar las cuentas actuales** de Instagram y TikTok (borrar todos los posts).
+  Con eso desaparece también el post falso de la comisión ("¿Cansado de pagar cuota
+  cada mes sin clientes?… pagas comisión solo cuando vendes", del 15-05-2026).
+- [ ] **1.2 Crear las cuentas nuevas de proveedores** en Instagram y TikTok
+  (nombre sugerido: `fiestago.pro` / `fiestagopro`).
+- [ ] **1.3 Upload-Post y bios** → hacerlo con Cowork, texto listo más abajo.
+- [ ] **1.4 Netlify**: añadir la variable `UPLOADPOST_USER_PRO` con el nombre exacto del
+  perfil nuevo de Upload-Post (Project configuration → Environment variables).
+  Hasta entonces, los posts para proveedores esperan en cola y no se publican.
+- [ ] **1.5 Avisar a Claude** cuando esté para comprobar la primera publicación en cada cuenta.
+
+### Otros
 - [ ] **Recargar la API de HeyGen** (0 segundos de vídeo: no hay vídeo diario).
-- [ ] **Enlaces de la bio** de Instagram y TikTok (prompt de Cowork ya dado).
-- [ ] **Marcar como secretas en Netlify** las claves que están en texto plano
-  (Anthropic, WhatsApp, Supabase service role, Google, Resend, Apify, fal,
-  contraseña de admin...).
-- [ ] Opcional: activar en Supabase la protección contra contraseñas filtradas.
+- [ ] **Salir del modo prueba** (`FIESTAGO_TEST_MODE=true` en Netlify) cuando se vaya a
+  cobrar de verdad. Los datos fiscales ya son los reales.
+- [ ] Opcional: marcar como secretas el resto de claves de Netlify que sigan en texto
+  plano (las importantes ya lo están) y activar en Supabase la protección contra
+  contraseñas filtradas.
 
-## Lo hago yo cuando tenga lo anterior
+### Texto para Cowork (copiar y pegar)
 
-- [ ] "Quiénes somos" en los destacados de Instagram/TikTok.
-- [ ] Botón de WhatsApp también en las fichas de proveedor; el primer paso
-  pasa a ser "pide presupuesto / pregúntanos".
-- [ ] Texto final de "sustituto equivalente" en la garantía y en los términos.
-- [ ] Cuando el CEO pase a captar clientes: usar el ángulo "tranquilidad"
-  (fue el claro ganador, 81 %) adaptado a cada tipo de evento con su imagen.
+```
+Necesito que me ayudes a configurar Upload-Post y las bios de mis redes. Ve paso a paso,
+en español, y cuando llegues a una pantalla de inicio de sesión o de contraseña, PARA y
+espera a que yo la escriba. No pagues ni cambies de plan sin preguntarme.
+
+1. Entra en https://app.upload-post.com (ya tengo cuenta; espera a que inicie sesión).
+2. Mira cuántos perfiles permite mi plan (Basic). Si solo permite 1, para y dímelo.
+3. Crea un perfil nuevo llamado exactamente: fiestago-pro
+4. En ese perfil, conecta la cuenta NUEVA de Instagram de proveedores y la cuenta NUEVA
+   de TikTok de proveedores (cuando pida iniciar sesión en Instagram/TikTok, para y
+   espera a que lo haga yo).
+5. Comprueba que el perfil antiguo "fiestago" sigue conectado a las cuentas de siempre
+   (Instagram y TikTok de clientes). No lo toques.
+6. Dime el nombre exacto del perfil nuevo tal y como aparece en Upload-Post.
+
+Después, las bios:
+7. Instagram y TikTok de CLIENTES (las de siempre):
+   Bio: "Bodas, comuniones y cumpleaños sin sustos ✨ Proveedores verificados ·
+   Pago retenido hasta tu evento · Pregúntanos por WhatsApp 👇"
+   Enlace: https://fiestago.es
+8. Instagram y TikTok de PROVEEDORES (las nuevas):
+   Bio: "Para profesionales de eventos 📸🎶🎂 Alta gratis, sin cuotas ni permanencia ·
+   Cobras el 100 % de tu precio 👇"
+   Enlace: https://fiestago.es/profesionales
+9. Al terminar, hazme un resumen de lo que has cambiado.
+```
+
+## 2. Lo que hace Claude cuando lo anterior esté listo
+
+- [ ] Comprobar la primera publicación en cada par de cuentas (clientes y proveedores).
+- [ ] Destacados de Instagram para clientes: "Quiénes somos", "Garantía", "Cómo reservar",
+  "WhatsApp" (preparar las imágenes).
+- [ ] Botón de WhatsApp también en las fichas de proveedor; el primer paso pasa a ser
+  "pregúntanos / pide presupuesto".
 - [ ] Reseñas reales: pedir opinión tras cada evento y mostrarlas por tipo de evento.
 - [ ] Cobertura: más proveedores fuera de Valencia ciudad (Sueca, Cullera, Gandia,
   Sagunto, Xàtiva...) y de catering (solo hay 1).
-- [ ] Repetir la simulación tras los cambios para comparar (misma tabla `sim_runs`,
-  se pueden reutilizar las mismas personas).
+- [ ] Enfocar los posts de clientes según la 2.ª simulación (ver `sim_runs`).
 
-## Hecho el 24-10-2026
+## 3. Hecho
 
-- Publicador por públicos: cada post/vídeo lleva `audience` (clientes/proveedores);
+### 24-10-2026
+- Redes por públicos: cada post/vídeo lleva `audience` (clientes/proveedores);
   `UPLOADPOST_USER` publica para clientes y `UPLOADPOST_USER_PRO` para proveedores,
   con tope diario y revisión de marca propios. El CEO elige el público de cada post.
-
+  Todo lo creado antes queda como "proveedores".
+- Post de la comisión marcado como retirado en `social_posts`.
 - Foto y horario (L-V 10:00-20:00) en /quienes-somos y en el acuse de WhatsApp.
-- "Sustituto equivalente" definido en garantía y términos: mismas funciones que
-  las contratadas, a un precio similar.
+- "Sustituto equivalente" definido en garantía y términos: mismas funciones que las
+  contratadas, a un precio similar.
 - Datos fiscales reales en Netlify (Francisco Mariano González Tejedo, 09437664M,
-  C/ Turina 6, 33011 Oviedo); las facturas llevan "FiestaGo" arriba y estos datos
-  como emisor. Dirección también en aviso legal y quiénes somos.
-
-- Página /quienes-somos (Mariano, NIF, Oviedo, WhatsApp leído de la cuenta de
-  WhatsApp Business, email) enlazada desde portada, pie y garantía.
-- NIF real en el aviso legal (antes salía "{NIF}").
-- WhatsApp: si escribe un número que no es proveedor (cliente), recibe un acuse
-  de recibo fijo (máx. 1 cada 24 h) y llega un email a ADMIN_EMAIL.
-
+  C/ Turina 6, 33011 Oviedo); las facturas llevan "FiestaGo" arriba y estos datos como
+  emisor. Dirección también en aviso legal y quiénes somos.
+- Página /quienes-somos enlazada desde portada, pie y garantía. NIF real en el aviso legal.
+- WhatsApp: si escribe un número que no es proveedor (cliente), recibe un acuse de recibo
+  fijo (máx. 1 cada 24 h) y llega un email a ADMIN_EMAIL.
 - Garantía con ejemplo en euros y el 8 % aclarado (incluido en el precio, se paga siempre).
 - Portada sin "reserva en dos minutos"; el sustituto va antes que el reembolso.
 - El CEO ve el saldo real de fal.ai y HeyGen (ya no repite fallos antiguos).
 - Latido del CEO cada 10 min desde Supabase (pg_cron) con función en segundo plano.
-- Simulación de clientes (`lib/client-sim.ts`, `netlify/functions/client-sim-background.mts`).
+- Simulación de clientes (`lib/client-sim.ts`, `netlify/functions/client-sim-background.mts`):
+  1.ª simulación (web antigua) y 2.ª (web nueva + perfil de clientes con posts de confianza).

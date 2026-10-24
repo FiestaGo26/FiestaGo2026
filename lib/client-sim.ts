@@ -34,6 +34,8 @@ export type SimConfig = {
   web: string
   posts: Stimulus[]
   profile: string
+  /** Agregados de una simulación anterior con las mismas personas, para comparar. */
+  previous?: { label: string; aggregates: unknown }
 }
 
 export const ACTIONS = ['ignorar', 'ver_perfil', 'entrar_web', 'hacer_quiz', 'apuntarse', 'reservar'] as const
@@ -56,23 +58,24 @@ export function defaultConfig(providers: { total: number; byCategory: Record<str
     web: `fiestago.es, portada:
 - Titular: "Tu celebración, sin sustos." Buscador por servicio y ciudad. Enlaces a "Garantía de Éxito", "Quiz de 2 minutos" y "Soy profesional".
 - Sección "Ya están aquí": ${providers.total} proveedores publicados (${cats}). Ciudades: ${providers.cities.join(', ')}. La mayoría están en Valencia.
-- Cómo funciona: 1) Qué celebras: boda, cumpleaños, comunión o cena de empresa, con fecha y ciudad te enseñamos quién está libre. 2) Precios a la vista: cada servicio tiene precio cerrado, sin pedir diez presupuestos. 3) Tu lista corta: guarda favoritos y compártelos con tu pareja o familia. 4) Reservas en dos minutos y pagas de forma segura. 5) El dinero espera: se retiene hasta que termina el evento. 6) Si algo falla el día del evento, respondemos con nuestro dinero.
-- Garantía de Éxito (el cliente paga un 8 % por ella): si el proveedor cancela y no hay sustituto equivalente en 48 h, se devuelve el 110 %; si no se presenta, el 100 % más una compensación de hasta 3.000 €. Proveedores verificados (DNI/CIF y seguro de responsabilidad civil).
+- Cómo funciona: 1) Qué celebras: boda, cumpleaños, comunión o cena de empresa, con fecha y ciudad te enseñamos quién está libre. 2) Precios a la vista: cada servicio tiene precio cerrado, sin pedir diez presupuestos. 3) Tu lista corta: guarda favoritos y compártelos con tu pareja o familia. 4) Reservas cuando lo tengas claro, pagando de forma segura dentro de FiestaGo; si tienes dudas antes, escríbenos. 5) El dinero espera: se retiene hasta que termina el evento. 6) Si tu proveedor cancela, te buscamos sustituto en 48 h; si no lo hay, respondemos con nuestro dinero.
+- Página "Quiénes somos": foto de Mariano González Tejedo, el fundador, con un texto en primera persona ("si tienes cualquier duda antes de reservar, escríbeme"). WhatsApp visible, atendido por una persona de lunes a viernes de 10:00 a 20:00, y email. Datos del titular: Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, Oviedo. Proveedores verificados (DNI/CIF y seguro de responsabilidad civil). Empiezan por la zona de Valencia.
+- Página de garantía con ejemplo en euros: "Fotógrafo de 1.000 €: pagas 1.080 € (80 € son la Garantía de Éxito, ya incluida en el precio que ves; se paga siempre, como un seguro). Si cancela, te buscamos otro que cumpla las mismas funciones a un precio similar en 48 h; si no lo hay, te devolvemos 1.188 € (110 %). Si no se presenta, 1.080 € + 500 € de compensación = 1.580 €." También explica qué no cubre (lluvia, cambios pedidos por el cliente…).
 - Packs con todo dentro: un precio, un pago y una persona que lo coordina.
 - Quiz de 2 minutos para orientar qué necesitas. Lista de espera para avisarte.
 - Marca nueva: aún no tiene reseñas de clientes publicadas.`,
+    // Posts para clientes pensados para dar confianza. 'tranquilidad' y
+    // 'precio' se repiten de la primera simulación para poder comparar.
     posts: [
       { id: 'tranquilidad', label: 'Tranquilidad / garantía', text: 'Imagen: pareja riendo en una boda al aire libre en Valencia.\nTexto: "¿Y si el fotógrafo no aparece? En FiestaGo no pagas al proveedor hasta que termina tu evento. Si cancela y no encontramos sustituto en 48 h, te devolvemos el 110 %. Proveedores verificados con DNI/CIF y seguro. 👉 fiestago.es"' },
-      { id: 'tiempo', label: 'Ahorro de tiempo', text: 'Imagen: mesa con portátil, agenda y anillos.\nTexto: "Deja de pedir 10 presupuestos y esperar 2 semanas. En FiestaGo ves fotógrafo, tarta, música y animación de Valencia con precio cerrado y disponibilidad para tu fecha. Reservas en 2 minutos. 👉 fiestago.es"' },
       { id: 'precio', label: 'Precio claro', text: 'Imagen: tarta de comunión con etiqueta de precio.\nTexto: "Comunión 2027: sabes lo que cuesta antes de reservar. Precios cerrados, sin sorpresas ni letra pequeña, y el pago queda retenido hasta el día del evento. Compara proveedores de Valencia 👉 fiestago.es"' },
-      { id: 'emocional', label: 'Emocional', text: 'Imagen: niña soplando velas rodeada de familia.\nTexto: "Ese día solo tienes que estar. Del resto nos ocupamos: animación, tarta, foto y catering para cumpleaños, comuniones y bodas en Valencia, con todo en un solo sitio. Haz el quiz de 2 minutos 👉 fiestago.es/quiz"' },
+      { id: 'fundador', label: 'Quién hay detrás', text: 'Imagen: foto real de Mariano, sonriente, con americana.\nTexto: "Soy Mariano y estoy detrás de FiestaGo. Lo creé porque organizar una celebración no debería ser pagar por adelantado a alguien que no conoces y cruzar los dedos. Si tienes dudas antes de reservar, escríbeme por WhatsApp: te contesto yo, de lunes a viernes de 10 a 20 h. Enlace en la bio."' },
+      { id: 'garantia_euros', label: 'Garantía con ejemplo en euros', text: 'Carrusel: "Así funciona la garantía, con números". 1) Reservas un fotógrafo de 1.000 €: pagas 1.080 €. 2) El fotógrafo no cobra hasta que acaba tu boda. 3) Si cancela: te buscamos otro en 48 h. 4) Si no hay: te devolvemos 1.188 €. 5) Si no se presenta: 1.580 €. "Sin letra pequeña: lo tienes todo en la web. Enlace en la bio."' },
+      { id: 'pregunta_antes', label: 'Habla con una persona antes de pagar', text: 'Imagen: captura de un chat de WhatsApp con una consulta tipo "¿el DJ incluye equipo de sonido?" y la respuesta.\nTexto: "¿Dudas antes de reservar? Pregúntanos por WhatsApp: qué incluye un servicio, disponibilidad para tu fecha o cómo funciona la garantía. Te responde una persona, no un bot. Reservas solo cuando lo tengas claro. Enlace en la bio."' },
+      { id: 'verificacion', label: 'Cómo verificamos a los proveedores', text: 'Reel corto: "Antes de que un proveedor aparezca en FiestaGo, comprobamos su DNI o CIF y su seguro de responsabilidad civil. Si no lo tiene, no entra." Se ve una lista de comprobación marcándose. "Tu celebración, en manos de profesionales de verdad. Enlace en la bio."' },
+      { id: 'pago_retenido', label: 'Tu dinero espera', text: 'Imagen: hucha con lazo de fiesta.\nTexto: "Tu dinero no llega al proveedor hasta que termina tu evento. Si algo falla, lo tenemos nosotros, no un desconocido. Así de simple. Comuniones, cumpleaños y bodas en Valencia. Enlace en la bio."' },
     ],
-    profile: `Perfil actual de @fiestago en Instagram y TikTok (lo que ve un cliente si entra hoy). Los últimos posts dicen, por ejemplo:
-- "¿Cansado de pagar cuota cada mes sin clientes? En FiestaGo no hay suscripción... Empieza por aquí 👉 fiestago.es/registro-proveedor"
-- "Food trucks, magos, decoradores, fotógrafos... Están en todas partes menos donde los buscan los clientes... Mientras otros cierran temporada baja, tú podrías estar vendiendo."
-- "📸 ¿Eres fotógrafo de bodas en Valencia? Las parejas te están buscando en FiestaGo."
-- Algún post inspiracional suelto sobre bodas íntimas de verano.
-Pocos seguidores y casi sin comentarios.`,
+    profile: `Cuenta de Instagram y TikTok de FiestaGo para clientes (renovada: ya no hay posts para proveedores, que tienen su propia cuenta). Bio: "Bodas, comuniones y cumpleaños sin sustos · Proveedores verificados · Pago retenido hasta tu evento · Pregúntanos por WhatsApp 👇 fiestago.es". Destacados: "Quiénes somos" (Mariano, el fundador, con su foto), "Garantía" (el ejemplo en euros), "Cómo reservar", "WhatsApp". Los posts del perfil son los mismos que acabas de ver, más algún proveedor de Valencia presentado con su nombre y trabajos. Cuenta nueva: pocos seguidores y aún pocos comentarios.`,
   }
 }
 
@@ -203,7 +206,7 @@ async function runRound1(cfg: SimConfig, p: Persona): Promise<Round1> {
     `Imagina además que entras en la web y ves esto:\n${cfg.web}\n\n` +
     `Y que antes de fiarte miras su perfil de Instagram/TikTok:\n${cfg.profile}\n\n` +
     'Para cada post: atención (1-5), confianza (1-5), qué harías de verdad, el comentario que pensarías o escribirías, y tu principal objeción. Para la web: confianza y claridad (1-5), qué harías, lo que más te gusta, lo que echas en falta y tu objeción. Para el perfil: si entiendes que FiestaGo es para clientes como tú, si te da más o menos confianza y por qué.',
-    schema, 3000)
+    schema, 5000)
 }
 
 // ─── 3. Ronda 2: influencia social ────────────────────────────────
@@ -279,8 +282,10 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown): Promi
     system: 'Eres analista de marketing de FiestaGo, un marketplace español de proveedores para bodas, comuniones y cumpleaños. Redactas para Mariano, el dueño, en español claro y directo, sin jerga. Recuerda siempre que son datos de una simulación con personas sintéticas: sirven para priorizar y descubrir objeciones, no son resultados reales.',
     messages: [{
       role: 'user',
-      content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\nPosts probados:\n${cfg.posts.map(s => `[${s.id}] ${s.label}: ${s.text}`).join('\n\n')}\n\nAgregados por segmento (JSON):\n${JSON.stringify(agg)}\n\nMuestra de reacciones (JSON):\n${JSON.stringify(quotes)}\n\n` +
-        'Escribe el informe en Markdown con estas secciones:\n1. Resumen en 5 líneas\n2. Qué mensaje gana, en general y por segmento (con las cifras)\n3. La web: qué convence y qué frena (y las 5 objeciones más repetidas con frases literales)\n4. El perfil actual de Instagram/TikTok visto por un cliente\n5. Qué les haría reservar\n6. Recomendaciones concretas y priorizadas (posts, web, perfil)\n7. Qué conviene validar con experimentos reales y cómo medirlo\nLímites de la simulación al final, en 2-3 líneas.',
+      content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\n` +
+        (cfg.previous ? `IMPORTANTE: son las mismas personas de una simulación anterior (${cfg.previous.label}). Compara SIEMPRE con ella (confianza en la web, efecto del perfil, acciones finales, posts repetidos) y di qué ha mejorado y qué no. Agregados de la anterior (JSON):\n${JSON.stringify(cfg.previous.aggregates)}\n\n` : '') +
+        `Posts probados:\n${cfg.posts.map(s => `[${s.id}] ${s.label}: ${s.text}`).join('\n\n')}\n\nAgregados por segmento (JSON):\n${JSON.stringify(agg)}\n\nMuestra de reacciones (JSON):\n${JSON.stringify(quotes)}\n\n` +
+        'Escribe el informe en Markdown con estas secciones:\n1. Resumen en 5 líneas' + (cfg.previous ? ' (empieza por el antes y el después)' : '') + '\n2. Qué mensaje gana, en general y por segmento (con las cifras), y qué tipo de post conviene hacer más\n3. La web: qué convence y qué frena (y las 5 objeciones más repetidas con frases literales)\n4. El perfil actual de Instagram/TikTok visto por un cliente\n5. Qué les haría reservar\n6. Recomendaciones concretas y priorizadas (posts, web, perfil)\n7. Qué conviene validar con experimentos reales y cómo medirlo\nLímites de la simulación al final, en 2-3 líneas.',
     }],
   })
   usage.calls++
