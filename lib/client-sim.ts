@@ -275,7 +275,7 @@ function samples(personas: Persona[], r1: Array<Round1 | null>, r2: Array<Round2
 async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown): Promise<string> {
   const resp = await client().messages.create({
     model: REPORT_MODEL,
-    max_tokens: 8000,
+    max_tokens: 16000,
     system: 'Eres analista de marketing de FiestaGo, un marketplace español de proveedores para bodas, comuniones y cumpleaños. Redactas para Mariano, el dueño, en español claro y directo, sin jerga. Recuerda siempre que son datos de una simulación con personas sintéticas: sirven para priorizar y descubrir objeciones, no son resultados reales.',
     messages: [{
       role: 'user',
