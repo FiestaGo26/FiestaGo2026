@@ -58,7 +58,41 @@ Después, las bios:
 9. Al terminar, hazme un resumen de lo que has cambiado.
 ```
 
+### Decisiones tras la 2.ª simulación (24-10-2026, run `f66c74d3` en `sim_runs`)
+- [ ] **Primeras reseñas**: ¿ofrecemos los primeros eventos sin el 8 % de garantía a cambio
+  de una reseña pública con foto? (lo que más frena: "ni una reseña").
+- [ ] **Dónde está el dinero retenido**: los pagos aún son simulados. Hay que elegir cómo
+  cobrar de verdad (p. ej. Stripe Connect, entidad de pago regulada) para poder decir
+  en la web "tu dinero está en [entidad], a tu nombre, hasta el evento".
+- [ ] **Horario y canal**: ¿abrimos WhatsApp el sábado por la mañana? ¿mostramos un
+  teléfono para llamar? (lo piden quien trabaja entre semana y los mayores de 50).
+- [ ] **Oviedo**: dos líneas para "Quiénes somos" explicando por qué el titular está en
+  Oviedo y por qué empezamos en Valencia (o un contacto en Valencia si lo hay).
+
 ## 2. Lo que hace Claude cuando lo anterior esté listo
+
+Resultado de la 2.ª simulación (mismas 152 personas): la confianza en la web pasa de
+2,41 a 2,89 sobre 5, la claridad de 3,52 a 3,93, quien entra en la web del 38 % al 64 %
+y el quiz del 5 % al 16 %. El perfil de clientes ya no empeora a nadie (antes al 100 %).
+Reservas: siguen en 0. Freno: reseñas, catálogo corto, dudas sobre el 8 % y el dinero.
+
+- [ ] **Garantía v2** (web y post): "si todo va bien, pagas 1.080 € y ya está; los 80 €
+  son el seguro, como el de un viaje"; dejar claro que es un 8 % (animador de 250 € →
+  20 €); tabla cubre / no cubre (lluvia, cambio de fecha, si cancelas tú); quién decide
+  el sustituto y en cuántos días se devuelve el dinero.
+- [ ] **Posts de clientes**: el mejor para llevar a la web es "garantía con ejemplo en
+  euros" (83 % entra), hacer una versión por evento. Serie "una persona responde"
+  (fundador + pregúntanos por WhatsApp + cómo verificamos): es lo que más confianza da y
+  lo que mejor funciona en cumple infantil. Posts de preguntas frecuentes con las
+  objeciones literales. Retirar "precio" y "tranquilidad" tal cual y la hucha.
+  Más contenido de cumpleaños infantiles y de adultos, no solo bodas y comuniones.
+  → Pasar estas conclusiones al CEO como aprendizajes.
+- [ ] **Cobertura en la web**: "hoy llegamos a…" y, para el resto de pueblos,
+  "aún no llegamos a [pueblo]: déjanos tu correo y te avisamos" (mide demanda por zona).
+- [ ] **Huecos del catálogo** por este orden: catering (solo 1), animación infantil,
+  salones/restaurantes para comuniones, DJ.
+- [ ] **Packs con precio total** para casos típicos: comunión de 30 personas,
+  cumple infantil de 10 niños, cena de 50 años para 40.
 
 - [ ] Comprobar la primera publicación en cada par de cuentas (clientes y proveedores).
 - [ ] Destacados de Instagram para clientes: "Quiénes somos", "Garantía", "Cómo reservar",
