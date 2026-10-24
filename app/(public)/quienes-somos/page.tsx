@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://fiestago.es/quienes-somos' },
 }
 
-// Foto en public/equipo/mariano.jpg. Mientras no esté subida, se ven las iniciales.
-const PHOTO = '/equipo/mariano.jpg'
+// Foto en public/mariano.jpg. Mientras no esté subida, se ven las iniciales.
+const PHOTO = '/mariano.jpg'
 const hasPhoto = false
 
 export default async function QuienesSomosPage() {

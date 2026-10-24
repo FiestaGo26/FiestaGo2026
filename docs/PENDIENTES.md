@@ -5,7 +5,7 @@ Lo que queda por hacer tras la simulación de clientes del 24-10-2026
 
 ## Necesita datos o decisiones de Mariano
 
-- [ ] **Foto para "Quiénes somos"**: subirla a `public/equipo/mariano.jpg` y poner
+- [ ] **Foto para "Quiénes somos"**: subirla a `public/mariano.jpg` y poner
   `hasPhoto = true` en `app/(public)/quienes-somos/page.tsx`.
 - [ ] **Horario de atención** del WhatsApp (opcional, para mostrarlo).
 - [ ] **Datos fiscales de facturación** en Netlify siguen siendo de prueba
