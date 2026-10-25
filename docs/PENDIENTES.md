@@ -99,6 +99,22 @@ pagar, 3) persona que responde (sábado incluido), 4) packs con precio total. Ob
 quedan: no hay bodas, "¿y si FiestaGo cierra?", cifras de la garantía que no cuadran
 (500 € frente a 300-3.000 €), packs de un solo tamaño, zonas sin cobertura, sin teléfono.
 
+5.ª simulación (run `e3738ddb`, plan + garantía corregida + ENTREVISTA "¿qué tendría que
+pasar para que reservaras?"). Confianza 3,39. Lo que piden para reservar (% que lo menciona):
+precio total cerrado por escrito y a la medida de sus invitados 63 %; reseñas de su tipo de
+evento 60 %; hablar con una persona 40 %; señal más baja 28 %; seguridad del dinero 28 %
+(escépticos 48 %); proveedores de su comarca 16 %. Señal máxima aceptada: mediana 10 %
+(cumple infantil 20 %). Canal preferido: teléfono 44 %, WhatsApp 40 %, email 11 % (cumple
+de adulto: teléfono 65 %). El vídeo de Mariano respondiendo es ya el post favorito (40 %).
+Corregir las cifras de la garantía no movió la confianza en ese post: simplificarla.
+"Reservaría si se cumple": 99 % "probablemente" (cortesía, no cuenta); "sí" claro: 2 personas.
+
+Decisiones pendientes tras la 5.ª simulación:
+- [ ] **Teléfono / "te llamamos"**: es el canal preferido. ¿Ponemos un botón "pide que te
+  llamemos" (sin publicar número) o un teléfono visible?
+- [ ] **Señal**: lo aceptado es ~10 % (20 % en cumples). ¿Bajamos la señal por defecto al
+  10-20 % o ponemos un importe fijo pequeño? (Hoy cada proveedor elige hasta el 40 %.)
+
 Decisiones pendientes tras la 4.ª simulación:
 - [ ] **"¿Y si FiestaGo cierra con mi dinero dentro?"**: necesitamos una respuesta VERDADERA.
   Depende de cómo se configure Stripe (p. ej. Stripe Connect con el dinero en la cuenta
