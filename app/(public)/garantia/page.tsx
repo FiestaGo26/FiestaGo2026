@@ -38,7 +38,7 @@ export default function GarantiaPage() {
         <div className="grid md:grid-cols-3 gap-5">
           {[
             { num:'48h',  label:'Para resolverte una cancelación', body:'Si tu proveedor cancela, te conseguimos un sustituto equivalente en 48h o te reembolsamos.' },
-            { num:'110%', label:'Reembolso máximo',                body:'Si tu proveedor cancela y no encontramos sustituto en 48h, te devolvemos el 110% — sin importar cuándo cancele.' },
+            { num:'110%', label:'Si no hay sustituto',             body:'Si tu proveedor cancela y no encontramos sustituto en 48h, te devolvemos todo lo pagado y un 10 % más por las molestias, sin importar cuándo cancele.' },
             { num:'24/7', label:'Pago retenido',                   body:'Tu pago queda retenido en Stripe, una entidad de pagos regulada, y no llega al proveedor hasta que termina tu celebración.' },
           ].map(c => (
             <div key={c.num} className="bg-white border border-stone-200 rounded-2xl p-6">
@@ -62,9 +62,11 @@ export default function GarantiaPage() {
           <p className="text-sm text-ink/70 mb-5">Un ejemplo: reservas un fotógrafo por <strong className="text-ink">1.080 €</strong>. Tu pago queda retenido en Stripe y el fotógrafo no cobra hasta que termina tu evento.</p>
           <div className="space-y-3 text-sm text-ink/75 leading-relaxed">
             <p><strong className="text-ink">Si todo va bien:</strong> disfrutas de tu día y no pagas nada más.</p>
-            <p><strong className="text-ink">Si cancela:</strong> te buscamos otro fotógrafo que cumpla las mismas funciones a un precio similar en menos de 48 h. Si no lo encontramos, te devolvemos el 110 %: <strong className="text-coral">1.188 €</strong>.</p>
-            <p><strong className="text-ink">Si no se presenta el día del evento:</strong> te devolvemos lo pagado (1.080 €) más una compensación de 500 €: <strong className="text-coral">1.580 €</strong>.</p>
+            <p><strong className="text-ink">Si cancela:</strong> te buscamos otro fotógrafo que cumpla las mismas funciones a un precio similar en menos de 48 h. Si no lo encontramos, te devolvemos todo y un 10 % más por las molestias: <strong className="text-coral">1.188 €</strong>.</p>
+            <p><strong className="text-ink">Si no se presenta el día del evento:</strong> te devolvemos lo pagado (1.080 €) más la compensación que corresponde a ese importe según la tabla de abajo (500 €): <strong className="text-coral">1.580 €</strong>.</p>
+            <p><strong className="text-ink">Si cancelas tú:</strong> se aplica la política de cancelación del servicio, que ves en su ficha antes de reservar.</p>
           </div>
+          <p className="text-xs text-ink/50 mt-5 leading-relaxed">Los reembolsos se hacen en un máximo de 5 días hábiles desde que se aprueba la incidencia. La compensación depende del importe de la reserva: de 300 € (reservas de hasta 500 €) a 3.000 € (más de 15.000 €).</p>
         </div>
       </section>
 

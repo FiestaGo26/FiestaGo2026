@@ -25,7 +25,7 @@ import { CATEGORIES } from '@/lib/constants'
 const PERSONA_MODEL = process.env.SIM_PERSONA_MODEL || 'claude-sonnet-5-5'
 const AGENT_MODEL   = process.env.SIM_AGENT_MODEL   || 'claude-haiku-5-5'
 const REPORT_MODEL  = process.env.SIM_REPORT_MODEL  || 'claude-opus-5-5'
-const CONCURRENCY   = 12
+const CONCURRENCY   = 16
 
 /** segments: si se indica, solo lo ven esas personas (anuncio segmentado). */
 export type Stimulus = { id: string; label: string; text: string; segments?: string[] }
@@ -105,7 +105,7 @@ export function planConfig(): Omit<SimConfig, 'personas' | 'segments'> {
 - Reseñas: 11 reseñas reales con nombre, foto y fecha de los primeros "eventos fundadores" (6 cumples infantiles, 3 comuniones, 2 cumples de adulto; aún ninguna boda). Cada ficha de proveedor muestra además su nota y enlace a sus reseñas de Google (por ejemplo 4,8 con 63 opiniones).
 - Primer paso sin riesgo: botón "Pide presupuesto o bloquea tu fecha 48 h gratis", sin pagar nada. Para reservar: señal desde el 30 % y el resto 2 meses antes del evento; cancelación gratis durante 14 días tras reservar si faltan más de 60 días para el evento.
 - El dinero: "Tu pago lo guarda Stripe, la plataforma de pagos que usan muchas tiendas online, y no llega al proveedor hasta que termina tu evento."
-- Garantía en una sola página con tres casos claros: si el proveedor cancela (sustituto que cumpla las mismas funciones a precio similar en 48 h o te devolvemos el 110 %), si no se presenta (te devolvemos lo pagado más una compensación de 300 € a 3.000 €), si cancelas tú (gratis los primeros 14 días; después, la política de cada servicio, que se ve en su ficha). Reembolsos en máximo 5 días hábiles. Qué no cubre: lluvia, cambios pedidos por el cliente. Incluida en todos los servicios.
+- Garantía en una sola página con tres casos claros: si el proveedor cancela (sustituto que cumpla las mismas funciones a precio similar en 48 h o te devolvemos el 110 %), si no se presenta (te devolvemos lo pagado más una compensación según el importe, con tabla: 300 € hasta 500 €, 500 € de 500 a 2.000 €, 1.000 € de 2.000 a 5.000 €, 2.000 € de 5.000 a 15.000 €, 3.000 € por encima; el 110 % se explica como "todo lo pagado y un 10 % más por las molestias"), si cancelas tú (gratis los primeros 14 días; después, la política de cada servicio, que se ve en su ficha). Reembolsos en máximo 5 días hábiles. Qué no cubre: lluvia, cambios pedidos por el cliente. Incluida en todos los servicios.
 - Atención: WhatsApp atendido por una persona de lunes a viernes de 10:00 a 20:00 y sábados de 10:00 a 14:00, "te respondemos en menos de 2 horas en horario de atención", y opción de pedir una llamada de 10 minutos. Email.
 - "Quiénes somos": foto de Mariano González Tejedo, el fundador, texto en primera persona; datos del titular (Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, Oviedo). FiestaGo atiende celebraciones en toda España. Proveedores verificados (DNI/CIF y seguro de responsabilidad civil).`,
     posts: [
@@ -269,12 +269,70 @@ async function runRound2(cfg: SimConfig, p: Persona, r1: Round1, others: string[
     schema, 1200)
 }
 
+// ─── 3b. Entrevista final: qué te haría reservar ──────────────────
+// Pregunta directa a cada persona, con todo lo que ha visto y leído.
+
+export const CONDITIONS = [
+  'resenas_reales', 'precio_total_cerrado', 'senal_menor', 'hablar_con_persona', 'telefono',
+  'proveedores_en_mi_zona', 'servicio_central_de_mi_evento', 'disponibilidad_mi_fecha',
+  'garantia_clara', 'seguridad_del_dinero', 'empresa_solida', 'cancelacion_flexible',
+  'ver_trabajos_reales', 'recomendacion_conocido', 'necesidad_especifica', 'otro',
+] as const
+const CHANNELS = ['whatsapp', 'telefono', 'email', 'videollamada', 'en_persona', 'solo_web'] as const
+
+export type Round3 = {
+  condiciones: Array<{ categoria: typeof CONDITIONS[number]; detalle: string }>
+  reservaria_si_se_cumple: 'si' | 'probablemente' | 'no'
+  senal_maxima_pct: number
+  canal_preferido: typeof CHANNELS[number]
+  respuesta_literal: string
+}
+
+async function runRound3(p: Persona, r2: Round2): Promise<Round3> {
+  const schema = obj({
+    condiciones: { type: 'array', items: obj({ categoria: { type: 'string', enum: [...CONDITIONS] }, detalle: str }) },
+    reservaria_si_se_cumple: { type: 'string', enum: ['si', 'probablemente', 'no'] },
+    senal_maxima_pct: { type: 'integer', description: 'de 0 a 100' },
+    canal_preferido: { type: 'string', enum: [...CHANNELS] },
+    respuesta_literal: str,
+  })
+  return askJson<Round3>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
+    `Ya conoces FiestaGo (la web, sus posts y lo que comenta la gente). Tu decisión fue: ${r2.accion_final}, porque "${r2.motivo}".\n\n` +
+    'Ahora te entrevista FiestaGo y te pregunta directamente: "¿Qué tendría que pasar EXACTAMENTE para que reservaras tu evento con nosotros?" ' +
+    'Responde con sinceridad, pensando en tu caso concreto (tu evento, tu fecha, tu presupuesto, tu pueblo). Da entre 1 y 3 condiciones, de la más a la menos importante, cada una con su categoría y un detalle concreto ' +
+    '(por ejemplo "ver 3 reseñas de comuniones en l\'Horta", "una señal de 100 € como mucho", "que me llame una persona antes de pagar"). ' +
+    'Di si reservarías de verdad si se cumplieran, qué señal máxima pagarías al reservar (en % del total) y por qué canal preferirías resolver tus dudas. ' +
+    'En "respuesta_literal" contéstalo como lo dirías tú, en 1-3 frases.',
+    schema, 1200)
+}
+
+/** Qué condiciones repiten (y la primera de cada uno), si reservarían, señal y canal. */
+function interviewStats(rs: Round3[]) {
+  const n = rs.length
+  const count = (f: (r: Round3) => boolean) => pct(rs.filter(f).length, n)
+  const senal = rs.map(r => Math.max(0, Math.min(100, Number(r.senal_maxima_pct) || 0))).sort((a, b) => a - b)
+  const ranked = (f: (c: typeof CONDITIONS[number]) => number) =>
+    Object.fromEntries(CONDITIONS.map(c => [c, f(c)] as const).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]))
+  return {
+    n,
+    condicion_mencionada_pct: ranked(c => count(r => r.condiciones.some(x => x.categoria === c))),
+    condicion_principal_pct: ranked(c => count(r => r.condiciones[0]?.categoria === c)),
+    reservaria_si_se_cumple_pct: {
+      si: count(r => r.reservaria_si_se_cumple === 'si'),
+      probablemente: count(r => r.reservaria_si_se_cumple === 'probablemente'),
+      no: count(r => r.reservaria_si_se_cumple === 'no'),
+    },
+    senal_maxima_mediana_pct: senal.length ? senal[Math.floor(senal.length / 2)] : null,
+    canal_preferido_pct: Object.fromEntries(CHANNELS.map(c => [c, count(r => r.canal_preferido === c)] as const).filter(([, v]) => v > 0)),
+  }
+}
+
 // ─── 4. Agregados e informe ───────────────────────────────────────
 
 function avg(xs: number[]) { return xs.length ? Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 100) / 100 : null }
 function pct(n: number, d: number) { return d ? Math.round((n / d) * 1000) / 10 : 0 }
 
-function aggregate(cfg: SimConfig, personas: Persona[], r1: Array<Round1 | null>, r2: Array<Round2 | null>) {
+function aggregate(cfg: SimConfig, personas: Persona[], r1: Array<Round1 | null>, r2: Array<Round2 | null>, r3: Array<Round3 | null> = []) {
   const segments = ['TODOS', ...cfg.segments.map(s => s.name)]
   const bySeg: Record<string, unknown> = {}
   for (const seg of segments) {
@@ -308,21 +366,23 @@ function aggregate(cfg: SimConfig, personas: Persona[], r1: Array<Round1 | null>
       },
       accion_final_pct: Object.fromEntries(ACTIONS.map(a => [a, pct(final.filter(x => x === a).length, final.length)])),
       cambia_opinion_pct: pct(idx.filter(i => r2[i]?.cambia_opinion).length, idx.length),
+      ...(r3.some(Boolean) ? { entrevista: interviewStats(idx.map(i => r3[i]).filter(Boolean) as Round3[]) } : {}),
     }
   }
   return bySeg
 }
 
-function samples(personas: Persona[], r1: Array<Round1 | null>, r2: Array<Round2 | null>, max = 70) {
-  return shuffle(personas.map((p, i) => ({ p, a: r1[i], b: r2[i] })).filter(x => x.a && x.b)).slice(0, max).map(({ p, a, b }) => ({
+function samples(personas: Persona[], r1: Array<Round1 | null>, r2: Array<Round2 | null>, r3: Array<Round3 | null> = [], max = 70) {
+  return shuffle(personas.map((p, i) => ({ p, a: r1[i], b: r2[i], c: r3[i] })).filter(x => x.a && x.b)).slice(0, max).map(({ p, a, b, c }) => ({
     quien: `${p.segment} · ${p.nombre}, ${p.edad}, ${p.ciudad} · ${p.presupuesto}`,
     comentarios: a!.posts.map(x => `[${x.id}] ${x.comentario} | objeción: ${x.objecion}`),
     web_falta: a!.web.lo_que_falta, web_objecion: a!.web.objecion, perfil: a!.perfil.reaccion,
     final: `${b!.accion_final} (${b!.mejor_post}): ${b!.motivo}`, para_reservar: b!.que_te_haria_reservar,
+    ...(c ? { entrevista: { condiciones: c.condiciones, reservaria: c.reservaria_si_se_cumple, senal_max: c.senal_maxima_pct, canal: c.canal_preferido, literal: c.respuesta_literal } } : {}),
   }))
 }
 
-async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown): Promise<string> {
+async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown, interview = false): Promise<string> {
   const resp = await client().messages.create({
     model: REPORT_MODEL,
     max_tokens: 16000,
@@ -334,6 +394,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown): Promi
         (cfg.catalog === 'hypothetical_3' ? 'En esta simulación el catálogo es HIPOTÉTICO: 3 proveedores de cada servicio que cubren la zona de cada persona. La pregunta clave es si con ese mínimo ya compensa hacer marketing de clientes en una ciudad, o qué más haría falta (y para qué tipo de evento y servicio). Dedícale una sección propia con una recomendación clara.\n\n' : '') +
         (cfg.previous ? `IMPORTANTE: son las mismas personas de una simulación anterior (${cfg.previous.label}). Compara SIEMPRE con ella (confianza en la web, efecto del perfil, acciones finales, posts repetidos) y di qué ha mejorado y qué no. Agregados de la anterior (JSON):\n${JSON.stringify(cfg.previous.aggregates)}\n\n` : '') +
         `Posts probados:\n${cfg.posts.map(s => `[${s.id}] ${s.label}: ${s.text}`).join('\n\n')}\n\nAgregados por segmento (JSON):\n${JSON.stringify(agg)}\n\nMuestra de reacciones (JSON):\n${JSON.stringify(quotes)}\n\n` +
+        (interview ? 'Al final hubo una ENTREVISTA directa a cada persona: "¿qué tendría que pasar exactamente para que reservaras?" (agregados en "entrevista" de cada segmento y respuestas en la muestra). Dedícale la sección 5 entera: por segmento, las condiciones que más se repiten y la principal (con %), cuántos reservarían si se cumplieran, la señal máxima mediana y el canal preferido, con 2-3 frases literales por segmento; termina con una lista "Para que reserven, hay que…" ordenada por impacto.\n\n' : '') +
         'Escribe el informe en Markdown con estas secciones:\n1. Resumen en 5 líneas' + (cfg.previous ? ' (empieza por el antes y el después)' : '') + '\n2. Qué mensaje gana, en general y por segmento (con las cifras), y qué tipo de post conviene hacer más\n3. La web: qué convence y qué frena (y las 5 objeciones más repetidas con frases literales)\n4. El perfil actual de Instagram/TikTok visto por un cliente\n5. Qué les haría reservar\n6. Recomendaciones concretas y priorizadas (posts, web, perfil)\n7. Qué conviene validar con experimentos reales y cómo medirlo\nLímites de la simulación al final, en 2-3 líneas.',
     }],
   })
@@ -385,10 +446,14 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   const r2 = await pool(personas, (p, i) => r1[i]
     ? runRound2(cfg!, p, r1[i]!, shuffle(voices.filter(v => v.i !== i)).slice(0, 6).map(v => v.text))
     : Promise.reject(new Error('sin ronda 1')))
-  const agg = aggregate(cfg, personas, r1, r2)
-  await save({ status: 'informe', round2: r2, aggregates: agg })
+  await save({ status: 'entrevista', round2: r2 })
 
-  const report = await writeReport(cfg, agg, samples(personas, r1, r2))
+  // Entrevista: qué haría que cada persona reservase
+  const r3 = await pool(personas, (p, i) => r2[i] ? runRound3(p, r2[i]!) : Promise.reject(new Error('sin ronda 2')))
+  const agg = aggregate(cfg, personas, r1, r2, r3)
+  await save({ status: 'informe', round3: r3, aggregates: agg })
+
+  const report = await writeReport(cfg, agg, samples(personas, r1, r2, r3), r3.some(Boolean))
   await save({ status: 'done', report })
-  return { personas: personas.length, ok1: r1.filter(Boolean).length, ok2: r2.filter(Boolean).length, usage }
+  return { personas: personas.length, ok1: r1.filter(Boolean).length, ok2: r2.filter(Boolean).length, ok3: r3.filter(Boolean).length, usage }
 }
