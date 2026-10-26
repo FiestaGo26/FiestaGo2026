@@ -22,6 +22,16 @@ export default function ProposalActions({ token, firstPayment, converted, hasDat
   const [accepted, setAccepted] = useState(false)
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(converted)
+  const [video, setVideo] = useState<'idle' | 'form' | 'sent'>('idle')
+  const [slot, setSlot] = useState('')
+
+  async function askVideo() {
+    const res = await fetch(`/api/propuesta/${token}/videollamada`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ preferred_slot: slot || null }),
+    })
+    if (res.ok) { setVideo('sent'); toast.success(`Pedida. ${providerName} te propondrá hora y te mandamos el enlace.`) }
+    else toast.error('No se pudo pedir la videollamada')
+  }
 
   async function share() {
     const url = window.location.href
@@ -81,6 +91,20 @@ export default function ProposalActions({ token, firstPayment, converted, hasDat
         className="w-full mt-3 border border-stone-300 text-ink font-semibold py-3 rounded-xl hover:bg-cream">
         Compartir con quien lo decide conmigo
       </button>
+      {video === 'sent' ? (
+        <p className="text-xs text-emerald-800 mt-3 text-center">✓ Videollamada pedida. Te enviaremos el enlace y la hora por email.</p>
+      ) : video === 'form' ? (
+        <div className="mt-3 flex gap-2">
+          <input value={slot} onChange={e => setSlot(e.target.value)} placeholder="¿Cuándo te viene bien? (p. ej. tardes entre semana)"
+            className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral"/>
+          <button type="button" onClick={askVideo} className="bg-ink text-white text-sm font-semibold px-4 rounded-xl">Pedir</button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setVideo('form')}
+          className="w-full mt-3 border border-stone-300 text-ink font-semibold py-3 rounded-xl hover:bg-cream">
+          📹 Verle por videollamada antes de reservar
+        </button>
+      )}
       <p className="text-xs text-ink/55 mt-3 text-center">¿Prefieres hablarlo? Responde al email de la propuesta con tu número y una hora y te llamamos desde FiestaGo.</p>
     </div>
   )

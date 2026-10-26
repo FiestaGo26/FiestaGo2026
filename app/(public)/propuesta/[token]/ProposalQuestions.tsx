@@ -50,6 +50,12 @@ export default function ProposalQuestions({ token, providerName, initial }: {
           ))}
         </div>
       )}
+      <div className="flex flex-wrap gap-2 mb-2">
+        {['¿Me mandas el detalle final por escrito (menú, boceto o diseño)?', '¿Cuál sería el horario exacto del día?', '¿Cuántas personas de tu equipo vendrían?', '¿Qué necesitas del local (corriente, cocina, espacio)?'].map(c => (
+          <button key={c} type="button" onClick={() => setText(c)}
+            className="text-[11px] bg-cream border border-stone-200 rounded-full px-3 py-1 text-ink/70 hover:border-coral">{c}</button>
+        ))}
+      </div>
       <textarea rows={2} value={text} onChange={e => setText(e.target.value)}
         placeholder="Escribe tu pregunta…"
         className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
