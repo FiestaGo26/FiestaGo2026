@@ -211,7 +211,17 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
     open_proposals: openProposals,
     services,
     growth,
+    // Lo que Mariano le ha dicho al CEO en el chat del panel (últimos 7 días)
+    owner_chat: await ownerChat(supabase),
   }
+}
+
+async function ownerChat(supabase: SupabaseClient) {
+  const { data } = await supabase.from('ceo_messages')
+    .select('created_at, role, content')
+    .gte('created_at', sinceIso(7))
+    .order('created_at', { ascending: false }).limit(20)
+  return (data || []).reverse().map((m: any) => `${m.created_at.slice(0, 16)} ${m.role === 'owner' ? 'Mariano' : 'CEO'}: ${String(m.content).slice(0, 600)}`)
 }
 
 export type CeoSnapshot = Awaited<ReturnType<typeof gatherSnapshot>>
@@ -236,6 +246,7 @@ ${actionCatalogForPrompt()}
 - Mira "recent_actions": si algo falló o no dio resultado, no lo repitas igual; ajusta o propón otra cosa.
 - Propón como máximo 5 acciones, priorizadas por impacto en el crecimiento del marketplace (más proveedores activos, más demanda, más reservas). No repitas propuestas que ya están en "open_proposals".
 - Escribe en español de España, tono directo y cercano, tuteando.
+- "owner_chat" es lo que Mariano te ha dicho en el chat del panel: sus instrucciones mandan sobre tu criterio (salvo pagos y lo prohibido aquí). Tenlas en cuenta en cada rutina.
 
 Método de crecimiento (lo más importante; datos en "growth"):
 - Trabajas como responsable de crecimiento: toda acción de marketing pertenece a un experimento que prueba UNA cosa (canal, formato o mensaje) con un público concreto. Los experimentos se crean en "experiments.start" y se cierran en "experiments.close".
@@ -527,4 +538,69 @@ export async function runCeoRoutine(supabase: SupabaseClient, kind: CeoKind, opt
   }
 
   return { id: saved.id as string, report, emailed, whatsapp }
+}
+
+// ─── Chat con Mariano (panel de admin) ───────────────────────────
+// Mariano escribe; el CEO contesta con el snapshot de ahora y el hilo
+// reciente, y puede dejar acciones del catálogo en cola (con autonomía
+// total se ejecutan solas; si no, esperan su OK como las de la rutina).
+
+const CHAT_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['reply', 'proposals'],
+  properties: {
+    reply: { type: 'string' },
+    proposals: (OUTPUT_SCHEMA as any).properties.proposals,
+  },
+} as const
+
+/** Contesta el último mensaje de Mariano (ya guardado en ceo_messages). */
+export async function chatWithCeo(supabase: SupabaseClient) {
+  const { data: last } = await supabase.from('ceo_messages').select('role, content').order('created_at', { ascending: false }).limit(1)
+  if (!last?.[0] || last[0].role !== 'owner') return null
+  const text = String(last[0].content)
+
+  const [snapshot, settings, { data: history }] = await Promise.all([
+    gatherSnapshot(supabase, 'daily'),
+    getCeoSettings(supabase),
+    supabase.from('ceo_messages').select('role, content').order('created_at', { ascending: false }).limit(21),
+  ])
+  const thread = (history || []).reverse().slice(0, -1)
+  const autonomy = settings.paused ? 'approval (agente en pausa: no se ejecutará nada)' : settings.autonomy
+
+  const resp = await client().messages.create({
+    model: MODEL,
+    max_tokens: 8000,
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: CHAT_SCHEMA as unknown as Record<string, unknown> } },
+    system: [{ type: 'text', text: SYSTEM + `
+
+AHORA ESTÁS EN EL CHAT DEL PANEL con Mariano. Contesta en "reply" a lo que te dice, corto y al grano, con datos del snapshot cuando ayuden. Si te da una instrucción, confirma qué vas a hacer y recuérdala (la verás en "owner_chat" en tus rutinas). Si hace falta ejecutar algo del catálogo, añádelo en "proposals" (máximo 3; vacío si no hace falta nada). No inventes datos.`, cache_control: { type: 'ephemeral' } }],
+    messages: [
+      ...thread.map((m: any) => ({ role: m.role === 'owner' ? 'user' as const : 'assistant' as const, content: String(m.content) })),
+      { role: 'user', content: `[Modo de autonomía] ${autonomy}\n[Snapshot de ahora]\n${JSON.stringify(snapshot)}\n\n[Mariano] ${text}` },
+    ].filter((m, i, a) => i === 0 ? m.role === 'user' : m.role !== a[i - 1].role),
+  } as any)
+
+  const raw = resp.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map(b => b.text).join('').trim()
+  const out = JSON.parse(raw) as { reply: string; proposals: CeoReport['proposals'] }
+
+  let queued: string[] = []
+  if (out.proposals?.length) {
+    const rows = out.proposals.slice(0, 3).map((p, i) => {
+      const action = sanitizeAction(p.action)
+      const auto = !!action && settings.autonomy === 'full' && !settings.paused
+      return {
+        area: p.area, title: p.title, why: p.why, next_step: p.next_step, impact: p.impact, effort: p.effort,
+        action, position: i + 1,
+        status: auto ? 'approved' : 'pending',
+        decided_by: auto ? 'ceo' : null,
+        decided_at: auto ? new Date().toISOString() : null,
+      }
+    })
+    await supabase.from('ceo_proposals').insert(rows)
+    queued = rows.map(r => `${r.status === 'approved' ? 'En cola' : 'Pendiente de tu OK'}: ${r.title}`)
+  }
+
+  const reply = out.reply + (queued.length ? `\n\n${queued.map(q => `• ${q}`).join('\n')}` : '')
+  await supabase.from('ceo_messages').insert({ role: 'ceo', content: reply, meta: { queued } })
+  return { reply, queued }
 }
