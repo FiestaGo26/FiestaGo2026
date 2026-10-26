@@ -60,12 +60,19 @@ export async function generateVideo(opts: {
   title?:       string
 }): Promise<string> {
   // 1) Motor más nuevo (v3). Si falla por lo que sea, seguimos con la v2.
+  let v3Error = ''
   try {
     return await generateVideoV3(opts)
   } catch (err: any) {
-    console.error('[heygen] v3 falló, uso v2:', err?.message)
+    v3Error = String(err?.message || err)
+    console.error('[heygen] v3 falló, uso v2:', v3Error)
   }
-  return generateVideoV2(opts)
+  try {
+    return await generateVideoV2(opts)
+  } catch (err: any) {
+    // Los dos errores, para saber qué falla de verdad (saldo, avatar, voz…)
+    throw new Error(`${err?.message || err} · antes, ${v3Error}`)
+  }
 }
 
 async function generateVideoV3(opts: { script: string; speed?: number; background?: string; title?: string }): Promise<string> {
