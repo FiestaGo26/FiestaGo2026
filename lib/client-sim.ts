@@ -44,11 +44,11 @@ export type SimConfig = {
   /** Agregados de una simulación anterior con las mismas personas, para comparar. */
   previous?: { label: string; aggregates: unknown }
   /** 'hypothetical_3': catálogo simulado de 3 proveedores por categoría en la zona. */
-  catalog?: 'real' | 'hypothetical_3' | 'plan_fase1' | 'closing' | 'full'
+  catalog?: 'real' | 'hypothetical_3' | 'plan_fase1' | 'closing' | 'full' | 'full_proposal'
   /** Escenario distinto del "scroll en redes": p. ej. el cierre de una venta. */
   scenario?: { intro: string; question: string; round2_intro: string }
   /** Embudo completo: quien entra en la web pasa por el proceso real de cierre. */
-  closing?: { intro: string; touchpoints: Stimulus[] }
+  closing?: { intro: string; touchpoints: Stimulus[]; proposal?: boolean }
 }
 
 export const ACTIONS = ['ignorar', 'ver_perfil', 'entrar_web', 'hacer_quiz', 'apuntarse', 'reservar'] as const
@@ -186,6 +186,103 @@ export function fullConfig(): Omit<SimConfig, 'personas' | 'segments'> {
       touchpoints: c.posts,
     },
   }
+}
+
+// ─── Embudo completo con propuesta escrita (simulación 7 en adelante) ──
+// Lo construido tras la 6.ª: cada cliente recibe una propuesta escrita de un
+// proveedor REAL de FiestaGo de su tipo de evento (con sus opiniones de
+// Google reales), con precio cerrado para SU número de invitados, qué
+// incluye, la señal en euros y las condiciones, en una página que puede
+// compartir. Quien bloquea la fecha decide otra vez 48 h después, tras
+// hablarlo en casa y recibir el seguimiento de ayuda (sin presión).
+
+export function proposalConfig(): Omit<SimConfig, 'personas' | 'segments'> {
+  const f = fullConfig()
+  const c = closingConfig()
+  const call = c.posts.find(x => x.id === 'llamada_fiestago')!
+  return {
+    ...f,
+    web: c.web
+      .replace('- Marca nueva: todavía no hay reseñas de clientes publicadas.', '- Marca nueva: todavía no hay reseñas de clientes de FiestaGo, pero cada ficha muestra la nota y las opiniones de Google del proveedor, que puedes comprobar buscándolo en Google Maps.')
+      .replace('"Prefiero que me llaméis desde FiestaGo".', '"Prefiero que me llaméis desde FiestaGo". Si pides presupuesto o bloqueas la fecha, el proveedor te manda su propuesta por escrito: una página con el precio cerrado para tu caso, qué incluye, la señal en euros, las condiciones y un botón para compartirla con quien decide contigo y otro para reservar.'),
+    closing: {
+      intro: 'Como te interesó, entraste en la ficha de un proveedor de tu zona para tu evento y pediste presupuesto (o bloqueaste la fecha 48 h gratis). Esto es lo que ha pasado desde entonces:',
+      proposal: true,
+      touchpoints: [
+        { id: 'propuesta_escrita', label: 'Propuesta escrita del proveedor', text: '(se genera para cada persona)' },
+        call,
+        { id: 'seguimiento_ayuda', label: 'Seguimiento de ayuda (a las 20 h)', text: 'Email de FiestaGo al día siguiente: "Por si te ayuda a decidirlo con calma (o a enseñárselo a quien lo decide contigo), aquí tienes la propuesta por escrito: precio total, qué incluye, la señal en euros y las condiciones. Si quieres que te llamemos para resolver cualquier duda, contesta con un número y una hora. Sin compromiso."' },
+      ],
+    },
+  }
+}
+
+const SEGMENT_CATEGORIES: Record<string, string[]> = {
+  'Pareja boda 2027': ['foto', 'musica', 'planner', 'flores', 'belleza'],
+  'Familia comunión': ['catering', 'pastel', 'animacion', 'foto'],
+  'Familia cumple infantil': ['animacion', 'pastel'],
+  'Adulto cumple especial': ['musica', 'catering', 'pastel'],
+}
+
+type RealProvider = {
+  id: string; name: string; category: string; city: string | null; description: string | null
+  google_rating: number | null; google_rating_count: number | null
+  google_reviews: Array<{ text: string; stars: number }> | null
+  services: Array<{ name: string; price: number | null; included_guests: number | null; extra_guest_price: number | null; description: string | null; cancellation_policy: string | null }>
+}
+
+async function loadRealProviders(supabase: SupabaseClient): Promise<RealProvider[]> {
+  const { data } = await supabase.from('providers')
+    .select('id, name, category, city, description, google_rating, google_rating_count, google_reviews, provider_services(name, price, included_guests, extra_guest_price, description, cancellation_policy)')
+    .eq('status', 'approved')
+  return (data || []).map((p: any) => ({ ...p, services: p.provider_services || [] }))
+}
+
+function pickProvider(provs: RealProvider[], p: Persona): RealProvider | null {
+  const cats = SEGMENT_CATEGORIES[p.segment]
+  const fit = provs.filter(x => !cats || cats.includes(x.category))
+  const pool = fit.filter(x => /valencia|paterna/i.test(x.city || '')).length ? fit.filter(x => /valencia|paterna/i.test(x.city || '')) : fit
+  // Primero los que tienen opiniones de Google, como en la ficha real
+  const withG = pool.filter(x => x.google_rating)
+  const src = withG.length ? withG : pool
+  return src.length ? src[(p.id * 7) % src.length] : null
+}
+
+type ProviderQuote = { invitados: number; precio_proveedor_eur: number; incluye: string; no_incluye: string; mensaje: string }
+
+/** El proveedor (real) responde con su propuesta, a precio de mercado. */
+async function generateQuote(p: Persona, prov: RealProvider): Promise<ProviderQuote> {
+  const schema = obj({ invitados: { type: 'integer' }, precio_proveedor_eur: { type: 'integer' }, incluye: str, no_incluye: str, mensaje: str })
+  const tarifa = prov.services.length
+    ? prov.services.map(s => `${s.name}: ${s.price ?? '?'} €${s.included_guests ? ` (incluye ${s.included_guests} invitados, +${s.extra_guest_price} €/invitado de más)` : ''}${s.description ? ` — ${s.description.slice(0, 200)}` : ''}`).join('\n')
+    : 'Sin tarifa publicada: usa precios de mercado de tu categoría en Valencia.'
+  return askJson<ProviderQuote>(AGENT_MODEL,
+    'Eres un proveedor de eventos español respondiendo a una petición de presupuesto. Eres honesto y realista: das el precio de mercado de lo que de verdad necesita ese evento en Valencia, sin rebajarlo para encajar en el presupuesto del cliente ni inflarlo. Escribes en español de España, breve y concreto.',
+    `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}). ${prov.description ? prov.description.slice(0, 400) : ''}\nTus tarifas:\n${tarifa}\n\n` +
+    `Petición del cliente: ${p.evento}. Fecha: ${p.fecha}. Zona: ${p.ciudad}. Lo que cuenta: ${p.situacion.slice(0, 300)}\n\n` +
+    'Responde con: el número de invitados que has entendido, tu precio total en euros para ESE evento (lo que cobras tú), qué incluye exactamente (horas, personas, material, entregas, desplazamiento), qué NO incluye, y un mensaje corto al cliente (sin teléfonos ni emails).',
+    schema, 1200)
+}
+
+const COMMISSION = 0.08
+function proposalText(p: Persona, prov: RealProvider, q: ProviderQuote) {
+  const total = Math.round(q.precio_proveedor_eur * (1 + COMMISSION))
+  const senal = Math.round(total * 0.1)
+  const svc = prov.services.find(s => s.cancellation_policy)
+  const pol = svc?.cancellation_policy === 'flexible' ? 'Flexible: reembolso completo hasta 7 días antes; 50 % entre 7 días y 48 h; nada después.'
+    : svc?.cancellation_policy === 'strict' ? 'Estricta: 50 % hasta 30 días antes; nada después.'
+    : 'Moderada: reembolso completo hasta 14 días antes; 50 % entre 14 y 7 días; nada después.'
+  const reviews = (prov.google_reviews || []).slice(0, 3)
+  const google = prov.google_rating
+    ? `Opiniones de Google: ${String(prov.google_rating).replace('.', ',')} ★ (${prov.google_rating_count || 0} opiniones), comprobable buscándolo en Google Maps. Algunas: ${reviews.map(r => `"${r.text.slice(0, 220)}" (${r.stars}★)`).join(' · ')}`
+    : 'Opiniones de Google: este proveedor todavía no tiene opiniones en Google.'
+  return `Email de FiestaGo: "${prov.name} te ha enviado su propuesta por escrito." Enlace a la página "Tu propuesta":\n` +
+    `- ${prov.name} (${prov.category}, ${prov.city}) para tu evento: ${q.invitados} invitados, ${p.fecha}.\n` +
+    `- Precio total para tu caso: ${total.toLocaleString('es-ES')} € (precio cerrado, Garantía de Éxito incluida, sin extras ocultos).\n` +
+    `- Al reservar pagas la señal del 10 %: ${senal.toLocaleString('es-ES')} €. El resto, ${(total - senal).toLocaleString('es-ES')} €, 2 meses antes del evento. El dinero queda retenido en Stripe y el proveedor no lo cobra hasta que termina tu evento.\n` +
+    `- Qué incluye: ${q.incluye}\n- Qué no incluye: ${q.no_incluye}\n- Mensaje del proveedor: "${q.mensaje}"\n- ${google}\n` +
+    `- Condiciones por escrito: si el proveedor cancela, sustituto equivalente en 48 h o te devuelven todo y un 10 % más; si no se presenta, lo pagado y una compensación desde 300 €; si cancelas tú, política ${pol} No cubre la lluvia ni los cambios que pidas tú.\n` +
+    '- Botones: "Reservar con señal" y "Compartir con quien lo decide conmigo".'
 }
 
 // ─── Utilidades ────────────────────────────────────────────────────
@@ -349,10 +446,15 @@ export type RoundClose = {
   senal_aceptable: boolean
   motivo: string
   que_faltaria_para_reservar: string
+  /** Solo con propuesta escrita: la persona y el proveedor real que la mandó */
+  proveedor?: string
+  propuesta?: ProviderQuote
+  /** Quien bloqueó la fecha vuelve a decidir 48 h después */
+  segunda?: { decision: 'reservar' | 'dejar_caducar' | 'seguir_comparando'; efecto_seguimiento: 'me_acerca' | 'neutro' | 'me_aleja'; que_dijo_quien_decide_conmigo: string; motivo: string; que_faltaria_para_reservar: string }
 }
 
-async function runClose(cfg: SimConfig, p: Persona, r2: Round2): Promise<RoundClose> {
-  const tps = cfg.closing!.touchpoints.filter(s => !s.segments || s.segments.includes(p.segment))
+async function runClose(cfg: SimConfig, p: Persona, r2: Round2, override?: Stimulus[]): Promise<RoundClose> {
+  const tps = override || cfg.closing!.touchpoints.filter(s => !s.segments || s.segments.includes(p.segment))
   const schema = obj({
     puntos: { type: 'array', items: obj({ id: { type: 'string', enum: tps.map(s => s.id) }, confianza: int15, efecto: { type: 'string', enum: ['me_acerca', 'neutro', 'me_aleja'] }, comentario: str }) },
     decision: { type: 'string', enum: [...CLOSE_DECISIONS] },
@@ -367,6 +469,20 @@ async function runClose(cfg: SimConfig, p: Persona, r2: Round2): Promise<RoundCl
     'Después decide de verdad, como lo harías tú con tu dinero y tu evento: "reservar" (pagas ya la señal en FiestaGo), "bloquear_fecha" (bloqueas 48 h gratis para pensarlo), "seguir_comparando" (miras otras opciones fuera) o "descartar". ' +
     'Di si la señal (10-20 % del total) te parece aceptable, por qué decides eso y qué te faltaría para reservar ahora mismo.',
     schema, 3000)
+}
+
+async function runClose2(cfg: SimConfig, p: Persona, first: RoundClose, proposal: string): Promise<NonNullable<RoundClose['segunda']>> {
+  const follow = cfg.closing!.touchpoints.find(t => t.id === 'seguimiento_ayuda')
+  const schema = obj({
+    decision: { type: 'string', enum: ['reservar', 'dejar_caducar', 'seguir_comparando'] },
+    efecto_seguimiento: { type: 'string', enum: ['me_acerca', 'neutro', 'me_aleja'] },
+    que_dijo_quien_decide_conmigo: str, motivo: str, que_faltaria_para_reservar: str,
+  })
+  return askJson<NonNullable<RoundClose['segunda']>>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
+    `Hace dos días recibiste esta propuesta:\n${proposal}\n\nTe llamaron de FiestaGo y decidiste bloquear la fecha 48 h gratis para pensarlo ("${first.motivo}").\n\n` +
+    `Desde entonces has tenido tiempo de mirarlo con calma y, si lo decides con alguien (pareja, familia, amigos), se lo has enseñado con el enlace de la propuesta; imagina con realismo qué te ha dicho según tu situación. Mientras tanto te llegó esto:\n[seguimiento_ayuda] ${follow?.text || ''}\n\n` +
+    'El bloqueo caduca hoy. Decide de verdad, con tu dinero y tu evento: "reservar" (pagas la señal en FiestaGo), "dejar_caducar" (no haces nada y la fecha se libera) o "seguir_comparando" (miras otras opciones fuera). Di si el seguimiento te acercó o te alejó, qué te dijo quien decide contigo, por qué decides eso y qué te faltaría para reservar.',
+    schema, 1500)
 }
 
 // ─── 3b. Entrevista final: qué te haría reservar ──────────────────
@@ -433,6 +549,22 @@ function funnelStats(cfg: SimConfig, total: number, rs: Round3Close[]) {
     reservan_sobre_total_pct: pct(dec.reservar || 0, total),
     senal_aceptable_pct: pct(rs.filter(r => r.senal_aceptable).length, n),
     pasos: touch,
+    ...(rs.some(r => r.segunda) ? (() => {
+      const second = rs.filter(r => r.segunda)
+      const finalBook = rs.filter(r => r.decision === 'reservar' || r.segunda?.decision === 'reservar').length
+      return {
+        tras_bloqueo: {
+          n: second.length,
+          reservan_pct: pct(second.filter(r => r.segunda!.decision === 'reservar').length, second.length),
+          dejan_caducar_pct: pct(second.filter(r => r.segunda!.decision === 'dejar_caducar').length, second.length),
+          siguen_comparando_pct: pct(second.filter(r => r.segunda!.decision === 'seguir_comparando').length, second.length),
+          seguimiento_me_acerca_pct: pct(second.filter(r => r.segunda!.efecto_seguimiento === 'me_acerca').length, second.length),
+          seguimiento_me_aleja_pct: pct(second.filter(r => r.segunda!.efecto_seguimiento === 'me_aleja').length, second.length),
+        },
+        cierre_final_reservan_pct: pct(finalBook, n),          // OBJETIVO ≥ 50 % (tras las 48 h)
+        cierre_final_sobre_total_pct: pct(finalBook, total),
+      }
+    })() : {}),
   }
 }
 type Round3Close = RoundClose
@@ -510,7 +642,7 @@ function samples(personas: Persona[], r1: Array<Round1 | null>, r2: Array<Round2
     comentarios: a!.posts.map(x => `[${x.id}] ${x.comentario} | objeción: ${x.objecion}`),
     web_falta: a!.web.lo_que_falta, web_objecion: a!.web.objecion, perfil: a!.perfil.reaccion,
     final: `${b!.accion_final} (${b!.mejor_post}): ${b!.motivo}`, para_reservar: b!.que_te_haria_reservar,
-    ...(d ? { cierre: { decision: d.decision, motivo: d.motivo, falta: d.que_faltaria_para_reservar, senal_ok: d.senal_aceptable, pasos: d.puntos.map(x => `[${x.id}] ${x.efecto}: ${x.comentario}`) } } : {}),
+    ...(d ? { cierre: { decision: d.decision, motivo: d.motivo, falta: d.que_faltaria_para_reservar, senal_ok: d.senal_aceptable, pasos: d.puntos.map(x => `[${x.id}] ${x.efecto}: ${x.comentario}`), ...(d.proveedor ? { proveedor: d.proveedor, precio_proveedor: d.propuesta?.precio_proveedor_eur, invitados: d.propuesta?.invitados } : {}), ...(d.segunda ? { tras_48h: d.segunda } : {}) } } : {}),
     ...(c ? { entrevista: { condiciones: c.condiciones, reservaria: c.reservaria_si_se_cumple, senal_max: c.senal_maxima_pct, canal: c.canal_preferido, literal: c.respuesta_literal } } : {}),
   }))
 }
@@ -523,6 +655,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown, interv
     messages: [{
       role: 'user',
       content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\n` +
+        (cfg.catalog === 'full_proposal' ? 'SIMULACIÓN DEL EMBUDO COMPLETO CON PROPUESTA ESCRITA (lo construido tras la 6.ª simulación, que dio 0 % de reservas en el cierre): cada persona que llega al cierre recibe una propuesta escrita de un proveedor REAL de FiestaGo con precio cerrado para su número de invitados, qué incluye y qué no, la señal en euros, las condiciones y sus opiniones de Google reales; luego la llamada de FiestaGo. Quien bloquea la fecha vuelve a decidir 48 h después, tras hablarlo en casa y recibir un seguimiento de ayuda. En "embudo": cierre_reservan_pct (en el primer momento), tras_bloqueo y cierre_final_reservan_pct (OBJETIVO ≥ 50 %). Abre el informe con el embudo completo en total y por segmento frente al 50 % y frente a la 6.ª simulación (en "previous"). Analiza qué pesa en la propuesta (precio frente a presupuesto, opiniones de Google, proveedores con o sin opiniones, qué incluye), qué dice quien decide con el cliente, y termina con "Qué falta para llegar al 50 %": palancas concretas ordenadas por impacto.\n\n' : '') +
         (cfg.catalog === 'full' ? 'SIMULACIÓN DEL EMBUDO COMPLETO: 1) ven posts, web y perfil (lo real de FiestaGo hoy); 2) leen opiniones de otros; 3) quien entra en la web o hace algo más pide presupuesto/llamada y vive el proceso real de cierre (respuesta del proveedor por FiestaGo, llamada de FiestaGo, recordatorio) y decide; 4) entrevista a todos. Datos del embudo en "embudo" de cada segmento. El OBJETIVO es que reserve al menos el 50 % de quienes llegan al cierre (cierre_reservan_pct). Abre el informe con el embudo completo (personas → llegan al cierre → reservan / bloquean / siguen comparando / descartan) en total y por segmento, frente al 50 %. Incluye una sección "Qué falta para llegar al 50 %" con palancas concretas ordenadas por impacto estimado, separando lo que mejora la llegada al cierre de lo que mejora el cierre.\n\n' : '') +
         (cfg.catalog === 'closing' ? 'ESCENARIO DE CIERRE DE VENTA: cada persona ya pidió presupuesto o llamada, recibió la respuesta del proveedor por FiestaGo, la llamada de FiestaGo y un recordatorio. "reservar" = paga la señal en FiestaGo; "apuntarse" = bloquea la fecha 48 h gratis o pide más información. El OBJETIVO es que al menos el 50 % RESERVE. Abre el informe con la tasa de cierre (reservar) y la de bloqueo (apuntarse) al final, en total y por segmento, frente al 50 %. Dedica una sección a "Qué falta para llegar al 50 %" con las palancas concretas ordenadas por impacto estimado (qué cambiar en la respuesta del proveedor, la llamada, el seguimiento, la web, el pago o la garantía).\n\n' : '') +
         (cfg.catalog === 'plan_fase1' ? 'En esta simulación la web y las redes son HIPOTÉTICAS: así quedarían tras aplicar el plan de confianza (primer paso sin pagar, señal y cancelación gratis 14 días, persona también el sábado, navegación por evento con packs de precio total, catálogo local con nombres, 11 reseñas reales de eventos fundadores y notas de Google de los proveedores). Cada persona solo ve los posts de su tipo de evento, como con anuncios segmentados (n_vistos). Preguntas clave, cada una con su sección: ¿qué objeciones desaparecen y cuáles quedan?; ¿aparecen ya intenciones de apuntarse o reservar, en qué segmento y por qué?; ¿qué parte del plan pesa más (para priorizar qué construir primero)?\n\n' : '') +
@@ -547,7 +680,10 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   const save = (patch: Record<string, unknown>) => supabase.from('sim_runs').update({ ...patch, usage, updated_at: new Date().toISOString() }).eq('id', runId)
 
   let cfg = run.config as SimConfig | null
-  if (cfg?.catalog === 'full' && !cfg.posts) {
+  if (cfg?.catalog === 'full_proposal' && !cfg.posts) {
+    const base = defaultConfig({ total: 0, byCategory: {}, cities: [] })
+    cfg = { ...base, ...proposalConfig(), ...cfg }
+  } else if (cfg?.catalog === 'full' && !cfg.posts) {
     const base = defaultConfig({ total: 0, byCategory: {}, cities: [] })
     cfg = { ...base, ...fullConfig(), ...cfg }
   } else if (cfg?.catalog === 'closing' && !cfg.posts) {
@@ -592,9 +728,22 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   // Cierre: quien entró en la web o hizo algo más vive el proceso real
   let rc: Array<RoundClose | null> = personas.map(() => null)
   if (cfg.closing) {
-    rc = await pool(personas, (p, i) => r2[i] && ACTION_RANK[r2[i]!.accion_final] >= 2
-      ? runClose(cfg!, p, r2[i]!)
-      : Promise.resolve(null))
+    const provs = cfg.closing.proposal ? await loadRealProviders(supabase) : []
+    rc = await pool(personas, async (p, i) => {
+      if (!r2[i] || ACTION_RANK[r2[i]!.accion_final] < 2) return null
+      if (!cfg!.closing!.proposal) return runClose(cfg!, p, r2[i]!)
+      // Propuesta escrita de un proveedor real, para su evento
+      const prov = pickProvider(provs, p)
+      if (!prov) return runClose(cfg!, p, r2[i]!)
+      const q = await generateQuote(p, prov)
+      const text = proposalText(p, prov, q)
+      const tps = cfg!.closing!.touchpoints.filter(t => t.id !== 'seguimiento_ayuda')
+        .map(t => t.id === 'propuesta_escrita' ? { ...t, text } : t)
+      const first = await runClose(cfg!, p, r2[i]!, tps)
+      const out: RoundClose = { ...first, proveedor: `${prov.name} (${prov.category})`, propuesta: q }
+      if (first.decision === 'bloquear_fecha') out.segunda = await runClose2(cfg!, p, first, text)
+      return out
+    })
     await save({ status: 'entrevista', round_close: rc })
   }
 
