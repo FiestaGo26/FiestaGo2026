@@ -450,7 +450,7 @@ export type RoundClose = {
   proveedor?: string
   propuesta?: ProviderQuote
   /** Quien bloqueó la fecha vuelve a decidir 48 h después */
-  segunda?: { decision: 'reservar' | 'dejar_caducar' | 'seguir_comparando'; efecto_seguimiento: 'me_acerca' | 'neutro' | 'me_aleja'; que_dijo_quien_decide_conmigo: string; motivo: string; que_faltaria_para_reservar: string }
+  segunda?: { decision: 'reservar' | 'descartar_definitivamente'; efecto_seguimiento: 'me_acerca' | 'neutro' | 'me_aleja'; que_dijo_quien_decide_conmigo: string; motivo: string; motivo_exacto_descarte: string; que_faltaria_para_reservar: string }
 }
 
 async function runClose(cfg: SimConfig, p: Persona, r2: Round2, override?: Stimulus[]): Promise<RoundClose> {
@@ -474,14 +474,16 @@ async function runClose(cfg: SimConfig, p: Persona, r2: Round2, override?: Stimu
 async function runClose2(cfg: SimConfig, p: Persona, first: RoundClose, proposal: string): Promise<NonNullable<RoundClose['segunda']>> {
   const follow = cfg.closing!.touchpoints.find(t => t.id === 'seguimiento_ayuda')
   const schema = obj({
-    decision: { type: 'string', enum: ['reservar', 'dejar_caducar', 'seguir_comparando'] },
+    decision: { type: 'string', enum: ['reservar', 'descartar_definitivamente'] },
     efecto_seguimiento: { type: 'string', enum: ['me_acerca', 'neutro', 'me_aleja'] },
-    que_dijo_quien_decide_conmigo: str, motivo: str, que_faltaria_para_reservar: str,
+    que_dijo_quien_decide_conmigo: str, motivo: str,
+    motivo_exacto_descarte: { type: 'string', description: 'si descartas: la razón exacta y concreta por la que no vas a reservar con FiestaGo; si reservas, cadena vacía' },
+    que_faltaria_para_reservar: str,
   })
   return askJson<NonNullable<RoundClose['segunda']>>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
     `Hace dos días recibiste esta propuesta:\n${proposal}\n\nTe llamaron de FiestaGo y decidiste bloquear la fecha 48 h gratis para pensarlo ("${first.motivo}").\n\n` +
     `Desde entonces has tenido tiempo de mirarlo con calma y, si lo decides con alguien (pareja, familia, amigos), se lo has enseñado con el enlace de la propuesta; imagina con realismo qué te ha dicho según tu situación. Mientras tanto te llegó esto:\n[seguimiento_ayuda] ${follow?.text || ''}\n\n` +
-    'El bloqueo caduca hoy. Decide de verdad, con tu dinero y tu evento: "reservar" (pagas la señal en FiestaGo), "dejar_caducar" (no haces nada y la fecha se libera) o "seguir_comparando" (miras otras opciones fuera). Di si el seguimiento te acercó o te alejó, qué te dijo quien decide contigo, por qué decides eso y qué te faltaría para reservar.',
+    'El bloqueo caduca hoy y FiestaGo te pide una respuesta clara: o reservas, o lo descartas definitivamente (no hay "ya veré"). Decide de verdad, con tu dinero y tu evento, como lo harías en la vida real: "reservar" (pagas la señal en FiestaGo) o "descartar_definitivamente" (no vas a contratar este servicio con FiestaGo). Si descartas, di EXACTAMENTE por qué, con la razón concreta y real (no una genérica). Di también si el seguimiento te acercó o te alejó, qué te dijo quien decide contigo y qué te faltaría para reservar.',
     schema, 1500)
 }
 
@@ -556,8 +558,8 @@ function funnelStats(cfg: SimConfig, total: number, rs: Round3Close[]) {
         tras_bloqueo: {
           n: second.length,
           reservan_pct: pct(second.filter(r => r.segunda!.decision === 'reservar').length, second.length),
-          dejan_caducar_pct: pct(second.filter(r => r.segunda!.decision === 'dejar_caducar').length, second.length),
-          siguen_comparando_pct: pct(second.filter(r => r.segunda!.decision === 'seguir_comparando').length, second.length),
+          descartan_definitivamente_pct: pct(second.filter(r => r.segunda!.decision === 'descartar_definitivamente').length, second.length),
+          motivos_descarte: second.filter(r => r.segunda!.decision === 'descartar_definitivamente').map(r => r.segunda!.motivo_exacto_descarte).filter(Boolean).slice(0, 80),
           seguimiento_me_acerca_pct: pct(second.filter(r => r.segunda!.efecto_seguimiento === 'me_acerca').length, second.length),
           seguimiento_me_aleja_pct: pct(second.filter(r => r.segunda!.efecto_seguimiento === 'me_aleja').length, second.length),
         },
@@ -655,7 +657,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown, interv
     messages: [{
       role: 'user',
       content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\n` +
-        (cfg.catalog === 'full_proposal' ? 'SIMULACIÓN DEL EMBUDO COMPLETO CON PROPUESTA ESCRITA (lo construido tras la 6.ª simulación, que dio 0 % de reservas en el cierre): cada persona que llega al cierre recibe una propuesta escrita de un proveedor REAL de FiestaGo con precio cerrado para su número de invitados, qué incluye y qué no, la señal en euros, las condiciones y sus opiniones de Google reales; luego la llamada de FiestaGo. Quien bloquea la fecha vuelve a decidir 48 h después, tras hablarlo en casa y recibir un seguimiento de ayuda. En "embudo": cierre_reservan_pct (en el primer momento), tras_bloqueo y cierre_final_reservan_pct (OBJETIVO ≥ 50 %). Abre el informe con el embudo completo en total y por segmento frente al 50 % y frente a la 6.ª simulación (en "previous"). Analiza qué pesa en la propuesta (precio frente a presupuesto, opiniones de Google, proveedores con o sin opiniones, qué incluye), qué dice quien decide con el cliente, y termina con "Qué falta para llegar al 50 %": palancas concretas ordenadas por impacto.\n\n' : '') +
+        (cfg.catalog === 'full_proposal' ? 'SIMULACIÓN DEL EMBUDO COMPLETO CON PROPUESTA ESCRITA (lo construido tras la 6.ª simulación, que dio 0 % de reservas en el cierre): cada persona que llega al cierre recibe una propuesta escrita de un proveedor REAL de FiestaGo con precio cerrado para su número de invitados, qué incluye y qué no, la señal en euros, las condiciones y sus opiniones de Google reales; luego la llamada de FiestaGo. Quien bloquea la fecha vuelve a decidir 48 h después, tras hablarlo en casa y recibir un seguimiento de ayuda; en esa segunda decisión solo puede reservar o descartarlo definitivamente diciendo el motivo exacto (motivo_exacto_descarte en la muestra): agrupa esos motivos y cuantifícalos, son la lista de lo que hay que arreglar. En "embudo": cierre_reservan_pct (en el primer momento), tras_bloqueo y cierre_final_reservan_pct (OBJETIVO ≥ 50 %). Abre el informe con el embudo completo en total y por segmento frente al 50 % y frente a la 6.ª simulación (en "previous"). Analiza qué pesa en la propuesta (precio frente a presupuesto, opiniones de Google, proveedores con o sin opiniones, qué incluye), qué dice quien decide con el cliente, y termina con "Qué falta para llegar al 50 %": palancas concretas ordenadas por impacto.\n\n' : '') +
         (cfg.catalog === 'full' ? 'SIMULACIÓN DEL EMBUDO COMPLETO: 1) ven posts, web y perfil (lo real de FiestaGo hoy); 2) leen opiniones de otros; 3) quien entra en la web o hace algo más pide presupuesto/llamada y vive el proceso real de cierre (respuesta del proveedor por FiestaGo, llamada de FiestaGo, recordatorio) y decide; 4) entrevista a todos. Datos del embudo en "embudo" de cada segmento. El OBJETIVO es que reserve al menos el 50 % de quienes llegan al cierre (cierre_reservan_pct). Abre el informe con el embudo completo (personas → llegan al cierre → reservan / bloquean / siguen comparando / descartan) en total y por segmento, frente al 50 %. Incluye una sección "Qué falta para llegar al 50 %" con palancas concretas ordenadas por impacto estimado, separando lo que mejora la llegada al cierre de lo que mejora el cierre.\n\n' : '') +
         (cfg.catalog === 'closing' ? 'ESCENARIO DE CIERRE DE VENTA: cada persona ya pidió presupuesto o llamada, recibió la respuesta del proveedor por FiestaGo, la llamada de FiestaGo y un recordatorio. "reservar" = paga la señal en FiestaGo; "apuntarse" = bloquea la fecha 48 h gratis o pide más información. El OBJETIVO es que al menos el 50 % RESERVE. Abre el informe con la tasa de cierre (reservar) y la de bloqueo (apuntarse) al final, en total y por segmento, frente al 50 %. Dedica una sección a "Qué falta para llegar al 50 %" con las palancas concretas ordenadas por impacto estimado (qué cambiar en la respuesta del proveedor, la llamada, el seguimiento, la web, el pago o la garantía).\n\n' : '') +
         (cfg.catalog === 'plan_fase1' ? 'En esta simulación la web y las redes son HIPOTÉTICAS: así quedarían tras aplicar el plan de confianza (primer paso sin pagar, señal y cancelación gratis 14 días, persona también el sábado, navegación por evento con packs de precio total, catálogo local con nombres, 11 reseñas reales de eventos fundadores y notas de Google de los proveedores). Cada persona solo ve los posts de su tipo de evento, como con anuncios segmentados (n_vistos). Preguntas clave, cada una con su sección: ¿qué objeciones desaparecen y cuáles quedan?; ¿aparecen ya intenciones de apuntarse o reservar, en qué segmento y por qué?; ¿qué parte del plan pesa más (para priorizar qué construir primero)?\n\n' : '') +
