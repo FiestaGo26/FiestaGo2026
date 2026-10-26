@@ -3319,10 +3319,7 @@ function VideoCallSection({ title, tone, items, respond }: {
             <div className="flex justify-between items-start mb-2 gap-3">
               <div className="flex-1">
                 <div className="font-semibold text-ink text-base">{r.client_name}</div>
-                <div className="text-xs text-ink/50 mt-0.5">
-                  {r.client_email}
-                  {r.client_phone && ` · ${r.client_phone}`}
-                </div>
+                <div className="text-xs text-ink/50 mt-0.5">Le enviamos el enlace y la hora desde FiestaGo</div>
               </div>
               <div className="text-[10px] text-ink/40 whitespace-nowrap">
                 {new Date(r.created_at).toLocaleDateString('es-ES', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
@@ -3339,16 +3336,6 @@ function VideoCallSection({ title, tone, items, respond }: {
               </div>
             )}
             {r.jitsi_url && (() => {
-              const firstName = (r.client_name || '').split(' ')[0] || 'hola'
-              const waText = `¡Hola ${firstName}! Aquí tienes el link para nuestra videollamada:\n\n${r.jitsi_url}\n\nEs Jitsi Meet, funciona en cualquier navegador y no hace falta registrarse. Confírmame la hora que te viene bien 😊`
-              const rawPhone = (r.client_phone || '').replace(/[^\d]/g, '')
-              const waPhone = rawPhone.length === 9 && /^[67]/.test(rawPhone) ? '34' + rawPhone : rawPhone
-              const waUrl = waPhone
-                ? `https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`
-                : `https://wa.me/?text=${encodeURIComponent(waText)}`
-              const mailUrl = r.client_email
-                ? `mailto:${r.client_email}?subject=${encodeURIComponent('Videollamada FiestaGo · link de la sala')}&body=${encodeURIComponent(waText)}`
-                : null
               return (
                 <div className="mt-3 mb-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
                   <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-1">Link de la sala</div>
@@ -3362,17 +3349,7 @@ function VideoCallSection({ title, tone, items, respond }: {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <a href={waUrl} target="_blank" rel="noreferrer"
-                      className="text-xs px-3 py-2 rounded-lg font-bold text-white transition-colors"
-                      style={{ background: '#25D366' }}>
-                      💬 Enviar por WhatsApp{waPhone ? '' : ' (elegir contacto)'}
-                    </a>
-                    {mailUrl && (
-                      <a href={mailUrl}
-                        className="text-xs px-3 py-2 border border-emerald-300 text-emerald-800 bg-white rounded-lg font-bold hover:bg-emerald-50 transition-colors">
-                        📧 Enviar por email
-                      </a>
-                    )}
+                    <span className="text-xs text-emerald-800">✓ Se lo hemos enviado al cliente por email al proponer la hora.</span>
                     <a href={r.jitsi_url} target="_blank" rel="noreferrer"
                       className="text-xs px-3 py-2 border border-emerald-300 text-emerald-800 bg-white rounded-lg font-bold hover:bg-emerald-50 transition-colors ml-auto">
                       📹 Entrar a la sala

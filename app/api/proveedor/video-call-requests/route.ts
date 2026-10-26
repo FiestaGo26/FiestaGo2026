@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
+import { maskContacts } from '@/lib/date-holds'
+import { sendEmail } from '@/lib/resend'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,7 +23,15 @@ export async function GET(req: NextRequest) {
     .limit(100)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ requests: data || [] })
+  // Sin datos de contacto del cliente: la llamada se hace por el enlace que
+  // le enviamos desde FiestaGo (la venta se queda dentro de la plataforma)
+  const requests = (data || []).map((r: any) => ({
+    ...r,
+    client_name: String(r.client_name || '').trim().split(/\s+/)[0] || 'Cliente',
+    client_email: null, client_phone: null,
+    reason: r.reason ? maskContacts(r.reason) : null,
+  }))
+  return NextResponse.json({ requests })
 }
 
 // PATCH /api/proveedor/video-call-requests
@@ -51,7 +61,7 @@ export async function PATCH(req: NextRequest) {
   // Verificar que la solicitud es de este proveedor.
   const { data: existing } = await supabase
     .from('video_call_requests')
-    .select('id, provider_id, jitsi_url')
+    .select('id, provider_id, jitsi_url, client_name, client_email, providers(name)')
     .eq('id', request_id).maybeSingle()
   if (!existing || existing.provider_id !== auth.data.id) {
     return NextResponse.json({ error: 'Solicitud no encontrada' }, { status: 404 })
@@ -79,6 +89,19 @@ export async function PATCH(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Al proponer, FiestaGo envía al cliente el enlace y la hora
+  if (action === 'propose' && existing.client_email) {
+    const prov: any = Array.isArray((existing as any).providers) ? (existing as any).providers[0] : (existing as any).providers
+    const when = data.proposed_at
+      ? new Date(data.proposed_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+      : null
+    await sendEmail({
+      to: existing.client_email,
+      subject: `📹 Videollamada con ${prov?.name || 'tu proveedor'} · FiestaGo`,
+      text: `Hola ${existing.client_name},\n\n${prov?.name || 'El proveedor'} te propone una videollamada${when ? ` el ${when}` : ''}. Entra desde este enlace (no hace falta instalar nada):\n\n${data.jitsi_url}\n\nSi esa hora no te va bien, contesta a este email y lo movemos.\n\nFiestaGo`,
+    }).catch(() => {})
+  }
   return NextResponse.json({ request: data, ok: true })
 }
 
