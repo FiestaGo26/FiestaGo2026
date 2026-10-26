@@ -1,11 +1,14 @@
 'use client'
 
 // Peticiones de clientes (presupuestos y fechas bloqueadas 48 h). El
-// proveedor no ve el email ni el teléfono del cliente: responde aquí y
-// FiestaGo le envía la respuesta. Verá sus datos cuando pague la señal.
+// proveedor no ve el email ni el teléfono del cliente: responde aquí con
+// su propuesta (precio cerrado para ese cliente, qué incluye y la señal) y
+// FiestaGo se la envía como página para revisar, compartir y reservar.
+// Verá los datos del cliente cuando pague la señal.
 
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { DEPOSIT_MIN, DEPOSIT_MAX, formatEuro, precioCliente } from '@/lib/pricing'
 
 type Request = {
   id: string
@@ -20,7 +23,14 @@ type Request = {
   message: string | null
   provider_reply: string | null
   replied_at: string | null
+  service_name: string | null
+  suggested_total: number | null
+  suggested_deposit_pct: number
+  quote_total: number | null
+  proposal_url: string | null
 }
+
+type Draft = { total: string; includes: string; deposit: number; note: string }
 
 const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -29,7 +39,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
   apiFetch: (url: string, init?: RequestInit) => Promise<Response>
 }) {
   const [requests, setRequests] = useState<Request[]>([])
-  const [drafts,   setDrafts]   = useState<Record<string, string>>({})
+  const [drafts,   setDrafts]   = useState<Record<string, Draft>>({})
   const [sending,  setSending]  = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,20 +50,27 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerId])
 
+  const draftOf = (r: Request): Draft => drafts[r.id] || {
+    total: r.suggested_total ? String(r.suggested_total) : '', includes: '', deposit: r.suggested_deposit_pct || DEPOSIT_MIN, note: '',
+  }
+  const setDraft = (r: Request, patch: Partial<Draft>) => setDrafts(d => ({ ...d, [r.id]: { ...draftOf(r), ...patch } }))
+
   async function reply(r: Request) {
-    const text = (drafts[r.id] || '').trim()
-    if (text.length < 5) { toast.error('Escribe tu respuesta'); return }
+    const d0 = draftOf(r)
+    const total = Number(String(d0.total).replace(',', '.')) || 0
+    if (total <= 0) { toast.error('Pon el precio total para este cliente'); return }
+    if (d0.includes.trim().length < 5) { toast.error('Explica qué incluye el precio'); return }
     setSending(r.id)
     try {
       const res = await apiFetch('/api/proveedor/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider_id: providerId, id: r.id, reply: text }),
+        body: JSON.stringify({ provider_id: providerId, id: r.id, total, includes: d0.includes, deposit_pct: d0.deposit, reply: d0.note }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'No se pudo enviar')
-      setRequests(rs => rs.map(x => x.id === r.id ? { ...x, provider_reply: text, replied_at: new Date().toISOString() } : x))
-      toast.success('Respuesta enviada al cliente ✓')
+      setRequests(rs => rs.map(x => x.id === r.id ? { ...x, provider_reply: d0.note || null, quote_total: total, proposal_url: d.proposal_url, replied_at: new Date().toISOString() } : x))
+      toast.success('Propuesta enviada al cliente ✓')
     } catch (err: any) { toast.error(err.message) }
     setSending(null)
   }
@@ -64,7 +81,9 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
     <div className="bg-white border border-stone-200 rounded-2xl p-5 mb-6 shadow-card">
       <h2 className="font-serif text-xl font-bold text-ink mb-1">Peticiones de clientes</h2>
       <p className="text-xs text-ink/55 mb-4 leading-relaxed">
-        Presupuestos y fechas bloqueadas 48 h. Responde aquí y se lo enviamos al cliente al momento.
+        Presupuestos y fechas bloqueadas 48 h. Mándale tu propuesta: precio total para su caso, qué incluye y la señal.
+        Se la enviamos como una página que puede compartir con su pareja o su familia y desde la que reserva.
+        Casi nadie reserva sin un precio cerrado por escrito, así que cuanto antes, mejor.
         Verás su email y teléfono cuando pague la señal; hasta entonces, cualquier dato de contacto que escribas se oculta.
       </p>
       <div className="space-y-4">
@@ -85,22 +104,44 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
               {r.status === 'expired' && ' · bloqueo caducado'}
             </div>
             {r.message && <p className="text-sm text-ink/70 italic mb-3">“{r.message}”</p>}
-            {r.provider_reply ? (
+            {r.replied_at ? (
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800">
-                <strong>Tu respuesta</strong> ({new Date(r.replied_at!).toLocaleDateString('es-ES')}): {r.provider_reply}
+                <strong>Respondida</strong> ({new Date(r.replied_at).toLocaleDateString('es-ES')})
+                {r.quote_total ? ` · propuesta de ${formatEuro(r.quote_total)} (el cliente ve ${formatEuro(precioCliente(r.quote_total))} con la Garantía)` : ''}
+                {r.provider_reply ? `: ${r.provider_reply}` : ''}
+                {r.proposal_url && <> · <a href={r.proposal_url} target="_blank" rel="noreferrer" className="underline font-semibold">ver propuesta</a></>}
               </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <textarea rows={3} value={drafts[r.id] || ''}
-                  onChange={e => setDrafts(d => ({ ...d, [r.id]: e.target.value }))}
-                  placeholder="Precio total para su caso, qué incluye, disponibilidad… (sin teléfonos ni emails)"
-                  className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
-                <button type="button" onClick={() => reply(r)} disabled={sending === r.id}
-                  className="self-end bg-coral text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-coral-dark disabled:opacity-50">
-                  {sending === r.id ? 'Enviando…' : 'Enviar respuesta'}
-                </button>
-              </div>
-            )}
+            ) : (() => {
+              const d = draftOf(r)
+              const total = Number(String(d.total).replace(',', '.')) || 0
+              return (
+                <div className="flex flex-col gap-2">
+                  {r.service_name && <div className="text-[11px] text-ink/55">Servicio: {r.service_name}{r.suggested_total ? ` · tu tarifa para ${r.guests || 'estos'} invitados: ${formatEuro(r.suggested_total)}` : ''}</div>}
+                  <label className="text-xs font-semibold text-ink">Precio total para este cliente (lo que cobras tú)
+                    <input type="number" min={0} step="1" value={d.total} onChange={e => setDraft(r, { total: e.target.value })}
+                      placeholder="Ej. 1250"
+                      className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral"/>
+                  </label>
+                  {total > 0 && <div className="text-[11px] text-ink/55">El cliente verá {formatEuro(precioCliente(total))} con la Garantía de Éxito incluida.</div>}
+                  <label className="text-xs font-semibold text-ink">Qué incluye (y qué no)
+                    <textarea rows={3} value={d.includes} onChange={e => setDraft(r, { includes: e.target.value })}
+                      placeholder="Horas, personas, material, desplazamiento, entregas y plazos… y lo que no entra."
+                      className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
+                  </label>
+                  <label className="text-xs font-semibold text-ink">Señal al reservar: {d.deposit} %
+                    <input type="range" min={DEPOSIT_MIN} max={DEPOSIT_MAX} step={1} value={d.deposit}
+                      onChange={e => setDraft(r, { deposit: Number(e.target.value) })} className="mt-1 w-full accent-coral"/>
+                  </label>
+                  <textarea rows={2} value={d.note} onChange={e => setDraft(r, { note: e.target.value })}
+                    placeholder="Mensaje para el cliente (opcional, sin teléfonos ni emails)"
+                    className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
+                  <button type="button" onClick={() => reply(r)} disabled={sending === r.id}
+                    className="self-end bg-coral text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-coral-dark disabled:opacity-50">
+                    {sending === r.id ? 'Enviando…' : 'Enviar propuesta'}
+                  </button>
+                </div>
+              )
+            })()}
           </div>
         ))}
       </div>

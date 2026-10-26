@@ -21,6 +21,9 @@ type Provider = {
   tag: string | null
   rating: number
   total_reviews: number
+  google_rating?: number | null
+  google_rating_count?: number | null
+  google_reviews?: Array<{ text: string; stars: number; date: string | null }> | null
   total_bookings: number
   featured: boolean
   verified: boolean
@@ -552,6 +555,13 @@ export default function ProviderDetailPage() {
               </span>
             )}
             {provider.rating > 0 && <span className="text-ink/30">·</span>}
+            {provider.google_rating ? (
+              <><span className="flex items-center gap-1">
+                <span className="text-amber-500">★</span>
+                <span className="font-medium text-ink">{Number(provider.google_rating).toFixed(1).replace('.', ',')}</span>
+                <span className="text-ink/55">en Google{provider.google_rating_count ? ` (${provider.google_rating_count})` : ''}</span>
+              </span><span className="text-ink/30">·</span></>
+            ) : null}
             <span className="underline underline-offset-2">{provider.city}</span>
             {provider.verified && <><span className="text-ink/30">·</span><span>🛡️ Verificado</span></>}
             {cat && <><span className="text-ink/30">·</span><span>{cat.icon} {cat.label}</span></>}
@@ -742,6 +752,26 @@ export default function ProviderDetailPage() {
                     </button>
                   </div>
                 )}
+              </section>
+            )}
+
+            {/* Opiniones de Google: comprobables fuera de FiestaGo (lib/google-reviews.ts) */}
+            {Array.isArray(provider.google_reviews) && provider.google_reviews.length > 0 && (
+              <section className="pb-2">
+                <h2 className="font-serif text-2xl text-ink mb-1">
+                  <span className="text-amber-500">★</span>{' '}
+                  {provider.google_rating ? Number(provider.google_rating).toFixed(1).replace('.', ',') : ''}
+                  <span className="text-ink/55 text-lg font-normal"> · opiniones de Google{provider.google_rating_count ? ` (${provider.google_rating_count})` : ''}</span>
+                </h2>
+                <p className="text-xs text-ink/55 mb-4">Opiniones públicas de sus clientes en Google Maps. Búscalo por su nombre y compruébalo.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                  {provider.google_reviews.slice(0, 4).map((r, i) => (
+                    <div key={i} className="text-sm text-ink/75 leading-relaxed">
+                      <div className="text-amber-500 text-xs mb-1">{'★'.repeat(Math.round(r.stars))}{r.date ? <span className="text-ink/45 ml-2">{new Date(r.date).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span> : null}</div>
+                      “{r.text.length > 260 ? `${r.text.slice(0, 260)}…` : r.text}”
+                    </div>
+                  ))}
+                </div>
               </section>
             )}
 

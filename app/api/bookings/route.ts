@@ -7,6 +7,7 @@ import { computePaymentSchedule } from '@/lib/booking-payments'
 import { sanitizeAcquisition } from '@/lib/attribution'
 import { releaseHolds } from '@/lib/date-holds'
 import { priceForGuests, cleanDeposit } from '@/lib/pricing'
+import { loadProposal } from '@/lib/proposals'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,13 +18,34 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient()
     const body = await req.json().catch(() => ({}))
 
-    const {
+    let {
       booking_type, provider_id, pack_id, service_id,
       client_name, client_email, client_phone,
       event_date, event_type, city, guests, message,
       total_amount, selected_addons, coupon_code,
       planner_name, planner_email,   // opcional: wedding/event planner que gestiona en nombre del cliente
     } = body || {}
+
+    // Reserva desde una propuesta escrita (/propuesta/<token>): manda lo que
+    // dice la propuesta (precio cerrado, señal, fecha, cliente), no el navegador.
+    const proposal = body?.proposal_token ? await loadProposal(supabase, String(body.proposal_token)) : null
+    if (body?.proposal_token) {
+      if (!proposal) return NextResponse.json({ error: 'Propuesta no encontrada' }, { status: 404 })
+      if (proposal.status === 'converted') return NextResponse.json({ error: 'Esta propuesta ya está reservada' }, { status: 409 })
+      if (!proposal.event_date) return NextResponse.json({ error: 'La propuesta no tiene fecha. Escríbenos y la cerramos contigo.' }, { status: 400 })
+      booking_type = 'provider'
+      provider_id  = proposal.provider.id
+      service_id   = proposal.service?.id || null
+      client_name  = proposal.client_name
+      client_email = proposal.client_email
+      event_date   = proposal.event_date
+      event_type   = proposal.event_type || event_type
+      guests       = proposal.guests
+      city         = proposal.provider.city
+      selected_addons = []
+      coupon_code  = null
+      message      = [`Reserva desde la propuesta escrita: ${proposal.includes}`, message].filter(Boolean).join('\n\n')
+    }
 
     if (!client_name || !client_email || !event_date) {
       return NextResponse.json({ error: 'Faltan campos obligatorios (nombre, email, fecha)' }, { status: 400 })
@@ -73,6 +95,7 @@ export async function POST(req: NextRequest) {
         amount = Math.round((priceForGuests(s, parseInt(guests)) + addonsTotal) * 100) / 100
       }
     }
+    if (proposal) amount = proposal.base
 
     // Aplicar cupón si viene y es válido (re-valida en el servidor, no fiamos
     // del cliente). Si es válido, descuenta el importe y reserva una "plaza"
@@ -114,7 +137,7 @@ export async function POST(req: NextRequest) {
     // antes del evento). Si no hay service_id, no hay anticipo y el
     // cliente paga 100% al reservar.
     // Señal siempre entre el 10 % y el 20 % (ver cleanDeposit).
-    const depositPct = svcRow ? cleanDeposit(svcRow.deposit_pct) : 0
+    const depositPct = proposal ? proposal.deposit_pct : svcRow ? cleanDeposit(svcRow.deposit_pct) : 0
     // Opción A: pasamos base y Garantía por separado — la Garantía se cobra
     // ÍNTEGRA con el anticipo, no proporcional. Ver comentarios de
     // computePaymentSchedule para la lógica completa.
@@ -157,6 +180,10 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    if (proposal) {
+      await supabase.from('date_holds').update({ status: 'converted' }).eq('id', proposal.hold_id)
+    }
 
     // Update provider booking count (non-bloqueante)
     if (provider_id) {

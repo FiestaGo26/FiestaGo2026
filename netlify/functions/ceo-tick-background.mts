@@ -21,6 +21,7 @@ import { runCeoRoutine, type CeoKind } from '../../lib/ceo-agent'
 import { claimNextAction, completeAction } from '../../lib/ceo-actions'
 import { runProviderSearch } from '../../lib/provider-search'
 import { releaseHolds } from '../../lib/date-holds'
+import { holdFollowups } from '../../lib/proposals'
 import { publishNext } from '../../lib/social-publisher'
 
 const MAX_ACTIONS = 20
@@ -145,6 +146,16 @@ export default async (req: Request) => {
     out.holds_expired = await releaseHolds(supabase, { expired: true, status: 'expired' })
   } catch (err: any) {
     out.holds_expired = `error: ${err.message}`
+  }
+  // Seguimiento de ayuda a las ~20 h de cada petición (cliente) y aviso al
+  // proveedor que aún no ha mandado su propuesta. Solo en horario de día.
+  const madridHour = madridNow().hour
+  if (madridHour >= 9 && madridHour < 21) {
+    try {
+      out.hold_followups = await holdFollowups(supabase)
+    } catch (err: any) {
+      out.hold_followups = `error: ${err.message}`
+    }
   }
   // Las funciones de segundo plano no devuelven nada al cliente: lo
   // dejamos en los logs de Netlify (Functions → ceo-tick-background).
