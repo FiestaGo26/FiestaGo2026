@@ -23,6 +23,9 @@ function checkAuth(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET
   if (cronSecret && req.headers.get('x-cron-secret') === cronSecret) return true
   if (req.headers.get('x-admin-password') === process.env.ADMIN_PASSWORD) return true
+  // El latido del CEO (y las pruebas desde Supabase) usan su propio secreto
+  const tick = process.env.CEO_TICK_SECRET
+  if (tick && req.headers.get('x-tick-secret') === tick) return true
   return false
 }
 
