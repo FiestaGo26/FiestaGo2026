@@ -4,7 +4,7 @@ import { requireProviderAuth } from '@/lib/auth'
 import { maskContacts } from '@/lib/date-holds'
 import { sendEmail } from '@/lib/resend'
 import { cleanDeposit } from '@/lib/pricing'
-import { newProposalToken, proposalUrl, suggestedBase } from '@/lib/proposals'
+import { maskPrices, newProposalToken, proposalUrl, suggestedBase, type ProposalQuestion } from '@/lib/proposals'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('date_holds')
-    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token')
+    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token, questions')
     .eq('provider_id', providerId!)
     .in('kind', ['hold', 'quote'])
     .gte('created_at', new Date(Date.now() - 90 * 86400_000).toISOString())
@@ -54,12 +54,15 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/proveedor/requests — body: { provider_id, id, reply, total, includes, deposit_pct }
+//   o, para contestar una pregunta del cliente: { provider_id, id, question_index, answer }
 // Con total → propuesta escrita (precio cerrado para ese cliente) que el
 // cliente ve en /propuesta/<token> y desde la que reserva.
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const auth = await requireProviderAuth(req, body.provider_id)
   if (!auth.ok) return auth.response
+
+  if (body.question_index != null) return answerQuestion(body)
 
   const reply = String(body.reply || '').trim().slice(0, 3000)
   const total = Math.round((Number(body.total) || 0) * 100) / 100
@@ -77,7 +80,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Petición no encontrada' }, { status: 404 })
   }
 
-  const safeReply = reply ? maskContacts(reply) : null
+  const safeReply = reply ? maskPrices(maskContacts(reply)) : null
   const token = total > 0 ? (hold.proposal_token || newProposalToken()) : null
   await supabase.from('date_holds')
     .update({
@@ -101,4 +104,28 @@ export async function POST(req: NextRequest) {
   }).catch(() => {})
 
   return NextResponse.json({ ok: true, proposal_url: token ? proposalUrl(token) : null })
+}
+
+async function answerQuestion(body: any) {
+  const answer = String(body.answer || '').trim().slice(0, 2000)
+  if (answer.length < 2) return NextResponse.json({ error: 'Escribe tu respuesta' }, { status: 400 })
+  const supabase = createAdminClient()
+  const { data: hold } = await supabase.from('date_holds')
+    .select('id, provider_id, client_name, client_email, proposal_token, questions, providers(name)')
+    .eq('id', body.id).maybeSingle()
+  if (!hold || hold.provider_id !== body.provider_id) return NextResponse.json({ error: 'Petición no encontrada' }, { status: 404 })
+  const qs: ProposalQuestion[] = Array.isArray(hold.questions) ? hold.questions : []
+  const i = Number(body.question_index)
+  if (!qs[i]) return NextResponse.json({ error: 'Pregunta no encontrada' }, { status: 404 })
+
+  qs[i] = { ...qs[i], a: maskPrices(maskContacts(answer)), answered_at: new Date().toISOString() }
+  await supabase.from('date_holds').update({ questions: qs }).eq('id', hold.id)
+
+  const prov: any = Array.isArray(hold.providers) ? hold.providers[0] : hold.providers
+  await sendEmail({
+    to: hold.client_email,
+    subject: `${prov?.name || 'Tu proveedor'} ha contestado tu pregunta · FiestaGo`,
+    text: `Hola ${hold.client_name},\n\nPreguntaste: "${qs[i].q}"\n\n${prov?.name || 'El proveedor'} responde: "${qs[i].a}"\n\nLa respuesta queda por escrito en tu propuesta${hold.proposal_token ? `: ${proposalUrl(hold.proposal_token)}` : ''}\n\nFiestaGo`,
+  }).catch(() => {})
+  return NextResponse.json({ ok: true })
 }

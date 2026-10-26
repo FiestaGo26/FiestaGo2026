@@ -16,3 +16,7 @@ alter table public.providers add column if not exists google_reviews    jsonb;
 alter table public.providers add column if not exists google_reviews_at timestamptz;
 -- Simulación: segunda decisión tras el bloqueo de 48 h
 alter table public.sim_runs add column if not exists round_close2 jsonb;
+
+-- Preguntas del cliente al proveedor desde la propuesta, con su respuesta
+-- por escrito: [{ q, asked_at, a, answered_at }]
+alter table public.date_holds add column if not exists questions jsonb not null default '[]'::jsonb;

@@ -6,6 +6,7 @@ import { loadProposal } from '@/lib/proposals'
 import { formatEuro } from '@/lib/pricing'
 import { CATEGORIES } from '@/lib/constants'
 import ProposalActions from './ProposalActions'
+import ProposalQuestions from './ProposalQuestions'
 
 // Propuesta escrita de un proveedor para un cliente concreto: precio
 // cerrado para sus invitados y su fecha, qué incluye, la señal en euros,
@@ -95,6 +96,19 @@ export default async function ProposalPage({ params }: { params: { token: string
             </div>
           </div>
         )}
+
+        <ProposalQuestions token={p.token} providerName={p.provider.name} initial={p.questions}/>
+
+        {/* Con quién contratas (7.ª simulación: no sabían quién factura ni quién responde) */}
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
+          <h2 className="font-serif text-xl font-bold text-ink mb-3">Con quién contratas</h2>
+          <ul className="text-sm text-ink/80 space-y-2 leading-relaxed list-disc pl-5">
+            <li><strong>{p.provider.name}</strong> presta el servicio y responde de que sea lo que dice esta propuesta.{p.provider.verified ? ' Está verificado (DNI/CIF y seguro de responsabilidad civil).' : ''}</li>
+            <li><strong>FiestaGo</strong> cobra la señal y el resto, los retiene en Stripe hasta después de tu evento y responde de la Garantía de Éxito con su propio dinero. Titular: Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, 33011 Oviedo.</li>
+            <li><strong>Facturas:</strong> recibes la del servicio (a nombre de {p.provider.name}) y la de la Garantía (de FiestaGo), por email y en tu cuenta.</li>
+            <li><strong>El precio de esta propuesta es el único que pagas.</strong> Ya incluye la Garantía; no hay más cargos.</li>
+          </ul>
+        </div>
 
         {/* Condiciones */}
         <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">

@@ -24,6 +24,17 @@ import { sendEmail } from '@/lib/resend'
 const APP_URL = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es').replace(/\/$/, '')
 
 export const newProposalToken = () => randomBytes(12).toString('hex')
+
+export type ProposalQuestion = { q: string; asked_at: string; a: string | null; answered_at: string | null }
+
+/** Quita importes de un mensaje del proveedor: el único precio que ve el
+ *  cliente es el de la propuesta (con la Garantía incluida). Dos cifras
+ *  distintas era el primer motivo de descarte en la 7.ª simulación. */
+export function maskPrices(text: string) {
+  return text
+    .replace(/(?:€\s*)\d[\d.,]*/g, '[ver precio de la propuesta]')
+    .replace(/\d[\d.,]*\s*(?:€|euros?\b|eur\b)/gi, '[ver precio de la propuesta]')
+}
 export const proposalUrl = (token: string) => `${APP_URL()}/propuesta/${token}`
 
 export type Proposal = {
@@ -41,6 +52,7 @@ export type Proposal = {
   guests: number | null
   includes: string
   reply: string | null
+  questions: ProposalQuestion[]
   provider: {
     id: string; name: string; slug: string | null; category: string; city: string | null
     photo_url: string | null; years_active: number | null; verified: boolean | null
@@ -61,7 +73,7 @@ export type Proposal = {
 export async function loadProposal(supabase: SupabaseClient, token: string): Promise<Proposal | null> {
   if (!/^[a-f0-9]{24}$/.test(token || '')) return null
   const { data: h } = await supabase.from('date_holds')
-    .select('id, kind, status, created_at, expires_at, replied_at, client_name, client_email, event_date, event_type, guests, provider_reply, quote_total, quote_includes, quote_deposit_pct, proposal_token, provider_id, service_id')
+    .select('id, kind, status, created_at, expires_at, replied_at, client_name, client_email, event_date, event_type, guests, provider_reply, quote_total, quote_includes, quote_deposit_pct, proposal_token, provider_id, service_id, questions')
     .eq('proposal_token', token).maybeSingle()
   if (!h || !(Number(h.quote_total) > 0)) return null
 
@@ -87,6 +99,7 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
     client_name: h.client_name, client_email: h.client_email,
     event_date: h.event_date, event_type: h.event_type, guests: h.guests,
     includes: h.quote_includes || '', reply: h.provider_reply,
+    questions: Array.isArray(h.questions) ? h.questions : [],
     provider: p as Proposal['provider'],
     service: s || null,
     base, total: commission.clientPays, deposit_pct: depositPct,
@@ -116,7 +129,7 @@ const H = 3600_000
  */
 export async function holdFollowups(supabase: SupabaseClient) {
   const { data: holds } = await supabase.from('date_holds')
-    .select('id, kind, client_name, client_email, event_date, proposal_token, quote_total, replied_at, expires_at, provider_id, providers(name, email, slug)')
+    .select('id, kind, client_name, client_email, event_date, proposal_token, quote_total, replied_at, expires_at, provider_id, questions, providers(name, email, slug)')
     .in('kind', ['hold', 'quote']).eq('status', 'active').is('followup_sent_at', null)
     .lt('created_at', new Date(Date.now() - 20 * H).toISOString())
     .gt('created_at', new Date(Date.now() - 7 * 24 * H).toISOString())
@@ -127,6 +140,8 @@ export async function holdFollowups(supabase: SupabaseClient) {
     const prov: any = Array.isArray(h.providers) ? h.providers[0] : h.providers
     const name = prov?.name || 'el proveedor'
     const hasProposal = !!h.proposal_token && Number(h.quote_total) > 0
+    const qs: ProposalQuestion[] = Array.isArray(h.questions) ? h.questions : []
+    const pending = qs.filter(q => !q.a)
     const until = h.expires_at
       ? new Date(h.expires_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', hour: '2-digit', minute: '2-digit' })
       : null
@@ -135,7 +150,7 @@ export async function holdFollowups(supabase: SupabaseClient) {
       to: h.client_email,
       subject: hasProposal ? `Tu propuesta de ${name}, por escrito` : `¿Te echamos una mano con ${name}?`,
       text: hasProposal
-        ? `Hola ${h.client_name},\n\nPor si te ayuda a decidirlo con calma (o a enseñárselo a quien lo decide contigo), aquí tienes la propuesta de ${name} por escrito: precio total para tu evento, qué incluye, la señal en euros y las condiciones.\n\n${proposalUrl(h.proposal_token!)}\n\n${until && h.kind === 'hold' ? `Tu fecha sigue bloqueada hasta el ${until}. ` : ''}Si quieres que te llamemos para resolver cualquier duda, contesta a este email con un número y una hora. Sin compromiso.\n\nFiestaGo`
+        ? `Hola ${h.client_name},\n\n${qs.length ? `${pending.length ? `Hemos recordado a ${name} que tiene ${pending.length} pregunta${pending.length > 1 ? 's' : ''} tuya${pending.length > 1 ? 's' : ''} sin contestar; te avisamos en cuanto responda. ` : ''}${qs.some(q => q.a) ? `Tienes las respuestas de ${name} por escrito en tu propuesta. ` : ''}` : `¿Te queda alguna duda concreta (alergias, plan B si llueve, horarios, espacio…)? Pregúntasela a ${name} desde tu propuesta y te la contesta por escrito, ahí mismo. `}Puedes enseñársela a quien lo decide contigo:\n\n${proposalUrl(h.proposal_token!)}\n\n${until && h.kind === 'hold' ? `Tu fecha sigue bloqueada hasta el ${until}. ` : ''}Si quieres que te llamemos para resolver cualquier duda, contesta a este email con un número y una hora. Sin compromiso.\n\nFiestaGo`
         : `Hola ${h.client_name},\n\nEstamos pendientes de que ${name} te mande su propuesta por escrito (precio para tu evento, qué incluye y la señal). Te la reenviamos en cuanto llegue.\n\n${until && h.kind === 'hold' ? `Tu fecha sigue bloqueada hasta el ${until}. ` : ''}Si quieres, te llamamos y lo vemos juntos: contesta con un número y una hora. Sin compromiso.\n\nFiestaGo`,
     }).catch(() => {})
 

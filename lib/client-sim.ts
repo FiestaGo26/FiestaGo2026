@@ -18,6 +18,7 @@
 // en la tabla sim_runs.
 // ───────────────────────────────────────────────────────────────────────
 
+import { maskPrices } from '@/lib/proposals'
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/constants'
@@ -211,7 +212,7 @@ export function proposalConfig(): Omit<SimConfig, 'personas' | 'segments'> {
       touchpoints: [
         { id: 'propuesta_escrita', label: 'Propuesta escrita del proveedor', text: '(se genera para cada persona)' },
         call,
-        { id: 'seguimiento_ayuda', label: 'Seguimiento de ayuda (a las 20 h)', text: 'Email de FiestaGo al día siguiente: "Por si te ayuda a decidirlo con calma (o a enseñárselo a quien lo decide contigo), aquí tienes la propuesta por escrito: precio total, qué incluye, la señal en euros y las condiciones. Si quieres que te llamemos para resolver cualquier duda, contesta con un número y una hora. Sin compromiso."' },
+        { id: 'seguimiento_ayuda', label: 'Seguimiento de ayuda (a las 20 h)', text: 'Email de FiestaGo al día siguiente: si hiciste preguntas, "Tienes las respuestas del proveedor por escrito en tu propuesta" (y las respuestas); si no, "¿Te queda alguna duda concreta (alergias, plan B si llueve, horarios, espacio…)? Pregúntasela al proveedor desde tu propuesta y te la contesta por escrito". Más el enlace para enseñársela a quien lo decide contigo. Sin presión.' },
       ],
     },
   }
@@ -238,8 +239,16 @@ async function loadRealProviders(supabase: SupabaseClient): Promise<RealProvider
   return (data || []).map((p: any) => ({ ...p, services: p.provider_services || [] }))
 }
 
-function pickProvider(provs: RealProvider[], p: Persona): RealProvider | null {
-  const cats = SEGMENT_CATEGORIES[p.segment]
+/** Qué tipo de proveedor contactaría primero esta persona (de los que hay). */
+async function chooseCategory(p: Persona, cats: string[]): Promise<{ categoria: string; que_le_pides: string }> {
+  const labels = cats.map(id => `${id} (${(CATEGORIES as readonly any[]).find(c => c.id === id)?.label || id})`).join(', ')
+  return askJson<{ categoria: string; que_le_pides: string }>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
+    `En FiestaGo hay proveedores de: ${labels}. Para tu evento, ¿a qué tipo de proveedor de estos le pedirías presupuesto primero (el que más necesitas)? Di también qué le pides exactamente, en una frase.`,
+    obj({ categoria: { type: 'string', enum: cats }, que_le_pides: str }), 400)
+}
+
+function pickProvider(provs: RealProvider[], p: Persona, category?: string): RealProvider | null {
+  const cats = category ? [category] : SEGMENT_CATEGORIES[p.segment]
   const fit = provs.filter(x => !cats || cats.includes(x.category))
   const pool = fit.filter(x => /valencia|paterna/i.test(x.city || '')).length ? fit.filter(x => /valencia|paterna/i.test(x.city || '')) : fit
   // Primero los que tienen opiniones de Google, como en la ficha real
@@ -251,7 +260,7 @@ function pickProvider(provs: RealProvider[], p: Persona): RealProvider | null {
 type ProviderQuote = { invitados: number; precio_proveedor_eur: number; incluye: string; no_incluye: string; mensaje: string }
 
 /** El proveedor (real) responde con su propuesta, a precio de mercado. */
-async function generateQuote(p: Persona, prov: RealProvider): Promise<ProviderQuote> {
+async function generateQuote(p: Persona, prov: RealProvider, ask?: string): Promise<ProviderQuote> {
   const schema = obj({ invitados: { type: 'integer' }, precio_proveedor_eur: { type: 'integer' }, incluye: str, no_incluye: str, mensaje: str })
   const tarifa = prov.services.length
     ? prov.services.map(s => `${s.name}: ${s.price ?? '?'} €${s.included_guests ? ` (incluye ${s.included_guests} invitados, +${s.extra_guest_price} €/invitado de más)` : ''}${s.description ? ` — ${s.description.slice(0, 200)}` : ''}`).join('\n')
@@ -259,9 +268,19 @@ async function generateQuote(p: Persona, prov: RealProvider): Promise<ProviderQu
   return askJson<ProviderQuote>(AGENT_MODEL,
     'Eres un proveedor de eventos español respondiendo a una petición de presupuesto. Eres honesto y realista: das el precio de mercado de lo que de verdad necesita ese evento en Valencia, sin rebajarlo para encajar en el presupuesto del cliente ni inflarlo. Escribes en español de España, breve y concreto.',
     `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}). ${prov.description ? prov.description.slice(0, 400) : ''}\nTus tarifas:\n${tarifa}\n\n` +
-    `Petición del cliente: ${p.evento}. Fecha: ${p.fecha}. Zona: ${p.ciudad}. Lo que cuenta: ${p.situacion.slice(0, 300)}\n\n` +
-    'Responde con: el número de invitados que has entendido, tu precio total en euros para ESE evento (lo que cobras tú), qué incluye exactamente (horas, personas, material, entregas, desplazamiento), qué NO incluye, y un mensaje corto al cliente (sin teléfonos ni emails).',
+    `Petición del cliente: ${ask ? `${ask}. ` : ''}Evento: ${p.evento}. Fecha: ${p.fecha}. Zona: ${p.ciudad}. Lo que cuenta: ${p.situacion.slice(0, 300)}\n\n` +
+    'Responde con: el número de invitados que has entendido, tu precio total en euros para ESE evento (lo que cobras tú), qué incluye exactamente (horas, personas, material, entregas, desplazamiento, plan B si aplica), qué NO incluye, y un mensaje corto al cliente (sin teléfonos, emails ni precios: el precio ya va en la propuesta).',
     schema, 1200)
+}
+
+/** El proveedor contesta por escrito, con honestidad (puede decir que no). */
+async function answerQuestions(prov: RealProvider, q: ProviderQuote, questions: string[]): Promise<Array<{ q: string; a: string }>> {
+  if (!questions.length) return []
+  const res = await askJson<{ respuestas: string[] }>(AGENT_MODEL,
+    'Eres un proveedor de eventos español contestando por escrito preguntas de un cliente sobre tu propuesta. Eres honesto y concreto: si algo no lo haces o no lo puedes garantizar, lo dices claramente y, si puedes, ofreces una alternativa real. Sin teléfonos, emails ni precios nuevos.',
+    `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}). Tu propuesta: incluye ${q.incluye}; no incluye ${q.no_incluye}.\n\nPreguntas del cliente:\n${questions.map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\nContesta cada una en 1-3 frases, en el mismo orden.`,
+    obj({ respuestas: { type: 'array', items: str } }), 1500)
+  return questions.map((x, i) => ({ q: x, a: res.respuestas[i] || 'Lo vemos y te contesto en breve.' }))
 }
 
 const COMMISSION = 0.08
@@ -280,9 +299,10 @@ function proposalText(p: Persona, prov: RealProvider, q: ProviderQuote) {
     `- ${prov.name} (${prov.category}, ${prov.city}) para tu evento: ${q.invitados} invitados, ${p.fecha}.\n` +
     `- Precio total para tu caso: ${total.toLocaleString('es-ES')} € (precio cerrado, Garantía de Éxito incluida, sin extras ocultos).\n` +
     `- Al reservar pagas la señal del 10 %: ${senal.toLocaleString('es-ES')} €. El resto, ${(total - senal).toLocaleString('es-ES')} €, 2 meses antes del evento. El dinero queda retenido en Stripe y el proveedor no lo cobra hasta que termina tu evento.\n` +
-    `- Qué incluye: ${q.incluye}\n- Qué no incluye: ${q.no_incluye}\n- Mensaje del proveedor: "${q.mensaje}"\n- ${google}\n` +
+    `- Qué incluye: ${q.incluye}\n- Qué no incluye: ${q.no_incluye}\n- Mensaje del proveedor: "${maskPrices(q.mensaje)}"\n- ${google}\n` +
+    `- Con quién contratas: ${prov.name} presta el servicio; FiestaGo (Francisco Mariano González Tejedo, NIF 09437664M, Oviedo) cobra la señal y el resto, los retiene en Stripe hasta después del evento y responde de la garantía con su dinero. Recibes la factura del servicio (de ${prov.name}) y la de la garantía (de FiestaGo). El precio de la propuesta es el único que pagas.\n` +
     `- Condiciones por escrito: si el proveedor cancela, sustituto equivalente en 48 h o te devuelven todo y un 10 % más; si no se presenta, lo pagado y una compensación desde 300 €; si cancelas tú, política ${pol} No cubre la lluvia ni los cambios que pidas tú.\n` +
-    '- Botones: "Reservar con señal" y "Compartir con quien lo decide conmigo".'
+    '- Botones: "Pregunta antes de reservar" (el proveedor contesta por escrito y queda en la propuesta), "Reservar con señal" y "Compartir con quien lo decide conmigo".'
 }
 
 // ─── Utilidades ────────────────────────────────────────────────────
@@ -449,6 +469,8 @@ export type RoundClose = {
   /** Solo con propuesta escrita: la persona y el proveedor real que la mandó */
   proveedor?: string
   propuesta?: ProviderQuote
+  preguntas_al_proveedor?: string[]
+  respuestas?: Array<{ q: string; a: string }>
   /** Quien bloqueó la fecha vuelve a decidir 48 h después */
   segunda?: { decision: 'reservar' | 'descartar_definitivamente'; efecto_seguimiento: 'me_acerca' | 'neutro' | 'me_aleja'; que_dijo_quien_decide_conmigo: string; motivo: string; motivo_exacto_descarte: string; que_faltaria_para_reservar: string }
 }
@@ -461,17 +483,19 @@ async function runClose(cfg: SimConfig, p: Persona, r2: Round2, override?: Stimu
     senal_aceptable: { type: 'boolean' },
     motivo: str,
     que_faltaria_para_reservar: str,
+    ...(cfg.closing!.proposal ? { preguntas_al_proveedor: { type: 'array', items: str, description: '0 a 3 preguntas concretas que le harías al proveedor desde la propuesta antes de decidir (vacío si no tienes)' } } : {}),
   })
   return askJson<RoundClose>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
     `Hace unos días viste FiestaGo y decidiste: ${r2.accion_final} ("${r2.motivo}").\n\n${cfg.closing!.intro}\n\n` +
     tps.map(s => `[${s.id}] ${s.label}\n${s.text}`).join('\n\n') + '\n\n' +
     'Para cada cosa que te ha llegado: cuánta confianza te da (1-5), si te acerca o te aleja de reservar y qué piensas. ' +
     'Después decide de verdad, como lo harías tú con tu dinero y tu evento: "reservar" (pagas ya la señal en FiestaGo), "bloquear_fecha" (bloqueas 48 h gratis para pensarlo), "seguir_comparando" (miras otras opciones fuera) o "descartar". ' +
-    'Di si la señal (10-20 % del total) te parece aceptable, por qué decides eso y qué te faltaría para reservar ahora mismo.',
+    'Di si la señal (10-20 % del total) te parece aceptable, por qué decides eso y qué te faltaría para reservar ahora mismo.' +
+    (cfg.closing!.proposal ? ' En la propuesta hay un botón "Pregunta antes de reservar": si tienes dudas concretas para el proveedor, escribe hasta 3 preguntas (te contestará por escrito).' : ''),
     schema, 3000)
 }
 
-async function runClose2(cfg: SimConfig, p: Persona, first: RoundClose, proposal: string): Promise<NonNullable<RoundClose['segunda']>> {
+async function runClose2(cfg: SimConfig, p: Persona, first: RoundClose, proposal: string, answers: Array<{ q: string; a: string }> = []): Promise<NonNullable<RoundClose['segunda']>> {
   const follow = cfg.closing!.touchpoints.find(t => t.id === 'seguimiento_ayuda')
   const schema = obj({
     decision: { type: 'string', enum: ['reservar', 'descartar_definitivamente'] },
@@ -483,6 +507,7 @@ async function runClose2(cfg: SimConfig, p: Persona, first: RoundClose, proposal
   return askJson<NonNullable<RoundClose['segunda']>>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
     `Hace dos días recibiste esta propuesta:\n${proposal}\n\nTe llamaron de FiestaGo y decidiste bloquear la fecha 48 h gratis para pensarlo ("${first.motivo}").\n\n` +
     `Desde entonces has tenido tiempo de mirarlo con calma y, si lo decides con alguien (pareja, familia, amigos), se lo has enseñado con el enlace de la propuesta; imagina con realismo qué te ha dicho según tu situación. Mientras tanto te llegó esto:\n[seguimiento_ayuda] ${follow?.text || ''}\n\n` +
+    (answers.length ? `Las preguntas que hiciste al proveedor y sus respuestas por escrito (quedan en tu propuesta):\n${answers.map(x => `- Tú: ${x.q}\n  Proveedor: ${x.a}`).join('\n')}\n\n` : '') +
     'El bloqueo caduca hoy y FiestaGo te pide una respuesta clara: o reservas, o lo descartas definitivamente (no hay "ya veré"). Decide de verdad, con tu dinero y tu evento, como lo harías en la vida real: "reservar" (pagas la señal en FiestaGo) o "descartar_definitivamente" (no vas a contratar este servicio con FiestaGo). Si descartas, di EXACTAMENTE por qué, con la razón concreta y real (no una genérica). Di también si el seguimiento te acercó o te alejó, qué te dijo quien decide contigo y qué te faltaría para reservar.',
     schema, 1500)
 }
@@ -735,15 +760,21 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
       if (!r2[i] || ACTION_RANK[r2[i]!.accion_final] < 2) return null
       if (!cfg!.closing!.proposal) return runClose(cfg!, p, r2[i]!)
       // Propuesta escrita de un proveedor real, para su evento
-      const prov = pickProvider(provs, p)
+      const avail = Array.from(new Set(provs.filter(x => /valencia|paterna/i.test(x.city || '')).map(x => x.category)))
+      const choice = avail.length ? await chooseCategory(p, avail).catch(() => null) : null
+      const prov = pickProvider(provs, p, choice?.categoria)
       if (!prov) return runClose(cfg!, p, r2[i]!)
-      const q = await generateQuote(p, prov)
+      const q = await generateQuote(p, prov, choice?.que_le_pides)
       const text = proposalText(p, prov, q)
       const tps = cfg!.closing!.touchpoints.filter(t => t.id !== 'seguimiento_ayuda')
         .map(t => t.id === 'propuesta_escrita' ? { ...t, text } : t)
       const first = await runClose(cfg!, p, r2[i]!, tps)
       const out: RoundClose = { ...first, proveedor: `${prov.name} (${prov.category})`, propuesta: q }
-      if (first.decision === 'bloquear_fecha') out.segunda = await runClose2(cfg!, p, first, text)
+      const qs = (first.preguntas_al_proveedor || []).filter(Boolean).slice(0, 3)
+      if (first.decision === 'bloquear_fecha') {
+        out.respuestas = await answerQuestions(prov, q, qs).catch(() => [])
+        out.segunda = await runClose2(cfg!, p, first, text, out.respuestas)
+      }
       return out
     })
     await save({ status: 'entrevista', round_close: rc })

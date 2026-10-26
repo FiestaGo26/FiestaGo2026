@@ -28,6 +28,7 @@ type Request = {
   suggested_deposit_pct: number
   quote_total: number | null
   proposal_url: string | null
+  questions: Array<{ q: string; a: string | null }> | null
 }
 
 type Draft = { total: string; includes: string; deposit: number; note: string }
@@ -41,6 +42,26 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
   const [requests, setRequests] = useState<Request[]>([])
   const [drafts,   setDrafts]   = useState<Record<string, Draft>>({})
   const [sending,  setSending]  = useState<string | null>(null)
+  const [answers,  setAnswers]  = useState<Record<string, string>>({})
+
+  async function answer(r: Request, i: number) {
+    const key = `${r.id}:${i}`
+    const text = (answers[key] || '').trim()
+    if (text.length < 2) { toast.error('Escribe tu respuesta'); return }
+    setSending(key)
+    try {
+      const res = await apiFetch('/api/proveedor/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: providerId, id: r.id, question_index: i, answer: text }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'No se pudo enviar')
+      setRequests(rs => rs.map(x => x.id === r.id ? { ...x, questions: (x.questions || []).map((q, j) => j === i ? { ...q, a: text } : q) } : x))
+      toast.success('Respuesta enviada ✓')
+    } catch (err: any) { toast.error(err.message) }
+    setSending(null)
+  }
 
   useEffect(() => {
     apiFetch(`/api/proveedor/requests?provider_id=${providerId}`)
@@ -125,7 +146,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                   {total > 0 && <div className="text-[11px] text-ink/55">El cliente verá {formatEuro(precioCliente(total))} con la Garantía de Éxito incluida.</div>}
                   <label className="text-xs font-semibold text-ink">Qué incluye (y qué no)
                     <textarea rows={3} value={d.includes} onChange={e => setDraft(r, { includes: e.target.value })}
-                      placeholder="Horas, personas, material, desplazamiento, entregas y plazos… y lo que no entra."
+                      placeholder="Horas, personas, material, desplazamiento, entregas y plazos, plan B si llueve, alergias… y lo que no entra."
                       className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
                   </label>
                   <label className="text-xs font-semibold text-ink">Señal al reservar: {d.deposit} %
@@ -133,7 +154,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                       onChange={e => setDraft(r, { deposit: Number(e.target.value) })} className="mt-1 w-full accent-coral"/>
                   </label>
                   <textarea rows={2} value={d.note} onChange={e => setDraft(r, { note: e.target.value })}
-                    placeholder="Mensaje para el cliente (opcional, sin teléfonos ni emails)"
+                    placeholder="Mensaje para el cliente (opcional). Sin precios: el cliente solo ve el de la propuesta. Sin teléfonos ni emails."
                     className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
                   <button type="button" onClick={() => reply(r)} disabled={sending === r.id}
                     className="self-end bg-coral text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-coral-dark disabled:opacity-50">
@@ -142,6 +163,22 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                 </div>
               )
             })()}
+            {(r.questions || []).map((q, i) => (
+              <div key={i} className="mt-3 border-t border-stone-100 pt-3 text-sm">
+                <div className="font-semibold text-ink">❓ {q.q}</div>
+                {q.a ? (
+                  <div className="text-xs text-emerald-800 mt-1">Tu respuesta: {q.a}</div>
+                ) : (
+                  <div className="flex gap-2 mt-2">
+                    <input value={answers[`${r.id}:${i}`] || ''} onChange={e => setAnswers(a => ({ ...a, [`${r.id}:${i}`]: e.target.value }))}
+                      placeholder="Respuesta concreta (queda por escrito en su propuesta)"
+                      className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral"/>
+                    <button type="button" onClick={() => answer(r, i)} disabled={sending === `${r.id}:${i}`}
+                      className="bg-coral text-white text-xs font-bold px-3 py-2 rounded-xl disabled:opacity-50">Responder</button>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         ))}
       </div>
