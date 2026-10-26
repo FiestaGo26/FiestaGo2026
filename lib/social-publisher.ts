@@ -19,6 +19,7 @@ import { AUDIENCES, isUploadPostConfigured, profileFor, publishPhotos, publishVi
 
 const REVIEW_MODEL = process.env.SOCIAL_REVIEW_MODEL || 'claude-haiku-5-5'
 const MAX_ATTEMPTS = 3
+const MIN_GAP_HOURS = 3
 
 function madridDayStartIso() {
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' })
@@ -51,7 +52,9 @@ async function reviewCaption(captionIg: string, captionTt: string, context: stri
   const today = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid', day: 'numeric', month: 'long', year: 'numeric' })
   const resp = await new Anthropic().messages.create({
     model: REVIEW_MODEL,
-    max_tokens: 2000,
+    // Devuelve los dos textos completos corregidos: con 2000 se cortaba
+    // ("Unterminated string in JSON") y no se publicaba nada.
+    max_tokens: 6000,
     output_config: { format: { type: 'json_schema', schema: REVIEW_SCHEMA as unknown as Record<string, unknown> } },
     system: `Revisas publicaciones de Instagram y TikTok de FiestaGo (fiestago.es), un marketplace español de proveedores para bodas, cumpleaños, comuniones y eventos, antes de que se publiquen solas. Hoy es ${today}.
 ${AUDIENCE_RULE[audience]}
@@ -65,6 +68,7 @@ Consejos generales del sector sin cifras concretas son aceptables; las cifras de
 Si el texto es aceptable pero mejorable (erratas, emojis excesivos, hashtags de más de 12), devuelve ok=true con la versión corregida. Si lo rechazas, explica por qué en "reasons" y devuelve los textos tal cual. En TikTok el texto debe ser corto (máximo unos 300 caracteres). En ambos, si hay llamada a la acción con enlace, usa "enlace en la bio" en lugar de una URL.`,
     messages: [{ role: 'user', content: `Contexto: ${context}\n\n[Instagram]\n${captionIg}\n\n[TikTok]\n${captionTt}` }],
   })
+  if (resp.stop_reason === 'max_tokens') throw new Error('Revisión de marca cortada (max_tokens)')
   const text = resp.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map(b => b.text).join('')
   return JSON.parse(text) as Review
 }
@@ -106,6 +110,15 @@ async function publishOne(supabase: SupabaseClient, audience: Audience, user: st
   const cap = Number(settings.social_max_per_day ?? 2)
   if ((postsToday || 0) + (videosToday || 0) >= cap) return { skipped: `Tope diario alcanzado (${cap})` }
 
+  // Separación mínima entre publicaciones de la misma cuenta (el latido
+  // llama cada 10 min; GitHub sigue de respaldo)
+  const gapSince = new Date(Date.now() - MIN_GAP_HOURS * 3600_000).toISOString()
+  const [{ count: recentPosts }, { count: recentVideos }] = await Promise.all([
+    supabase.from('social_posts').select('id', { count: 'exact', head: true }).eq('audience', audience).gte('published_at', gapSince).not('uploadpost_request_id', 'is', null),
+    supabase.from('content_videos').select('id', { count: 'exact', head: true }).eq('audience', audience).gte('published_at', gapSince).not('uploadpost_request_id', 'is', null),
+  ])
+  if ((recentPosts || 0) + (recentVideos || 0) > 0) return { skipped: `Ya se publicó en las últimas ${MIN_GAP_HOURS} h` }
+
   // 1 · Vídeo diario terminado (más alcance que una imagen)
   const { data: video } = await supabase.from('content_videos')
     .select('id, caption, hashtags, topic, video_url, publish_attempts, experiment')
@@ -118,7 +131,13 @@ async function publishOne(supabase: SupabaseClient, audience: Audience, user: st
   if (video) {
     const caption = [video.caption, (video.hashtags || []).map((h: string) => `#${h.replace(/^#/, '')}`).join(' ')].filter(Boolean).join('\n\n')
     await supabase.from('content_videos').update({ publish_attempts: (video.publish_attempts || 0) + 1 }).eq('id', video.id)
-    const review = await reviewCaption(caption, caption.slice(0, 300), `Vídeo diario: ${video.topic || ''}`, audience)
+    let review: Review
+    try {
+      review = await reviewCaption(caption, caption.slice(0, 300), `Vídeo diario: ${video.topic || ''}`, audience)
+    } catch (err: any) {
+      await supabase.from('content_videos').update({ publish_error: `Revisión: ${err.message}`.slice(0, 500) }).eq('id', video.id)
+      return { error: `Revisión: ${err.message}`, id: video.id }
+    }
     if (!review.ok) {
       await supabase.from('content_videos').update({ publish_error: `Revisión: ${review.reasons.join('; ')}`, publish_attempts: MAX_ATTEMPTS }).eq('id', video.id)
       return { rejected: 'video', id: video.id, reasons: review.reasons }
@@ -152,7 +171,13 @@ async function publishOne(supabase: SupabaseClient, audience: Audience, user: st
   const tt = post.caption_tiktok || post.caption_instagram || ''
   await supabase.from('social_posts').update({ publish_attempts: (post.publish_attempts || 0) + 1 }).eq('id', post.id)
 
-  const review = await reviewCaption(ig, tt, `Post: ${post.topic || ''}`, audience)
+  let review: Review
+  try {
+    review = await reviewCaption(ig, tt, `Post: ${post.topic || ''}`, audience)
+  } catch (err: any) {
+    await supabase.from('social_posts').update({ publish_error: `Revisión: ${err.message}`.slice(0, 500) }).eq('id', post.id)
+    return { error: `Revisión: ${err.message}`, id: post.id }
+  }
   if (!review.ok) {
     await supabase.from('social_posts').update({
       status: 'rejected', rejected_reason: `Revisión automática: ${review.reasons.join('; ')}`.slice(0, 500), review,

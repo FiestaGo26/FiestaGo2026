@@ -21,6 +21,7 @@ import { runCeoRoutine, type CeoKind } from '../../lib/ceo-agent'
 import { claimNextAction, completeAction } from '../../lib/ceo-actions'
 import { runProviderSearch } from '../../lib/provider-search'
 import { releaseHolds } from '../../lib/date-holds'
+import { publishNext } from '../../lib/social-publisher'
 
 const MAX_ACTIONS = 20
 
@@ -105,6 +106,17 @@ export default async (req: Request) => {
     out.queue = await runQueue(supabase, base)
   } catch (err: any) {
     out.queue = `error: ${err.message}`
+  }
+  // Redes: publica lo siguiente de cada cuenta (9:00-21:00 Madrid). El
+  // publicador respeta el tope diario y deja 3 h entre piezas de la misma
+  // cuenta; el workflow de GitHub queda de respaldo.
+  const { hour } = madridNow()
+  if (hour >= 9 && hour < 21) {
+    try {
+      out.social = await publishNext(supabase)
+    } catch (err: any) {
+      out.social = `error: ${err.message}`
+    }
   }
   // Libera las fechas bloqueadas 48 h gratis que han caducado sin reserva
   try {
