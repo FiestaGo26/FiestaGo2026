@@ -4,8 +4,14 @@
 // al día.
 //
 // Endpoints usados:
-//   POST /v2/video/generate        → arranca generación, devuelve video_id
-//   GET  /v1/video_status.get      → poll de estado
+//   POST /v3/videos                → arranca generación con el motor más nuevo
+//                                    (Avatar V; HEYGEN_ENGINE para cambiarlo)
+//   GET  /v3/videos/{id}           → poll de estado de los vídeos v3
+//   POST /v2/video/generate        → respaldo si la v3 falla
+//   GET  /v1/video_status.get      → poll de estado de los vídeos v2
+//
+// El avatar de FiestaGo (photo_avatar) admite avatar_v, avatar_iv y
+// avatar_iii (supported_api_engines, comprobado el 26-10-2026).
 //
 // Variables de entorno:
 //   HEYGEN_API_KEY      — API key del panel HeyGen (Settings → API)
@@ -51,6 +57,53 @@ export async function generateVideo(opts: {
   width?:       number     // por defecto 720
   height?:      number     // por defecto 1280 (9:16)
   background?:  string     // hex color, por defecto #f6f6f6
+  title?:       string
+}): Promise<string> {
+  // 1) Motor más nuevo (v3). Si falla por lo que sea, seguimos con la v2.
+  try {
+    return await generateVideoV3(opts)
+  } catch (err: any) {
+    console.error('[heygen] v3 falló, uso v2:', err?.message)
+  }
+  return generateVideoV2(opts)
+}
+
+async function generateVideoV3(opts: { script: string; speed?: number; background?: string; title?: string }): Promise<string> {
+  const { apiKey, avatarId, voiceId } = cfg()
+  const engine = (process.env.HEYGEN_ENGINE || 'avatar_v').trim()
+  const speed  = opts.speed ?? Number(process.env.HEYGEN_VOICE_SPEED || '1.0')
+  const body: any = {
+    avatar_id:    avatarId,
+    script:       opts.script,
+    voice_id:     voiceId,
+    engine:       { type: engine },
+    aspect_ratio: '9:16',
+    resolution:   '1080p',
+    background:   { type: 'color', value: opts.background ?? process.env.HEYGEN_BACKGROUND ?? '#f6f6f6' },
+    title:        opts.title || `FiestaGo ${new Date().toISOString().slice(0, 10)}`,
+  }
+  if (speed && speed !== 1) body.voice_settings = { speed: Math.min(1.5, Math.max(0.5, speed)) }
+
+  const res = await fetch(`${API_BASE}/v3/videos`, {
+    method: 'POST',
+    headers: { 'X-Api-Key': apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data: any = await res.json().catch(() => ({}))
+  if (!res.ok || data?.error) {
+    throw new Error(`HeyGen v3 (${res.status}): ${JSON.stringify(data?.error ?? data).slice(0, 400)}`)
+  }
+  const videoId = data?.data?.video_id || data?.video_id || data?.data?.id || data?.id
+  if (!videoId) throw new Error(`HeyGen v3 sin video_id: ${JSON.stringify(data).slice(0, 300)}`)
+  return `v3:${videoId}`
+}
+
+async function generateVideoV2(opts: {
+  script:       string
+  speed?:       number
+  width?:       number
+  height?:      number
+  background?:  string
 }): Promise<string> {
   const { apiKey, avatarId, voiceId } = cfg()
   const width  = opts.width  ?? 720
@@ -115,6 +168,25 @@ export async function generateVideo(opts: {
 // HeyGen tarda ~1-3 min para un vídeo de 30s.
 export async function getVideoStatus(videoId: string): Promise<HeyGenVideoStatus> {
   const { apiKey } = cfg()
+  // Los vídeos v3 se guardan con el prefijo "v3:"
+  if (videoId.startsWith('v3:')) {
+    const id = videoId.slice(3)
+    const r = await fetch(`${API_BASE}/v3/videos/${encodeURIComponent(id)}`, { headers: { 'X-Api-Key': apiKey } })
+    const j: any = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(`HeyGen v3 getVideoStatus falló (${r.status}): ${JSON.stringify(j).slice(0, 300)}`)
+    const d = j?.data ?? j ?? {}
+    const raw = String(d.status || '').toLowerCase()
+    const status: HeyGenStatus = raw === 'completed' || raw === 'done' ? 'completed'
+      : raw === 'failed' || raw === 'error' ? 'failed'
+      : raw ? 'processing' : 'pending'
+    return {
+      status,
+      videoUrl:     d.video_url || null,
+      thumbnailUrl: d.thumbnail_url || null,
+      duration:     typeof d.duration === 'number' ? d.duration : null,
+      error:        d.failure_message || d.error?.message || (typeof d.error === 'string' ? d.error : null),
+    }
+  }
   const res = await fetch(`${API_BASE}/v1/video_status.get?video_id=${encodeURIComponent(videoId)}`, {
     headers: { 'X-Api-Key': apiKey },
   })

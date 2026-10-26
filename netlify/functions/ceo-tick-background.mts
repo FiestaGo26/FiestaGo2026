@@ -107,6 +107,28 @@ export default async (req: Request) => {
   } catch (err: any) {
     out.queue = `error: ${err.message}`
   }
+  // Vídeo diario de HeyGen: desde las 08:00 lo crea si aún no existe (la
+  // ruta se salta sola si ya hay vídeo hoy) y en cada latido recoge los
+  // que estén terminados. GitHub sigue de respaldo.
+  const cron = async (path: string) => {
+    const r = await fetch(base + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.CRON_SECRET || '' },
+      body: '{}', signal: AbortSignal.timeout(120_000),
+    })
+    return `${r.status} ${(await r.text()).slice(0, 200)}`
+  }
+  try {
+    // Como mucho 3 intentos al día (8, 11 y 14 h): si HeyGen falla, no
+    // reintentamos cada 10 minutos gastando guiones
+    if ([8, 11, 14].includes(madridNow().hour) && new Date().getUTCMinutes() < 10) {
+      out.video_generate = await cron('/api/cron/content-daily-generate')
+    }
+    out.video_poll = await cron('/api/cron/content-daily-poll')
+  } catch (err: any) {
+    out.video = `error: ${err.message}`
+  }
+
   // Redes: publica lo siguiente de cada cuenta (9:00-21:00 Madrid). El
   // publicador respeta el tope diario y deja 3 h entre piezas de la misma
   // cuenta; el workflow de GitHub queda de respaldo.
