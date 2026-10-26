@@ -94,7 +94,7 @@ export default function TerminosPage() {
 
         <Section title="6. Cancelación por el Cliente">
           <p>
-            Cada servicio indica en su ficha la política de cancelación aplicable (flexible, moderada o estricta). El reembolso se calcula en función de la política aplicable y de los días restantes hasta el evento, y se procesa al método de pago original en un máximo de 5 días hábiles desde su aprobación.
+            Reserva sin riesgo: durante los 7 días naturales siguientes al pago de la señal, siempre que en el momento de ese pago falten 30 días o más para el evento, el Cliente puede cancelar la reserva y se le reembolsa íntegramente lo pagado. Pasado ese plazo, cada servicio indica en su ficha la política de cancelación aplicable (flexible, moderada o estricta). El reembolso se calcula en función de la política aplicable y de los días restantes hasta el evento, y se procesa al método de pago original en un máximo de 5 días hábiles desde su aprobación.
           </p>
         </Section>
 

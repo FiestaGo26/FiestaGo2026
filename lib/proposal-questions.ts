@@ -19,7 +19,8 @@ export const FIESTAGO_TERMS = `Condiciones de FiestaGo (son las únicas válidas
 - Pago: se reserva con una señal del 10-20 % del total y el resto se paga 2 meses antes del evento (si faltan menos de 2 meses, todo al reservar). El dinero queda retenido en Stripe, entidad de pagos regulada, y el proveedor no lo cobra hasta que termina el evento.
 - Garantía de Éxito (incluida en todos los servicios): si el proveedor cancela, FiestaGo busca en 48 h un sustituto que cumpla las mismas funciones a un precio similar; si no lo encuentra, devuelve todo lo pagado y un 10 % más. Si el proveedor no se presenta el día, devuelve lo pagado más una compensación según el importe de la reserva: 300 € hasta 500 €; 500 € de 500 a 2.000 €; 1.000 € de 2.000 a 5.000 €; 2.000 € de 5.000 a 15.000 €; 3.000 € por encima. Reembolsos en un máximo de 5 días hábiles desde que se aprueba la incidencia. Cubre reservas de hasta 25.000 €.
 - No cubre: la lluvia o el tiempo, ni los cambios que pida el propio cliente. Solo cubre lo que se reserva y paga dentro de FiestaGo.
-- Si cancela el cliente: se aplica la política de cancelación del servicio que aparece en la propuesta.
+- Reserva sin riesgo: durante los 7 días siguientes a pagar la señal (si en ese momento faltan 30 días o más para el evento), el cliente puede cancelar y se le devuelve todo lo pagado, por ejemplo si no se cierran los detalles finales (menú, boceto, horario) o cambian sus planes.
+- Si cancela el cliente después de esos 7 días: se aplica la política de cancelación del servicio que aparece en la propuesta.
 - Facturas: el cliente recibe la factura del servicio (a nombre del proveedor) y la de la Garantía (de FiestaGo), por email y en su cuenta.
 - Quién es FiestaGo: Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, 33011 Oviedo. Atiende una persona por WhatsApp de lunes a viernes de 10:00 a 20:00 y sábados de 10:00 a 14:00.
 - Proveedores verificados: DNI/CIF y seguro de responsabilidad civil.`

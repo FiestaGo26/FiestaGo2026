@@ -956,6 +956,9 @@ export default function ProviderDetailPage() {
                       Si reservas con menos de 2 meses de antelación, pagas el total al reservar.
                       Tu pago queda retenido en Stripe hasta el evento y el proveedor no cobra hasta que termina.
                     </div>
+                    <div className="mt-2 text-emerald-800 text-[11px] leading-relaxed font-semibold">
+                      ✓ Reserva sin riesgo: si en los 7 días siguientes a pagar la señal no cerráis los detalles finales (menú, boceto, horario…) o cambian tus planes, cancelas y te devolvemos la señal entera (para eventos a 30 días o más).
+                    </div>
                   </div>
                 )
               })()}

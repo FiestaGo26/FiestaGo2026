@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest) {
   // política de cancelación por join. Aplicamos la default 'moderate'.
   const { data: prev } = await supabase
     .from('bookings')
-    .select('event_date, total_amount')
+    .select('event_date, total_amount, first_payment_status, first_payment_paid_at')
     .eq('id', id).single()
 
   let refund: { percent: number; amount: number; rule: string } | null = null
@@ -69,6 +69,7 @@ export async function PATCH(req: NextRequest) {
       policy: 'moderate',
       eventDate: prev.event_date,
       totalAmount: prev.total_amount || 0,
+      firstPaidAt: (prev as any).first_payment_status === 'paid' ? (prev as any).first_payment_paid_at : null,
     })
     updates.refund_percent = refund.percent
     updates.refund_amount  = refund.amount

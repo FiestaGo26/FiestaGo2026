@@ -136,9 +136,10 @@ export default async function ProposalPage({ params }: { params: { token: string
           <ul className="text-sm text-ink/80 space-y-2 leading-relaxed list-disc pl-5">
             <li><strong>Si el proveedor cancela:</strong> te buscamos en 48 h un sustituto que cumpla las mismas funciones a un precio similar o te devolvemos todo lo pagado y un 10 % más.</li>
             <li><strong>Si no se presenta el día:</strong> te devolvemos lo pagado y una compensación según el importe (desde 300 €). Reembolsos en un máximo de 5 días hábiles.</li>
+            <li><strong>Reserva sin riesgo:</strong> si en los 7 días siguientes a pagar la señal no cerráis los detalles finales (menú, boceto, horario…) o cambian tus planes, cancelas y te devolvemos la señal entera (para eventos a 30 días o más).</li>
             {p.cancellation
-              ? <li><strong>Si cancelas tú (política {p.cancellation.label.toLowerCase()}):</strong> {p.cancellation.rules.join(' ')}</li>
-              : <li><strong>Si cancelas tú:</strong> se aplica la política de cancelación de su ficha.</li>}
+              ? <li><strong>Después de esos 7 días, si cancelas tú (política {p.cancellation.label.toLowerCase()}):</strong> {p.cancellation.rules.join(' ')}</li>
+              : <li><strong>Después de esos 7 días, si cancelas tú:</strong> se aplica la política de cancelación de su ficha.</li>}
             <li><strong>No cubre</strong> la lluvia ni los cambios que pidas tú. La garantía solo cubre lo que se reserva y paga dentro de FiestaGo.</li>
           </ul>
           <p className="text-xs text-ink/55 mt-3">

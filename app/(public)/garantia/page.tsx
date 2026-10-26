@@ -64,7 +64,8 @@ export default function GarantiaPage() {
             <p><strong className="text-ink">Si todo va bien:</strong> disfrutas de tu día y no pagas nada más.</p>
             <p><strong className="text-ink">Si cancela:</strong> te buscamos otro fotógrafo que cumpla las mismas funciones a un precio similar en menos de 48 h. Si no lo encontramos, te devolvemos todo y un 10 % más por las molestias: <strong className="text-coral">1.188 €</strong>.</p>
             <p><strong className="text-ink">Si no se presenta el día del evento:</strong> te devolvemos lo pagado (1.080 €) más la compensación que corresponde a ese importe según la tabla de abajo (500 €): <strong className="text-coral">1.580 €</strong>.</p>
-            <p><strong className="text-ink">Si cancelas tú:</strong> se aplica la política de cancelación del servicio, que ves en su ficha antes de reservar.</p>
+            <p><strong className="text-ink">Reserva sin riesgo:</strong> si en los 7 días siguientes a pagar la señal no cerráis los detalles finales (menú, boceto, horario…) o cambian tus planes, cancelas y te devolvemos la señal entera (eventos a 30 días o más).</p>
+            <p><strong className="text-ink">Si cancelas tú después:</strong> se aplica la política de cancelación del servicio, que ves en su ficha antes de reservar.</p>
           </div>
           <p className="text-xs text-ink/50 mt-5 leading-relaxed">Los reembolsos se hacen en un máximo de 5 días hábiles desde que se aprueba la incidencia. La compensación depende del importe de la reserva: de 300 € (reservas de hasta 500 €) a 3.000 € (más de 15.000 €).</p>
         </div>

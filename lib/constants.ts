@@ -158,11 +158,20 @@ export const CANCELLATION_POLICIES: Record<CancellationPolicy, {
 
 // Calcula el reembolso aplicando la política. Devuelve % (0–100), importe
 // y la regla concreta que ha disparado.
+// "Reserva sin riesgo" (desde el 26-10-2026): durante los 7 días siguientes
+// al pago de la señal, si el evento es dentro de 30 días o más, el cliente
+// puede cancelar y se le devuelve todo (p. ej. si no se cierran los detalles
+// finales: menú, boceto, horario). Después, la política del servicio.
+export const RISK_FREE_DAYS = 7
+export const RISK_FREE_MIN_DAYS_BEFORE = 30
+
 export function calcRefund(opts: {
   policy: CancellationPolicy | null | undefined
   eventDate: string | Date | null | undefined
   totalAmount: number
   now?: Date
+  /** Cuándo se pagó la señal (activa la Reserva sin riesgo) */
+  firstPaidAt?: string | Date | null
 }): { percent: number; amount: number; rule: string } {
   const policy = (opts.policy || 'moderate') as CancellationPolicy
   const event  = opts.eventDate ? new Date(opts.eventDate) : null
@@ -175,6 +184,15 @@ export function calcRefund(opts: {
 
   const msPerDay = 24 * 60 * 60 * 1000
   const daysUntil = Math.floor((event.getTime() - now.getTime()) / msPerDay)
+
+  if (opts.firstPaidAt) {
+    const paid = new Date(opts.firstPaidAt)
+    const sincePaid = (now.getTime() - paid.getTime()) / msPerDay
+    const leadAtPayment = (event.getTime() - paid.getTime()) / msPerDay
+    if (sincePaid >= 0 && sincePaid <= RISK_FREE_DAYS && leadAtPayment >= RISK_FREE_MIN_DAYS_BEFORE) {
+      return { percent: 100, amount: total, rule: `Reserva sin riesgo (${RISK_FREE_DAYS} días desde la señal)` }
+    }
+  }
 
   let percent = 0
   let rule    = ''

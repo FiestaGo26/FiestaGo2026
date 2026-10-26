@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest) {
   // Lookup previa: fecha + total + política del servicio para refund
   const { data: prev } = await supabase
     .from('bookings')
-    .select('event_date, message, total_amount, service_id, provider_services(cancellation_policy)')
+    .select('event_date, message, total_amount, service_id, first_payment_status, first_payment_paid_at, provider_services(cancellation_policy)')
     .eq('id', id).single()
 
   let refund: { percent: number; amount: number; rule: string } | null = null
@@ -60,6 +60,7 @@ export async function PATCH(req: NextRequest) {
       policy: (prev as any).provider_services?.cancellation_policy,
       eventDate: prev.event_date,
       totalAmount: prev.total_amount || 0,
+      firstPaidAt: (prev as any).first_payment_status === 'paid' ? (prev as any).first_payment_paid_at : null,
     })
     updates.refund_percent = refund.percent
     updates.refund_amount  = refund.amount
