@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import GrowthPanel from './GrowthPanel'
+import CeoChat from './CeoChat'
 
 // ─── Pestaña 🧠 CEO · agente IA que dirige FiestaGo ──────────────────────────
 // Muestra los 5 pasos del agente (rol, contexto, tareas, rutinas, regla de
@@ -204,6 +205,8 @@ export default function CeoAgent() {
           {loading ? 'Cargando…' : '↻ Actualizar'}
         </button>
       </div>
+
+      <CeoChat onActions={load} />
 
       {/* Autonomía */}
       {settings && (

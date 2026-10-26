@@ -553,6 +553,18 @@ const CHAT_SCHEMA = {
   },
 } as const
 
+/** Turnos alternos empezando por el usuario: une los seguidos del mismo lado. */
+function alternate(ms: Array<{ role: 'user' | 'assistant'; content: string }>) {
+  const out: typeof ms = []
+  for (const m of ms) {
+    if (!out.length && m.role !== 'user') continue
+    const prev = out[out.length - 1]
+    if (prev && prev.role === m.role) prev.content += `\n\n${m.content}`
+    else out.push({ ...m })
+  }
+  return out
+}
+
 /** Contesta el último mensaje de Mariano (ya guardado en ceo_messages). */
 export async function chatWithCeo(supabase: SupabaseClient) {
   const { data: last } = await supabase.from('ceo_messages').select('role, content').order('created_at', { ascending: false }).limit(1)
@@ -574,10 +586,10 @@ export async function chatWithCeo(supabase: SupabaseClient) {
     system: [{ type: 'text', text: SYSTEM + `
 
 AHORA ESTÁS EN EL CHAT DEL PANEL con Mariano. Contesta en "reply" a lo que te dice, corto y al grano, con datos del snapshot cuando ayuden. Si te da una instrucción, confirma qué vas a hacer y recuérdala (la verás en "owner_chat" en tus rutinas). Si hace falta ejecutar algo del catálogo, añádelo en "proposals" (máximo 3; vacío si no hace falta nada). No inventes datos.`, cache_control: { type: 'ephemeral' } }],
-    messages: [
+    messages: alternate([
       ...thread.map((m: any) => ({ role: m.role === 'owner' ? 'user' as const : 'assistant' as const, content: String(m.content) })),
-      { role: 'user', content: `[Modo de autonomía] ${autonomy}\n[Snapshot de ahora]\n${JSON.stringify(snapshot)}\n\n[Mariano] ${text}` },
-    ].filter((m, i, a) => i === 0 ? m.role === 'user' : m.role !== a[i - 1].role),
+      { role: 'user' as const, content: `[Modo de autonomía] ${autonomy}\n[Snapshot de ahora]\n${JSON.stringify(snapshot)}\n\n[Mariano] ${text}` },
+    ]),
   } as any)
 
   const raw = resp.content.filter((b): b is Anthropic.TextBlock => b.type === 'text').map(b => b.text).join('').trim()
