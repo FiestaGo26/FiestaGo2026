@@ -6,6 +6,7 @@ import { requireClientAuth } from '@/lib/auth'
 import { computePaymentSchedule } from '@/lib/booking-payments'
 import { sanitizeAcquisition } from '@/lib/attribution'
 import { releaseHolds } from '@/lib/date-holds'
+import { priceForGuests, cleanDeposit } from '@/lib/pricing'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -52,6 +53,27 @@ export async function POST(req: NextRequest) {
     // total_amount puede ser 0 cuando es "precio a consultar" — lo permitimos
     let amount = Number(total_amount) || 0
 
+    // Con servicio, el importe lo calcula el servidor (no nos fiamos del
+    // navegador): precio según invitados + extras elegidos, desde la BD.
+    let svcRow: any = null
+    if (service_id) {
+      const { data: s } = await supabase
+        .from('provider_services')
+        .select('provider_id, price, included_guests, extra_guest_price, addons, deposit_pct')
+        .eq('id', service_id).maybeSingle()
+      if (!s || (provider_id && s.provider_id !== provider_id)) {
+        return NextResponse.json({ error: 'Servicio no válido' }, { status: 400 })
+      }
+      svcRow = s
+      if (s.price != null) {
+        const chosen = new Set((Array.isArray(selected_addons) ? selected_addons : []).map((a: any) => a?.id))
+        const addonsTotal = (Array.isArray(s.addons) ? s.addons : [])
+          .filter((a: any) => chosen.has(a.id))
+          .reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0)
+        amount = Math.round((priceForGuests(s, parseInt(guests)) + addonsTotal) * 100) / 100
+      }
+    }
+
     // Aplicar cupón si viene y es válido (re-valida en el servidor, no fiamos
     // del cliente). Si es válido, descuenta el importe y reserva una "plaza"
     // del cupón incrementando used_count atómicamente.
@@ -91,14 +113,8 @@ export async function POST(req: NextRequest) {
     // calcular el desglose de pagos (anticipo al reservar + resto 2 meses
     // antes del evento). Si no hay service_id, no hay anticipo y el
     // cliente paga 100% al reservar.
-    let depositPct = 0
-    if (service_id) {
-      const { data: svc } = await supabase
-        .from('provider_services')
-        .select('deposit_pct')
-        .eq('id', service_id).maybeSingle()
-      depositPct = Math.max(0, Math.min(40, svc?.deposit_pct || 0))
-    }
+    // Señal siempre entre el 10 % y el 20 % (ver cleanDeposit).
+    const depositPct = svcRow ? cleanDeposit(svcRow.deposit_pct) : 0
     // Opción A: pasamos base y Garantía por separado — la Garantía se cobra
     // ÍNTEGRA con el anticipo, no proporcional. Ver comentarios de
     // computePaymentSchedule para la lógica completa.

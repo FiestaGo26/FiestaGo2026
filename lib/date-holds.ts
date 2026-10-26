@@ -5,6 +5,8 @@
 //               bloqueada (service_availability, source 'hold') y se libera
 //               sola al caducar. Sin tarjeta ni DNI.
 //   · 'quote' → "Pide presupuesto gratis": solo avisa al proveedor.
+//   · 'call'  → "Te llamamos": el cliente deja su teléfono y una franja;
+//               llama el proveedor o, si no, alguien de FiestaGo.
 //
 // El proveedor y Mariano reciben un email; el cliente, una confirmación.
 // Si el cliente reserva esa misma fecha, el bloqueo pasa a 'converted'.
@@ -17,8 +19,10 @@ import { sendEmail } from '@/lib/resend'
 export const HOLD_HOURS = 48
 const HOLD_SOURCE = 'hold'
 
+export type HoldKind = 'hold' | 'quote' | 'call'
+
 export type HoldInput = {
-  kind: 'hold' | 'quote'
+  kind: HoldKind
   provider_id: string
   service_id?: string | null
   event_date?: string | null
@@ -28,6 +32,7 @@ export type HoldInput = {
   event_type?: string | null
   guests?: number | null
   message?: string | null
+  preferred_time?: string | null
   acquisition?: unknown
 }
 
@@ -52,7 +57,9 @@ export async function createHold(supabase: SupabaseClient, input: HoldInput) {
     service = { id: data.id, name: data.name }
   }
 
-  const kind = input.kind === 'hold' && service && input.event_date ? 'hold' : 'quote'
+  const kind: HoldKind = input.kind === 'call' ? 'call'
+    : input.kind === 'hold' && service && input.event_date ? 'hold' : 'quote'
+  if (kind === 'call' && !input.client_phone) throw Object.assign(new Error('Déjanos un teléfono para poder llamarte'), { status: 400 })
   let expiresAt: string | null = null
 
   if (kind === 'hold') {
@@ -76,6 +83,7 @@ export async function createHold(supabase: SupabaseClient, input: HoldInput) {
     event_date: input.event_date || null, expires_at: expiresAt,
     client_name: input.client_name, client_email: input.client_email, client_phone: input.client_phone || null,
     event_type: input.event_type || null, guests: input.guests || null, message: input.message || null,
+    preferred_time: input.preferred_time || null,
     acquisition: input.acquisition || null,
   }).select('id, kind, expires_at').single()
   if (error) throw new Error(error.message)
@@ -85,7 +93,7 @@ export async function createHold(supabase: SupabaseClient, input: HoldInput) {
 }
 
 async function notify(o: {
-  kind: 'hold' | 'quote'
+  kind: HoldKind
   provider: { name: string; slug: string | null; email: string | null; id: string }
   service: { name: string } | null
   input: HoldInput
@@ -98,6 +106,7 @@ async function notify(o: {
     `Cliente: ${input.client_name}`,
     `Email: ${input.client_email}`,
     input.client_phone ? `Teléfono: ${input.client_phone}` : null,
+    input.preferred_time ? `Mejor hora para llamar: ${input.preferred_time}` : null,
     `Servicio: ${service?.name || 'sin elegir'}`,
     `Fecha: ${when}`,
     input.event_type ? `Tipo de evento: ${input.event_type}` : null,
@@ -111,8 +120,12 @@ async function notify(o: {
     to: input.client_email,
     subject: kind === 'hold'
       ? `Tu fecha está bloqueada 48 h · ${provider.name}`
+      : kind === 'call'
+      ? `Te llamamos · ${provider.name}`
       : `Hemos recibido tu petición de presupuesto · ${provider.name}`,
-    text: kind === 'hold'
+    text: kind === 'call'
+      ? `Hola ${input.client_name},\n\nTe llamará ${provider.name} o alguien del equipo de FiestaGo al ${input.client_phone}${input.preferred_time ? ` (${input.preferred_time})` : ''} para resolver tus dudas. No has pagado nada.\n\nMientras, puedes ver su ficha aquí: ${fichaUrl}\n\nFiestaGo`
+      : kind === 'hold'
       ? `Hola ${input.client_name},\n\nHemos bloqueado el ${when} para ${what} de ${provider.name} hasta el ${fmtUntil(expiresAt!)}. No has pagado nada y no te llamaremos si no lo pides.\n\nSi lo tienes claro, reserva desde la ficha antes de que caduque: ${fichaUrl}\nSi tienes dudas, contesta a este email o escríbenos por WhatsApp (de lunes a viernes de 10:00 a 20:00 y sábados de 10:00 a 14:00).\n\nTodos los servicios llevan la Garantía de Éxito incluida y tu pago queda retenido en Stripe hasta que termina tu evento.\n\nFiestaGo`
       : `Hola ${input.client_name},\n\nHemos pasado tu petición a ${provider.name} y te responderá con un presupuesto. No has pagado nada y no te llamaremos si no lo pides.\n\nPuedes ver su ficha aquí: ${fichaUrl}\n\nFiestaGo`,
   })
@@ -123,8 +136,12 @@ async function notify(o: {
       to: provider.email,
       subject: kind === 'hold'
         ? `📅 Fecha bloqueada 48 h por un cliente · ${when}`
+        : kind === 'call'
+        ? `📞 Un cliente quiere que le llames · ${input.client_name}`
         : `💬 Nueva petición de presupuesto en FiestaGo`,
-      text: `${kind === 'hold'
+      text: `${kind === 'call'
+        ? `Un cliente quiere hablar contigo antes de reservar. Llámale cuanto antes${input.preferred_time ? ` (prefiere ${input.preferred_time})` : ''}: es el momento en que más fácil es cerrar la reserva. Si no puedes, responde a este email y le llamamos desde FiestaGo.`
+        : kind === 'hold'
         ? `Un cliente ha bloqueado ${when} para ${what} durante ${HOLD_HOURS} h, sin pagar todavía. Si reserva, te llegará la reserva como siempre; si no, la fecha se libera sola el ${fmtUntil(expiresAt!)}.`
         : `Un cliente te pide presupuesto. Contéstale cuanto antes: es el momento en que más fácil es cerrar la reserva.`}\n\n${details}\n\nTu panel: ${APP_URL()}/proveedor/panel`,
       reply_to: input.client_email,
@@ -134,8 +151,8 @@ async function notify(o: {
   // Mariano
   await sendEmail({
     to: process.env.ADMIN_EMAIL || 'contacto@fiestago.es',
-    subject: `${kind === 'hold' ? '📅 Bloqueo 48 h' : '💬 Presupuesto'} · ${provider.name} · ${input.client_name}`,
-    text: `${details}\n\nFicha: ${fichaUrl}`,
+    subject: `${kind === 'hold' ? '📅 Bloqueo 48 h' : kind === 'call' ? '📞 Llamada pedida' : '💬 Presupuesto'} · ${provider.name} · ${input.client_name}`,
+    text: `${kind === 'call' ? 'El cliente ha pedido que le llamen. Le llamará el proveedor; si no lo hace en unas horas, llámale tú.\n\n' : ''}${details}\n\nFicha: ${fichaUrl}`,
   })
 }
 

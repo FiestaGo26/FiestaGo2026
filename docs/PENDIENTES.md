@@ -20,10 +20,6 @@ Las cuentas de siempre (@fiestago) pasan a ser **de clientes**; las de **proveed
 - [ ] **1.5 Avisar a Claude** cuando esté para comprobar la primera publicación en cada cuenta.
 
 ### Otros
-- [ ] **Supabase**: ejecutar en SQL Editor `tools/migrations/migration-guest-pricing.sql`
-  (precio por invitados, señal 10-20 %, "Te llamamos"). Luego Claude termina el código.
-- [ ] **HeyGen**: poner crédito. Claude comprobará con el avatar real qué motores admite y
-  activará el más nuevo (Avatar V, vía la API v3) con Avatar IV de respaldo.
 - [ ] **WhatsApp**: reactivar la tarjeta/número en Meta y avisar a Claude para revisar si
   saltó el freno automático del CEO y desbloquearlo.
 - [ ] **Recargar la API de HeyGen** (0 segundos de vídeo: no hay vídeo diario).
@@ -190,6 +186,15 @@ Decisiones pendientes tras la 4.ª simulación:
 ## 3. Hecho
 
 ### 26-10-2026
+- Precio según invitados: el proveedor pone precio, invitados incluidos y € por invitado de
+  más; la ficha calcula el precio final al poner cuántos son y el servidor lo recalcula al
+  reservar (ya no se fía del importe que manda el navegador).
+- Señal del 10-20 % del TOTAL del cliente (Garantía incluida) en reservas, panel y
+  presupuestos; los servicios existentes, normalizados.
+- Botón "Prefiero que me llaméis" en la ficha (teléfono + franja): avisa al proveedor y a
+  Mariano (`date_holds` kind 'call').
+- HeyGen: vídeo diario con Avatar V (API v3) y respaldo en v2; el latido lo crea (8, 11 y
+  14 h) y recoge los terminados. El avatar admite avatar_v/iv/iii.
 - Redes: la revisión de marca se cortaba ("Unterminated string in JSON") y no se publicaba
   nada desde el 23-10. Arreglado; el error se guarda en el post; el latido publica cada
   cuenta (9-21 h, 3 h de separación) y GitHub queda de respaldo.

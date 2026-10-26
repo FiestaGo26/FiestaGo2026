@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   // Normalización defensiva — el cliente puede mandar campos sueltos.
   const update: any = { updated_at: new Date().toISOString() }
-  if (typeof body.deposit_pct === 'number') update.deposit_pct = Math.max(0, Math.min(100, body.deposit_pct | 0))
+  if (typeof body.deposit_pct === 'number') update.deposit_pct = Math.max(10, Math.min(20, body.deposit_pct | 0))
   if (typeof body.validity_days === 'number') update.validity_days = Math.max(1, Math.min(365, body.validity_days | 0))
   if (Array.isArray(body.default_includes))   update.default_includes   = body.default_includes.map(String).filter(Boolean).slice(0, 30)
   if (Array.isArray(body.default_excludes))   update.default_excludes   = body.default_excludes.map(String).filter(Boolean).slice(0, 30)

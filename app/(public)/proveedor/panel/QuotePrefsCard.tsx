@@ -44,7 +44,7 @@ export default function QuotePrefsCard({
   const [configured,setConfigured]= useState(false)   // ¿alguna pref distinta del default?
   const [pending, startTransition] = useTransition()
 
-  const [depositPct,   setDepositPct]   = useState(30)
+  const [depositPct,   setDepositPct]   = useState(10)
   const [validityDays, setValidityDays] = useState(30)
   const [includes,     setIncludes]     = useState('')
   const [excludes,     setExcludes]     = useState('')
@@ -60,7 +60,7 @@ export default function QuotePrefsCard({
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Error')
       const p: Prefs = d.prefs
-      setDepositPct(p.deposit_pct || 30)
+      setDepositPct(Math.max(10, Math.min(20, p.deposit_pct || 10)))
       setValidityDays(p.validity_days || 30)
       setIncludes((p.default_includes   || []).join('\n'))
       setExcludes((p.default_excludes   || []).join('\n'))
@@ -74,7 +74,7 @@ export default function QuotePrefsCard({
         (p.default_excludes?.length ?? 0) > 0 ||
         (p.default_conditions?.length ?? 0) > 0 ||
         !!(p.pricing_notes && p.pricing_notes.trim()) ||
-        (p.deposit_pct !== 30 && p.deposit_pct !== null) ||
+        (p.deposit_pct !== 10 && p.deposit_pct !== null) ||
         (p.validity_days !== 30 && p.validity_days !== null) ||
         (p.language_style && p.language_style !== 'cercano')
       setConfigured(hasContent)
@@ -176,8 +176,8 @@ export default function QuotePrefsCard({
           <div style={{ padding: '4px 16px 16px', borderTop: '1px solid #C4B5FD66' }}>
             {/* Cifras */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14, marginTop: 10 }}>
-              <Field label="% de señal (anticipo)" value={String(depositPct)}
-                onChange={v => setDepositPct(Math.max(0, Math.min(100, Number(v) || 0)))}
+              <Field label="% de señal (10-20 %)" value={String(depositPct)}
+                onChange={v => setDepositPct(Math.max(10, Math.min(20, Number(v) || 10)))}
                 type="number" suffix="%"/>
               <Field label="Validez del presupuesto" value={String(validityDays)}
                 onChange={v => setValidityDays(Math.max(1, Math.min(365, Number(v) || 30)))}

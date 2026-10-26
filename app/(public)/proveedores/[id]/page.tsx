@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
-import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee } from '@/lib/pricing'
+import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee, priceForGuests, hasGuestPricing, cleanDeposit } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import FavoriteButton from '../../_components/FavoriteButton'
@@ -38,6 +38,8 @@ type Service = {
   price_unit: string
   duration: string | null
   max_guests: number | null
+  included_guests?: number | null
+  extra_guest_price?: number | null
   media_type: 'image' | 'video' | 'none'
   media_url: string | null
   thumbnail_url: string | null
@@ -140,7 +142,10 @@ export default function ProviderDetailPage() {
   const [heldDates,    setHeldDates]    = useState<string[]>([])  // bloqueos provisionales de 48 h
   // Primer paso sin pagar: bloquear la fecha 48 h o pedir presupuesto
   const [holding,  setHolding]  = useState(false)
-  const [holdSent, setHoldSent] = useState<{ kind: 'hold' | 'quote'; expires_at: string | null } | null>(null)
+  const [holdSent, setHoldSent] = useState<{ kind: 'hold' | 'quote' | 'call'; expires_at: string | null } | null>(null)
+  // "Te llamamos": teléfono y franja preferida
+  const [showCall, setShowCall] = useState(false)
+  const [callTime, setCallTime] = useState('Por la mañana')
 
   // Videollamada pre-venta (solo si el proveedor la ofrece).
   const [showVideoCallModal, setShowVideoCallModal] = useState(false)
@@ -314,13 +319,17 @@ export default function ProviderDetailPage() {
   }
 
   // "Bloquea tu fecha 48 h gratis" (con servicio y fecha) o "Pide presupuesto gratis"
-  async function handleHold() {
+  async function handleHold(asCall = false) {
     if (!provider) return
     if (!form.client_name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.client_email.trim())) {
       toast.error('Pon tu nombre y tu email para que podamos responderte')
       return
     }
-    const kind: 'hold' | 'quote' = selectedSvc && form.event_date ? 'hold' : 'quote'
+    if (asCall && form.client_phone.replace(/\D/g, '').length < 9) {
+      toast.error('Pon tu teléfono para que podamos llamarte')
+      return
+    }
+    const kind: 'hold' | 'quote' | 'call' = asCall ? 'call' : selectedSvc && form.event_date ? 'hold' : 'quote'
     setHolding(true)
     try {
       const res = await fetch('/api/holds', {
@@ -338,12 +347,13 @@ export default function ProviderDetailPage() {
           event_type:   form.event_type,
           guests:       parseInt(form.guests) || null,
           message:      form.message || null,
+          preferred_time: asCall ? callTime : null,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || data.error) throw new Error(data.error || `Error ${res.status} del servidor`)
       setHoldSent({ kind: data.hold?.kind || kind, expires_at: data.hold?.expires_at || null })
-      if (provider?.id) trackEvent(provider.id, kind === 'hold' ? 'date_hold' : 'quote_request', selectedSvc?.id)
+      if (provider?.id) trackEvent(provider.id, kind === 'hold' ? 'date_hold' : kind === 'call' ? 'call_request' : 'quote_request', selectedSvc?.id)
     } catch (err: any) {
       toast.error(err.message || 'No se ha podido enviar')
     }
@@ -369,7 +379,7 @@ export default function ProviderDetailPage() {
     try {
       const chosenAddons = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
       const addonsTotal  = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
-      const basePrice    = selectedSvc?.price ?? provider.price_base ?? 0
+      const basePrice    = selectedSvc ? priceForGuests(selectedSvc, parseInt(form.guests)) : (provider.price_base ?? 0)
       const totalAmount  = basePrice + addonsTotal
       // Doble red: nunca aceptamos reservas con importe 0 salvo que el
       // proveedor haya declarado explícitamente "precio a consultar"
@@ -437,7 +447,7 @@ export default function ProviderDetailPage() {
   // Auto-validar el cupón cuando hay código pendiente y el subtotal es
   // > 0 (usuario acaba de elegir servicio). Sin esto el cupón que viene
   // por URL se queda sin aplicar aunque el input esté relleno.
-  const subtotalForCoupon = (Number(selectedSvc?.price ?? provider?.price_base ?? 0) || 0) +
+  const subtotalForCoupon = (selectedSvc ? priceForGuests(selectedSvc, parseInt(form.guests)) : Number(provider?.price_base ?? 0) || 0) +
     ((selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
       .reduce((s, a) => s + (Number(a.price) || 0), 0))
   useEffect(() => {
@@ -470,7 +480,9 @@ export default function ProviderDetailPage() {
   // Number() defensivo: PostgreSQL a veces devuelve numeric como string
   // → sin esto '1150' + 0 = '11500' (concatenación) y todos los cálculos
   // corriente abajo se rompen.
-  const basePrice      = Number(selectedSvc?.price ?? provider.price_base ?? 0) || 0
+  // Precio según invitados: lo calcula el sistema con los que ponga el cliente
+  const basePrice      = selectedSvc ? priceForGuests(selectedSvc, parseInt(form.guests)) : Number(provider.price_base ?? 0) || 0
+  const guestPriced    = !!selectedSvc && hasGuestPricing(selectedSvc)
   const chosenAddons   = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
   const addonsTotal    = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
   const subtotal       = basePrice + addonsTotal
@@ -653,7 +665,10 @@ export default function ProviderDetailPage() {
                                 <span className="font-semibold" title={textoGarantiaIncluida(svc.price)}>
                                   {formatEuro(precioCliente(svc.price))}
                                 </span>
-                                <span className="text-ink/50"> {svc.price_unit}</span>
+                                <span className="text-ink/50"> {hasGuestPricing(svc) ? `hasta ${svc.included_guests} invitados` : svc.price_unit}</span>
+                                {hasGuestPricing(svc) && (
+                                  <div className="text-[11px] text-ink/60">+{formatEuro(precioCliente(Number(svc.extra_guest_price)))} por invitado de más</div>
+                                )}
                                 <div className="text-[10px] text-ink/45">🛡 Garantía de Éxito incluida</div>
                               </>
                             ) : (
@@ -766,9 +781,17 @@ export default function ProviderDetailPage() {
                   selectedSvc.price != null ? (
                     <>
                       <span className="font-serif text-3xl text-ink" title={textoGarantiaIncluida(selectedSvc.price)}>
-                        {formatEuro(precioCliente(selectedSvc.price))}
+                        {formatEuro(precioCliente(basePrice))}
                       </span>
-                      <span className="text-sm text-ink/50"> {selectedSvc.price_unit}</span>
+                      <span className="text-sm text-ink/50"> {guestPriced
+                        ? `para ${Math.max(parseInt(form.guests) || 0, Number(selectedSvc.included_guests))} invitados`
+                        : selectedSvc.price_unit}</span>
+                      {guestPriced && (
+                        <div className="text-xs text-ink/60 mt-1">
+                          Incluye {selectedSvc.included_guests} invitados · +{formatEuro(precioCliente(Number(selectedSvc.extra_guest_price)))} por cada invitado de más.
+                          {!form.guests && <> Pon abajo cuántos sois y te calculamos el precio final.</>}
+                        </div>
+                      )}
                       <div className="text-xs text-ink/55 mt-1">{textoGarantiaIncluida(selectedSvc.price)}</div>
                     </>
                   ) : (
@@ -860,27 +883,27 @@ export default function ProviderDetailPage() {
               {/* Anticipo del servicio, si aplica. Mostramos importes concretos
                   (no porcentajes) para no obligar al cliente a hacer cálculos
                   y para no revelar el desglose interno de la Garantía. */}
-              {selectedSvc?.deposit_pct != null && selectedSvc.deposit_pct > 0 && selectedSvc.price != null && (() => {
-                const svcBase   = Number(selectedSvc.price) || 0
-                const svcDeposit = Math.round((svcBase * selectedSvc.deposit_pct / 100) * 100) / 100
-                const svcRest   = Math.round((svcBase - svcDeposit) * 100) / 100
-                // Anticipo cliente = Garantía completa + parte proporcional del servicio
-                const clientDeposit = Math.round((svcDeposit + importeFee(svcBase)) * 100) / 100
+              {selectedSvc && selectedSvc.price != null && effectivePrice > 0 && (() => {
+                // Señal del 10-20 % del total del cliente (Garantía incluida),
+                // igual que lib/booking-payments.ts
+                const total = precioCliente(effectivePrice)
+                const clientDeposit = Math.max(importeFee(effectivePrice), Math.round(total * cleanDeposit(selectedSvc.deposit_pct) / 100 * 100) / 100)
+                const svcRest = Math.round((total - clientDeposit) * 100) / 100
                 return (
                   <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs">
                     <div className="flex items-start gap-2 mb-2">
                       <span className="text-lg leading-none">💶</span>
                       <div className="font-semibold text-amber-900">
-                        Este servicio se paga en dos plazos
+                        Reservas con una señal y el resto, más adelante
                       </div>
                     </div>
                     <ol className="ml-6 space-y-1 text-amber-800/85 list-decimal">
-                      <li><strong>{formatEuro(clientDeposit)} al reservar</strong> — confirma tu fecha en el momento.</li>
+                      <li><strong>{formatEuro(clientDeposit)} de señal al reservar</strong> — confirma tu fecha en el momento.</li>
                       <li><strong>{formatEuro(svcRest)} restantes 2 meses antes del evento</strong> — te avisaremos por email y WhatsApp con antelación.</li>
                     </ol>
                     <div className="mt-2 pt-2 border-t border-amber-200 text-amber-800/80 text-[11px] leading-relaxed">
                       Si reservas con menos de 2 meses de antelación, pagas el total al reservar.
-                      Tu pago queda retenido por FiestaGo hasta el evento (Garantía de Éxito).
+                      Tu pago queda retenido en Stripe hasta el evento y el proveedor no cobra hasta que termina.
                     </div>
                   </div>
                 )
@@ -971,15 +994,17 @@ export default function ProviderDetailPage() {
                 </div>
               ) : holdSent ? (
                 <div className="py-2 text-center">
-                  <div className="text-4xl mb-3">{holdSent.kind === 'hold' ? '📅' : '💬'}</div>
+                  <div className="text-4xl mb-3">{holdSent.kind === 'hold' ? '📅' : holdSent.kind === 'call' ? '📞' : '💬'}</div>
                   <div className="font-bold text-ink mb-2">
-                    {holdSent.kind === 'hold' ? '¡Fecha bloqueada 48 h!' : '¡Petición enviada!'}
+                    {holdSent.kind === 'hold' ? '¡Fecha bloqueada 48 h!' : holdSent.kind === 'call' ? '¡Te llamamos!' : '¡Petición enviada!'}
                   </div>
                   <div className="text-sm text-ink/60 leading-relaxed">
                     {holdSent.kind === 'hold' && holdSent.expires_at
                       ? <>Nadie más puede reservar ese día con {provider.name} hasta el{' '}
                           {new Date(holdSent.expires_at).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}.
                           No has pagado nada. Te hemos enviado un email con el enlace para reservar cuando lo tengas claro.</>
+                      : holdSent.kind === 'call'
+                      ? <>Te llamará {provider.name} o alguien del equipo de FiestaGo ({callTime.toLowerCase()}) para resolver tus dudas. No has pagado nada.</>
                       : <>{provider.name} te responderá con un presupuesto. No has pagado nada y no te llamaremos si no lo pides.</>}
                   </div>
                   {holdSent.kind === 'hold' && (
@@ -1132,9 +1157,14 @@ export default function ProviderDetailPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Invitados</label>
-                    <input type="number" value={form.guests} placeholder="ej. 80"
+                    <input type="number" min={1} value={form.guests} placeholder="ej. 80"
                       onChange={e => setForm(f => ({ ...f, guests: e.target.value }))}
                       className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                    {guestPriced && form.guests && (
+                      <div className="text-[11px] text-ink/60 mt-1">
+                        Precio final para {form.guests} invitados: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (Garantía de Éxito incluida)
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Tipo de evento</label>
@@ -1161,7 +1191,7 @@ export default function ProviderDetailPage() {
                     Sin compromiso · Respuesta en menos de 24h
                   </p>
                   <div className="border-t border-stone-200 pt-3 mt-1">
-                    <button type="button" onClick={handleHold} disabled={holding}
+                    <button type="button" onClick={() => handleHold()} disabled={holding}
                       className="w-full py-3 rounded-xl font-semibold text-sm text-coral border border-coral hover:bg-coral/5 transition-colors disabled:opacity-50">
                       {holding ? 'Enviando...'
                         : selectedSvc && form.event_date ? '📅 Bloquear esta fecha 48 h gratis'
@@ -1170,6 +1200,27 @@ export default function ProviderDetailPage() {
                     <p className="text-center text-[11px] text-ink/45 mt-1.5 leading-relaxed">
                       ¿Aún no lo tienes claro? Sin pagar, sin tarjeta, sin DNI<br/>y no te llamaremos si no lo pides.
                     </p>
+                    {!showCall ? (
+                      <button type="button" onClick={() => setShowCall(true)}
+                        className="w-full mt-2 py-2.5 rounded-xl font-semibold text-sm text-ink border border-stone-300 hover:border-coral hover:text-coral transition-colors">
+                        📞 Prefiero que me llaméis
+                      </button>
+                    ) : (
+                      <div className="mt-2 border border-stone-200 rounded-xl p-3 space-y-2">
+                        <div className="text-xs text-ink/60">Te llama {provider.name} o alguien de FiestaGo para resolver tus dudas antes de reservar.</div>
+                        <input type="tel" value={form.client_phone} placeholder="Tu teléfono"
+                          onChange={e => setForm(f => ({ ...f, client_phone: e.target.value }))}
+                          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
+                        <select value={callTime} onChange={e => setCallTime(e.target.value)}
+                          className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral">
+                          {['Por la mañana', 'A mediodía', 'Por la tarde', 'Cuando sea'].map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <button type="button" onClick={() => handleHold(true)} disabled={holding}
+                          className="w-full py-2.5 rounded-xl font-semibold text-sm text-white bg-ink hover:bg-ink/85 transition-colors disabled:opacity-50">
+                          {holding ? 'Enviando...' : 'Pedir que me llamen'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </form>
               )}

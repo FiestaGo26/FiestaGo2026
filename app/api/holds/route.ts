@@ -6,7 +6,7 @@ import { sanitizeAcquisition } from '@/lib/attribution'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// POST /api/holds — "Bloquea tu fecha 48 h gratis" o "Pide presupuesto gratis"
+// POST /api/holds — "Bloquea tu fecha 48 h gratis", "Pide presupuesto gratis" o "Te llamamos"
 // body: { kind: 'hold'|'quote', provider_id, service_id?, event_date?, client_name,
 //         client_email, client_phone?, event_type?, guests?, message?, acquisition? }
 export async function POST(req: NextRequest) {
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const hold = await createHold(createAdminClient(), {
-      kind: body.kind === 'hold' ? 'hold' : 'quote',
+      kind: body.kind === 'hold' ? 'hold' : body.kind === 'call' ? 'call' : 'quote',
       provider_id: String(body.provider_id),
       service_id: body.service_id ? String(body.service_id) : null,
       event_date: date,
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       event_type: body.event_type ? String(body.event_type).slice(0, 40) : null,
       guests: parseInt(body.guests) || null,
       message: body.message ? String(body.message).slice(0, 2000) : null,
+      preferred_time: body.preferred_time ? String(body.preferred_time).slice(0, 60) : null,
       acquisition: sanitizeAcquisition(body.acquisition),
     })
     return NextResponse.json({ hold }, { status: 201 })

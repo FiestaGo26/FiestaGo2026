@@ -59,7 +59,7 @@ export const TUTORIALS: Tutorial[] = [
       'En el sidebar pulsa "💼 Mis servicios" → "+ Nuevo servicio"',
       'Nombre del servicio (ej. "Reportaje boda completo") y descripción de qué incluye',
       'Precio que TÚ cobras (sin comisión) · el cliente verá ese precio + la Garantía',
-      'Anticipo % (0-40) · si es un servicio caro, un 20-30% le da confianza al cliente',
+      'Señal al reservar: entre el 10 % y el 20 % del total. El resto se cobra 2 meses antes del evento',
       'Añade 3-6 fotos de trabajos reales',
       'Elige política de cancelación (flexible, moderada, estricta)',
       'Guarda',
@@ -104,7 +104,7 @@ export const TUTORIALS: Tutorial[] = [
     ],
     tips: [
       'La IA usa tus servicios reales, tus últimos presupuestos y tus preferencias · cuanto más tengas rellenado, mejor',
-      'Configura una vez tus preferencias (regla del 30% anticipo, incluye/no incluye, tono) en la caja de "Ajustes de la IA"',
+      'Configura una vez tus preferencias (% de señal entre 10 y 20, incluye/no incluye, tono) en la caja de "Ajustes de la IA"',
     ],
   },
   {

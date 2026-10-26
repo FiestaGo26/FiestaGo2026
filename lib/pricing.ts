@@ -28,6 +28,42 @@ export function importeFee(base: number): number {
   return Math.round(base * FEE_RATE * 100) / 100
 }
 
+// ─── Precio según invitados ───────────────────────────────────────────
+// El proveedor pone su precio, los invitados que incluye (el mínimo) y el
+// precio por cada invitado de más. Con eso el sistema calcula el precio
+// del proveedor para el número de invitados del cliente:
+//   base + max(0, invitados − incluidos) × extra
+// Si no hay invitados incluidos o precio extra, el precio es fijo.
+// Un catering "45 €/persona, mínimo 30" = base 1.350, incluidos 30, extra 45.
+
+export type GuestPricing = {
+  price: number | null
+  included_guests?: number | null
+  extra_guest_price?: number | null
+}
+
+/** ¿El servicio cambia de precio según el número de invitados? */
+export function hasGuestPricing(s: GuestPricing): boolean {
+  return Number(s.included_guests) > 0 && Number(s.extra_guest_price) > 0
+}
+
+/** Precio del proveedor (sin Garantía) para `guests` invitados. */
+export function priceForGuests(s: GuestPricing, guests?: number | null): number {
+  const base = Number(s.price) || 0
+  if (!hasGuestPricing(s)) return base
+  const extraGuests = Math.max(0, Math.floor(Number(guests) || 0) - Number(s.included_guests))
+  return Math.round((base + extraGuests * Number(s.extra_guest_price)) * 100) / 100
+}
+
+// ─── Señal al reservar ────────────────────────────────────────────────
+// Entre el 10 % y el 20 % (lo que aceptan los clientes, 5.ª simulación).
+export const DEPOSIT_MIN = 10
+export const DEPOSIT_MAX = 20
+export function cleanDeposit(raw: unknown): number {
+  const n = Math.round(Number(raw) || DEPOSIT_MIN)
+  return Math.max(DEPOSIT_MIN, Math.min(DEPOSIT_MAX, n))
+}
+
 /** Lo que cobra el proveedor — el `base` tal cual, expuesto como helper
  *  por simetría con `precioCliente`. */
 export function precioProveedorCobra(base: number): number {

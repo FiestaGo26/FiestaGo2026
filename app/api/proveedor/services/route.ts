@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
+import { cleanDeposit } from '@/lib/pricing'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,13 +9,17 @@ export const dynamic = 'force-dynamic'
 const ALLOWED_FIELDS = new Set([
   'name', 'description', 'price', 'price_unit', 'duration', 'max_guests',
   'media_type', 'media_url', 'thumbnail_url', 'status', 'sort_order',
-  'cancellation_policy', 'addons', 'deposit_pct',
+  'cancellation_policy', 'addons', 'deposit_pct', 'included_guests', 'extra_guest_price',
 ])
 
-// Sanea deposit_pct: 0-40, entero. Se aplica tanto en POST como en PATCH.
-function cleanDepositPct(raw: any): number {
-  const n = Math.round(Number(raw) || 0)
-  return Math.max(0, Math.min(40, n))
+// Sanea deposit_pct: 10-20 %, entero. Se aplica tanto en POST como en PATCH.
+const cleanDepositPct = cleanDeposit
+
+// Precio según invitados: enteros/importes positivos o null (precio fijo)
+function cleanPositive(raw: any, int = false): number | null {
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return int ? Math.round(n) : Math.round(n * 100) / 100
 }
 
 // GET /api/proveedor/services?provider_id=...
@@ -71,6 +76,8 @@ export async function POST(req: NextRequest) {
       cancellation_policy: body.cancellation_policy || 'moderate',
       addons:        Array.isArray(body.addons) ? body.addons : [],
       deposit_pct:   cleanDepositPct(body.deposit_pct),
+      included_guests:   cleanPositive(body.included_guests, true),
+      extra_guest_price: cleanPositive(body.extra_guest_price),
       status:        'active',
     })
     .select()
@@ -96,7 +103,10 @@ export async function PATCH(req: NextRequest) {
   const updates: Record<string, any> = { updated_at: new Date().toISOString() }
   for (const [k, v] of Object.entries(rawUpdates)) {
     if (!ALLOWED_FIELDS.has(k)) continue
-    updates[k] = k === 'deposit_pct' ? cleanDepositPct(v) : v
+    updates[k] = k === 'deposit_pct' ? cleanDepositPct(v)
+      : k === 'included_guests' ? cleanPositive(v, true)
+      : k === 'extra_guest_price' ? cleanPositive(v)
+      : v
   }
 
   const { data, error } = await supabase
