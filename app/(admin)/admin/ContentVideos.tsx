@@ -111,7 +111,9 @@ export default function ContentVideos() {
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Error')
-        toast.success(`Vídeo iniciado · ${data.pillar} · ${data.topic}`)
+        toast.success(data.status === 'awaiting_render'
+          ? `Guion listo · ${data.topic}. El vídeo se graba con los créditos del plan en la próxima pasada (9:00, 12:00 o 15:00).`
+          : `Vídeo iniciado · ${data.pillar} · ${data.topic}`)
         await load()
       } catch (e: any) {
         toast.error(e?.message || 'Error')

@@ -77,8 +77,18 @@ export async function POST(req: NextRequest) {
     // 3. Claude → guion
     const content = await generateContent({ pillar, topic })
 
-    // 4. HeyGen → arranca generación
-    const heygenVideoId = await generateVideo({ script: content.script })
+    // 4. HeyGen → arranca generación. Si la API no tiene saldo (es aparte
+    //    de los créditos del plan), el guion queda en 'awaiting_render' y lo
+    //    graba la tarea programada de Claude con los créditos del plan
+    //    (conector de HeyGen); el latido recoge el vídeo como siempre.
+    let heygenVideoId: string | null = null
+    let status = 'processing'
+    try {
+      heygenVideoId = await generateVideo({ script: content.script })
+    } catch (err: any) {
+      if (!/insufficient_credit|402/.test(String(err?.message))) throw err
+      status = 'awaiting_render'
+    }
 
     // 5. Persistir
     const { data: row, error } = await supabase
@@ -93,7 +103,7 @@ export async function POST(req: NextRequest) {
         cta_url:              pillar.ctaUrl,
         audience:             activeMode() === 'clients' ? 'clientes' : 'proveedores',
         heygen_video_id:      heygenVideoId,
-        heygen_status:        'processing',
+        heygen_status:        status,
         generation_started_at: new Date().toISOString(),
       })
       .select('id')
@@ -106,6 +116,7 @@ export async function POST(req: NextRequest) {
       pillar: pillar.id,
       topic,
       heygen_video_id: heygenVideoId,
+      status,
       script_preview: content.script.slice(0, 120) + '…',
     })
   } catch (err: any) {
