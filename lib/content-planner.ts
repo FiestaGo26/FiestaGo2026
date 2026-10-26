@@ -9,7 +9,9 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8'
+// Modelo propio del guion: ANTHROPIC_MODEL lo comparten otras piezas y un
+// modelo retirado ahí dejaba sin vídeos (sin vídeos desde el 12-07).
+const MODEL = process.env.CONTENT_MODEL || 'claude-sonnet-5-5'
 
 let _client: Anthropic | null = null
 function client(): Anthropic {
@@ -436,15 +438,19 @@ export async function generateContent(opts: {
 
   const resp = await client().messages.create({
     model:      MODEL,
-    max_tokens: 1024,
-    thinking:   { type: 'disabled' },
+    max_tokens: 2000,
+    // JSON garantizado (antes fallaba el parseo si el modelo añadía texto)
+    output_config: { format: { type: 'json_schema', schema: {
+      type: 'object', additionalProperties: false, required: ['script', 'caption', 'hashtags'],
+      properties: { script: { type: 'string' }, caption: { type: 'string' }, hashtags: { type: 'array', items: { type: 'string' } } },
+    } } },
     system: [{
       type: 'text',
       text: forClients ? SCRIPT_SYSTEM_CLIENTS : SCRIPT_SYSTEM,
       cache_control: { type: 'ephemeral' },
     }],
     messages: [{ role: 'user', content: userMsg }],
-  })
+  } as any)
 
   const raw = resp.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')

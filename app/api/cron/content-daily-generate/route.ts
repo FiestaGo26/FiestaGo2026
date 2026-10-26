@@ -106,6 +106,9 @@ export async function POST(req: NextRequest) {
       script_preview: content.script.slice(0, 120) + '…',
     })
   } catch (err: any) {
+    // Que el fallo quede a la vista (panel y CEO), no solo en la respuesta
+    console.error('[content-daily-generate]', err.message)
+    await supabase.from('ops_log').insert({ kind: 'content_generate', ok: false, detail: { error: String(err.message).slice(0, 1000), force } })
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
