@@ -20,6 +20,12 @@ Las cuentas de siempre (@fiestago) pasan a ser **de clientes**; las de **proveed
 - [ ] **1.5 Avisar a Claude** cuando esté para comprobar la primera publicación en cada cuenta.
 
 ### Otros
+- [ ] **Supabase**: ejecutar en SQL Editor `tools/migrations/migration-guest-pricing.sql`
+  (precio por invitados, señal 10-20 %, "Te llamamos"). Luego Claude termina el código.
+- [ ] **HeyGen**: poner crédito. Claude comprobará con el avatar real qué motores admite y
+  activará el más nuevo (Avatar V, vía la API v3) con Avatar IV de respaldo.
+- [ ] **WhatsApp**: reactivar la tarjeta/número en Meta y avisar a Claude para revisar si
+  saltó el freno automático del CEO y desbloquearlo.
 - [ ] **Recargar la API de HeyGen** (0 segundos de vídeo: no hay vídeo diario).
 - [ ] **Salir del modo prueba** (`FIESTAGO_TEST_MODE=true` en Netlify) cuando se vaya a
   cobrar de verdad. Los datos fiscales ya son los reales.
@@ -182,6 +188,18 @@ Decisiones pendientes tras la 4.ª simulación:
 - [ ] Enfocar los posts de clientes según la 2.ª simulación (ver `sim_runs`).
 
 ## 3. Hecho
+
+### 26-10-2026
+- Redes: la revisión de marca se cortaba ("Unterminated string in JSON") y no se publicaba
+  nada desde el 23-10. Arreglado; el error se guarda en el post; el latido publica cada
+  cuenta (9-21 h, 3 h de separación) y GitHub queda de respaldo.
+- Foco del CEO en CLIENTES: métrica `growth.client_demand` (fichas vistas, lista de espera y
+  quiz, bloqueos, presupuestos, llamadas, WhatsApps de clientes, reservas, por origen y
+  evento); experimentos orgánicos de clientes en cualquier ciudad (anuncios solo con oferta);
+  los bloqueos/presupuestos cuentan como conversión de los experimentos.
+- Vídeo diario de HeyGen en modo clientes por defecto (CONTENT_MODE), con temas nuevos
+  (dinero seguro, cumple infantil, Mariano responde, comuniones, cumple adulto, primer paso,
+  quiz) y guion sin cifras inventadas ni el 8 %.
 
 ### 24-10-2026
 - Primer paso sin pagar en la ficha de proveedor (`/api/holds`, `lib/date-holds.ts`, tabla

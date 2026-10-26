@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { pickPillarForToday, pickTopic, generateContent, PILLARS } from '@/lib/content-planner'
+import { pickPillarForToday, pickTopic, generateContent, PILLARS, activeMode } from '@/lib/content-planner'
 import { generateVideo, isConfigured } from '@/lib/heygen'
 
 export const runtime = 'nodejs'
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         caption:              content.caption,
         hashtags:             content.hashtags,
         cta_url:              pillar.ctaUrl,
+        audience:             activeMode() === 'clients' ? 'clientes' : 'proveedores',
         heygen_video_id:      heygenVideoId,
         heygen_status:        'processing',
         generation_started_at: new Date().toISOString(),

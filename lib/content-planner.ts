@@ -159,134 +159,125 @@ export const PILLARS_PROVIDERS: Pillar[] = [
   },
 ]
 
-// ─── MODO "CLIENTES" · captación B2C (para más adelante) ──────────────────
-// Cuando se llenen las 100 plazas con sello, cambia CONTENT_MODE=clients
-// en Netlify y el cron empezará a rotar este set, enfocado a atraer
-// parejas que organizan boda / familias con evento.
+// ─── MODO "CLIENTES" · captación B2C (activo desde el 26-10-2026) ─────────
+// Enfocado a familias, parejas y personas que organizan una celebración, con
+// lo aprendido en las simulaciones de clientes: lo que más mueve es saber
+// dónde está su dinero, ver que responde una persona, dar el primer paso sin
+// pagar y conocer el precio total para su número de invitados. Primero
+// cumpleaños (infantiles y de adultos) y comuniones; bodas, con prudencia.
+// Sin cifras de mercado ni "casos reales" inventados.
 export const PILLARS_CLIENTS: Pillar[] = [
   {
-    id:        'lunes_tip',
+    id:        'lunes_dinero',
     dayOfWeek: 1,
-    label:     'Tip de planificación',
+    label:     'Tu dinero, seguro',
     topicBag: [
-      'Los 3 errores más caros al elegir banquete',
-      'Cuánto reservar para imprevistos en el presupuesto',
-      'Cuándo cerrar fecha del salón sin perder dinero',
-      'Por qué la lista de invitados se desmadra siempre',
-      'El error de elegir fotógrafo solo por precio',
-      'Cómo decidir entre comida o barra libre',
-      'Cuánto antes contratar al DJ',
-      'La trampa de los "presupuestos cerrados"',
-    ],
-    ctaUrl:       'https://fiestago.es/calculadora',
-    ctaShort:     'calcula tu boda gratis',
-    hashtagsBase: ['bodas','bodasespaña','planificarboda','tipsbodas','noviosencantados'],
-  },
-  {
-    id:        'martes_categoria',
-    dayOfWeek: 2,
-    label:     'Categoría destacada',
-    topicBag: [
-      'Por qué un buen DJ vale más que el cóctel',
-      'El catering bueno se nota a los 10 minutos',
-      'Lo que diferencia a un fotógrafo de boda de uno cualquiera',
-      'Floristería de bodas: por qué el precio cambia tanto',
-      'Tartas de boda: cuándo el diseño importa más que el sabor',
-      'Animación: el detalle que vuelve a la gente loca',
-      'Espacios para bodas: qué preguntar antes de firmar',
-      'Wedding planner: cuándo merece la pena pagarlo',
-    ],
-    ctaUrl:       'https://fiestago.es/marketplace',
-    ctaShort:     'búscalos en FiestaGo',
-    hashtagsBase: ['proveedoresboda','fotografodebodas','djbodas','cateringbodas','floristabodas'],
-  },
-  {
-    id:        'miercoles_garantia',
-    dayOfWeek: 3,
-    label:     'Garantía de Éxito',
-    topicBag: [
-      'Si tu proveedor cancela 2 días antes, qué pasa',
-      'Cómo recuperas tu dinero si el espacio cierra',
-      'El 8% que paga el cliente, qué cubre exactamente',
-      'Por qué pagar en escrow protege a las dos partes',
-      'La diferencia entre una agencia y un marketplace con garantía',
-      'Caso real: boda salvada en 48h por la garantía',
+      'Dónde está tu dinero desde que reservas hasta el día de la fiesta',
+      'Por qué el proveedor no cobra hasta que termina tu evento',
+      'Qué pasa si el animador cancela una semana antes del cumple',
+      'Qué pasa si el fotógrafo no se presenta el día de la comunión',
+      'Pagar una señal pequeña en vez de todo por adelantado',
     ],
     ctaUrl:       'https://fiestago.es/garantia',
-    ctaShort:     'mira la garantía',
-    hashtagsBase: ['garantiaboda','bodasespaña','protecciónboda','tranquilidadboda'],
+    ctaShort:     'mira cómo funciona',
+    hashtagsBase: ['fiestas','cumpleaños','comuniones','organizarfiesta','fiestago'],
   },
   {
-    id:        'jueves_real_wedding',
-    dayOfWeek: 4,
-    label:     'Boda real / Inspiración',
+    id:        'martes_cumple_infantil',
+    dayOfWeek: 2,
+    label:     'Cumpleaños infantil',
     topicBag: [
-      'Una boda de 80 invitados en Valencia: cómo se distribuye el dinero',
-      'Boda íntima de 30 personas: por qué cuesta lo mismo proporcionalmente',
-      '3 detalles que hicieron viral una boda esta temporada',
-      'Bodas pequeñas vs bodas grandes: ventajas reales',
-      'Cómo organizar una boda en 3 meses sin morir',
-      'El estilo de boda que más se contrata en 2026',
+      'Cómo organizar el cumple de tu peque sin volverte loca',
+      'Animador, merienda y sitio: qué contratar primero',
+      'Cuánto antes reservar el animador del cumpleaños',
+      'Qué preguntar al animador antes de reservar',
+      'Cumple en casa o en ludoteca: pros y contras',
+    ],
+    ctaUrl:       'https://fiestago.es/cumpleanos',
+    ctaShort:     'busca tu animador',
+    hashtagsBase: ['cumpleañosinfantil','fiestainfantil','animacioninfantil','ideascumpleaños','mamás'],
+  },
+  {
+    id:        'miercoles_mariano_responde',
+    dayOfWeek: 3,
+    label:     'Mariano responde',
+    topicBag: [
+      '¿Quién guarda mi dinero hasta la fiesta? Te lo explico en 30 segundos',
+      '¿Qué pasa si llueve? Lo que cubre y lo que no la garantía',
+      '¿Y si cancelo yo? Así funciona la cancelación',
+      '¿Puedo hablar con alguien antes de reservar? Sí, así',
+      '¿Cómo sé que el proveedor es de fiar? Así lo comprobamos',
+    ],
+    ctaUrl:       'https://fiestago.es/quienes-somos',
+    ctaShort:     'pregúntanos por WhatsApp',
+    hashtagsBase: ['fiestago','preguntasfrecuentes','organizarevento','celebraciones','fiestas'],
+  },
+  {
+    id:        'jueves_comunion',
+    dayOfWeek: 4,
+    label:     'Comuniones',
+    topicBag: [
+      'Comunión: qué reservar primero y con cuánta antelación',
+      'Restaurante o catering para la comunión: cómo decidir',
+      'Cómo calcular el precio de la comunión según invitados',
+      'Fotógrafo de comunión: qué debe incluir',
+      'Ideas para que los niños no se aburran en la comunión',
+    ],
+    ctaUrl:       'https://fiestago.es/comuniones',
+    ctaShort:     'pide tu presupuesto gratis',
+    hashtagsBase: ['comunion','primeracomunion','comuniones2027','fiestacomunion','familia'],
+  },
+  {
+    id:        'viernes_cumple_adulto',
+    dayOfWeek: 5,
+    label:     'Cumpleaños de adulto',
+    topicBag: [
+      'Cómo montar un cumple de 40 con amigos sin dejarte el sueldo',
+      'DJ y catering para tu cumpleaños: qué preguntar',
+      'Fiesta sorpresa: cómo organizarla sin que se entere',
+      'Cuánto cuesta una fiesta de cumpleaños para 50 personas: cómo calcularlo',
+      'Ideas para celebrar los 30, 40 o 50',
     ],
     ctaUrl:       'https://fiestago.es/buscar',
-    ctaShort:     'inspírate en FiestaGo',
-    hashtagsBase: ['realweddings','bodasreales','bodasespaña','inspiraciónboda'],
+    ctaShort:     'búscalo en FiestaGo',
+    hashtagsBase: ['cumpleaños','fiestadecumpleaños','fiestasorpresa','celebracion','fiesta'],
   },
   {
-    id:        'viernes_dato',
-    dayOfWeek: 5,
-    label:     'Dato/estadística',
-    topicBag: [
-      'El 67% de las parejas se arrepiente de un proveedor: por qué',
-      'Cuánto cuesta de media una boda en España en 2026',
-      'El día de la semana más caro para casarse',
-      'Tiempo medio de planificación de boda en España',
-      'Categoría donde más se gasta de más sin querer',
-      'Cuántos proveedores se contratan de media para una boda',
-    ],
-    ctaUrl:       'https://fiestago.es/calculadora',
-    ctaShort:     'calcula tu boda real',
-    hashtagsBase: ['datosboda','bodasespaña','presupuestoboda','planificarboda'],
-  },
-  {
-    id:        'sabado_proveedor_valor',
+    id:        'sabado_primer_paso',
     dayOfWeek: 6,
-    label:     'Mensaje al proveedor que se cruza el Reel',
+    label:     'Primer paso sin pagar',
     topicBag: [
-      'Si eres proveedor de bodas, esto te ahorra horas cada semana',
-      'Tres herramientas IA gratis para fotógrafos, DJs y catering',
-      'Por qué cobrar el 100% de tu trabajo cambia el negocio',
-      'Cómo dejar de hacer presupuestos a mano y vender más',
-      'El stack productivo gratis para proveedores de eventos',
+      'Bloquea tu fecha 48 horas gratis mientras te decides',
+      'Pide presupuesto sin compromiso y sin dar tu tarjeta',
+      'Cómo comparar proveedores con el precio total a la vista',
+      'Por qué no deberías pagar todo por adelantado a un desconocido',
     ],
-    ctaUrl:       'https://fiestago.es/proveedor/valor',
-    ctaShort:     'mira lo que te llevas',
-    hashtagsBase: ['proveedoresboda','herramientasboda','iaparafotografos','marketplaceboda','proveedoreseventos'],
+    ctaUrl:       'https://fiestago.es/buscar',
+    ctaShort:     'bloquea tu fecha gratis',
+    hashtagsBase: ['organizarfiesta','fiestas','celebraciones','cumpleaños','comuniones'],
   },
   {
-    id:        'domingo_calculadora',
+    id:        'domingo_quiz',
     dayOfWeek: 0,
-    label:     'Calculadora / cuánto cuesta',
+    label:     'Quiz: qué necesitas',
     topicBag: [
-      'Bodas de 80 invitados: cuánto cuesta realmente en 2026',
-      'Boda íntima de 30 personas: presupuesto real',
-      'Cuánto cuesta cada parte de la boda en porcentaje',
-      'Bodas low-cost que no se notan: trucos reales',
-      'Cuánto subió el precio de las bodas desde 2024',
+      'Qué proveedores necesitas para tu celebración en 2 minutos',
+      'Checklist para organizar un cumpleaños',
+      'Checklist para organizar una comunión',
+      'Los 5 pasos para organizar cualquier fiesta sin estrés',
     ],
-    ctaUrl:       'https://fiestago.es/calculadora',
-    ctaShort:     'tu cálculo en 60 segundos',
-    hashtagsBase: ['presupuestoboda','calculadoraboda','bodasespaña','cuantocuestaboda'],
+    ctaUrl:       'https://fiestago.es/quiz',
+    ctaShort:     'haz el quiz de 2 minutos',
+    hashtagsBase: ['organizarfiesta','checklist','fiestas','celebraciones','ideasfiesta'],
   },
 ]
 
-// Modo activo: 'providers' (default) o 'clients'. Se lee de CONTENT_MODE
-// en cada cron. Cambiar de modo = cambiar env var en Netlify, redeploy y
-// el siguiente cron usará el set correcto.
+// Modo activo: 'clients' (por defecto desde el 26-10-2026) o 'providers'.
+// Se lee de CONTENT_MODE en cada cron.
 export type ContentMode = 'providers' | 'clients'
 export function activeMode(): ContentMode {
-  const m = (process.env.CONTENT_MODE || 'providers').trim().toLowerCase()
-  return m === 'clients' ? 'clients' : 'providers'
+  const m = (process.env.CONTENT_MODE || 'clients').trim().toLowerCase()
+  return m === 'providers' ? 'providers' : 'clients'
 }
 
 export const PILLARS = PILLARS_PROVIDERS  // compatibilidad con código viejo
@@ -391,6 +382,39 @@ Devuelve ÚNICAMENTE este JSON, sin texto adicional, sin bloques markdown:
   "hashtags": ["...", "..."]
 }`
 
+// Guion para CLIENTES (modo por defecto desde el 26-10-2026). Lo dice el
+// avatar de Mariano, el fundador, a cámara.
+const SCRIPT_SYSTEM_CLIENTS = `Eres copywriter de vídeos verticales (Instagram Reels y TikTok) de FiestaGo (fiestago.es), un marketplace de proveedores para cumpleaños infantiles y de adultos, comuniones, bautizos, bodas y fiestas, abierto a toda España. El vídeo lo dice a cámara Mariano, el fundador, en primera persona, con tono cercano y tranquilo, tuteando, en español de España.
+
+Público: madres, padres, parejas y personas que organizan una celebración. Nunca hables a profesionales ni de darse de alta.
+
+Lo que más les preocupa: pagar por adelantado a alguien que no conocen, que el proveedor falle, no saber cuánto les costará todo y no tener a quién preguntar.
+
+Datos verdaderos (usa solo estos; nunca inventes cifras, estadísticas, reseñas, testimonios, clientes ni "casos reales"):
+- El pago queda retenido en Stripe y el proveedor no cobra hasta que termina el evento. Se reserva con una señal pequeña.
+- Todos los servicios llevan la Garantía de Éxito incluida en el precio: si el proveedor cancela, se busca otro que haga lo mismo a un precio similar en 48 h; si no lo hay, se devuelve todo y un 10 % más; si no se presenta, se devuelve lo pagado más una compensación según el importe. No cubre la lluvia ni los cambios que pida el cliente.
+- Precio cerrado a la vista en cada ficha. Se puede bloquear la fecha 48 h gratis o pedir presupuesto sin pagar ni dar la tarjeta.
+- Proveedores verificados (DNI o CIF y seguro de responsabilidad civil).
+- Se puede preguntar por WhatsApp: contesta una persona de lunes a viernes de 10:00 a 20:00 y los sábados de 10:00 a 14:00.
+- Nunca menciones el 8 % ni comisiones.
+
+GUION (unos 20 segundos, 45-60 palabras):
+1. Gancho (≤10 palabras): una pregunta o situación que el espectador reconozca de su propio evento.
+2. Respuesta clara y concreta al tema del día, útil aunque no use FiestaGo.
+3. Cómo lo resuelve FiestaGo, con uno solo de los datos verdaderos.
+4. Llamada a la acción final, la que se indica, diciendo "enlace en la bio".
+Sin emojis ni hashtags en el guion. Frases cortas, fáciles de decir.
+
+CAPTION: 2-3 frases que respondan a la duda del vídeo, máx. 1 emoji, y la llamada a la acción con "enlace en la bio" en línea aparte.
+HASHTAGS: 6-10, del tipo de evento y la ciudad si aplica, en minúsculas y sin almohadilla.
+
+Devuelve ÚNICAMENTE este JSON, sin texto adicional ni bloques markdown:
+{
+  "script":   "...",
+  "caption":  "...",
+  "hashtags": ["...", "..."]
+}`
+
 // Genera el guion + caption + hashtags para un pilar + topic dados.
 // Sin contexto de plazas/escasez: el enfoque es valor real.
 export async function generateContent(opts: {
@@ -399,7 +423,10 @@ export async function generateContent(opts: {
 }): Promise<GeneratedContent> {
   const { pillar, topic } = opts
 
-  const userMsg =
+  const forClients = activeMode() === 'clients'
+  const userMsg = forClients
+    ? `[Pilar de hoy] ${pillar.label}\n[Tema concreto] ${topic}\n[CTA final del guion] ${pillar.ctaShort}\n[Hashtags base sugeridos] ${pillar.hashtagsBase.join(', ')}\n\nGenera el guion (20s), caption y hashtags. JSON puro.`
+    :
     `[Pilar de hoy] ${pillar.label}\n` +
     `[Tema concreto] ${topic}\n` +
     `[CTA final del guion] ${pillar.ctaShort} (${pillar.ctaUrl})\n` +
@@ -413,7 +440,7 @@ export async function generateContent(opts: {
     thinking:   { type: 'disabled' },
     system: [{
       type: 'text',
-      text: SCRIPT_SYSTEM,
+      text: forClients ? SCRIPT_SYSTEM_CLIENTS : SCRIPT_SYSTEM,
       cache_control: { type: 'ephemeral' },
     }],
     messages: [{ role: 'user', content: userMsg }],

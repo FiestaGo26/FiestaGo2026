@@ -92,11 +92,12 @@ export async function checkWaBrake(supabase: SupabaseClient, settings: CeoSettin
 
 export async function experimentMetrics(supabase: SupabaseClient, exp: any) {
   const slug = exp.slug as string
-  const [provsOutreach, provsUtm, waitUtm, bookUtm] = await Promise.all([
+  const [provsOutreach, provsUtm, waitUtm, bookUtm, holdsUtm] = await Promise.all([
     safe<any>(supabase.from('providers').select('id, status, self_registered').eq('outreach_experiment', slug)),
     safe<any>(supabase.from('providers').select('id, status').or(`acquisition->last->>utm_campaign.eq.${slug},acquisition->first->>utm_campaign.eq.${slug}`)),
     safe<any>(supabase.from('waitlist').select('id').or(`acquisition->last->>utm_campaign.eq.${slug},acquisition->first->>utm_campaign.eq.${slug}`)),
     safe<any>(supabase.from('bookings').select('id, status, total_amount').or(`acquisition->last->>utm_campaign.eq.${slug},acquisition->first->>utm_campaign.eq.${slug}`)),
+    safe<any>(supabase.from('date_holds').select('id, kind').or(`acquisition->last->>utm_campaign.eq.${slug},acquisition->first->>utm_campaign.eq.${slug}`)),
   ])
 
   let replied = 0
@@ -119,7 +120,7 @@ export async function experimentMetrics(supabase: SupabaseClient, exp: any) {
   const contacted = provsOutreach.length
   const providerSignups = provsOutreach.filter(p => p.self_registered).length + provsUtm.length
   const confirmedBookings = bookUtm.filter(b => b.status === 'confirmed' || b.status === 'completed')
-  const conversions = providerSignups + waitUtm.length + bookUtm.length
+  const conversions = providerSignups + waitUtm.length + bookUtm.length + holdsUtm.length
   const views = sum('metric_views') + Number(manual.views || 0)
 
   // Umbrales mínimos para poder sacar conclusiones con tan poco volumen.
@@ -135,6 +136,7 @@ export async function experimentMetrics(supabase: SupabaseClient, exp: any) {
     provider_signups: providerSignups,
     provider_approved: provsOutreach.filter(p => p.status === 'approved').length + provsUtm.filter(p => p.status === 'approved').length,
     waitlist_signups: waitUtm.length,
+    client_requests: holdsUtm.length, // bloqueos de fecha, presupuestos y llamadas pedidas
     bookings: bookUtm.length,
     bookings_confirmed: confirmedBookings.length,
     gmv: Math.round(confirmedBookings.reduce((s, b) => s + Number(b.total_amount || 0), 0)),
@@ -151,6 +153,43 @@ export async function experimentMetrics(supabase: SupabaseClient, exp: any) {
     enough_data: enough,
     manual_updated_at: manual.updated_at || null,
   }
+}
+
+// ─── Demanda de clientes ──────────────────────────────────────────
+// Cada señal de que alguien quiere celebrar algo con FiestaGo: apuntarse a
+// la lista o hacer el quiz, ver fichas, bloquear fecha, pedir presupuesto o
+// llamada, escribir por WhatsApp y reservar. Con fuente (UTM) cuando la hay.
+
+async function clientDemand(supabase: SupabaseClient) {
+  const window = async (days: number) => {
+    const s = since(days)
+    const [wait, holds, views, waIn, books] = await Promise.all([
+      safe<any>(supabase.from('waitlist').select('source, acquisition, event_type, city').gte('created_at', s)),
+      safe<any>(supabase.from('date_holds').select('kind, event_type, acquisition').gte('created_at', s)),
+      safe<any>(supabase.from('provider_views').select('id').gte('created_at', s).limit(20000)),
+      safe<any>(supabase.from('whatsapp_messages').select('from_number').eq('direction', 'inbound').is('provider_id', null).gte('created_at', s)),
+      safe<any>(supabase.from('bookings').select('status, event_type, acquisition').gte('created_at', s)),
+    ])
+    const count = (list: any[], key: (r: any) => string) =>
+      list.reduce((m: Record<string, number>, r) => { const k = key(r) || 'sin dato'; m[k] = (m[k] || 0) + 1; return m }, {})
+    const src = (r: any) => sourceOf(r.acquisition) || 'directo'
+    return {
+      fichas_vistas: views.length,
+      lista_espera_y_quiz: wait.length,
+      lista_por_origen: count(wait, r => r.source || src(r)),
+      lista_por_evento: count(wait, r => r.event_type),
+      bloqueos_fecha: holds.filter(h => h.kind === 'hold').length,
+      presupuestos: holds.filter(h => h.kind === 'quote').length,
+      llamadas_pedidas: holds.filter(h => h.kind === 'call').length,
+      solicitudes_por_origen: count(holds, src),
+      whatsapp_clientes: new Set(waIn.map(m => m.from_number)).size,
+      reservas: books.length,
+      reservas_por_evento: count(books, r => r.event_type),
+      reservas_por_origen: count(books, src),
+    }
+  }
+  const [d7, d30] = await Promise.all([window(7), window(30)])
+  return { ultimos_7_dias: d7, ultimos_30_dias: d30 }
 }
 
 // ─── Snapshot de crecimiento para el CEO ──────────────────────────
@@ -212,6 +251,9 @@ export async function gatherGrowth(supabase: SupabaseClient, settings: CeoSettin
 
   const wa = await checkWaBrake(supabase, settings)
 
+  // Demanda de clientes: todas las señales de interés, en 7 y 30 días
+  const demand = await clientDemand(supabase)
+
   // Redes: qué se ha publicado solo y cómo ha ido (métricas de Upload-Post)
   const [pubPosts, pubVideos, queue] = await Promise.all([
     safe<any>(supabase.from('social_posts')
@@ -236,7 +278,8 @@ export async function gatherGrowth(supabase: SupabaseClient, settings: CeoSettin
   ].sort((a, b) => b.views - a.views)
 
   return {
-    phase: ready.length ? 'proveedores + clientes donde hay oferta' : 'solo proveedores (aún no hay ninguna ciudad+categoría con oferta suficiente)',
+    phase: 'CLIENTES: medir y hacer crecer la demanda (decisión de Mariano, 26-10-2026); la captación de proveedores sigue, sobre todo para cubrir lo que pidan los clientes',
+    client_demand: demand,
     supply_threshold: settings.supply_threshold,
     supply_ready_for_clients: ready,
     supply_gaps: gaps.slice(0, 20),
@@ -348,17 +391,19 @@ export async function applyExperimentDecisions(
     const channel = (CHANNELS as readonly string[]).includes(p.channel) ? p.channel as Channel : ''
     if (!audience || !channel || !p.hypothesis) { log.push(`Descartado ${p.key}: datos incompletos`); continue }
 
-    // Proveedores primero
-    if (audience === 'clientes') {
+    const isAd = (AD_CHANNELS as readonly string[]).includes(channel)
+
+    // Desde el 26-10-2026 el foco es medir la demanda de clientes: los
+    // experimentos orgánicos de clientes (redes, SEO) van en cualquier sitio.
+    // Los ANUNCIOS de clientes solo donde haya oferta para atenderlos.
+    if (audience === 'clientes' && isAd) {
       const city = p.city.trim().toLowerCase()
       const ok = city && p.category ? readyCells.has(`${city} · ${p.category}`)
         : city ? readyCities.has(city)
         : p.category ? readyCats.has(p.category)
         : readyCells.size > 0
-      if (!ok) { log.push(`Descartado ${p.key}: sin oferta suficiente para captar clientes ahí`); continue }
+      if (!ok) { log.push(`Descartado ${p.key}: anuncio de clientes sin oferta suficiente ahí`); continue }
     }
-
-    const isAd = (AD_CHANNELS as readonly string[]).includes(channel)
     let budget = 0
     if (isAd) {
       budget = Math.max(0, Math.min(Number(p.budget_eur) || 0, adsLeft))
