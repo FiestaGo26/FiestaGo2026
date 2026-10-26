@@ -10,6 +10,7 @@ import QuotesTab from './QuotesTab'
 import QuickRepliesTab from './QuickRepliesTab'
 import GmbTab from './GmbTab'
 import WelcomeModal from './WelcomeModal'
+import ClientRequestsCard from './ClientRequestsCard'
 
 type ServiceMedia = {
   id: string
@@ -2101,6 +2102,7 @@ function ProveedorPanelInner() {
         {tab==='bookings' && (
           <div>
             <h1 className="font-serif text-2xl font-black text-ink mb-6">Mis reservas</h1>
+            {provider && <ClientRequestsCard providerId={provider.id} apiFetch={apiFetch} />}
             {bookings.length===0 ? (
               <div className="bg-white border border-stone-200 rounded-2xl p-16 text-center shadow-card">
                 <div className="text-5xl mb-4">📋</div>

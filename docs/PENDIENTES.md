@@ -191,8 +191,14 @@ Decisiones pendientes tras la 4.ª simulación:
   reservar (ya no se fía del importe que manda el navegador).
 - Señal del 10-20 % del TOTAL del cliente (Garantía incluida) en reservas, panel y
   presupuestos; los servicios existentes, normalizados.
-- Botón "Prefiero que me llaméis" en la ficha (teléfono + franja): avisa al proveedor y a
-  Mariano (`date_holds` kind 'call').
+- Botón "Prefiero que me llaméis desde FiestaGo" (teléfono + franja): llama FiestaGo, no
+  el proveedor; solo avisa a Mariano (`date_holds` kind 'call').
+- Venta dentro de FiestaGo: el proveedor no recibe email/teléfono del cliente en presupuestos
+  ni bloqueos (responde desde "Peticiones de clientes" en su panel y FiestaGo reenvía la
+  respuesta); en reservas los ve al pagar la señal (antes al aceptar); el chat oculta
+  emails y teléfonos hasta la señal; regla de baja en /proveedor/compromisos.
+- [ ] Más adelante, si hace falta que hablen antes de reservar: línea puente (Twilio o
+  llamadas de WhatsApp Business) sin que ninguno vea el número del otro.
 - HeyGen: vídeo diario con Avatar V (API v3) y respaldo en v2; el latido lo crea (8, 11 y
   14 h) y recoge los terminados. El avatar admite avatar_v/iv/iii.
 - Redes: la revisión de marca se cortaba ("Unterminated string in JSON") y no se publicaba

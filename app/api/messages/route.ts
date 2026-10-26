@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { requireClientAuth, requireProviderAuth } from '@/lib/auth'
 import { emailChatMessage } from '@/lib/resend'
+import { maskContacts } from '@/lib/date-holds'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -103,10 +104,16 @@ export async function POST(req: NextRequest) {
   const auth = await authorize(req, booking_id, role, token)
   if ('errorResponse' in auth) return auth.errorResponse
 
+  // Hasta que el cliente paga la señal, el chat oculta emails y teléfonos
+  // (en los dos sentidos) para que la venta no se cierre fuera de FiestaGo.
+  const { data: bk } = await supabase.from('bookings')
+    .select('first_payment_status, status').eq('id', booking_id).maybeSingle()
+  const paid = bk?.first_payment_status === 'paid' || bk?.status === 'completed'
+
   const payload: Record<string, any> = {
     booking_id,
     sender_role: role,
-    body: text,
+    body: paid ? text : maskContacts(text),
   }
   if (hasAttachment) {
     payload.attachment_type = attachment_type

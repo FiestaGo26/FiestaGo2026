@@ -523,7 +523,7 @@ export async function emailProviderNewBooking(booking: any, provider: any) {
   if (!provider?.email) return { ok: false, error: 'Proveedor sin email' }
 
   // NUNCA incluimos datos personales del cliente en el primer email.
-  // El proveedor los verá tras aceptar la reserva en el panel.
+  // El proveedor los verá en el panel cuando el cliente pague la señal.
   // Limpiar el mensaje de posibles emails/teléfonos que el cliente haya dejado:
   const safeMsg = booking.message
     ? booking.message
@@ -544,7 +544,7 @@ Cobrarías: ${(booking.provider_earns || 0).toLocaleString()}€  (cliente pagó
 Mensaje del cliente:
 ${safeMsg || '(sin mensaje)'}
 
-Los datos de contacto del cliente (nombre, email, teléfono) se mostrarán SOLO una vez aceptes la reserva, no antes. Esto protege a ambas partes y evita confusiones.
+Los datos de contacto del cliente (nombre, email, teléfono) se mostrarán en tu panel cuando pague la señal. Si tienes alguna duda sobre la reserva, escríbenos y se la trasladamos.
 
 Acepta o rechaza en tu panel:
 https://fiestago.es/proveedor/panel
@@ -583,7 +583,7 @@ El equipo de FiestaGo`
         <!-- Aviso datos ocultos -->
         <tr><td style="padding:0 36px;">
           <div style="background:#FFF7ED;border:1px solid #FFE1CC;border-radius:10px;padding:14px 16px;font-size:13px;color:#5C534A;line-height:1.55;">
-            🔒 <strong>Datos del cliente protegidos.</strong> Nombre, email y teléfono se mostrarán cuando aceptes la reserva en tu panel. Esto protege a ambas partes y agiliza el cobro.
+            🔒 <strong>Datos del cliente protegidos.</strong> Nombre, email y teléfono se mostrarán en tu panel cuando el cliente pague la señal. Esto protege a ambas partes y agiliza el cobro.
           </div>
         </td></tr>
 

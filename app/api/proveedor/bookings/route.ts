@@ -6,11 +6,11 @@ import { calcRefund } from '@/lib/constants'
 import { exportBookingToGoogle, removeBookingFromGoogle } from '@/lib/google-sync'
 import { generateCommissionInvoice, generateDelegatedInvoice } from '@/lib/invoicing/generator'
 
-// Antes de aceptar la reserva, el proveedor solo ve datos generales.
-// Esto evita que el proveedor contacte al cliente fuera de la plataforma
-// y se salte la comisión. Una vez confirmada, ve todos los datos.
+// Hasta que el cliente paga la señal, el proveedor solo ve datos generales.
+// Esto evita que contacte al cliente fuera de la plataforma y la venta se
+// cierre por fuera. Con la señal pagada (o el evento hecho), ve todo.
 function maskForProvider(b: any) {
-  if (b.status === 'confirmed' || b.status === 'completed') return b
+  if (b.first_payment_status === 'paid' || b.status === 'completed') return b
   // Limpiamos también el mensaje de posibles emails/teléfonos colados:
   const safeMsg = b.message
     ? b.message
@@ -19,7 +19,7 @@ function maskForProvider(b: any) {
     : null
   return {
     ...b,
-    client_name:  '🔒 Cliente (acepta para ver)',
+    client_name:  '🔒 Cliente (verás sus datos cuando pague la señal)',
     client_email: null,
     client_phone: null,
     message:      safeMsg,

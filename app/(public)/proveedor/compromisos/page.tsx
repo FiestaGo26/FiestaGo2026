@@ -103,6 +103,7 @@ export default function CompromisosPage() {
 
         <Section title="5. No saltarse FiestaGo" badge="Aviso → baja">
           No contactas al cliente fuera de FiestaGo durante la primera reserva ni le invitas a reservar futuros eventos directamente contigo evitando la plataforma. La Garantía de Éxito solo funciona si toda la conversación y el pago pasan por aquí.
+          <p className="mt-2 text-xs text-ink/55">Por eso los presupuestos y las fechas bloqueadas se responden desde tu panel, y verás el email y el teléfono del cliente cuando pague la señal. Cerrar fuera de FiestaGo una venta que llegó por FiestaGo supone la baja.</p>
           <p className="mt-2 text-xs text-ink/55">Esto no impide relación comercial natural a largo plazo, una vez completada la reserva. Solo pedimos que la primera reserva por FiestaGo se gestione íntegramente dentro.</p>
         </Section>
 

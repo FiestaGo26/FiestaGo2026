@@ -6,7 +6,13 @@
 //               sola al caducar. Sin tarjeta ni DNI.
 //   · 'quote' → "Pide presupuesto gratis": solo avisa al proveedor.
 //   · 'call'  → "Te llamamos": el cliente deja su teléfono y una franja;
-//               llama el proveedor o, si no, alguien de FiestaGo.
+//               llama FiestaGo (no el proveedor) y le manda el enlace para
+//               bloquear fecha o reservar.
+//
+// El proveedor NUNCA recibe aquí el email ni el teléfono del cliente: ve
+// la petición en su panel y responde desde ahí; FiestaGo se lo reenvía al
+// cliente. Los datos se comparten cuando el cliente paga la señal, para que
+// la venta no se cierre fuera de FiestaGo.
 //
 // El proveedor y Mariano reciben un email; el cliente, una confirmación.
 // Si el cliente reserva esa misma fecha, el bloqueo pasa a 'converted'.
@@ -124,27 +130,30 @@ async function notify(o: {
       ? `Te llamamos · ${provider.name}`
       : `Hemos recibido tu petición de presupuesto · ${provider.name}`,
     text: kind === 'call'
-      ? `Hola ${input.client_name},\n\nTe llamará ${provider.name} o alguien del equipo de FiestaGo al ${input.client_phone}${input.preferred_time ? ` (${input.preferred_time})` : ''} para resolver tus dudas. No has pagado nada.\n\nMientras, puedes ver su ficha aquí: ${fichaUrl}\n\nFiestaGo`
+      ? `Hola ${input.client_name},\n\nTe llamaremos desde FiestaGo al ${input.client_phone}${input.preferred_time ? ` (${input.preferred_time.toLowerCase()})` : ''} para resolver tus dudas sobre ${provider.name}. Atendemos de lunes a viernes de 10:00 a 20:00 y los sábados de 10:00 a 14:00. No has pagado nada.\n\nMientras, puedes ver su ficha aquí: ${fichaUrl}\n\nFiestaGo`
       : kind === 'hold'
       ? `Hola ${input.client_name},\n\nHemos bloqueado el ${when} para ${what} de ${provider.name} hasta el ${fmtUntil(expiresAt!)}. No has pagado nada y no te llamaremos si no lo pides.\n\nSi lo tienes claro, reserva desde la ficha antes de que caduque: ${fichaUrl}\nSi tienes dudas, contesta a este email o escríbenos por WhatsApp (de lunes a viernes de 10:00 a 20:00 y sábados de 10:00 a 14:00).\n\nTodos los servicios llevan la Garantía de Éxito incluida y tu pago queda retenido en Stripe hasta que termina tu evento.\n\nFiestaGo`
-      : `Hola ${input.client_name},\n\nHemos pasado tu petición a ${provider.name} y te responderá con un presupuesto. No has pagado nada y no te llamaremos si no lo pides.\n\nPuedes ver su ficha aquí: ${fichaUrl}\n\nFiestaGo`,
+      : `Hola ${input.client_name},\n\nHemos pasado tu petición a ${provider.name}. Te enviaremos su presupuesto por aquí en cuanto responda. No has pagado nada y no te llamaremos si no lo pides.\n\nPuedes ver su ficha aquí: ${fichaUrl}\n\nFiestaGo`,
   })
 
-  // Proveedor
-  if (provider.email) {
+  // Proveedor: sin datos de contacto del cliente y sin "responder a".
+  // Las llamadas las hace FiestaGo, así que no se le avisa de ellas.
+  if (provider.email && kind !== 'call') {
+    const forProvider = [
+      `Servicio: ${service?.name || 'sin elegir'}`,
+      `Fecha: ${when}`,
+      input.event_type ? `Tipo de evento: ${input.event_type}` : null,
+      input.guests ? `Invitados: ${input.guests}` : null,
+      input.message ? `Mensaje: ${maskContacts(input.message)}` : null,
+    ].filter(Boolean).join('\n')
     await sendEmail({
       to: provider.email,
       subject: kind === 'hold'
         ? `📅 Fecha bloqueada 48 h por un cliente · ${when}`
-        : kind === 'call'
-        ? `📞 Un cliente quiere que le llames · ${input.client_name}`
         : `💬 Nueva petición de presupuesto en FiestaGo`,
-      text: `${kind === 'call'
-        ? `Un cliente quiere hablar contigo antes de reservar. Llámale cuanto antes${input.preferred_time ? ` (prefiere ${input.preferred_time})` : ''}: es el momento en que más fácil es cerrar la reserva. Si no puedes, responde a este email y le llamamos desde FiestaGo.`
-        : kind === 'hold'
+      text: `${kind === 'hold'
         ? `Un cliente ha bloqueado ${when} para ${what} durante ${HOLD_HOURS} h, sin pagar todavía. Si reserva, te llegará la reserva como siempre; si no, la fecha se libera sola el ${fmtUntil(expiresAt!)}.`
-        : `Un cliente te pide presupuesto. Contéstale cuanto antes: es el momento en que más fácil es cerrar la reserva.`}\n\n${details}\n\nTu panel: ${APP_URL()}/proveedor/panel`,
-      reply_to: input.client_email,
+        : `Un cliente te pide presupuesto.`} Respóndele desde tu panel (sección "Peticiones de clientes"): se lo enviamos nosotros al momento. Cuanto antes contestes, más fácil es cerrar la reserva.\n\n${forProvider}\n\nVerás su nombre, email y teléfono cuando pague la señal.\n\nTu panel: ${APP_URL()}/proveedor/panel`,
     })
   }
 
@@ -152,8 +161,15 @@ async function notify(o: {
   await sendEmail({
     to: process.env.ADMIN_EMAIL || 'contacto@fiestago.es',
     subject: `${kind === 'hold' ? '📅 Bloqueo 48 h' : kind === 'call' ? '📞 Llamada pedida' : '💬 Presupuesto'} · ${provider.name} · ${input.client_name}`,
-    text: `${kind === 'call' ? 'El cliente ha pedido que le llamen. Le llamará el proveedor; si no lo hace en unas horas, llámale tú.\n\n' : ''}${details}\n\nFicha: ${fichaUrl}`,
+    text: `${kind === 'call' ? 'El cliente ha pedido que LE LLAMEMOS DESDE FIESTAGO. Llámale cuanto antes (en su franja si puede ser), resuelve sus dudas y mándale por WhatsApp el enlace de la ficha para bloquear fecha o reservar. El proveedor no tiene sus datos.\n\n' : ''}${details}\n\nFicha: ${fichaUrl}`,
   })
+}
+
+/** Quita emails y teléfonos de un texto que va a ver el proveedor. */
+export function maskContacts(text: string) {
+  return text
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email oculto]')
+    .replace(/\b(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3}[\s.-]?\d{3,4}\b/g, '[teléfono oculto]')
 }
 
 /** Libera bloqueos (los caducados, o los de un cliente concreto) y su fecha. */

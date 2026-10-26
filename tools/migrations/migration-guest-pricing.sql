@@ -15,3 +15,7 @@ alter table public.date_holds add column if not exists preferred_time text;
 alter table public.date_holds drop constraint if exists date_holds_kind_check;
 alter table public.date_holds add constraint date_holds_kind_check
   check (kind = any (array['hold', 'quote', 'call']));
+
+-- Respuesta del proveedor desde su panel (sin ver los datos del cliente)
+alter table public.date_holds add column if not exists provider_reply text;
+alter table public.date_holds add column if not exists replied_at timestamptz;

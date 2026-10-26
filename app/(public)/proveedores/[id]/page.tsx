@@ -1004,8 +1004,8 @@ export default function ProviderDetailPage() {
                           {new Date(holdSent.expires_at).toLocaleString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}.
                           No has pagado nada. Te hemos enviado un email con el enlace para reservar cuando lo tengas claro.</>
                       : holdSent.kind === 'call'
-                      ? <>Te llamará {provider.name} o alguien del equipo de FiestaGo ({callTime.toLowerCase()}) para resolver tus dudas. No has pagado nada.</>
-                      : <>{provider.name} te responderá con un presupuesto. No has pagado nada y no te llamaremos si no lo pides.</>}
+                      ? <>Te llamaremos desde FiestaGo ({callTime.toLowerCase()}) para resolver tus dudas sobre {provider.name}. No has pagado nada.</>
+                      : <>Te enviaremos por email el presupuesto de {provider.name} en cuanto responda. No has pagado nada y no te llamaremos si no lo pides.</>}
                   </div>
                   {holdSent.kind === 'hold' && (
                     <button type="button" onClick={() => setHoldSent(null)}
@@ -1203,11 +1203,11 @@ export default function ProviderDetailPage() {
                     {!showCall ? (
                       <button type="button" onClick={() => setShowCall(true)}
                         className="w-full mt-2 py-2.5 rounded-xl font-semibold text-sm text-ink border border-stone-300 hover:border-coral hover:text-coral transition-colors">
-                        📞 Prefiero que me llaméis
+                        📞 Prefiero que me llaméis desde FiestaGo
                       </button>
                     ) : (
                       <div className="mt-2 border border-stone-200 rounded-xl p-3 space-y-2">
-                        <div className="text-xs text-ink/60">Te llama {provider.name} o alguien de FiestaGo para resolver tus dudas antes de reservar.</div>
+                        <div className="text-xs text-ink/60">Te llamamos desde FiestaGo para resolver tus dudas sobre {provider.name} antes de reservar. Lunes a viernes de 10:00 a 20:00 y sábados de 10:00 a 14:00.</div>
                         <input type="tel" value={form.client_phone} placeholder="Tu teléfono"
                           onChange={e => setForm(f => ({ ...f, client_phone: e.target.value }))}
                           className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
