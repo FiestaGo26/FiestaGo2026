@@ -80,6 +80,9 @@ async function generateVideoV3(opts: { script: string; speed?: number; backgroun
   const engine = (process.env.HEYGEN_ENGINE || 'avatar_v').trim()
   const speed  = opts.speed ?? Number(process.env.HEYGEN_VOICE_SPEED || '1.0')
   const body: any = {
+    // La v3 distingue el origen por "type" (avatar o imagen); sin él
+    // responde 400 "Unable to extract tag using discriminator 'type'"
+    type:         'avatar',
     avatar_id:    avatarId,
     script:       opts.script,
     voice_id:     voiceId,
