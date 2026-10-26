@@ -4,7 +4,7 @@ import { requireProviderAuth } from '@/lib/auth'
 import { maskContacts } from '@/lib/date-holds'
 import { sendEmail } from '@/lib/resend'
 import { cleanDeposit, pricingUnit } from '@/lib/pricing'
-import { maskPrices, newProposalToken, proposalUrl, suggestedBase, type ProposalQuestion } from '@/lib/proposals'
+import { clientPrices, maskPrices, newProposalToken, proposalUrl, suggestedBase, type ProposalQuestion } from '@/lib/proposals'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -51,8 +51,12 @@ export async function GET(req: NextRequest) {
       proposal_url: r.proposal_token && r.quote_total ? proposalUrl(r.proposal_token) : null,
     }
   })
-  return NextResponse.json({ requests })
+  // Plan B obligatorio en servicios que dependen del tiempo o del espacio
+  const { data: prov } = await supabase.from('providers').select('category').eq('id', providerId!).maybeSingle()
+  return NextResponse.json({ requests, plan_b_required: PLAN_B_CATEGORIES.has(prov?.category || '') })
 }
+
+const PLAN_B_CATEGORIES = new Set(['foto', 'catering', 'espacios', 'musica', 'flores', 'animacion', 'planner', 'transporte'])
 
 // POST /api/proveedor/requests — body: { provider_id, id, reply, total, includes, deposit_pct }
 //   o, para contestar una pregunta del cliente: { provider_id, id, question_index, answer }
@@ -93,6 +97,7 @@ export async function POST(req: NextRequest) {
           fecha_confirmada: body.details?.fecha_confirmada === true,
           no_incluye: maskContacts(String(body.details?.no_incluye || '').slice(0, 1500)) || undefined,
           plan_b: maskContacts(String(body.details?.plan_b || '').slice(0, 1500)) || undefined,
+          requisitos: maskContacts(String(body.details?.requisitos || '').slice(0, 1500)) || undefined,
         },
       } : {}),
     })
@@ -124,14 +129,15 @@ async function answerQuestion(body: any) {
   const i = Number(body.question_index)
   if (!qs[i]) return NextResponse.json({ error: 'Pregunta no encontrada' }, { status: 404 })
 
-  qs[i] = { ...qs[i], a: maskPrices(maskContacts(answer)), answered_at: new Date().toISOString() }
+  // Se guarda con sus precios; al cliente se le enseñan con la Garantía (clientPrices)
+  qs[i] = { ...qs[i], a: maskContacts(answer), answered_at: new Date().toISOString(), by: 'proveedor' }
   await supabase.from('date_holds').update({ questions: qs }).eq('id', hold.id)
 
   const prov: any = Array.isArray(hold.providers) ? hold.providers[0] : hold.providers
   await sendEmail({
     to: hold.client_email,
     subject: `${prov?.name || 'Tu proveedor'} ha contestado tu pregunta · FiestaGo`,
-    text: `Hola ${hold.client_name},\n\nPreguntaste: "${qs[i].q}"\n\n${prov?.name || 'El proveedor'} responde: "${qs[i].a}"\n\nLa respuesta queda por escrito en tu propuesta${hold.proposal_token ? `: ${proposalUrl(hold.proposal_token)}` : ''}\n\nFiestaGo`,
+    text: `Hola ${hold.client_name},\n\nPreguntaste: "${qs[i].q}"\n\n${prov?.name || 'El proveedor'} responde: "${clientPrices(qs[i].a!)}"\n\nLa respuesta queda por escrito en tu propuesta${hold.proposal_token ? `: ${proposalUrl(hold.proposal_token)}` : ''}\n\nFiestaGo`,
   }).catch(() => {})
   return NextResponse.json({ ok: true })
 }

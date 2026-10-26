@@ -76,6 +76,7 @@ export default async function ProposalPage({ params }: { params: { token: string
           <h2 className="font-serif text-xl font-bold text-ink mb-3">Qué incluye</h2>
           <p className="text-sm text-ink/80 whitespace-pre-line leading-relaxed">{p.includes}</p>
           {p.details.no_incluye && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Qué no incluye</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.no_incluye}</p></>}
+          {p.details.requisitos && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Qué necesita del local o de ti</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.requisitos}</p></>}
           {p.details.plan_b && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Plan B si llueve o hay un imprevisto</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.plan_b}</p></>}
           <p className="text-xs text-ink/50 mt-4">Esta propuesta es solo de {p.provider.name}. El resto de tu celebración (local, comida, música…) lo contratas aparte, en FiestaGo o donde quieras.</p>
           {p.reply && <p className="text-sm text-ink/70 italic mt-4 border-l-2 border-coral/40 pl-3">“{p.reply}” — {p.provider.name}</p>}

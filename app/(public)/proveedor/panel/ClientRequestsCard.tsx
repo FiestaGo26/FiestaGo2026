@@ -32,7 +32,7 @@ type Request = {
   hours: number | null
 }
 
-type Draft = { total: string; includes: string; deposit: number; note: string; fechaOk: boolean; noIncluye: string; planB: string }
+type Draft = { total: string; includes: string; deposit: number; note: string; fechaOk: boolean; noIncluye: string; planB: string; requisitos: string }
 
 const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -44,6 +44,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
   const [drafts,   setDrafts]   = useState<Record<string, Draft>>({})
   const [sending,  setSending]  = useState<string | null>(null)
   const [answers,  setAnswers]  = useState<Record<string, string>>({})
+  const [planBRequired, setPlanBRequired] = useState(false)
 
   async function answer(r: Request, i: number) {
     const key = `${r.id}:${i}`
@@ -67,14 +68,14 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
   useEffect(() => {
     apiFetch(`/api/proveedor/requests?provider_id=${providerId}`)
       .then(r => r.json())
-      .then(d => setRequests(d.requests || []))
+      .then(d => { setRequests(d.requests || []); setPlanBRequired(!!d.plan_b_required) })
       .catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [providerId])
 
   const draftOf = (r: Request): Draft => drafts[r.id] || {
     total: r.suggested_total ? String(r.suggested_total) : '', includes: '', deposit: r.suggested_deposit_pct || DEPOSIT_MIN, note: '',
-    fechaOk: false, noIncluye: '', planB: '',
+    fechaOk: false, noIncluye: '', planB: '', requisitos: '',
   }
   const setDraft = (r: Request, patch: Partial<Draft>) => setDrafts(d => ({ ...d, [r.id]: { ...draftOf(r), ...patch } }))
 
@@ -85,13 +86,15 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
     if (d0.includes.trim().length < 5) { toast.error('Explica qué incluye el precio'); return }
     if (r.event_date && !d0.fechaOk) { toast.error('Confirma que tienes libre su fecha'); return }
     if (d0.noIncluye.trim().length < 3) { toast.error('Di qué NO incluye (o "nada más")'); return }
+    if (planBRequired && d0.planB.trim().length < 5) { toast.error('Explica tu plan B si llueve o hay un imprevisto'); return }
+    if (d0.requisitos.trim().length < 3) { toast.error('Di qué necesitas del local o del cliente (o "nada")'); return }
     setSending(r.id)
     try {
       const res = await apiFetch('/api/proveedor/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider_id: providerId, id: r.id, total, includes: d0.includes, deposit_pct: d0.deposit, reply: d0.note,
-          details: { fecha_confirmada: d0.fechaOk, no_incluye: d0.noIncluye, plan_b: d0.planB } }),
+          details: { fecha_confirmada: d0.fechaOk, no_incluye: d0.noIncluye, plan_b: d0.planB, requisitos: d0.requisitos } }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'No se pudo enviar')
@@ -160,7 +163,12 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                       placeholder="Ej.: el local, la bebida, horas extra (a X € la hora)… o «nada más»"
                       className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
                   </label>
-                  <label className="text-xs font-semibold text-ink">Plan B si llueve o hay un imprevisto (si aplica)
+                  <label className="text-xs font-semibold text-ink">Qué necesitas del local o del cliente
+                    <textarea rows={2} value={d.requisitos} onChange={e => setDraft(r, { requisitos: e.target.value })}
+                      placeholder="Ej.: enchufe de 220 V a menos de 10 m, cocina con horno, 4×4 m de suelo liso… o «nada»"
+                      className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
+                  </label>
+                  <label className="text-xs font-semibold text-ink">Plan B si llueve o hay un imprevisto{planBRequired ? '' : ' (si aplica)'}
                     <textarea rows={2} value={d.planB} onChange={e => setDraft(r, { planB: e.target.value })}
                       placeholder="Ej.: montamos en el salón interior / llevo equipo de repuesto"
                       className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
@@ -171,7 +179,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                       Confirmo que tengo libre el {fmtDate(r.event_date)}
                     </label>
                   )}
-                  <p className="text-[11px] text-ink/50">La garantía, los pagos y las cancelaciones se los explica FiestaGo: no hace falta que los pongas.</p>
+                  <p className="text-[11px] text-ink/50">Escribe tus precios (los de los extras también) tal cual los cobras: al cliente se los enseñamos ya con la Garantía incluida, igual que el total. La garantía, los pagos y las cancelaciones se los explica FiestaGo.</p>
                   <label className="text-xs font-semibold text-ink">Señal al reservar: {d.deposit} %
                     <input type="range" min={DEPOSIT_MIN} max={DEPOSIT_MAX} step={1} value={d.deposit}
                       onChange={e => setDraft(r, { deposit: Number(e.target.value) })} className="mt-1 w-full accent-coral"/>

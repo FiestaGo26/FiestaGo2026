@@ -18,7 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
 import { calcCommission, CANCELLATION_POLICIES, type CancellationPolicy } from '@/lib/constants'
 import { computePaymentSchedule } from '@/lib/booking-payments'
-import { cleanDeposit, priceFor, type GuestPricing } from '@/lib/pricing'
+import { cleanDeposit, precioCliente, priceFor, type GuestPricing } from '@/lib/pricing'
 import { sendEmail } from '@/lib/resend'
 
 const APP_URL = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es').replace(/\/$/, '')
@@ -36,11 +36,28 @@ export type QuoteDetails = {
   fecha_confirmada?: boolean
   no_incluye?: string
   plan_b?: string
+  /** Lo que necesita del local o del cliente (corriente, cocina, espacio…) */
+  requisitos?: string
 }
 
 /** Quita importes de un mensaje del proveedor: el único precio que ve el
  *  cliente es el de la propuesta (con la Garantía incluida). Dos cifras
  *  distintas era el primer motivo de descarte en la 7.ª simulación. */
+/** Importes que escribe el proveedor (su precio) → lo que ve el cliente
+ *  (con la Garantía incluida), para que todas las cifras cuadren con el
+ *  total de la propuesta (9.ª simulación: "58 €/persona × 60 no da 3.758 €"). */
+export function clientPrices(text: string) {
+  const conv = (raw: string) => {
+    const n = Number(raw.replace(/\./g, '').replace(',', '.'))
+    if (!Number.isFinite(n) || n <= 0) return raw
+    const v = precioCliente(n)
+    return Number.isInteger(v) ? v.toLocaleString('es-ES') : v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+  return text
+    .replace(/(€\s*)(\d[\d.]*(?:,\d+)?)/g, (_, pre, num) => `${pre}${conv(num)}`)
+    .replace(/(\d[\d.]*(?:,\d+)?)(\s*(?:€|euros?\b|eur\b))/gi, (_, num, post) => `${conv(num)}${post}`)
+}
+
 export function maskPrices(text: string) {
   return text
     .replace(/(?:€\s*)\d[\d.,]*/g, '[ver precio de la propuesta]')
@@ -120,10 +137,12 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
     expires_at: h.expires_at, created_at: h.created_at, replied_at: h.replied_at,
     client_name: h.client_name, client_email: h.client_email,
     event_date: h.event_date, event_type: h.event_type, guests: h.guests,
-    includes: h.quote_includes || '', reply: h.provider_reply,
-    questions: Array.isArray(h.questions) ? h.questions : [],
+    includes: clientPrices(h.quote_includes || ''), reply: h.provider_reply ? clientPrices(h.provider_reply) : null,
+    questions: (Array.isArray(h.questions) ? h.questions : []).map((q: ProposalQuestion) =>
+      q.a && q.by !== 'fiestago' ? { ...q, a: clientPrices(q.a) } : q),
     hours: h.hours ?? null,
-    details: (h.quote_details || {}) as QuoteDetails,
+    details: Object.fromEntries(Object.entries((h.quote_details || {}) as QuoteDetails)
+      .map(([k, v]) => [k, typeof v === 'string' ? clientPrices(v) : v])) as QuoteDetails,
     photos,
     per_person: Number(h.guests) > 0 ? Math.round((commission.clientPays / Number(h.guests)) * 100) / 100 : null,
     provider: p as Proposal['provider'],
