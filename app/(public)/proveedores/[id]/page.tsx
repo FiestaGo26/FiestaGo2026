@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
+import { uniqueReviews } from '@/lib/google-reviews'
 import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee, priceFor, hasGuestPricing, hasHourPricing, perPerson, cleanDeposit } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -775,7 +776,7 @@ export default function ProviderDetailPage() {
                 </h2>
                 <p className="text-xs text-ink/55 mb-4">Opiniones públicas de sus clientes en Google Maps. Búscalo por su nombre y compruébalo.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-                  {provider.google_reviews.slice(0, 4).map((r, i) => (
+                  {uniqueReviews(provider.google_reviews).slice(0, 4).map((r, i) => (
                     <div key={i} className="text-sm text-ink/75 leading-relaxed">
                       <div className="text-amber-500 text-xs mb-1">{'★'.repeat(Math.round(r.stars))}{r.date ? <span className="text-ink/45 ml-2">{new Date(r.date).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span> : null}</div>
                       “{r.text.length > 260 ? `${r.text.slice(0, 260)}…` : r.text}”

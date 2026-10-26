@@ -79,10 +79,10 @@ export async function fetchGoogleReviews(name: string, city: string | null, cate
   const items = await res.json() as any[]
   const place = items?.[0]
   if (!place?.title || !sameBusiness(name, place.title) || !categoryFits(category, place)) return null
-  const reviews: GoogleReview[] = (place.reviews || [])
+  const reviews: GoogleReview[] = uniqueReviews((place.reviews || [])
     .filter((r: any) => r?.text && String(r.text).trim().length > 20)
     .slice(0, MAX_REVIEWS)
-    .map((r: any) => ({ text: String(r.text).trim().slice(0, 600), stars: Number(r.stars) || 0, date: r.publishedAtDate || r.publishAtDate || null }))
+    .map((r: any) => ({ text: String(r.text).trim().slice(0, 600), stars: Number(r.stars) || 0, date: r.publishedAtDate || r.publishAtDate || null })))
   return {
     place_id: place.placeId || null,
     rating: Number(place.totalScore) || null,
@@ -120,4 +120,15 @@ export async function refreshGoogleReviews(supabase: SupabaseClient, opts: { max
     }
   }))
   return out
+}
+
+/** Quita opiniones repetidas (Google a veces trae la misma dos veces). */
+export function uniqueReviews<T extends { text: string }>(reviews: T[]): T[] {
+  const seen = new Set<string>()
+  return reviews.filter(r => {
+    const key = r.text.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '').slice(0, 60)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }

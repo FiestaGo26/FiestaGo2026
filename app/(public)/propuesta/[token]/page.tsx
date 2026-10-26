@@ -7,6 +7,7 @@ import { formatEuro } from '@/lib/pricing'
 import { CATEGORIES } from '@/lib/constants'
 import ProposalActions from './ProposalActions'
 import ProposalQuestions from './ProposalQuestions'
+import { uniqueReviews } from '@/lib/google-reviews'
 
 // Propuesta escrita de un proveedor para un cliente concreto: precio
 // cerrado para sus invitados y su fecha, qué incluye, la señal en euros,
@@ -28,7 +29,7 @@ export default async function ProposalPage({ params }: { params: { token: string
 
   const { data: g } = await supabase.from('providers')
     .select('google_reviews').eq('id', p.provider.id).maybeSingle()
-  const reviews: Array<{ text: string; stars: number; date: string | null }> = Array.isArray(g?.google_reviews) ? g!.google_reviews.slice(0, 3) : []
+  const reviews: Array<{ text: string; stars: number; date: string | null }> = Array.isArray(g?.google_reviews) ? uniqueReviews(g!.google_reviews as Array<{ text: string; stars: number; date: string | null }>).slice(0, 3) : []
   const cat: any = CATEGORIES.find((c: any) => c.id === p.provider.category)
   const firstName = p.client_name.trim().split(/\s+/)[0]
   const holdActive = p.kind === 'hold' && p.status === 'active' && p.expires_at && new Date(p.expires_at) > new Date()
