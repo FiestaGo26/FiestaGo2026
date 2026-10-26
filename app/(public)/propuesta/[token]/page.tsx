@@ -148,6 +148,10 @@ export default async function ProposalPage({ params }: { params: { token: string
           </p>
         </div>
 
+        <div className="text-center mb-5">
+          <Link href={`/mi-celebracion/${p.token}`} className="text-sm font-semibold text-coral underline">Ver tu celebración completa: total, lo que necesita el local y lo que falta →</Link>
+        </div>
+
         <ProposalActions
           token={p.token}
           firstPayment={p.first_payment}
