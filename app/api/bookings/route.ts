@@ -6,7 +6,7 @@ import { requireClientAuth } from '@/lib/auth'
 import { computePaymentSchedule } from '@/lib/booking-payments'
 import { sanitizeAcquisition } from '@/lib/attribution'
 import { releaseHolds } from '@/lib/date-holds'
-import { priceForGuests, cleanDeposit } from '@/lib/pricing'
+import { priceFor, cleanDeposit } from '@/lib/pricing'
 import { loadProposal } from '@/lib/proposals'
 
 export const runtime = 'nodejs'
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     let {
       booking_type, provider_id, pack_id, service_id,
       client_name, client_email, client_phone,
-      event_date, event_type, city, guests, message,
+      event_date, event_type, city, guests, hours, message,
       total_amount, selected_addons, coupon_code,
       planner_name, planner_email,   // opcional: wedding/event planner que gestiona en nombre del cliente
     } = body || {}
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     if (service_id) {
       const { data: s } = await supabase
         .from('provider_services')
-        .select('provider_id, price, included_guests, extra_guest_price, addons, deposit_pct')
+        .select('provider_id, price, pricing_unit, included_guests, extra_guest_price, included_hours, extra_hour_price, addons, deposit_pct')
         .eq('id', service_id).maybeSingle()
       if (!s || (provider_id && s.provider_id !== provider_id)) {
         return NextResponse.json({ error: 'Servicio no válido' }, { status: 400 })
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         const addonsTotal = (Array.isArray(s.addons) ? s.addons : [])
           .filter((a: any) => chosen.has(a.id))
           .reduce((sum: number, a: any) => sum + (Number(a.price) || 0), 0)
-        amount = Math.round((priceForGuests(s, parseInt(guests)) + addonsTotal) * 100) / 100
+        amount = Math.round((priceFor(s, { guests: parseInt(guests), hours: Number(hours) }) + addonsTotal) * 100) / 100
       }
     }
     if (proposal) amount = proposal.base
@@ -157,6 +157,7 @@ export async function POST(req: NextRequest) {
         event_date, event_type: event_type || 'otro',
         city: city || null,
         guests: guests || null,
+        hours:  Number(hours) > 0 ? Number(hours) : null,
         message: message || null,
         // total_amount = lo que pagó el cliente (base + comisión)
         total_amount: commission.clientPays,

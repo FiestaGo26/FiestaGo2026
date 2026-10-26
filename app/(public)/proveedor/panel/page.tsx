@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { CATEGORIES, CANCELLATION_POLICIES } from '@/lib/constants'
-import { precioCliente, formatEuro, priceForGuests } from '@/lib/pricing'
+import { precioCliente, formatEuro } from '@/lib/pricing'
+import PricingFields, { pricingPayload, pricingValueOf, type PricingValue } from './PricingFields'
 import QuotesTab from './QuotesTab'
 import QuickRepliesTab from './QuickRepliesTab'
 import GmbTab from './GmbTab'
@@ -31,6 +32,9 @@ type Service = {
   max_guests: number | null
   included_guests?: number | null
   extra_guest_price?: number | null
+  pricing_unit?: string | null
+  included_hours?: number | null
+  extra_hour_price?: number | null
   deposit_pct?: number | null
   media_type: 'image' | 'video' | 'none'
   media_url: string | null
@@ -179,13 +183,13 @@ function ProveedorPanelInner() {
   const [availYear,  setAvailYear]  = useState<number>(new Date().getFullYear())
   const [newSvc, setNewSvc] = useState<{
     name: string; description: string; price: string; duration: string; maxGuests: string
-    includedGuests: string; extraGuestPrice: string
+    pricing: PricingValue
     cancellation_policy: 'flexible' | 'moderate' | 'strict'
     deposit_pct: number
     mediaFile: File | null; mediaPreview: string | null
   }>({
     name: '', description: '', price: '', duration: 'Todo el día', maxGuests: '',
-    includedGuests: '', extraGuestPrice: '',
+    pricing: { unit: 'fixed', included: '', extra: '' },
     cancellation_policy: 'moderate',
     deposit_pct: 10,
     mediaFile: null, mediaPreview: null,
@@ -934,8 +938,7 @@ function ProveedorPanelInner() {
           price:       parseFloat(newSvc.price),
           duration:    newSvc.duration,
           max_guests:  newSvc.maxGuests ? parseInt(newSvc.maxGuests) : null,
-          included_guests:   newSvc.includedGuests ? parseInt(newSvc.includedGuests) : null,
-          extra_guest_price: newSvc.extraGuestPrice ? parseFloat(newSvc.extraGuestPrice) : null,
+          ...pricingPayload(newSvc.pricing),
           cancellation_policy: newSvc.cancellation_policy,
           deposit_pct: newSvc.deposit_pct,
           media_type,
@@ -946,7 +949,7 @@ function ProveedorPanelInner() {
       if (!res.ok) throw new Error(data.error)
       setServices(s => [...s, data.service])
       setNewSvc({ name:'', description:'', price:'', duration:'Todo el día', maxGuests:'',
-                  includedGuests: '', extraGuestPrice: '',
+                  pricing: { unit: 'fixed', included: '', extra: '' },
                   cancellation_policy: 'moderate',
                   deposit_pct: 10,
                   mediaFile: null, mediaPreview: null })
@@ -974,8 +977,7 @@ function ProveedorPanelInner() {
           price:        editSvc.price,
           duration:     editSvc.duration,
           max_guests:   editSvc.max_guests,
-          included_guests:   editSvc.included_guests ?? null,
-          extra_guest_price: editSvc.extra_guest_price ?? null,
+          ...pricingPayload(pricingValueOf(editSvc)),
           deposit_pct:       editSvc.deposit_pct ?? 10,
           cancellation_policy: editSvc.cancellation_policy,
           addons:       editSvc.addons || [],
@@ -1620,7 +1622,7 @@ function ProveedorPanelInner() {
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Precio fijo (€) — el que tú cobras *</label>
+                    <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Precio (€, IVA incluido) — el que tú cobras *</label>
                     <input type="number" value={newSvc.price} onChange={e => setNewSvc(s=>({...s,price:e.target.value}))}
                       placeholder="1200"
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
@@ -1645,28 +1647,9 @@ function ProveedorPanelInner() {
                       placeholder="Sin límite"
                       className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                   </div>
-                  {/* Precio según invitados: el sistema calcula el total del cliente */}
-                  <div className="col-span-2 bg-cream-dark border border-stone-200 rounded-xl p-3">
-                    <div className="text-xs font-bold text-ink/60 uppercase tracking-widest mb-1">Precio según invitados (opcional)</div>
-                    <p className="text-[11px] text-ink/55 mb-2 leading-relaxed">
-                      Si tu precio cambia con el número de invitados, dinos cuántos incluye tu precio y cuánto cobras por cada invitado de más. El cliente pone cuántos son y la web le calcula el precio final.
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <input type="number" min={1} value={newSvc.includedGuests}
-                        onChange={e => setNewSvc(s=>({...s,includedGuests:e.target.value}))}
-                        placeholder="Invitados incluidos (p. ej. 20)"
-                        className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral"/>
-                      <input type="number" min={0} step="0.5" value={newSvc.extraGuestPrice}
-                        onChange={e => setNewSvc(s=>({...s,extraGuestPrice:e.target.value}))}
-                        placeholder="€ por invitado de más (p. ej. 15)"
-                        className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral"/>
-                    </div>
-                    {newSvc.price && newSvc.includedGuests && newSvc.extraGuestPrice && (
-                      <div className="text-[11px] text-ink/60 mt-2">
-                        Ejemplo: con {parseInt(newSvc.includedGuests) + 10} invitados tú cobras <strong>{formatEuro(priceForGuests({ price: parseFloat(newSvc.price), included_guests: parseInt(newSvc.includedGuests), extra_guest_price: parseFloat(newSvc.extraGuestPrice) }, parseInt(newSvc.includedGuests) + 10))}</strong> y el cliente paga <strong>{formatEuro(precioCliente(priceForGuests({ price: parseFloat(newSvc.price), included_guests: parseInt(newSvc.includedGuests), extra_guest_price: parseFloat(newSvc.extraGuestPrice) }, parseInt(newSvc.includedGuests) + 10)))}</strong>. Con menos de {newSvc.includedGuests}, el precio base.
-                      </div>
-                    )}
-                  </div>
+                  {/* Cómo cobra: por personas, por horas o cerrado (IVA incluido) */}
+                  <PricingFields price={parseFloat(newSvc.price) || 0} value={newSvc.pricing}
+                    onChange={v => setNewSvc(s => ({ ...s, pricing: v }))}/>
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Política de cancelación</label>
                     <select value={newSvc.cancellation_policy}
@@ -1779,16 +1762,8 @@ function ProveedorPanelInner() {
                           <option key={d} value={d}>{d}</option>
                         ))}
                       </select>
-                      <input type="number" min={1} value={editSvc.included_guests ?? ''}
-                        onChange={e => setEditSvc(s=>s?{...s,included_guests: parseInt(e.target.value) || null}:null)}
-                        placeholder="Invitados incluidos"
-                        title="Invitados que incluye tu precio (opcional)"
-                        className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
-                      <input type="number" min={0} step="0.5" value={editSvc.extra_guest_price ?? ''}
-                        onChange={e => setEditSvc(s=>s?{...s,extra_guest_price: parseFloat(e.target.value) || null}:null)}
-                        placeholder="€ por invitado de más"
-                        title="Lo que cobras por cada invitado por encima de los incluidos (opcional)"
-                        className="w-full border border-stone-200 rounded-xl px-4 py-2.5 text-sm text-ink outline-none focus:border-coral"/>
+                      <PricingFields price={Number(editSvc.price) || 0} value={pricingValueOf(editSvc)}
+                        onChange={v => setEditSvc(s => s ? { ...s, ...pricingPayload(v) } : null)}/>
                       <div className="col-span-2">
                         <label className="block text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-1">
                           Señal al reservar: {editSvc.deposit_pct ?? 10}%

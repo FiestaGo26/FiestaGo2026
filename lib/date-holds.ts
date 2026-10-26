@@ -37,6 +37,7 @@ export type HoldInput = {
   client_phone?: string | null
   event_type?: string | null
   guests?: number | null
+  hours?: number | null
   message?: string | null
   preferred_time?: string | null
   acquisition?: unknown
@@ -88,7 +89,7 @@ export async function createHold(supabase: SupabaseClient, input: HoldInput) {
     kind, provider_id: provider.id, service_id: service?.id || null,
     event_date: input.event_date || null, expires_at: expiresAt,
     client_name: input.client_name, client_email: input.client_email, client_phone: input.client_phone || null,
-    event_type: input.event_type || null, guests: input.guests || null, message: input.message || null,
+    event_type: input.event_type || null, guests: input.guests || null, hours: input.hours || null, message: input.message || null,
     preferred_time: input.preferred_time || null,
     acquisition: input.acquisition || null,
   }).select('id, kind, expires_at').single()
@@ -144,6 +145,7 @@ async function notify(o: {
       `Fecha: ${when}`,
       input.event_type ? `Tipo de evento: ${input.event_type}` : null,
       input.guests ? `Invitados: ${input.guests}` : null,
+      input.hours ? `Horas: ${input.hours}` : null,
       input.message ? `Mensaje: ${maskContacts(input.message)}` : null,
     ].filter(Boolean).join('\n')
     await sendEmail({

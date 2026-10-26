@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       client_phone: body.client_phone ? String(body.client_phone).slice(0, 40) : null,
       event_type: body.event_type ? String(body.event_type).slice(0, 40) : null,
       guests: parseInt(body.guests) || null,
+      hours: Number(body.hours) > 0 ? Math.min(Number(body.hours), 48) : null,
       message: body.message ? String(body.message).slice(0, 2000) : null,
       preferred_time: body.preferred_time ? String(body.preferred_time).slice(0, 60) : null,
       acquisition: sanitizeAcquisition(body.acquisition),

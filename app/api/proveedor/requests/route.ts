@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { requireProviderAuth } from '@/lib/auth'
 import { maskContacts } from '@/lib/date-holds'
 import { sendEmail } from '@/lib/resend'
-import { cleanDeposit } from '@/lib/pricing'
+import { cleanDeposit, pricingUnit } from '@/lib/pricing'
 import { maskPrices, newProposalToken, proposalUrl, suggestedBase, type ProposalQuestion } from '@/lib/proposals'
 
 export const runtime = 'nodejs'
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('date_holds')
-    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token, questions')
+    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, hours, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token, questions')
     .eq('provider_id', providerId!)
     .in('kind', ['hold', 'quote'])
     .gte('created_at', new Date(Date.now() - 90 * 86400_000).toISOString())
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   // Precio sugerido: su tarifa para los invitados de esa petición
   const svcIds = Array.from(new Set((data || []).map((r: any) => r.service_id).filter(Boolean)))
   const { data: svcs } = svcIds.length
-    ? await supabase.from('provider_services').select('id, name, price, included_guests, extra_guest_price, deposit_pct').in('id', svcIds)
+    ? await supabase.from('provider_services').select('id, name, price, pricing_unit, included_guests, extra_guest_price, included_hours, extra_hour_price, deposit_pct').in('id', svcIds)
     : { data: [] as any[] }
   const byId = new Map((svcs || []).map((s: any) => [s.id, s]))
 
@@ -45,7 +45,8 @@ export async function GET(req: NextRequest) {
       client_name: String(r.client_name || '').trim().split(/\s+/)[0] || 'Cliente',
       message: r.message ? maskContacts(r.message) : null,
       service_name: svc?.name || null,
-      suggested_total: suggestedBase(svc, r.guests),
+      suggested_total: suggestedBase(svc, r.guests, r.hours),
+      pricing_unit: svc ? pricingUnit(svc) : null,
       suggested_deposit_pct: cleanDeposit(svc?.deposit_pct),
       proposal_url: r.proposal_token && r.quote_total ? proposalUrl(r.proposal_token) : null,
     }

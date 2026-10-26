@@ -10,6 +10,7 @@ const ALLOWED_FIELDS = new Set([
   'name', 'description', 'price', 'price_unit', 'duration', 'max_guests',
   'media_type', 'media_url', 'thumbnail_url', 'status', 'sort_order',
   'cancellation_policy', 'addons', 'deposit_pct', 'included_guests', 'extra_guest_price',
+  'pricing_unit', 'included_hours', 'extra_hour_price',
 ])
 
 // Sanea deposit_pct: 10-20 %, entero. Se aplica tanto en POST como en PATCH.
@@ -78,6 +79,9 @@ export async function POST(req: NextRequest) {
       deposit_pct:   cleanDepositPct(body.deposit_pct),
       included_guests:   cleanPositive(body.included_guests, true),
       extra_guest_price: cleanPositive(body.extra_guest_price),
+      pricing_unit:      cleanUnit(body.pricing_unit),
+      included_hours:    cleanPositive(body.included_hours),
+      extra_hour_price:  cleanPositive(body.extra_hour_price),
       status:        'active',
     })
     .select()
@@ -105,7 +109,8 @@ export async function PATCH(req: NextRequest) {
     if (!ALLOWED_FIELDS.has(k)) continue
     updates[k] = k === 'deposit_pct' ? cleanDepositPct(v)
       : k === 'included_guests' ? cleanPositive(v, true)
-      : k === 'extra_guest_price' ? cleanPositive(v)
+      : k === 'extra_guest_price' || k === 'included_hours' || k === 'extra_hour_price' ? cleanPositive(v)
+      : k === 'pricing_unit' ? cleanUnit(v)
       : v
   }
 
@@ -137,4 +142,9 @@ export async function DELETE(req: NextRequest) {
   const { error } = await supabase.from('provider_services').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
+}
+
+// Cómo cobra el servicio: por personas, por horas o precio cerrado (ver lib/pricing.ts)
+function cleanUnit(v: unknown) {
+  return v === 'guests' || v === 'hours' || v === 'fixed' ? v : null
 }

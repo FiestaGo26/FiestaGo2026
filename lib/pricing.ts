@@ -28,31 +28,82 @@ export function importeFee(base: number): number {
   return Math.round(base * FEE_RATE * 100) / 100
 }
 
-// ─── Precio según invitados ───────────────────────────────────────────
-// El proveedor pone su precio, los invitados que incluye (el mínimo) y el
-// precio por cada invitado de más. Con eso el sistema calcula el precio
-// del proveedor para el número de invitados del cliente:
-//   base + max(0, invitados − incluidos) × extra
-// Si no hay invitados incluidos o precio extra, el precio es fijo.
-// Un catering "45 €/persona, mínimo 30" = base 1.350, incluidos 30, extra 45.
+// ─── Cómo cobra cada servicio ─────────────────────────────────────────
+// Cada proveedor elige (siempre con IVA incluido):
+//   · 'guests' → precio para N personas + € por persona de más
+//                (fotógrafo, local, catering… "45 €/persona, mínimo 30"
+//                = base 1.350, incluidas 30, extra 45)
+//   · 'hours'  → precio para N horas + € por hora de más (DJ, animación…)
+//   · 'fixed'  → precio cerrado (una tarta, un photocall)
+// Con eso el sistema calcula el precio del proveedor para el caso del
+// cliente: base + max(0, invitados − incluidos) × extra (o lo mismo con
+// horas). Los servicios antiguos sin pricing_unit se deducen de sus campos.
+
+export type PricingUnit = 'fixed' | 'guests' | 'hours'
 
 export type GuestPricing = {
   price: number | null
+  pricing_unit?: PricingUnit | string | null
   included_guests?: number | null
   extra_guest_price?: number | null
+  included_hours?: number | null
+  extra_hour_price?: number | null
+}
+
+/** Cómo cobra el servicio (deducido si no está guardado). */
+export function pricingUnit(s: GuestPricing): PricingUnit {
+  if (s.pricing_unit === 'guests' || s.pricing_unit === 'hours' || s.pricing_unit === 'fixed') {
+    if (s.pricing_unit === 'guests' && !(Number(s.included_guests) > 0 && Number(s.extra_guest_price) > 0)) return 'fixed'
+    if (s.pricing_unit === 'hours' && !(Number(s.included_hours) > 0 && Number(s.extra_hour_price) > 0)) return 'fixed'
+    return s.pricing_unit
+  }
+  if (Number(s.included_guests) > 0 && Number(s.extra_guest_price) > 0) return 'guests'
+  if (Number(s.included_hours) > 0 && Number(s.extra_hour_price) > 0) return 'hours'
+  return 'fixed'
 }
 
 /** ¿El servicio cambia de precio según el número de invitados? */
 export function hasGuestPricing(s: GuestPricing): boolean {
-  return Number(s.included_guests) > 0 && Number(s.extra_guest_price) > 0
+  return pricingUnit(s) === 'guests'
 }
 
-/** Precio del proveedor (sin Garantía) para `guests` invitados. */
-export function priceForGuests(s: GuestPricing, guests?: number | null): number {
+/** ¿El servicio cambia de precio según las horas? */
+export function hasHourPricing(s: GuestPricing): boolean {
+  return pricingUnit(s) === 'hours'
+}
+
+/** Precio del proveedor (IVA incluido, sin Garantía) para el caso del cliente. */
+export function priceFor(s: GuestPricing, opts: { guests?: number | null; hours?: number | null } = {}): number {
   const base = Number(s.price) || 0
-  if (!hasGuestPricing(s)) return base
-  const extraGuests = Math.max(0, Math.floor(Number(guests) || 0) - Number(s.included_guests))
-  return Math.round((base + extraGuests * Number(s.extra_guest_price)) * 100) / 100
+  const unit = pricingUnit(s)
+  if (unit === 'guests') {
+    const extra = Math.max(0, Math.floor(Number(opts.guests) || 0) - Number(s.included_guests))
+    return Math.round((base + extra * Number(s.extra_guest_price)) * 100) / 100
+  }
+  if (unit === 'hours') {
+    const extra = Math.max(0, Math.ceil(Number(opts.hours) || 0) - Number(s.included_hours))
+    return Math.round((base + extra * Number(s.extra_hour_price)) * 100) / 100
+  }
+  return base
+}
+
+/** Compatibilidad: precio según invitados (los servicios por horas usan sus horas incluidas). */
+export function priceForGuests(s: GuestPricing, guests?: number | null): number {
+  return priceFor(s, { guests })
+}
+
+/** Cuánto sale por persona (para mostrarlo junto al total). */
+export function perPerson(total: number, guests?: number | null): number | null {
+  const g = Math.floor(Number(guests) || 0)
+  return g > 0 && total > 0 ? Math.round((total / g) * 100) / 100 : null
+}
+
+/** "Precio para 30 personas · 45 € por persona de más" (o por horas). */
+export function pricingSummary(s: GuestPricing): string {
+  const unit = pricingUnit(s)
+  if (unit === 'guests') return `para ${s.included_guests} personas · ${formatEuro(Number(s.extra_guest_price))} por persona de más`
+  if (unit === 'hours') return `para ${s.included_hours} h · ${formatEuro(Number(s.extra_hour_price))} por hora de más`
+  return 'precio cerrado'
 }
 
 // ─── Señal al reservar ────────────────────────────────────────────────

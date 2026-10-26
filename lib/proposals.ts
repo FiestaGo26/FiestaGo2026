@@ -18,7 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
 import { calcCommission, CANCELLATION_POLICIES, type CancellationPolicy } from '@/lib/constants'
 import { computePaymentSchedule } from '@/lib/booking-payments'
-import { cleanDeposit, priceForGuests } from '@/lib/pricing'
+import { cleanDeposit, priceFor, type GuestPricing } from '@/lib/pricing'
 import { sendEmail } from '@/lib/resend'
 
 const APP_URL = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es').replace(/\/$/, '')
@@ -111,9 +111,9 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
 }
 
 /** Precio sugerido al proveedor para una petición (su tarifa según invitados). */
-export function suggestedBase(svc: { price: number | null; included_guests?: number | null; extra_guest_price?: number | null } | null, guests: number | null) {
+export function suggestedBase(svc: GuestPricing | null, guests: number | null, hours?: number | null) {
   if (!svc || svc.price == null) return null
-  return priceForGuests(svc, guests)
+  return priceFor(svc, { guests, hours })
 }
 
 // ─── Seguimiento durante el bloqueo de 48 h ──────────────────────────
