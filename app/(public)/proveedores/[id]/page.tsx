@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
-import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee, priceForGuests, hasGuestPricing, cleanDeposit } from '@/lib/pricing'
+import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee, priceFor, hasGuestPricing, hasHourPricing, perPerson, cleanDeposit } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import FavoriteButton from '../../_components/FavoriteButton'
@@ -42,6 +42,9 @@ type Service = {
   duration: string | null
   max_guests: number | null
   included_guests?: number | null
+  pricing_unit?: string | null
+  included_hours?: number | null
+  extra_hour_price?: number | null
   extra_guest_price?: number | null
   media_type: 'image' | 'video' | 'none'
   media_url: string | null
@@ -161,7 +164,7 @@ export default function ProviderDetailPage() {
   const [calYear,  setCalYear]  = useState<number>(new Date().getFullYear())
   const [form, setForm] = useState({
     client_name: '', client_email: '', client_phone: '',
-    event_date: '', event_type: 'otro', guests: '', message: '',
+    event_date: '', event_type: 'otro', guests: '', hours: '', message: '',
   })
   // Modo "reservo en nombre de otro" (wedding planner reservando para su cliente).
   // Cuando se activa, el proveedor de arriba pide los datos DEL CLIENTE FINAL
@@ -349,6 +352,7 @@ export default function ProviderDetailPage() {
           client_phone: form.client_phone || null,
           event_type:   form.event_type,
           guests:       parseInt(form.guests) || null,
+          hours:        Number(form.hours) || null,
           message:      form.message || null,
           preferred_time: asCall ? callTime : null,
         }),
@@ -382,7 +386,7 @@ export default function ProviderDetailPage() {
     try {
       const chosenAddons = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
       const addonsTotal  = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
-      const basePrice    = selectedSvc ? priceForGuests(selectedSvc, parseInt(form.guests)) : (provider.price_base ?? 0)
+      const basePrice    = selectedSvc ? priceFor(selectedSvc, { guests: parseInt(form.guests), hours: Number(form.hours) }) : (provider.price_base ?? 0)
       const totalAmount  = basePrice + addonsTotal
       // Doble red: nunca aceptamos reservas con importe 0 salvo que el
       // proveedor haya declarado explícitamente "precio a consultar"
@@ -406,6 +410,7 @@ export default function ProviderDetailPage() {
           event_date:   form.event_date,
           event_type:   form.event_type,
           guests:       parseInt(form.guests) || null,
+          hours:        Number(form.hours) || null,
           message:      form.message || null,
           total_amount: totalAmount,
           selected_addons: chosenAddons,
@@ -450,7 +455,7 @@ export default function ProviderDetailPage() {
   // Auto-validar el cupón cuando hay código pendiente y el subtotal es
   // > 0 (usuario acaba de elegir servicio). Sin esto el cupón que viene
   // por URL se queda sin aplicar aunque el input esté relleno.
-  const subtotalForCoupon = (selectedSvc ? priceForGuests(selectedSvc, parseInt(form.guests)) : Number(provider?.price_base ?? 0) || 0) +
+  const subtotalForCoupon = (selectedSvc ? priceFor(selectedSvc, { guests: parseInt(form.guests), hours: Number(form.hours) }) : Number(provider?.price_base ?? 0) || 0) +
     ((selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
       .reduce((s, a) => s + (Number(a.price) || 0), 0))
   useEffect(() => {
@@ -484,8 +489,9 @@ export default function ProviderDetailPage() {
   // → sin esto '1150' + 0 = '11500' (concatenación) y todos los cálculos
   // corriente abajo se rompen.
   // Precio según invitados: lo calcula el sistema con los que ponga el cliente
-  const basePrice      = selectedSvc ? priceForGuests(selectedSvc, parseInt(form.guests)) : Number(provider.price_base ?? 0) || 0
+  const basePrice      = selectedSvc ? priceFor(selectedSvc, { guests: parseInt(form.guests), hours: Number(form.hours) }) : Number(provider.price_base ?? 0) || 0
   const guestPriced    = !!selectedSvc && hasGuestPricing(selectedSvc)
+  const hourPriced     = !!selectedSvc && hasHourPricing(selectedSvc)
   const chosenAddons   = (selectedSvc?.addons || []).filter(a => selectedAddons.has(a.id))
   const addonsTotal    = chosenAddons.reduce((s, a) => s + (Number(a.price) || 0), 0)
   const subtotal       = basePrice + addonsTotal
@@ -675,10 +681,14 @@ export default function ProviderDetailPage() {
                                 <span className="font-semibold" title={textoGarantiaIncluida(svc.price)}>
                                   {formatEuro(precioCliente(svc.price))}
                                 </span>
-                                <span className="text-ink/50"> {hasGuestPricing(svc) ? `hasta ${svc.included_guests} invitados` : svc.price_unit}</span>
+                                <span className="text-ink/50"> {hasGuestPricing(svc) ? `hasta ${svc.included_guests} personas` : hasHourPricing(svc) ? `${svc.included_hours} h` : svc.price_unit}</span>
                                 {hasGuestPricing(svc) && (
-                                  <div className="text-[11px] text-ink/60">+{formatEuro(precioCliente(Number(svc.extra_guest_price)))} por invitado de más</div>
+                                  <div className="text-[11px] text-ink/60">+{formatEuro(precioCliente(Number(svc.extra_guest_price)))} por persona de más</div>
                                 )}
+                                {hasHourPricing(svc) && (
+                                  <div className="text-[11px] text-ink/60">+{formatEuro(precioCliente(Number(svc.extra_hour_price)))} por hora de más</div>
+                                )}
+                                <div className="text-[10px] text-ink/45">IVA incluido</div>
                                 <div className="text-[10px] text-ink/45">🛡 Garantía de Éxito incluida</div>
                               </>
                             ) : (
@@ -814,12 +824,23 @@ export default function ProviderDetailPage() {
                         {formatEuro(precioCliente(basePrice))}
                       </span>
                       <span className="text-sm text-ink/50"> {guestPriced
-                        ? `para ${Math.max(parseInt(form.guests) || 0, Number(selectedSvc.included_guests))} invitados`
-                        : selectedSvc.price_unit}</span>
+                        ? `para ${Math.max(parseInt(form.guests) || 0, Number(selectedSvc.included_guests))} personas`
+                        : hourPriced
+                        ? `por ${Math.max(Math.ceil(Number(form.hours) || 0), Number(selectedSvc.included_hours))} h`
+                        : selectedSvc.price_unit} · IVA incluido</span>
+                      {perPerson(precioCliente(basePrice), parseInt(form.guests)) != null && (
+                        <div className="text-xs text-ink/60 mt-1">≈ {formatEuro(perPerson(precioCliente(basePrice), parseInt(form.guests))!)} por persona para {form.guests} invitados</div>
+                      )}
                       {guestPriced && (
                         <div className="text-xs text-ink/60 mt-1">
                           Incluye {selectedSvc.included_guests} invitados · +{formatEuro(precioCliente(Number(selectedSvc.extra_guest_price)))} por cada invitado de más.
                           {!form.guests && <> Pon abajo cuántos sois y te calculamos el precio final.</>}
+                        </div>
+                      )}
+                      {hourPriced && (
+                        <div className="text-xs text-ink/60 mt-1">
+                          Incluye {selectedSvc.included_hours} h · +{formatEuro(precioCliente(Number(selectedSvc.extra_hour_price)))} por cada hora de más.
+                          {!form.hours && <> Pon abajo cuántas horas quieres y te calculamos el precio final.</>}
                         </div>
                       )}
                       <div className="text-xs text-ink/55 mt-1">{textoGarantiaIncluida(selectedSvc.price)}</div>
@@ -1192,10 +1213,23 @@ export default function ProviderDetailPage() {
                       className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                     {guestPriced && form.guests && (
                       <div className="text-[11px] text-ink/60 mt-1">
-                        Precio final para {form.guests} invitados: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (Garantía de Éxito incluida)
+                        Precio final para {form.guests} invitados: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (IVA y Garantía de Éxito incluidos)
                       </div>
                     )}
                   </div>
+                  {hourPriced && (
+                    <div>
+                      <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Horas</label>
+                      <input type="number" min={1} step={1} value={form.hours} placeholder={`ej. ${selectedSvc?.included_hours || 4}`}
+                        onChange={e => setForm(f => ({ ...f, hours: e.target.value }))}
+                        className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
+                      {form.hours && (
+                        <div className="text-[11px] text-ink/60 mt-1">
+                          Precio final para {form.hours} h: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (IVA y Garantía de Éxito incluidos)
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-bold text-ink/50 uppercase tracking-widest mb-1">Tipo de evento</label>
                     <select value={form.event_type}
