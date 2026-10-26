@@ -22,6 +22,7 @@ import { claimNextAction, completeAction } from '../../lib/ceo-actions'
 import { runProviderSearch } from '../../lib/provider-search'
 import { releaseHolds } from '../../lib/date-holds'
 import { holdFollowups } from '../../lib/proposals'
+import { remindIncompleteProfiles } from '../../lib/provider-completeness'
 import { publishNext } from '../../lib/social-publisher'
 
 const MAX_ACTIONS = 20
@@ -149,6 +150,15 @@ export default async (req: Request) => {
   }
   // Seguimiento de ayuda a las ~20 h de cada petición (cliente) y aviso al
   // proveedor que aún no ha mandado su propuesta. Solo en horario de día.
+  // Lunes a las 10: recordatorio a los proveedores con la ficha incompleta
+  const mn = madridNow()
+  if (mn.monday && mn.hour === 10 && new Date().getUTCMinutes() < 10) {
+    try {
+      out.profile_reminders = await remindIncompleteProfiles(supabase)
+    } catch (err: any) {
+      out.profile_reminders = `error: ${err.message}`
+    }
+  }
   const madridHour = madridNow().hour
   if (madridHour >= 9 && madridHour < 21) {
     try {

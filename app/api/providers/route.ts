@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
+import { profileCompleteness } from '@/lib/provider-completeness'
 import { sanitizeAcquisition } from '@/lib/attribution'
 import { emailAdminNewProvider, emailProviderWelcome } from '@/lib/resend'
 
@@ -81,7 +82,15 @@ export async function GET(req: NextRequest) {
 
   const { data, error, count } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ providers: data, count })
+
+  // Fichas completas primero (precio, fotos y verificación): son las que
+  // convierten. Dentro de cada grupo se mantiene el orden de arriba.
+  const list = (data || []) as any[]
+  if (list.length > 1) {
+    const done = new Set((await profileCompleteness(supabase, list.map(p => p.id))).filter(c => c.complete).map(c => c.provider_id))
+    list.sort((a, b) => Number(done.has(b.id)) - Number(done.has(a.id)))
+  }
+  return NextResponse.json({ providers: list, count })
 }
 
 // POST /api/providers — register new provider (public)

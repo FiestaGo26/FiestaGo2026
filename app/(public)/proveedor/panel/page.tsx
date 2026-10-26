@@ -12,6 +12,7 @@ import QuickRepliesTab from './QuickRepliesTab'
 import GmbTab from './GmbTab'
 import WelcomeModal from './WelcomeModal'
 import ClientRequestsCard from './ClientRequestsCard'
+import ProfileChecklist from './ProfileChecklist'
 
 type ServiceMedia = {
   id: string
@@ -1209,6 +1210,7 @@ function ProveedorPanelInner() {
         )}
 
         {/* DASHBOARD */}
+        {provider && (tab === 'dashboard' || tab === 'services') && <ProfileChecklist providerId={provider.id} apiFetch={apiFetch} />}
         {tab==='dashboard' && (
           <div>
             <h1 className="font-serif text-2xl font-black text-ink mb-1">

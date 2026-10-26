@@ -17,6 +17,7 @@ import { notifyCeoWhatsapp } from '@/lib/ceo-whatsapp'
 import { ACTION_TYPES, CEO_CATEGORIES, CEO_CITIES, actionCatalogForPrompt, getCeoSettings, sanitizeAction } from '@/lib/ceo-actions'
 import { AUDIENCES, CHANNELS, applyExperimentDecisions, gatherGrowth, type ExperimentClose, type ExperimentPlan } from '@/lib/ceo-growth'
 import { currentBalances } from '@/lib/balance-watch'
+import { completenessSummary } from '@/lib/provider-completeness'
 
 const MODEL = process.env.CEO_MODEL || 'claude-opus-5-5'
 
@@ -211,6 +212,8 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
     open_proposals: openProposals,
     services,
     growth,
+    // Fichas completas (precio + 6 fotos + verificado): sin ellas no hay reservas
+    supply_quality: await completenessSummary(supabase).catch(() => null),
     // Lo que Mariano le ha dicho al CEO en el chat del panel (últimos 7 días)
     owner_chat: await ownerChat(supabase),
   }
@@ -246,6 +249,7 @@ ${actionCatalogForPrompt()}
 - Mira "recent_actions": si algo falló o no dio resultado, no lo repitas igual; ajusta o propón otra cosa.
 - Propón como máximo 5 acciones, priorizadas por impacto en el crecimiento del marketplace (más proveedores activos, más demanda, más reservas). No repitas propuestas que ya están en "open_proposals".
 - Escribe en español de España, tono directo y cercano, tuteando.
+- "supply_quality": las simulaciones con clientes muestran que sin fichas completas (servicio con precio, 6 fotos de trabajos, identidad verificada) casi nadie reserva. Subir el número de fichas completas en Valencia es prioridad junto a la demanda; los lunes sale solo un email recordatorio a quien le falta algo, así que propón acciones que lo complementen (WhatsApp a los registrados sin precio, ayuda para subir fotos), no lo repitas.
 - "owner_chat" es lo que Mariano te ha dicho en el chat del panel: sus instrucciones mandan sobre tu criterio (salvo pagos y lo prohibido aquí). Tenlas en cuenta en cada rutina.
 
 Método de crecimiento (lo más importante; datos en "growth"):
