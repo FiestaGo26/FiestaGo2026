@@ -1,7 +1,7 @@
 # Pendientes FiestaGo
 
 Lista única de lo que falta. Se actualiza cada vez que se avanza.
-Última revisión: 24-10-2026.
+Última revisión: 26-10-2026.
 
 ## 1. Lo que tiene que hacer Mariano (en este orden)
 
@@ -77,6 +77,29 @@ Después, las bios:
   Valencia y l'Horta, regla del CEO por "servicio central del evento".
 
 ## 2. Lo que hace Claude cuando lo anterior esté listo
+
+### Objetivo: ≥ 50 % de cierre (simulaciones de embudo completo, 26-10-2026)
+| Sim | Run | Qué se probó | Reservan en el cierre |
+|---|---|---|---|
+| 6 | `06eee82c` | Embudo completo, respuesta genérica del proveedor | 0 % (44 % bloquea fecha) |
+| 7 | `bda860da` | Propuesta escrita + proveedores reales con opiniones de Google + 2.ª decisión a las 48 h (reservar o descartar con motivo exacto) | 1,4 % |
+| 8 | (pendiente) | Un solo precio, preguntas al proveedor con respuesta escrita, "Con quién contratas", proveedor según lo que necesita cada cliente | — |
+
+Motivos exactos de descarte en la 7.ª (ya atacados en la 8.ª): dos precios distintos (el del
+mensaje del proveedor y el de la propuesta con Garantía), preguntas concretas sin respuesta
+escrita (alergias, halal, plan B si llueve, espacio), no saber con quién se contrata ni quién
+factura, opiniones de Google que no eran del negocio (Glowy = salón de manicura; ya se comprueba
+la categoría). Lo que sí funciona: la llamada de FiestaGo (69-87 % "me acerca") y la señal del
+10 % (aceptable para el 84-100 %).
+
+- [ ] Iterar simulación → construir → simular hasta llegar al 50 % (Mariano dio permiso el 26-10).
+- [x] **Generar contenido en el panel no funcionaba** (avisado por Mariano el 26-10): sin vídeos
+  desde el 12-07; la ruta devolvía 500. Arreglado: modelo propio vigente (`CONTENT_MODEL`,
+  por defecto Sonnet 5.5) y JSON garantizado; los fallos quedan en la tabla `ops_log`.
+  Comprobar el primer vídeo nuevo.
+- [x] **Hablar con el CEO desde el panel** (pedido por Mariano el 26-10): chat en la pestaña 🧠 CEO.
+  Contesta con las métricas de ahora, puede dejar acciones en cola y lo que se le dice entra
+  en sus rutinas (`owner_chat`).
 
 Resultado de la 2.ª simulación (mismas 152 personas): la confianza en la web pasa de
 2,41 a 2,89 sobre 5, la claridad de 3,52 a 3,93, quien entra en la web del 38 % al 64 %
@@ -184,6 +207,17 @@ Decisiones pendientes tras la 4.ª simulación:
 - [ ] Enfocar los posts de clientes según la 2.ª simulación (ver `sim_runs`).
 
 ## 3. Hecho
+
+### 26-10-2026 (tarde)
+- Propuesta escrita del proveedor para cada cliente (`/propuesta/<token>`): precio cerrado para
+  sus invitados con la Garantía incluida, qué incluye, señal y resto en euros, condiciones,
+  opiniones de Google, "Con quién contratas", preguntas al proveedor con respuesta por escrito,
+  botón de compartir y reserva con ese precio exacto (`/api/bookings` con `proposal_token`).
+- Panel del proveedor: responde con precio + qué incluye + señal; contesta preguntas; los importes
+  que escriba en el mensaje se ocultan (un solo precio para el cliente).
+- Seguimiento de ayuda a las ~20 h (no "¿reservas?") y aviso al proveedor que no ha respondido.
+- Opiniones de Google de los proveedores con Apify (`google-reviews-background`), con
+  comprobación de nombre y categoría; se ven en la ficha y en la propuesta.
 
 ### 26-10-2026
 - Precio según invitados: el proveedor pone precio, invitados incluidos y € por invitado de
