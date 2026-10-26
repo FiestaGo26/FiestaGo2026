@@ -45,6 +45,7 @@ export default async function ProposalPage({ params }: { params: { token: string
           Preparada para {firstName}
           {p.event_date ? ` · ${fmtDate(p.event_date)}` : ''}
           {p.guests ? ` · ${p.guests} invitados` : ''}
+          {p.hours ? ` · ${p.hours} h` : ''}
           {cat ? ` · ${cat.label}` : ''}{p.provider.city ? ` en ${p.provider.city}` : ''}
         </p>
 
@@ -54,7 +55,9 @@ export default async function ProposalPage({ params }: { params: { token: string
             <div className="text-sm text-ink/60">Precio total para tu caso</div>
             <div className="font-serif text-4xl font-black text-coral leading-none">{formatEuro(p.total)}</div>
           </div>
-          <div className="text-xs text-ink/55 mt-1 text-right">Precio cerrado · Garantía de Éxito incluida · sin extras ocultos</div>
+          <div className="text-xs text-ink/55 mt-1 text-right">Precio cerrado · IVA y Garantía de Éxito incluidos · sin extras ocultos</div>
+          {p.per_person && <div className="text-sm text-ink/70 mt-1 text-right">≈ {formatEuro(p.per_person)} por persona ({p.guests} invitados)</div>}
+          {p.details.fecha_confirmada && <div className="mt-3 inline-block text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1">✓ {p.provider.name} confirma que tiene libre tu fecha</div>}
           <div className="mt-5 grid sm:grid-cols-2 gap-3 text-sm">
             <div className="bg-cream rounded-xl p-3">
               <div className="text-ink/55 text-xs">Al reservar (señal del {p.deposit_pct} %)</div>
@@ -72,8 +75,24 @@ export default async function ProposalPage({ params }: { params: { token: string
         <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
           <h2 className="font-serif text-xl font-bold text-ink mb-3">Qué incluye</h2>
           <p className="text-sm text-ink/80 whitespace-pre-line leading-relaxed">{p.includes}</p>
+          {p.details.no_incluye && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Qué no incluye</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.no_incluye}</p></>}
+          {p.details.plan_b && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Plan B si llueve o hay un imprevisto</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.plan_b}</p></>}
+          <p className="text-xs text-ink/50 mt-4">Esta propuesta es solo de {p.provider.name}. El resto de tu celebración (local, comida, música…) lo contratas aparte, en FiestaGo o donde quieras.</p>
           {p.reply && <p className="text-sm text-ink/70 italic mt-4 border-l-2 border-coral/40 pl-3">“{p.reply}” — {p.provider.name}</p>}
         </div>
+
+        {/* Trabajos del proveedor */}
+        {p.photos.length > 0 && (
+          <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
+            <h2 className="font-serif text-xl font-bold text-ink mb-3">Sus trabajos</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {p.photos.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={src} alt={`Trabajo de ${p.provider.name}`} className="w-full aspect-square object-cover rounded-xl" loading="lazy"/>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Opiniones comprobables */}
         {(p.provider.google_rating || reviews.length > 0) && (

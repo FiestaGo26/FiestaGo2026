@@ -25,7 +25,18 @@ const APP_URL = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es')
 
 export const newProposalToken = () => randomBytes(12).toString('hex')
 
-export type ProposalQuestion = { q: string; asked_at: string; a: string | null; answered_at: string | null }
+export type ProposalQuestion = {
+  q: string; asked_at: string; a: string | null; answered_at: string | null
+  /** Quién contesta: FiestaGo (garantía, pagos, cancelaciones) o el proveedor */
+  by?: 'fiestago' | 'proveedor'
+}
+
+/** Lo que el proveedor confirma en su propuesta además del precio. */
+export type QuoteDetails = {
+  fecha_confirmada?: boolean
+  no_incluye?: string
+  plan_b?: string
+}
 
 /** Quita importes de un mensaje del proveedor: el único precio que ve el
  *  cliente es el de la propuesta (con la Garantía incluida). Dos cifras
@@ -52,6 +63,10 @@ export type Proposal = {
   guests: number | null
   includes: string
   reply: string | null
+  hours: number | null
+  details: QuoteDetails
+  photos: string[]
+  per_person: number | null
   questions: ProposalQuestion[]
   provider: {
     id: string; name: string; slug: string | null; category: string; city: string | null
@@ -73,19 +88,26 @@ export type Proposal = {
 export async function loadProposal(supabase: SupabaseClient, token: string): Promise<Proposal | null> {
   if (!/^[a-f0-9]{24}$/.test(token || '')) return null
   const { data: h } = await supabase.from('date_holds')
-    .select('id, kind, status, created_at, expires_at, replied_at, client_name, client_email, event_date, event_type, guests, provider_reply, quote_total, quote_includes, quote_deposit_pct, proposal_token, provider_id, service_id, questions')
+    .select('id, kind, status, created_at, expires_at, replied_at, client_name, client_email, event_date, event_type, guests, hours, quote_details, provider_reply, quote_total, quote_includes, quote_deposit_pct, proposal_token, provider_id, service_id, questions')
     .eq('proposal_token', token).maybeSingle()
   if (!h || !(Number(h.quote_total) > 0)) return null
 
-  const [{ data: p }, { data: s }] = await Promise.all([
+  const [{ data: p }, { data: s }, { data: media }] = await Promise.all([
     supabase.from('providers')
       .select('id, name, slug, category, city, photo_url, years_active, verified, rating, total_reviews, google_rating, google_rating_count')
       .eq('id', h.provider_id).maybeSingle(),
     h.service_id
       ? supabase.from('provider_services').select('id, name, cancellation_policy').eq('id', h.service_id).maybeSingle()
       : Promise.resolve({ data: null } as any),
+    // Fotos de sus trabajos (8.ª simulación: pedían ver eventos parecidos)
+    h.service_id
+      ? supabase.from('service_media').select('url, thumbnail_url, media_type').eq('service_id', h.service_id)
+          .order('is_primary', { ascending: false }).order('sort_order', { ascending: true }).limit(6)
+      : Promise.resolve({ data: [] } as any),
   ])
   if (!p) return null
+  const photos = ((media || []) as any[]).filter(m => m.media_type !== 'video').map(m => m.thumbnail_url || m.url).filter(Boolean)
+  if (!photos.length && p.photo_url) photos.push(p.photo_url)
 
   const base = Math.round(Number(h.quote_total) * 100) / 100
   const commission = calcCommission(base)
@@ -100,6 +122,10 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
     event_date: h.event_date, event_type: h.event_type, guests: h.guests,
     includes: h.quote_includes || '', reply: h.provider_reply,
     questions: Array.isArray(h.questions) ? h.questions : [],
+    hours: h.hours ?? null,
+    details: (h.quote_details || {}) as QuoteDetails,
+    photos,
+    per_person: Number(h.guests) > 0 ? Math.round((commission.clientPays / Number(h.guests)) * 100) / 100 : null,
     provider: p as Proposal['provider'],
     service: s || null,
     base, total: commission.clientPays, deposit_pct: depositPct,
@@ -129,7 +155,7 @@ const H = 3600_000
  */
 export async function holdFollowups(supabase: SupabaseClient) {
   const { data: holds } = await supabase.from('date_holds')
-    .select('id, kind, client_name, client_email, event_date, proposal_token, quote_total, replied_at, expires_at, provider_id, questions, providers(name, email, slug)')
+    .select('id, kind, client_name, client_email, client_phone, preferred_time, event_date, proposal_token, quote_total, replied_at, expires_at, provider_id, questions, providers(name, email, slug)')
     .in('kind', ['hold', 'quote']).eq('status', 'active').is('followup_sent_at', null)
     .lt('created_at', new Date(Date.now() - 20 * H).toISOString())
     .gt('created_at', new Date(Date.now() - 7 * 24 * H).toISOString())
@@ -146,13 +172,22 @@ export async function holdFollowups(supabase: SupabaseClient) {
       ? new Date(h.expires_at).toLocaleString('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', hour: '2-digit', minute: '2-digit' })
       : null
 
-    await sendEmail({
-      to: h.client_email,
-      subject: hasProposal ? `Tu propuesta de ${name}, por escrito` : `¿Te echamos una mano con ${name}?`,
-      text: hasProposal
-        ? `Hola ${h.client_name},\n\n${qs.length ? `${pending.length ? `Hemos recordado a ${name} que tiene ${pending.length} pregunta${pending.length > 1 ? 's' : ''} tuya${pending.length > 1 ? 's' : ''} sin contestar; te avisamos en cuanto responda. ` : ''}${qs.some(q => q.a) ? `Tienes las respuestas de ${name} por escrito en tu propuesta. ` : ''}` : `¿Te queda alguna duda concreta (alergias, plan B si llueve, horarios, espacio…)? Pregúntasela a ${name} desde tu propuesta y te la contesta por escrito, ahí mismo. `}Puedes enseñársela a quien lo decide contigo:\n\n${proposalUrl(h.proposal_token!)}\n\n${until && h.kind === 'hold' ? `Tu fecha sigue bloqueada hasta el ${until}. ` : ''}Si quieres que te llamemos para resolver cualquier duda, contesta a este email con un número y una hora. Sin compromiso.\n\nFiestaGo`
-        : `Hola ${h.client_name},\n\nEstamos pendientes de que ${name} te mande su propuesta por escrito (precio para tu evento, qué incluye y la señal). Te la reenviamos en cuanto llegue.\n\n${until && h.kind === 'hold' ? `Tu fecha sigue bloqueada hasta el ${until}. ` : ''}Si quieres, te llamamos y lo vemos juntos: contesta con un número y una hora. Sin compromiso.\n\nFiestaGo`,
-    }).catch(() => {})
+    // 8.ª simulación: el email de seguimiento alejaba al 93 % y la llamada
+    // acercaba al 78 %. Con teléfono, llama una persona de FiestaGo; sin él,
+    // un email corto que ofrece la llamada.
+    if (h.client_phone) {
+      await sendEmail({
+        to: process.env.ADMIN_EMAIL || 'contacto@fiestago.es',
+        subject: `📞 Llama a ${h.client_name} · ${name}`,
+        text: `Seguimiento a las ~20 h de su petición. Llámale (sin presión: resolver dudas, no "¿reservas?").\n\nTeléfono: ${h.client_phone}${h.preferred_time ? ` (${h.preferred_time})` : ''}\nProveedor: ${name}\nFecha: ${h.event_date || 'por concretar'}\n${hasProposal ? `Propuesta: ${proposalUrl(h.proposal_token!)}` : 'El proveedor aún no ha mandado propuesta: empújale.'}\n${pending.length ? `Preguntas sin contestar: ${pending.map(q => `"${q.q}"`).join(' · ')}` : ''}${until && h.kind === 'hold' ? `\nBloqueo hasta: ${until}` : ''}`,
+      }).catch(() => {})
+    } else {
+      await sendEmail({
+        to: h.client_email,
+        subject: `¿Te llamamos para lo de ${name}?`,
+        text: `Hola ${h.client_name},\n\n¿Te queda alguna duda sobre ${name}? Contesta a este email con tu teléfono y una hora, y te llama una persona de FiestaGo para resolverlo. Sin compromiso.${hasProposal ? `\n\nTu propuesta, por si quieres enseñársela a alguien: ${proposalUrl(h.proposal_token!)}` : ''}\n\nFiestaGo`,
+      }).catch(() => {})
+    }
 
     if (!h.replied_at && prov?.email) {
       await sendEmail({

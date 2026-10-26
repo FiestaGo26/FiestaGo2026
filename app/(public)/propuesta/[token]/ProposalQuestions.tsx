@@ -24,9 +24,12 @@ export default function ProposalQuestions({ token, providerName, initial }: {
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'No se pudo enviar')
-      setQs(d.questions || qs)
+      const next: ProposalQuestion[] = d.questions || qs
+      setQs(next)
       setText('')
-      toast.success(`Enviada a ${providerName}. Te avisamos por email cuando conteste.`)
+      toast.success(next[next.length - 1]?.by === 'fiestago' && next[next.length - 1]?.a
+        ? 'Te hemos contestado desde FiestaGo ✓'
+        : `Enviada a ${providerName}. Te avisamos por email cuando conteste.`)
     } catch (err: any) { toast.error(err.message) }
     setSending(false)
   }
@@ -34,14 +37,14 @@ export default function ProposalQuestions({ token, providerName, initial }: {
   return (
     <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
       <h2 className="font-serif text-xl font-bold text-ink mb-1">Pregunta antes de reservar</h2>
-      <p className="text-sm text-ink/65 mb-4">Alergias, plan B si llueve, horarios, espacio… {providerName} te contesta por escrito y la respuesta queda aquí.</p>
+      <p className="text-sm text-ink/65 mb-4">Alergias, plan B si llueve, horarios, espacio… {providerName} te contesta por escrito y la respuesta queda aquí. Lo de la garantía, los pagos y las cancelaciones te lo contestamos al momento desde FiestaGo.</p>
       {qs.length > 0 && (
         <div className="space-y-3 mb-4">
           {qs.map((q, i) => (
             <div key={i} className="text-sm">
               <div className="font-semibold text-ink">❓ {q.q}</div>
               {q.a
-                ? <div className="mt-1 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-ink/80"><strong>{providerName}:</strong> {q.a}</div>
+                ? <div className="mt-1 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-ink/80"><strong>{q.by === 'fiestago' ? 'FiestaGo' : providerName}:</strong> {q.a}</div>
                 : <div className="mt-1 text-xs text-ink/50">Pendiente de respuesta. Te avisamos por email.</div>}
             </div>
           ))}

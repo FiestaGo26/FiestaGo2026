@@ -28,10 +28,11 @@ type Request = {
   suggested_deposit_pct: number
   quote_total: number | null
   proposal_url: string | null
-  questions: Array<{ q: string; a: string | null }> | null
+  questions: Array<{ q: string; a: string | null; by?: 'fiestago' | 'proveedor' }> | null
+  hours: number | null
 }
 
-type Draft = { total: string; includes: string; deposit: number; note: string }
+type Draft = { total: string; includes: string; deposit: number; note: string; fechaOk: boolean; noIncluye: string; planB: string }
 
 const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -73,6 +74,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
 
   const draftOf = (r: Request): Draft => drafts[r.id] || {
     total: r.suggested_total ? String(r.suggested_total) : '', includes: '', deposit: r.suggested_deposit_pct || DEPOSIT_MIN, note: '',
+    fechaOk: false, noIncluye: '', planB: '',
   }
   const setDraft = (r: Request, patch: Partial<Draft>) => setDrafts(d => ({ ...d, [r.id]: { ...draftOf(r), ...patch } }))
 
@@ -81,12 +83,15 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
     const total = Number(String(d0.total).replace(',', '.')) || 0
     if (total <= 0) { toast.error('Pon el precio total para este cliente'); return }
     if (d0.includes.trim().length < 5) { toast.error('Explica qué incluye el precio'); return }
+    if (r.event_date && !d0.fechaOk) { toast.error('Confirma que tienes libre su fecha'); return }
+    if (d0.noIncluye.trim().length < 3) { toast.error('Di qué NO incluye (o "nada más")'); return }
     setSending(r.id)
     try {
       const res = await apiFetch('/api/proveedor/requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider_id: providerId, id: r.id, total, includes: d0.includes, deposit_pct: d0.deposit, reply: d0.note }),
+        body: JSON.stringify({ provider_id: providerId, id: r.id, total, includes: d0.includes, deposit_pct: d0.deposit, reply: d0.note,
+          details: { fecha_confirmada: d0.fechaOk, no_incluye: d0.noIncluye, plan_b: d0.planB } }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'No se pudo enviar')
@@ -120,6 +125,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
               {r.event_date ? fmtDate(r.event_date) : 'Fecha por concretar'}
               {r.event_type && ` · ${r.event_type}`}
               {r.guests && ` · ${r.guests} invitados`}
+              {r.hours && ` · ${r.hours} h`}
               {r.kind === 'hold' && r.status === 'active' && r.expires_at && ` · bloqueada hasta ${new Date(r.expires_at).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`}
               {r.status === 'converted' && ' · ✅ ya reservó'}
               {r.status === 'expired' && ' · bloqueo caducado'}
@@ -138,7 +144,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
               return (
                 <div className="flex flex-col gap-2">
                   {r.service_name && <div className="text-[11px] text-ink/55">Servicio: {r.service_name}{r.suggested_total ? ` · tu tarifa para ${r.guests || 'estos'} invitados: ${formatEuro(r.suggested_total)}` : ''}</div>}
-                  <label className="text-xs font-semibold text-ink">Precio total para este cliente (lo que cobras tú)
+                  <label className="text-xs font-semibold text-ink">Precio total para este cliente, IVA incluido (lo que cobras tú)
                     <input type="number" min={0} step="1" value={d.total} onChange={e => setDraft(r, { total: e.target.value })}
                       placeholder="Ej. 1250"
                       className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral"/>
@@ -149,6 +155,23 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                       placeholder="Horas, personas, material, desplazamiento, entregas y plazos, plan B si llueve, alergias… y lo que no entra."
                       className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
                   </label>
+                  <label className="text-xs font-semibold text-ink">Qué NO incluye
+                    <textarea rows={2} value={d.noIncluye} onChange={e => setDraft(r, { noIncluye: e.target.value })}
+                      placeholder="Ej.: el local, la bebida, horas extra (a X € la hora)… o «nada más»"
+                      className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
+                  </label>
+                  <label className="text-xs font-semibold text-ink">Plan B si llueve o hay un imprevisto (si aplica)
+                    <textarea rows={2} value={d.planB} onChange={e => setDraft(r, { planB: e.target.value })}
+                      placeholder="Ej.: montamos en el salón interior / llevo equipo de repuesto"
+                      className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
+                  </label>
+                  {r.event_date && (
+                    <label className="flex items-center gap-2 text-xs font-semibold text-ink">
+                      <input type="checkbox" checked={d.fechaOk} onChange={e => setDraft(r, { fechaOk: e.target.checked })} className="accent-coral"/>
+                      Confirmo que tengo libre el {fmtDate(r.event_date)}
+                    </label>
+                  )}
+                  <p className="text-[11px] text-ink/50">La garantía, los pagos y las cancelaciones se los explica FiestaGo: no hace falta que los pongas.</p>
                   <label className="text-xs font-semibold text-ink">Señal al reservar: {d.deposit} %
                     <input type="range" min={DEPOSIT_MIN} max={DEPOSIT_MAX} step={1} value={d.deposit}
                       onChange={e => setDraft(r, { deposit: Number(e.target.value) })} className="mt-1 w-full accent-coral"/>
@@ -167,7 +190,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
               <div key={i} className="mt-3 border-t border-stone-100 pt-3 text-sm">
                 <div className="font-semibold text-ink">❓ {q.q}</div>
                 {q.a ? (
-                  <div className="text-xs text-emerald-800 mt-1">Tu respuesta: {q.a}</div>
+                  <div className="text-xs text-emerald-800 mt-1">{q.by === 'fiestago' ? 'Contestada por FiestaGo' : 'Tu respuesta'}: {q.a}</div>
                 ) : (
                   <div className="flex gap-2 mt-2">
                     <input value={answers[`${r.id}:${i}`] || ''} onChange={e => setAnswers(a => ({ ...a, [`${r.id}:${i}`]: e.target.value }))}

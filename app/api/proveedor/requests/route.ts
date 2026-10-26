@@ -89,6 +89,11 @@ export async function POST(req: NextRequest) {
       ...(token ? {
         quote_total: total, quote_includes: maskContacts(includes),
         quote_deposit_pct: cleanDeposit(body.deposit_pct), proposal_token: token,
+        quote_details: {
+          fecha_confirmada: body.details?.fecha_confirmada === true,
+          no_incluye: maskContacts(String(body.details?.no_incluye || '').slice(0, 1500)) || undefined,
+          plan_b: maskContacts(String(body.details?.plan_b || '').slice(0, 1500)) || undefined,
+        },
       } : {}),
     })
     .eq('id', hold.id)

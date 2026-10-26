@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { maskContacts } from '@/lib/date-holds'
-import { proposalUrl, type ProposalQuestion } from '@/lib/proposals'
+import { loadProposal, proposalUrl, type ProposalQuestion } from '@/lib/proposals'
+import { routeQuestion } from '@/lib/proposal-questions'
 import { sendEmail } from '@/lib/resend'
 
 export const runtime = 'nodejs'
@@ -29,21 +30,33 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
 
   const qs: ProposalQuestion[] = Array.isArray(hold.questions) ? hold.questions : []
   if (qs.length >= MAX_QUESTIONS) return NextResponse.json({ error: 'Has hecho muchas preguntas. Responde al email de la propuesta y te llamamos.' }, { status: 429 })
-  qs.push({ q, asked_at: new Date().toISOString(), a: null, answered_at: null })
+
+  // Garantía, pagos y cancelaciones los contesta FiestaGo; el servicio, el proveedor
+  const proposal = await loadProposal(supabase, params.token)
+  const route = proposal
+    ? await routeQuestion(q, proposal).catch(() => ({ para: 'proveedor' as const, respuesta_fiestago: '' }))
+    : { para: 'proveedor' as const, respuesta_fiestago: '' }
+  const now = new Date().toISOString()
+  const byFiestaGo = route.para !== 'proveedor' && route.respuesta_fiestago.trim().length > 0
+  qs.push(byFiestaGo
+    ? { q, asked_at: now, a: route.respuesta_fiestago.trim(), answered_at: now, by: 'fiestago' }
+    : { q, asked_at: now, a: null, answered_at: null, by: 'proveedor' })
+  // "ambos": la parte del servicio va al proveedor como pregunta aparte
+  if (route.para === 'ambos') qs.push({ q, asked_at: now, a: null, answered_at: null, by: 'proveedor' })
   await supabase.from('date_holds').update({ questions: qs }).eq('id', hold.id)
 
   const prov: any = Array.isArray(hold.providers) ? hold.providers[0] : hold.providers
-  if (prov?.email) {
+  if (prov?.email && route.para !== 'fiestago') {
     await sendEmail({
       to: prov.email,
       subject: '❓ Un cliente te pregunta antes de reservar · FiestaGo',
-      text: `Hola,\n\nUn cliente que tiene tu propuesta te pregunta:\n\n"${q}"\n\nContéstale desde tu panel ("Peticiones de clientes"): la respuesta le llega por escrito y queda en su propuesta. Responder rápido y en concreto es lo que más ayuda a que reserve.\n\n${APP_URL()}/proveedor/panel\n\nFiestaGo`,
+      text: `Hola,\n\nUn cliente que tiene tu propuesta te pregunta:\n\n"${q}"\n\nContéstale desde tu panel ("Peticiones de clientes"): la respuesta le llega por escrito y queda en su propuesta. Responde solo sobre tu servicio; lo de la garantía, pagos y cancelaciones ya se lo explica FiestaGo.\n\n${APP_URL()}/proveedor/panel\n\nFiestaGo`,
     }).catch(() => {})
   }
   await sendEmail({
     to: process.env.ADMIN_EMAIL || 'contacto@fiestago.es',
-    subject: `❓ Pregunta de ${hold.client_name} a ${prov?.name || 'un proveedor'}`,
-    text: `"${q}"\n\nPropuesta: ${proposalUrl(params.token)}`,
+    subject: `❓ Pregunta de ${hold.client_name} a ${prov?.name || 'un proveedor'}${byFiestaGo ? ' (contestada por FiestaGo)' : ''}`,
+    text: `"${q}"\n\n${byFiestaGo ? `Respuesta automática de FiestaGo: "${route.respuesta_fiestago}"\n\n` : ''}Propuesta: ${proposalUrl(params.token)}`,
   }).catch(() => {})
 
   return NextResponse.json({ ok: true, questions: qs })
