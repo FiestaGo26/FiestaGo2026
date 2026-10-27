@@ -10,6 +10,7 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 import { precioCliente, importeFee, formatEuro } from '@/lib/pricing'
 
 // Sonnet 5 basta para redactar presupuestos desde brief estructurado
@@ -21,7 +22,7 @@ let _client: Anthropic | null = null
 function client(): Anthropic {
   if (_client) return _client
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('Falta ANTHROPIC_API_KEY')
-  _client = new Anthropic()
+  _client = newAnthropic()
   return _client
 }
 

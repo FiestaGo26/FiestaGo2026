@@ -20,6 +20,12 @@ Las cuentas de siempre (@fiestago) pasan a ser **de clientes**; las de **proveed
 - [ ] **1.5 Avisar a Claude** cuando esté para comprobar la primera publicación en cada cuenta.
 
 ### Otros
+- [ ] **Saldo de Anthropic (27-10-2026).** Desactivar la recarga automática en console.anthropic.com →
+  Settings → Billing. Para el aviso de «queda poco saldo»: crear una clave de administrador (Settings →
+  Admin keys), guardarla en Netlify como `ANTHROPIC_ADMIN_KEY` y, cada vez que recargues, poner el saldo
+  en el panel → CEO («Saldo de Anthropic»). El aviso de «sin saldo» ya funciona sin nada de esto.
+- Simulaciones de clientes **pausadas** (cada una costaba 2-4 $ de API). Para reactivarlas:
+  `CLIENT_SIM_ENABLED=1` en Netlify.
 - [ ] **WhatsApp**: reactivar la tarjeta/número en Meta y avisar a Claude para revisar si
   saltó el freno automático del CEO y desbloquearlo.
 - [ ] **Recargar la API de HeyGen** (0 segundos de vídeo: no hay vídeo diario).

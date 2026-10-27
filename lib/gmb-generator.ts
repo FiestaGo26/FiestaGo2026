@@ -7,6 +7,7 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8'
 
@@ -14,7 +15,7 @@ let _client: Anthropic | null = null
 function client(): Anthropic {
   if (_client) return _client
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('Falta ANTHROPIC_API_KEY')
-  _client = new Anthropic()
+  _client = newAnthropic()
   return _client
 }
 

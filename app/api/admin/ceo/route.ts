@@ -51,6 +51,9 @@ export async function PATCH(req: NextRequest) {
     if (typeof s.paused === 'boolean') update.paused = s.paused
     if (Number.isFinite(s.max_wa_per_day))    update.max_wa_per_day    = Math.min(Math.max(Math.round(s.max_wa_per_day), 0), 500)
     if (Number.isFinite(s.max_posts_per_day)) update.max_posts_per_day = Math.min(Math.max(Math.round(s.max_posts_per_day), 0), 10)
+    // Saldo cargado en Anthropic: al cambiarlo, el gasto se cuenta desde ahora (lib/balance-watch.ts)
+    if (Number.isFinite(s.anthropic_credit_usd)) { update.anthropic_credit_usd = Math.min(Math.max(Number(s.anthropic_credit_usd), 0), 100000); update.anthropic_credit_since = new Date().toISOString() }
+    if (Number.isFinite(s.anthropic_low_usd))    update.anthropic_low_usd    = Math.min(Math.max(Number(s.anthropic_low_usd), 0), 10000)
     if (Number.isFinite(s.ads_budget_eur))    update.ads_budget_eur    = Math.min(Math.max(Number(s.ads_budget_eur), 0), 100000)
     if (Number.isFinite(s.supply_threshold))  update.supply_threshold  = Math.min(Math.max(Math.round(s.supply_threshold), 1), 50)
     if (s.wa_unbrake === true) { update.wa_braked_at = null; update.wa_brake_reason = null }

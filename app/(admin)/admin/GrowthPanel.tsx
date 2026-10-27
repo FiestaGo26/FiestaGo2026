@@ -32,6 +32,9 @@ type Settings = {
   social_autopublish: boolean
   social_max_per_day: number
   ads_budget_eur: number
+  anthropic_credit_usd?: number | null
+  anthropic_credit_since?: string | null
+  anthropic_low_usd?: number | null
   supply_threshold: number
   wa_braked_at: string | null
   wa_brake_reason: string | null
@@ -202,6 +205,25 @@ export default function GrowthPanel({ experiments, settings, reload, saveSetting
           <input type="number" min={0} defaultValue={settings?.ads_budget_eur ?? 50}
             onBlur={e => { const n = Number(e.target.value); if (n !== settings?.ads_budget_eur) saveSettings({ ads_budget_eur: n }) }}
             style={{ width: 80, background: '#0B1220', border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: '5px 8px' }} />
+        </label>
+      </div>
+
+      <div style={{ ...card, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ fontSize: 13, color: C.text, flexBasis: '100%' }}>
+          Saldo de Anthropic (la IA de los agentes). Cuando recargues, pon aquí cuánto has cargado: te avisamos por email y WhatsApp si baja del aviso y si se acaba.
+          {settings?.anthropic_credit_since && <> Último: <b>{settings.anthropic_credit_usd} $</b> el {new Date(settings.anthropic_credit_since).toLocaleDateString('es-ES')}.</>}
+        </div>
+        <label style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, alignItems: 'center' }}>
+          Saldo que tienes ahora ($)
+          <input type="number" min={0} defaultValue={settings?.anthropic_credit_usd ?? ''}
+            onBlur={e => { if (e.target.value === '') return; const n = Number(e.target.value); if (n !== settings?.anthropic_credit_usd) saveSettings({ anthropic_credit_usd: n }) }}
+            style={{ width: 80, background: '#0B1220', border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: '5px 8px' }} />
+        </label>
+        <label style={{ fontSize: 12, color: C.muted, display: 'flex', gap: 6, alignItems: 'center' }}>
+          Avisar por debajo de ($)
+          <input type="number" min={0} defaultValue={settings?.anthropic_low_usd ?? 5}
+            onBlur={e => { const n = Number(e.target.value); if (n !== settings?.anthropic_low_usd) saveSettings({ anthropic_low_usd: n }) }}
+            style={{ width: 60, background: '#0B1220', border: `1px solid ${C.border}`, color: C.text, borderRadius: 8, padding: '5px 8px' }} />
         </label>
       </div>
 

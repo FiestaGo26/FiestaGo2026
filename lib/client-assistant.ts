@@ -9,6 +9,7 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 
 const MODEL = process.env.CLIENT_ASSISTANT_MODEL || 'claude-sonnet-5-5'
 
@@ -57,7 +58,7 @@ export async function generateClientReply(history: ClientTurn[]): Promise<string
   while (turns.length && turns[0].role !== 'user') turns.shift()
   if (!turns.length) throw new Error('Sin mensajes del cliente')
 
-  const resp = await new Anthropic().messages.create({
+  const resp = await newAnthropic().messages.create({
     model: MODEL,
     max_tokens: 600,
     system: SYSTEM,

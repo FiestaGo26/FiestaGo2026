@@ -6,6 +6,11 @@
 //                (puede necesitar una clave de administrador: FAL_ADMIN_KEY;
 //                 si no, prueba con FAL_KEY)
 //   · HeyGen   → GET https://api.heygen.com/v2/user/remaining_quota
+//   · Anthropic → no da el saldo por API: saldo estimado = lo que cargaste
+//                (panel → CEO: anthropic_credit_usd y la fecha) menos el gasto
+//                desde entonces (GET /v1/organizations/cost_report, necesita
+//                una clave de administrador: ANTHROPIC_ADMIN_KEY). Si se queda
+//                a cero, lo avisa también lib/anthropic-client.ts.
 //
 // Umbrales (Netlify, opcionales):
 //   FAL_LOW_BALANCE      dólares, por defecto 5
@@ -74,13 +79,48 @@ async function checkHeygen(): Promise<Check | null> {
   }
 }
 
+/** Gasto en Anthropic desde una fecha (cost_report, importes en céntimos de dólar). */
+export async function anthropicSpentSince(since: string): Promise<number> {
+  const key = process.env.ANTHROPIC_ADMIN_KEY
+  if (!key) throw new Error('Falta ANTHROPIC_ADMIN_KEY')
+  let cents = 0
+  let page: string | null = null
+  for (let i = 0; i < 12; i++) {
+    const qs = new URLSearchParams({ starting_at: since, bucket_width: '1d', limit: '31' })
+    if (page) qs.set('page', page)
+    const res = await fetch(`https://api.anthropic.com/v1/organizations/cost_report?${qs}`, {
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    })
+    const data: any = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${JSON.stringify(data.error || data).slice(0, 200)}`)
+    for (const b of data.data || []) for (const r of b.results || []) cents += Number(r.amount) || 0
+    if (!data.has_more || !data.next_page) break
+    page = data.next_page
+  }
+  return cents / 100
+}
+
+async function checkAnthropic(supabase?: SupabaseClient): Promise<Check | null> {
+  if (!supabase || !process.env.ANTHROPIC_ADMIN_KEY) return null
+  const { data: s } = await supabase.from('ceo_settings').select('anthropic_credit_usd, anthropic_credit_since, anthropic_low_usd').eq('id', 1).maybeSingle()
+  if (!s?.anthropic_credit_usd || !s.anthropic_credit_since) return null
+  const topUpUrl = 'https://console.anthropic.com/settings/billing'
+  try {
+    const left = Number(s.anthropic_credit_usd) - await anthropicSpentSince(new Date(s.anthropic_credit_since).toISOString())
+    const threshold = Number(s.anthropic_low_usd ?? 5)
+    return { service: 'Anthropic', ok: true, value: Math.max(0, left), unit: 'USD', threshold, low: left < threshold, topUpUrl }
+  } catch (err: any) {
+    return { service: 'Anthropic', ok: false, error: err.message, topUpUrl }
+  }
+}
+
 /** Saldo actual de cada servicio, sin avisar a nadie (para el snapshot del CEO). */
-export async function currentBalances() {
-  return (await Promise.all([checkFal(), checkHeygen()])).filter((c): c is Check => !!c)
+export async function currentBalances(supabase?: SupabaseClient) {
+  return (await Promise.all([checkFal(), checkHeygen(), checkAnthropic(supabase)])).filter((c): c is Check => !!c)
 }
 
 export async function checkBalances(supabase: SupabaseClient) {
-  const checks = await currentBalances()
+  const checks = await currentBalances(supabase)
   const sent: string[] = []
 
   for (const c of checks.filter(c => c.low)) {
@@ -92,7 +132,7 @@ export async function checkBalances(supabase: SupabaseClient) {
     if (count) continue
 
     const amount = c.unit === 'USD' ? `${c.value!.toFixed(2)} $` : `${Math.round(c.value!)} ${c.unit}`
-    const msg = `⚠️ *Saldo bajo en ${c.service}*: quedan ${amount} (aviso por debajo de ${c.threshold} ${c.unit === 'USD' ? '$' : c.unit}).\nSin saldo, los agentes dejan de ${c.service === 'HeyGen' ? 'crear el vídeo diario' : 'crear imágenes para los posts'}.\nRecarga aquí: ${c.topUpUrl}`
+    const msg = `⚠️ *Saldo bajo en ${c.service}*: quedan ${amount} (aviso por debajo de ${c.threshold} ${c.unit === 'USD' ? '$' : c.unit}).\nSin saldo, los agentes dejan de ${c.service === 'HeyGen' ? 'crear el vídeo diario' : c.service === 'Anthropic' ? 'funcionar (agente CEO, contenido diario, asistente de clientes)' : 'crear imágenes para los posts'}.\nRecarga aquí: ${c.topUpUrl}`
 
     await supabase.from('agent_alerts').insert({
       source: 'balance-watch', severity: 'warning', title: `Saldo bajo: ${c.service}`,

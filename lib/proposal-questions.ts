@@ -9,6 +9,7 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 import type { Proposal } from '@/lib/proposals'
 
 const MODEL = process.env.CLIENT_ASSISTANT_MODEL || 'claude-sonnet-5-5'
@@ -26,7 +27,7 @@ export const FIESTAGO_TERMS = `Condiciones de FiestaGo (son las únicas válidas
 - Proveedores verificados: DNI/CIF y seguro de responsabilidad civil.`
 
 let _client: Anthropic | null = null
-const client = () => (_client ||= new Anthropic())
+const client = () => (_client ||= newAnthropic())
 
 export type QuestionRoute = { para: 'fiestago' | 'proveedor' | 'ambos'; respuesta_fiestago: string }
 

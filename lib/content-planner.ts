@@ -8,6 +8,7 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 
 // Modelo propio del guion: ANTHROPIC_MODEL lo comparten otras piezas y un
 // modelo retirado ahí dejaba sin vídeos (sin vídeos desde el 12-07).
@@ -17,7 +18,7 @@ let _client: Anthropic | null = null
 function client(): Anthropic {
   if (_client) return _client
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('Falta ANTHROPIC_API_KEY')
-  _client = new Anthropic()
+  _client = newAnthropic()
   return _client
 }
 

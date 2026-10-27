@@ -11,6 +11,7 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail } from '@/lib/resend'
 import { notifyCeoWhatsapp } from '@/lib/ceo-whatsapp'
@@ -25,7 +26,7 @@ let _client: Anthropic | null = null
 function client(): Anthropic {
   if (_client) return _client
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('Falta ANTHROPIC_API_KEY')
-  _client = new Anthropic()
+  _client = newAnthropic()
   return _client
 }
 
@@ -148,7 +149,7 @@ export async function gatherSnapshot(supabase: SupabaseClient, kind: CeoKind) {
 
   // Saldo real de fal.ai y HeyGen ahora mismo: manda sobre los fallos
   // antiguos de recent_actions (p. ej. un "sin saldo" de antes de recargar).
-  const services = (await currentBalances().catch(() => [])).map(c => ({
+  const services = (await currentBalances(supabase).catch(() => [])).map(c => ({
     service: c.service, ok: c.ok, balance: c.value ?? null, unit: c.unit ?? null,
     low: c.low ?? null, error: c.error ?? null,
   }))

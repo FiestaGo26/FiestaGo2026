@@ -13,6 +13,7 @@
 // ───────────────────────────────────────────────────────────────────────
 
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getCeoSettings } from '@/lib/ceo-actions'
 import { AUDIENCES, isUploadPostConfigured, profileFor, publishPhotos, publishVideo, getPostMetrics, getUploadStatus, extractUrls, type Audience } from '@/lib/uploadpost'
@@ -50,7 +51,7 @@ const AUDIENCE_RULE: Record<Audience, string> = {
 
 async function reviewCaption(captionIg: string, captionTt: string, context: string, audience: Audience): Promise<Review> {
   const today = new Date().toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid', day: 'numeric', month: 'long', year: 'numeric' })
-  const resp = await new Anthropic().messages.create({
+  const resp = await newAnthropic().messages.create({
     model: REVIEW_MODEL,
     // Devuelve los dos textos completos corregidos: con 2000 se cortaba
     // ("Unterminated string in JSON") y no se publicaba nada.

@@ -13,6 +13,9 @@ export default async (req: Request) => {
   if (!process.env.CEO_TICK_SECRET || req.headers.get('x-tick-secret') !== process.env.CEO_TICK_SECRET) {
     return new Response('No autorizado', { status: 401 })
   }
+  // Pausadas (27-10-2026): cada simulación cuesta 2-4 $ de API. Para volver a
+  // usarlas, poner CLIENT_SIM_ENABLED=1 en Netlify.
+  if (process.env.CLIENT_SIM_ENABLED !== '1') return new Response('Simulaciones pausadas', { status: 403 })
   const { run_id } = await req.json().catch(() => ({} as any))
   if (!run_id) return new Response('Falta run_id', { status: 400 })
 

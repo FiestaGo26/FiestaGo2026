@@ -22,6 +22,7 @@ import { maskPrices, noShowCompensation, stripPrices } from '@/lib/proposals'
 import { uniqueReviews } from '@/lib/google-reviews'
 import { FIESTAGO_TERMS } from '@/lib/proposal-questions'
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/constants'
 import { VENUE_TYPES, type VenueType } from '@/lib/venue'
@@ -505,7 +506,7 @@ let _client: Anthropic | null = null
 function client() {
   if (!_client) {
     if (!process.env.ANTHROPIC_API_KEY) throw new Error('Falta ANTHROPIC_API_KEY')
-    _client = new Anthropic()
+    _client = newAnthropic()
   }
   return _client
 }

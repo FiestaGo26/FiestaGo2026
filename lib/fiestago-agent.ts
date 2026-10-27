@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { newAnthropic } from '@/lib/anthropic-client'
 import { createAdminClient } from '@/lib/supabase'
 
 // Cupo del sello de calidad: los primeros N proveedores APROBADOS reciben
@@ -64,7 +65,7 @@ function client(): Anthropic {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('Falta ANTHROPIC_API_KEY en el entorno')
   }
-  _client = new Anthropic()
+  _client = newAnthropic()
   return _client
 }
 
