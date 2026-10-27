@@ -107,9 +107,12 @@ la categoría). Lo que sí funciona: la llamada de FiestaGo (69-87 % "me acerca"
   6 fotos, verificación; hoy 1 de 28) — recordatorio de los lunes + CEO. 2) Marketing de clientes
   centrado en cumpleaños infantiles y comuniones de Valencia. 3) Medir el embudo real (ficha →
   propuesta → reserva) y comparar con la simulación.
-- [ ] Propuestas pendientes de decidir: extras con su precio único final en el documento (invitado
-  de más, hora extra, carpa…), un solo nombre "Garantía de Éxito FiestaGo", referencias de clientes
-  y galerías de bodas completas para el segmento boda.
+- [x] Extras con su precio final (hora extra, carpa…) en el servicio y en la propuesta; el cliente
+  los marca al reservar (27-10).
+- [x] Un solo nombre: "Garantía de Éxito FiestaGo" (27-10).
+- [x] Referencias de clientes: el proveedor las pone en su panel (Mis servicios) con el
+  consentimiento del cliente; se ven en la ficha y en la propuesta, y el cliente pide hablar con
+  ellas → FiestaGo hace la presentación (email a Mariano con los dos contactos).
 - [x] **Generar contenido en el panel no funcionaba** (avisado por Mariano el 26-10): sin vídeos
   desde el 12-07; la ruta devolvía 500. Arreglado: modelo propio vigente (`CONTENT_MODEL`,
   por defecto Sonnet 5.5) y JSON garantizado; los fallos quedan en la tabla `ops_log`.

@@ -13,6 +13,7 @@ import GmbTab from './GmbTab'
 import WelcomeModal from './WelcomeModal'
 import ClientRequestsCard from './ClientRequestsCard'
 import ProfileChecklist from './ProfileChecklist'
+import ReferencesCard from './ReferencesCard'
 
 type ServiceMedia = {
   id: string
@@ -1600,6 +1601,7 @@ function ProveedorPanelInner() {
         )}
 
         {/* SERVICES */}
+        {provider && tab === 'services' && <ReferencesCard providerId={provider.id} apiFetch={apiFetch} />}
         {tab==='services' && (
           <div className="max-w-2xl">
             <div className="flex justify-between items-center mb-6">

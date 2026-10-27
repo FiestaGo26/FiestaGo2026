@@ -25,6 +25,7 @@ type Provider = {
   google_rating?: number | null
   google_rating_count?: number | null
   google_reviews?: Array<{ text: string; stars: number; date: string | null }> | null
+  client_references?: Array<{ id: string; nombre: string; evento: string; fecha: string; ciudad: string; comentario: string }>
   total_bookings: number
   featured: boolean
   verified: boolean
@@ -780,6 +781,23 @@ export default function ProviderDetailPage() {
                     <div key={i} className="text-sm text-ink/75 leading-relaxed">
                       <div className="text-amber-500 text-xs mb-1">{'★'.repeat(Math.round(r.stars))}{r.date ? <span className="text-ink/45 ml-2">{new Date(r.date).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span> : null}</div>
                       “{r.text.length > 260 ? `${r.text.slice(0, 260)}…` : r.text}”
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Referencias de clientes (puestas por el proveedor, con su consentimiento) */}
+            {(provider.client_references || []).length > 0 && (
+              <section className="pb-2">
+                <h2 className="font-serif text-2xl text-ink mb-1">Referencias de clientes</h2>
+                <p className="text-xs text-ink/55 mb-4">Clientes de {provider.name} que aceptan que les preguntes por su experiencia. Pídelo desde tu propuesta y te ponemos en contacto desde FiestaGo.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(provider.client_references || []).map(r => (
+                    <div key={r.id} className="bg-cream rounded-xl p-4 text-sm">
+                      <div className="font-semibold text-ink">{r.nombre}</div>
+                      <div className="text-xs text-ink/55 mb-1">{[r.evento, r.fecha, r.ciudad].filter(Boolean).join(' · ')}</div>
+                      {r.comentario && <div className="text-ink/75">“{r.comentario}”</div>}
                     </div>
                   ))}
                 </div>

@@ -20,6 +20,7 @@ import { calcCommission, CANCELLATION_POLICIES, type CancellationPolicy } from '
 import { computePaymentSchedule } from '@/lib/booking-payments'
 import { cleanDeposit, precioCliente, priceFor, pricingUnit, type GuestPricing } from '@/lib/pricing'
 import { sendEmail } from '@/lib/resend'
+import { publicReferences, type PublicReference } from '@/lib/client-references'
 
 const APP_URL = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es').replace(/\/$/, '')
 
@@ -90,6 +91,7 @@ export type Proposal = {
   extras: ProposalExtra[]
   /** Si sois más invitados u horas: precio final por cada uno de más */
   unit_extra: { label: string; price: number } | null
+  references: PublicReference[]
   questions: ProposalQuestion[]
   provider: {
     id: string; name: string; slug: string | null; category: string; city: string | null
@@ -117,7 +119,7 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
 
   const [{ data: p }, { data: s }, { data: media }] = await Promise.all([
     supabase.from('providers')
-      .select('id, name, slug, category, city, photo_url, years_active, verified, rating, total_reviews, google_rating, google_rating_count')
+      .select('id, name, slug, category, city, photo_url, years_active, verified, rating, total_reviews, google_rating, google_rating_count, client_references')
       .eq('id', h.provider_id).maybeSingle(),
     h.service_id
       ? supabase.from('provider_services').select('id, name, cancellation_policy, pricing_unit, included_guests, extra_guest_price, included_hours, extra_hour_price').eq('id', h.service_id).maybeSingle()
@@ -156,6 +158,7 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
       .map(e => ({ id: String(e.id), label: e.label, price: precioCliente(Number(e.price)), provider_price: Number(e.price) })),
     unit_extra: s && pricingUnit(s) === 'guests' ? { label: 'invitado de más', price: precioCliente(Number(s.extra_guest_price)) }
       : s && pricingUnit(s) === 'hours' ? { label: 'hora de más', price: precioCliente(Number(s.extra_hour_price)) } : null,
+    references: publicReferences((p as any).client_references),
     provider: p as Proposal['provider'],
     service: s || null,
     base, total: commission.clientPays, deposit_pct: depositPct,

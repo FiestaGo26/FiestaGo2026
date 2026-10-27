@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { profileCompleteness } from '@/lib/provider-completeness'
+import { publicReferences } from '@/lib/client-references'
 import { sanitizeAcquisition } from '@/lib/attribution'
 import { emailAdminNewProvider, emailProviderWelcome } from '@/lib/resend'
 
@@ -65,7 +66,9 @@ export async function GET(req: NextRequest) {
     const { data, error } = await q.maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!data) return NextResponse.json({ provider: null }, { status: 404 })
-    return NextResponse.json({ provider: data })
+    // Referencias de clientes: solo el resumen, nunca el contacto
+    const { data: refs } = await supabase.from('providers').select('client_references').eq('id', (data as any).id).maybeSingle()
+    return NextResponse.json({ provider: { ...(data as any), client_references: publicReferences(refs?.client_references) } })
   }
 
   let query = supabase

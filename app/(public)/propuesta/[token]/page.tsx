@@ -8,6 +8,7 @@ import { CATEGORIES } from '@/lib/constants'
 import ProposalActions from './ProposalActions'
 import ProposalQuestions from './ProposalQuestions'
 import PrintButton from './PrintButton'
+import ReferenceList from './ReferenceList'
 import { uniqueReviews } from '@/lib/google-reviews'
 
 // Propuesta escrita de un proveedor para un cliente concreto: precio
@@ -174,6 +175,8 @@ export default async function ProposalPage({ params }: { params: { token: string
             </div>
           </div>
         )}
+
+        {p.references.length > 0 && <ReferenceList token={p.token} providerName={p.provider.name} references={p.references}/>}
 
         <ProposalQuestions token={p.token} providerName={p.provider.name} initial={p.questions}/>
         </div>
