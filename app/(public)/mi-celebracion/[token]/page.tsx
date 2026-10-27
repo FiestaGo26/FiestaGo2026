@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase'
 import { loadProposal, type Proposal } from '@/lib/proposals'
 import { formatEuro } from '@/lib/pricing'
 import { CATEGORIES } from '@/lib/constants'
+import { venueSummary, type VenueFeatures } from '@/lib/venue'
 
 // "Tu celebración": todas las propuestas del cliente para su evento en una
 // vista, con el total, las señales y lo que el local tiene que tener (lo
@@ -38,9 +39,26 @@ export default async function CelebrationPage({ params }: { params: { token: str
   const proposals = (await Promise.all(tokens.map(t => loadProposal(supabase, t)))).filter(Boolean) as Proposal[]
 
   const total = proposals.reduce((n, p) => n + p.total, 0)
+
+  // El local elegido: si no admite catering externo o ya incluye la comida,
+  // un catering aparte no encaja (simulación 15: motivo n.º 1 de no reservar)
+  const venueProp = proposals.find(p => p.provider.category === 'espacios')
+  const { data: venue } = venueProp
+    ? await supabase.from('providers').select('name, venue_type, venue_features').eq('id', venueProp.provider.id).maybeSingle()
+    : { data: null }
+  const vf = (venue?.venue_features || {}) as VenueFeatures
+  const foodIncluded = ['restaurante', 'hotel', 'local_con_catering'].includes(venue?.venue_type || '')
+  const noExternal = !!venue?.venue_type && !vf.catering_externo
+  const cateringProps = proposals.filter(p => p.provider.category === 'catering')
+  const venueWarnings = venue ? [
+    ...(cateringProps.length && noExternal ? [`${venue.name} no admite catering externo: la comida tiene que ser la del local. Quita ${cateringProps.map(p => p.provider.name).join(' y ')} o elige un local que admita catering externo.`] : []),
+    ...(cateringProps.length && foodIncluded && !noExternal ? [`${venue.name} ya incluye la comida en su precio: comprueba que no estás pagando dos veces la comida con ${cateringProps.map(p => p.provider.name).join(' y ')}.`] : []),
+    ...(cateringProps.length && venue.venue_type && !vf.cocina ? [`${venue.name} no tiene cocina: confirma en la propuesta de ${cateringProps.map(p => p.provider.name).join(' y ')} que trae todo lo necesario (y, si se paga aparte, que esté en sus extras).`] : []),
+  ] : []
   const deposits = proposals.reduce((n, p) => n + p.first_payment, 0)
   const have = new Set(proposals.map(p => p.provider.category))
-  const needs = (NEEDS.find(([re]) => re.test(first.event_type || ''))?.[1] || ['espacios', 'catering', 'musica', 'foto']).filter(c => !have.has(c))
+  const needs = (NEEDS.find(([re]) => re.test(first.event_type || ''))?.[1] || ['espacios', 'catering', 'musica', 'foto'])
+    .filter(c => !have.has(c) && !(c === 'catering' && venue && (foodIncluded || noExternal)))
   const requirements = proposals.filter(p => p.details.requisitos && !/^nada\.?$/i.test(p.details.requisitos.trim()))
   const label = (id: string) => (CATEGORIES as readonly any[]).find(c => c.id === id)?.label || id
 
@@ -69,6 +87,19 @@ export default async function CelebrationPage({ params }: { params: { token: str
           <div className="text-xs text-ink/55 text-right mt-1">Señales para reservarlo todo: {formatEuro(deposits)}</div>
           {first.guests ? <div className="text-xs text-ink/55 text-right">≈ {formatEuro(Math.round(total / first.guests * 100) / 100)} por invitado</div> : null}
         </div>
+
+        {venue && (
+          <div className={`border rounded-2xl p-6 mb-5 ${venueWarnings.length ? 'bg-amber-50 border-amber-200' : 'bg-white border-stone-200'}`}>
+            <h2 className="font-serif text-xl font-bold text-ink mb-1">Tu local</h2>
+            <p className="text-sm text-ink/75">{venue.name}{venueSummary(venue.venue_type, vf) ? ` · ${venueSummary(venue.venue_type, vf)}` : ''}</p>
+            <p className="text-xs text-ink/55 mt-1">Todos tus proveedores ven esta ficha del local.</p>
+            {venueWarnings.length > 0 && (
+              <ul className="text-sm text-amber-900 space-y-2 list-disc pl-5 mt-3">
+                {venueWarnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
 
         {requirements.length > 0 && (
           <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">

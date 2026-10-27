@@ -4,6 +4,8 @@ import { requireProviderAuth } from '@/lib/auth'
 import { maskContacts } from '@/lib/date-holds'
 import { sendEmail } from '@/lib/resend'
 import { cleanDeposit, pricingUnit } from '@/lib/pricing'
+import { priceTextProblem } from '@/lib/price-text'
+import { venueSummary } from '@/lib/venue'
 import { stripPrices, maskPrices, newProposalToken, proposalUrl, suggestedBase, type ProposalQuestion } from '@/lib/proposals'
 
 export const runtime = 'nodejs'
@@ -23,7 +25,7 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('date_holds')
-    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, hours, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token, questions, quote_details')
+    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, hours, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token, questions, quote_details, client_email')
     .eq('provider_id', providerId!)
     .in('kind', ['hold', 'quote'])
     .gte('created_at', new Date(Date.now() - 90 * 86400_000).toISOString())
@@ -38,11 +40,29 @@ export async function GET(req: NextRequest) {
     : { data: [] as any[] }
   const byId = new Map((svcs || []).map((s: any) => [s.id, s]))
 
+  // El local que ha elegido cada cliente en FiestaGo (si lo tiene): así el
+  // proveedor sabe si hay cocina, mesas, zona cubierta o si admite catering externo
+  const emails = Array.from(new Set((data || []).map((r: any) => String(r.client_email || '').toLowerCase()).filter(Boolean)))
+  const venueByEmail = new Map<string, string>()
+  if (emails.length) {
+    const { data: vh } = await supabase.from('date_holds')
+      .select('client_email, providers!inner(name, category, venue_type, venue_features)')
+      .in('client_email', emails).eq('providers.category', 'espacios')
+      .gte('created_at', new Date(Date.now() - 180 * 86400_000).toISOString())
+    for (const v of (vh || []) as any[]) {
+      const pv = Array.isArray(v.providers) ? v.providers[0] : v.providers
+      const sum = venueSummary(pv?.venue_type, pv?.venue_features)
+      if (sum) venueByEmail.set(String(v.client_email).toLowerCase(), `${pv.name}: ${sum}`)
+    }
+  }
+
   const requests = (data || []).map((r: any) => {
     const svc: any = r.service_id ? byId.get(r.service_id) : null
-    const { quote_details, ...rest } = r
+    const { quote_details, client_email, ...rest } = r
     return {
       ...rest,
+      client_venue: venueByEmail.get(String(client_email || '').toLowerCase()) || null,
+      extras: (quote_details?.extras || []).map((e: any) => ({ label: e.label, price: e.price })),
       documents: (quote_details?.documents || []).map((d: any) => ({ id: d.id, label: d.label, name: d.name })),
       client_name: String(r.client_name || '').trim().split(/\s+/)[0] || 'Cliente',
       message: r.message ? maskContacts(r.message) : null,
@@ -72,6 +92,7 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response
 
   if (body.question_index != null) return answerQuestion(body)
+  if (body.add_extra) return addExtra(body)
 
   const reply = String(body.reply || '').trim().slice(0, 3000)
   const total = Math.round((Number(body.total) || 0) * 100) / 100
@@ -79,6 +100,9 @@ export async function POST(req: NextRequest) {
   if (!body.id) return NextResponse.json({ error: 'Petición no válida' }, { status: 400 })
   if (total > 0 && includes.length < 5) return NextResponse.json({ error: 'Explica qué incluye el precio' }, { status: 400 })
   if (!(total > 0) && reply.length < 5) return NextResponse.json({ error: 'Escribe tu respuesta o pon un precio' }, { status: 400 })
+  const extraLabels = (Array.isArray(body.details?.extras) ? body.details.extras : []).map((e: any) => String(e?.label || ''))
+  const problem = priceTextProblem([reply, includes, ...['no_incluye', 'plan_b', 'requisitos'].map(k => String(body.details?.[k] || ''))], extraLabels)
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 })
 
   const supabase = createAdminClient()
   const { data: hold } = await supabase
@@ -133,10 +157,12 @@ async function answerQuestion(body: any) {
   if (answer.length < 2) return NextResponse.json({ error: 'Escribe tu respuesta' }, { status: 400 })
   const supabase = createAdminClient()
   const { data: hold } = await supabase.from('date_holds')
-    .select('id, provider_id, client_name, client_email, proposal_token, questions, providers(name)')
+    .select('id, provider_id, client_name, client_email, proposal_token, questions, quote_details, providers(name)')
     .eq('id', body.id).maybeSingle()
   if (!hold || hold.provider_id !== body.provider_id) return NextResponse.json({ error: 'Petición no encontrada' }, { status: 404 })
   const qs: ProposalQuestion[] = Array.isArray(hold.questions) ? hold.questions : []
+  const problem = priceTextProblem([answer], ((hold as any).quote_details?.extras || []).map((e: any) => String(e.label || '')))
+  if (problem) return NextResponse.json({ error: problem.replace('añádelo en Extras', 'añádelo a tu propuesta con «Añadir extra»') }, { status: 400 })
   const i = Number(body.question_index)
   if (!qs[i]) return NextResponse.json({ error: 'Pregunta no encontrada' }, { status: 404 })
 
@@ -151,4 +177,25 @@ async function answerQuestion(body: any) {
     text: `Hola ${hold.client_name},\n\nPreguntaste: "${qs[i].q}"\n\n${prov?.name || 'El proveedor'} responde: "${stripPrices(qs[i].a!)}"\n\nLa respuesta queda por escrito en tu propuesta${hold.proposal_token ? `: ${proposalUrl(hold.proposal_token)}` : ''}\n\nFiestaGo`,
   }).catch(() => {})
   return NextResponse.json({ ok: true })
+}
+
+// Añadir un extra con su precio a una propuesta ya enviada (p. ej. si el
+// cliente pregunta por una hora más o una carpa). El cliente lo ve con su
+// precio final y lo puede marcar al reservar.
+async function addExtra(body: any) {
+  const label = maskContacts(String(body.add_extra?.label || '').trim()).slice(0, 80)
+  const price = Math.round((Number(body.add_extra?.price) || 0) * 100) / 100
+  if (label.length < 2 || !(price > 0) || price >= 100000) return NextResponse.json({ error: 'Pon el nombre del extra y su precio' }, { status: 400 })
+  const supabase = createAdminClient()
+  const { data: hold } = await supabase.from('date_holds')
+    .select('id, provider_id, status, quote_total, quote_details').eq('id', body.id).maybeSingle()
+  if (!hold || hold.provider_id !== body.provider_id) return NextResponse.json({ error: 'Petición no encontrada' }, { status: 404 })
+  if (!(Number(hold.quote_total) > 0)) return NextResponse.json({ error: 'Primero envía tu propuesta' }, { status: 400 })
+  if (hold.status === 'converted') return NextResponse.json({ error: 'El cliente ya ha reservado' }, { status: 400 })
+  const details = (hold.quote_details || {}) as any
+  const extras = Array.isArray(details.extras) ? details.extras : []
+  if (extras.length >= 10) return NextResponse.json({ error: 'Máximo 10 extras' }, { status: 400 })
+  const extra = { id: `x${Date.now()}`, label, price }
+  await supabase.from('date_holds').update({ quote_details: { ...details, extras: [...extras, extra] } }).eq('id', hold.id)
+  return NextResponse.json({ extra })
 }

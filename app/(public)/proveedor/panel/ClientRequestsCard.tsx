@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import ProposalDocs from './ProposalDocs'
+import { priceTextProblem } from '@/lib/price-text'
 import { DEPOSIT_MIN, DEPOSIT_MAX, formatEuro, precioCliente } from '@/lib/pricing'
 
 type Request = {
@@ -33,6 +34,8 @@ type Request = {
   service_extras?: Array<{ id: string; label: string; price: number }>
   hours: number | null
   documents?: Array<{ id: string; label: any; name: string }>
+  client_venue?: string | null
+  extras?: Array<{ label: string; price: number }>
 }
 
 type Extra = { id: string; label: string; price: string }
@@ -49,11 +52,33 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
   const [sending,  setSending]  = useState<string | null>(null)
   const [answers,  setAnswers]  = useState<Record<string, string>>({})
   const [planBRequired, setPlanBRequired] = useState(false)
+  const [newExtra, setNewExtra] = useState<Record<string, { label: string; price: string }>>({})
+
+  async function addExtra(r: Request) {
+    const x = newExtra[r.id] || { label: '', price: '' }
+    const price = Number(String(x.price).replace(',', '.')) || 0
+    if (x.label.trim().length < 2 || price <= 0) { toast.error('Pon el nombre del extra y su precio'); return }
+    setSending(`${r.id}:extra`)
+    try {
+      const res = await apiFetch('/api/proveedor/requests', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider_id: providerId, id: r.id, add_extra: { label: x.label.trim(), price } }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'No se pudo añadir')
+      setRequests(rs => rs.map(y => y.id === r.id ? { ...y, extras: [...(y.extras || []), { label: d.extra.label, price: d.extra.price }] } : y))
+      setNewExtra(n => ({ ...n, [r.id]: { label: '', price: '' } }))
+      toast.success('Extra añadido a la propuesta ✓')
+    } catch (err: any) { toast.error(err.message) }
+    setSending(null)
+  }
 
   async function answer(r: Request, i: number) {
     const key = `${r.id}:${i}`
     const text = (answers[key] || '').trim()
     if (text.length < 2) { toast.error('Escribe tu respuesta'); return }
+    const problem = priceTextProblem([text], (r.extras || []).map(e => e.label))
+    if (problem) { toast.error(problem.replace('añádelo en Extras', 'añádelo a tu propuesta con «Añadir extra»'), { duration: 7000 }); return }
     setSending(key)
     try {
       const res = await apiFetch('/api/proveedor/requests', {
@@ -93,6 +118,8 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
     if (d0.noIncluye.trim().length < 3) { toast.error('Di qué NO incluye (o "nada más")'); return }
     if (planBRequired && d0.planB.trim().length < 5) { toast.error('Explica tu plan B si llueve o hay un imprevisto'); return }
     if (d0.requisitos.trim().length < 3) { toast.error('Di qué necesitas del local o del cliente (o "nada")'); return }
+    const problem = priceTextProblem([d0.note, d0.includes, d0.noIncluye, d0.planB, d0.requisitos], d0.extras.map(e => e.label))
+    if (problem) { toast.error(problem, { duration: 7000 }); return }
     setSending(r.id)
     try {
       const res = await apiFetch('/api/proveedor/requests', {
@@ -140,12 +167,28 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
               {r.status === 'expired' && ' · bloqueo caducado'}
             </div>
             {r.message && <p className="text-sm text-ink/70 italic mb-3">“{r.message}”</p>}
+            {r.client_venue && <p className="text-xs text-ink/70 bg-cream border border-stone-200 rounded-lg px-3 py-2 mb-3">🏠 <strong>Local que ha elegido en FiestaGo</strong> · {r.client_venue}</p>}
             {r.replied_at ? (
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-800">
                 <strong>Respondida</strong> ({new Date(r.replied_at).toLocaleDateString('es-ES')})
                 {r.quote_total ? ` · propuesta de ${formatEuro(r.quote_total)} (el cliente ve ${formatEuro(precioCliente(r.quote_total))} con la Garantía)` : ''}
                 {r.provider_reply ? `: ${r.provider_reply}` : ''}
                 {r.proposal_url && <> · <a href={r.proposal_url} target="_blank" rel="noreferrer" className="underline font-semibold">ver propuesta</a></>}
+                {!!r.quote_total && (
+                  <div className="mt-2 text-ink">
+                    {(r.extras || []).length > 0 && <div className="mb-1">Extras: {(r.extras || []).map(e => `${e.label} (${formatEuro(e.price)})`).join(' · ')}</div>}
+                    {r.status !== 'converted' && (
+                      <div className="flex gap-2 flex-wrap">
+                        <input value={newExtra[r.id]?.label || ''} onChange={e => setNewExtra(n => ({ ...n, [r.id]: { label: e.target.value, price: n[r.id]?.price || '' } }))}
+                          placeholder="Nuevo extra (ej.: hora extra, carpa, monitor de apoyo)" className="flex-1 min-w-[10rem] border border-stone-200 rounded-lg px-2 py-1.5 text-xs bg-white outline-none focus:border-coral"/>
+                        <input type="number" min={0} value={newExtra[r.id]?.price || ''} onChange={e => setNewExtra(n => ({ ...n, [r.id]: { label: n[r.id]?.label || '', price: e.target.value } }))}
+                          placeholder="€" className="w-20 border border-stone-200 rounded-lg px-2 py-1.5 text-xs bg-white outline-none focus:border-coral"/>
+                        <button type="button" onClick={() => addExtra(r)} disabled={sending === `${r.id}:extra`}
+                          className="bg-coral text-white font-bold px-3 py-1.5 rounded-lg disabled:opacity-50">Añadir extra</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (() => {
               const d = draftOf(r)
@@ -201,7 +244,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                       Confirmo que tengo libre el {fmtDate(r.event_date)}
                     </label>
                   )}
-                  <p className="text-[11px] text-ink/50">No escribas precios en los textos: el cliente ve un solo precio, el total de tu servicio (IVA y Garantía de Éxito FiestaGo incluidos). Los extras van en tu servicio como precio por persona u hora de más; el desglose solo sale en la factura. La Garantía de Éxito FiestaGo, los pagos y las cancelaciones son de FiestaGo y se los explicamos nosotros (tus compromisos con FiestaGo ya los recogen).</p>
+                  <p className="text-[11px] text-ink/50">No escribas importes en los textos ni «se cobra aparte»: el cliente ve un solo precio, el total de tu servicio (IVA y Garantía de Éxito FiestaGo incluidos), y cada extra con su precio final. Todo lo que se pague aparte (hora extra, carpa, cocina portátil, monitor de apoyo…) va en Extras; el desglose solo sale en la factura. La Garantía de Éxito FiestaGo, los pagos y las cancelaciones son de FiestaGo y se los explicamos nosotros (tus compromisos con FiestaGo ya los recogen).</p>
                   <label className="text-xs font-semibold text-ink">Señal al reservar: {d.deposit} %
                     <input type="range" min={DEPOSIT_MIN} max={DEPOSIT_MAX} step={1} value={d.deposit}
                       onChange={e => setDraft(r, { deposit: Number(e.target.value) })} className="mt-1 w-full accent-coral"/>

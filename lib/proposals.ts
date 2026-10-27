@@ -51,13 +51,12 @@ export { PROPOSAL_DOC_LABELS, type ProposalDocument }
 export type ProposalExtra = { id: string; label: string; price: number; provider_price: number }
 
 /** El cliente ve UN solo precio en toda la web (el desglose, solo en la factura): el del servicio, con IVA y Garantía de
- *  Éxito incluidos. Los textos libres del proveedor no llevan cifras: los
- *  extras (invitado u hora de más, carpa…) van como extras con su precio
- *  final. Si escribe alguna cifra, se quita para que nunca haya dos. */
+ *  Éxito incluidos, y cada extra con su precio final. Desde la 15.ª simulación el panel y la API no dejan
+ *  escribir importes en los textos (lib/price-text.ts); esto solo limpia textos antiguos. */
 export function stripPrices(text: string) {
   return text
-    .replace(/(?:€\s*)\d[\d.,]*/g, '(importe aparte: pregúntalo en la propuesta)')
-    .replace(/\d[\d.,]*\s*(?:€|euros?\b|eur\b)(?:\s*\/\s*\w+)?/gi, '(importe aparte: pregúntalo en la propuesta)')
+    .replace(/(?:€\s*)\d[\d.,]*/g, '(ver extras de la propuesta)')
+    .replace(/\d[\d.,]*\s*(?:€|euros?\b|eur\b)(?:\s*\/\s*\w+)?/gi, '(ver extras de la propuesta)')
 }
 
 /** Compensación de la Garantía si el proveedor no se presenta, según el importe. */

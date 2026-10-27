@@ -119,6 +119,10 @@ misma categoría. Motivos que quedan: el local elegido no admite catering extern
 celebración y no ofrecer catering externo en esos locales), extras sin precio (cocina portátil, monitor de
 apoyo: que el proveedor ponga precio a todo extra), el texto "(importe aparte: pregúntalo en la propuesta)"
 que sale al quitar cifras confunde, y el presupuesto en celebraciones pequeñas.
+- [x] (27-10) Arreglado: «Tu celebración» enseña el local y avisa si no admite catering externo, si ya
+  incluye la comida o si no tiene cocina (y deja de sugerir catering); el proveedor ve en su panel el local
+  que ha elegido el cliente; no se pueden escribir importes ni «se cobra aparte» en los textos (van como
+  extras con precio, también después de enviar la propuesta con «Añadir extra»).
 
 **Hueco de oferta (27-10-2026): no hay ningún local (`espacios`) dado de alta.** Es lo primero que
 eligen bodas, comuniones y fiestas. Captar 3-5 locales en Valencia (restaurantes, hoteles, fincas),
