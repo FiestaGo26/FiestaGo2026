@@ -88,12 +88,25 @@ Después, las bios:
 | 10 | `4419dd24` | Control: fichas completas (hipotético) | 5,1 % |
 | 11 | `2589bcb9` | + Reserva sin riesgo, videollamada, detalle final, Tu celebración (decisión forzada a 48 h) | 0 % (límite de la simulación) |
 | 12 | `b8e83090` | **Recorrido completo**, 152 personas con una celebración en mente, fichas completas con 3 reseñas, precio único, documento de reserva | **18,4 % (20,1 % con detalles cerrados)** |
+| 13 | `b53e251d` | + extras con precio final, referencias de clientes con las que hablar, nombre único «Garantía de Éxito FiestaGo» | **30,9 % (32,8 % con detalles cerrados)** |
+| 14 | `ef1b9866` | + cada persona monta su celebración completa en FiestaGo (local con su tipo, música, flores, foto, tarta, peluquería…) y ve el total | en curso |
 
 Simulación 12 por celebración: cumple infantil 43,5 %, comunión 26,1 %, empresa 20 %, adulto/sorpresa
 17,4 %, despedida 13,3 %, boda 6,1 %, escéptico 5 %. Extrapolado: 1.000 personas con una celebración
 que llegan a la ficha de un proveedor → ~184 reservas (125-245), ~203.000 € de volumen y ~15.000 € para
 FiestaGo. El cumple infantil es el que más convierte; la comunión, la que más deja (ticket ~2.000 €).
 **Decisión (27-10-2026): con esto ya es un buen punto de partida para buscar reservas reales.**
+
+Simulación 13 por celebración: adulto/sorpresa 47,8 %, comunión 39,1 %, cumple infantil 39,1 %,
+escéptico 30 %, boda 21,2 %, empresa 20 %, despedida 13,3 %. El 93 % pide hablar con una referencia y
+el 85 % videollamada. Extrapolado: ~310 reservas por cada 1.000 personas que llegan a una ficha.
+Motivos que quedaban: «depende del local» y «no sé el coste total». La web ya permite montar toda la
+celebración (local con su tipo + servicios) y ver el total: la 14.ª lo simula.
+
+**Hueco de oferta (27-10-2026): no hay ningún local (`espacios`) dado de alta.** Es lo primero que
+eligen bodas, comuniones y fiestas. Captar 3-5 locales en Valencia (restaurantes, hoteles, fincas),
+que digan en su panel qué tipo de local son (nueva tarjeta «Tu local»: tipo, aforo, cocina, mesas,
+zona cubierta…), y peluquerías/maquillaje para bodas y comuniones (hoy 2).
 
 Motivos exactos de descarte en la 7.ª (ya atacados en la 8.ª): dos precios distintos (el del
 mensaje del proveedor y el de la propuesta con Garantía), preguntas concretas sin respuesta
