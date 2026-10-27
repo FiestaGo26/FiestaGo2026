@@ -90,6 +90,7 @@ Después, las bios:
 | 12 | `b8e83090` | **Recorrido completo**, 152 personas con una celebración en mente, fichas completas con 3 reseñas, precio único, documento de reserva | **18,4 % (20,1 % con detalles cerrados)** |
 | 13 | `b53e251d` | + extras con precio final, referencias de clientes con las que hablar, nombre único «Garantía de Éxito FiestaGo» | **30,9 % (32,8 % con detalles cerrados)** |
 | 14 | `ef1b9866` | + cada persona monta su celebración completa en FiestaGo (local con su tipo, música, flores, foto, tarta, peluquería…) y ve el total | **34,9 % (36,7 % con detalles cerrados)** |
+| 15 | `9b634569` | + opciones económicas/medias/premium en cada servicio, la ficha del local la ven todos los proveedores y documentos adjuntos en la propuesta (menú, póliza, certificado) | **55,9 % (53,4 % con detalles cerrados) → objetivo del 50 % alcanzado** |
 
 Simulación 12 por celebración: cumple infantil 43,5 %, comunión 26,1 %, empresa 20 %, adulto/sorpresa
 17,4 %, despedida 13,3 %, boda 6,1 %, escéptico 5 %. Extrapolado: 1.000 personas con una celebración
@@ -111,6 +112,13 @@ horario) y dice "lo confirma el local" → que el proveedor vea la ficha del loc
 cruce sus requisitos con lo que tiene el local; 2) con el total a la vista, a muchos no les cuadra el
 presupuesto → ofrecer alternativas por debajo de su presupuesto en Tu celebración; 3) "lo envío antes de
 reservar" (menú, póliza, certificado) → que el proveedor adjunte esos documentos en la propuesta.
+
+Simulación 15 por celebración: cumple infantil 82,6 %, adulto/sorpresa 65,2 %, comunión 60,9 %, boda 54,5 %,
+despedida 46,7 %, escéptico 35 %, empresa 33,3 %. 7 de las 85 reservas son de otra opción más barata de la
+misma categoría. Motivos que quedan: el local elegido no admite catering externo (avisarlo al montar la
+celebración y no ofrecer catering externo en esos locales), extras sin precio (cocina portátil, monitor de
+apoyo: que el proveedor ponga precio a todo extra), el texto "(importe aparte: pregúntalo en la propuesta)"
+que sale al quitar cifras confunde, y el presupuesto en celebraciones pequeñas.
 
 **Hueco de oferta (27-10-2026): no hay ningún local (`espacios`) dado de alta.** Es lo primero que
 eligen bodas, comuniones y fiestas. Captar 3-5 locales en Valencia (restaurantes, hoteles, fincas),
