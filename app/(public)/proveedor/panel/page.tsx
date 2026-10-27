@@ -1794,7 +1794,7 @@ function ProveedorPanelInner() {
                           Extras opcionales ({(editSvc.addons || []).length}/10)
                         </label>
                         <p className="text-[11px] text-ink/45 mb-2">
-                          El cliente verá estos extras al reservar y podrá añadirlos sumando al precio base.
+                          Hora extra, carpa si es al aire libre, barra libre… Pon lo que cobras tú (IVA incluido): el cliente ve el precio final de cada extra (con la Garantía) y lo añade al reservar. El invitado o la hora de más ya salen de cómo cobras.
                         </p>
                         {(editSvc.addons || []).map((a, idx) => (
                           <div key={a.id} className="flex gap-2 mb-2 items-start">

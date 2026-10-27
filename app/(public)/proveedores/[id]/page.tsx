@@ -866,7 +866,7 @@ export default function ProviderDetailPage() {
               {/* Extras opcionales del servicio */}
               {selectedSvc && (selectedSvc.addons || []).length > 0 && (
                 <div className="mb-5">
-                  <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">Añade extras opcionales</div>
+                  <div className="text-[10px] font-bold text-ink/45 uppercase tracking-widest mb-2">Añade extras opcionales (precio final)</div>
                   <div className="space-y-2">
                     {(selectedSvc.addons || []).map(a => {
                       const checked = selectedAddons.has(a.id)
@@ -883,7 +883,7 @@ export default function ProviderDetailPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline justify-between gap-2">
                               <div className="font-medium text-ink text-sm truncate">{a.label}</div>
-                              <div className="text-sm font-bold text-coral whitespace-nowrap">+{Number(a.price).toLocaleString()}€</div>
+                              <div className="text-sm font-bold text-coral whitespace-nowrap">+{formatEuro(precioCliente(Number(a.price)))}</div>
                             </div>
                             {a.description && <div className="text-[11px] text-ink/55 mt-0.5">{a.description}</div>}
                           </div>
@@ -893,8 +893,8 @@ export default function ProviderDetailPage() {
                   </div>
                   {addonsTotal > 0 && (
                     <div className="mt-3 flex justify-between text-sm text-ink/70 px-2">
-                      <span>Base + {chosenAddons.length} extra{chosenAddons.length!==1?'s':''}</span>
-                      <span className="font-bold text-coral">{effectivePrice.toLocaleString()}€</span>
+                      <span>Con {chosenAddons.length} extra{chosenAddons.length!==1?'s':''} (IVA y Garantía incluidos)</span>
+                      <span className="font-bold text-coral">{formatEuro(precioCliente(effectivePrice))}</span>
                     </div>
                   )}
                 </div>

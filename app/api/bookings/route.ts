@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
       event_type   = proposal.event_type || event_type
       guests       = proposal.guests
       city         = proposal.provider.city
-      selected_addons = []
+      // Extras que el cliente marca en la propuesta (con el precio del proveedor;
+      // el servidor suma, no se fía del navegador)
+      const wanted = new Set((Array.isArray(body?.proposal_extras) ? body.proposal_extras : []).map(String))
+      selected_addons = proposal.extras.filter(e => wanted.has(e.id)).map(e => ({ id: e.id, label: e.label, price: e.provider_price }))
       coupon_code  = null
       message      = [`Reserva desde la propuesta escrita: ${proposal.includes}`, message].filter(Boolean).join('\n\n')
     }
@@ -95,7 +98,7 @@ export async function POST(req: NextRequest) {
         amount = Math.round((priceFor(s, { guests: parseInt(guests), hours: Number(hours) }) + addonsTotal) * 100) / 100
       }
     }
-    if (proposal) amount = proposal.base
+    if (proposal) amount = Math.round((proposal.base + (selected_addons as any[]).reduce((n, a) => n + (Number(a.price) || 0), 0)) * 100) / 100
 
     // Aplicar cupón si viene y es válido (re-valida en el servidor, no fiamos
     // del cliente). Si es válido, descuenta el importe y reserva una "plaza"

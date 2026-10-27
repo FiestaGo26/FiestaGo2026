@@ -79,6 +79,16 @@ export default async function ProposalPage({ params }: { params: { token: string
           {p.details.no_incluye && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Qué no incluye</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.no_incluye}</p></>}
           {p.details.requisitos && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Qué necesita del local o de ti</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.requisitos}</p></>}
           {p.details.plan_b && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Plan B si llueve o hay un imprevisto</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.plan_b}</p></>}
+          {(p.extras.length > 0 || p.unit_extra) && (
+            <>
+              <h3 className="font-semibold text-ink text-sm mt-4 mb-1">Extras opcionales (precio final de cada uno)</h3>
+              <ul className="text-sm text-ink/80 space-y-1">
+                {p.unit_extra && <li className="flex justify-between gap-3"><span>Cada {p.unit_extra.label}</span><span className="font-semibold">{formatEuro(p.unit_extra.price)}</span></li>}
+                {p.extras.map(e => <li key={e.id} className="flex justify-between gap-3"><span>{e.label}</span><span className="font-semibold">{formatEuro(e.price)}</span></li>)}
+              </ul>
+              <p className="text-[11px] text-ink/50 mt-1">IVA y Garantía FiestaGo incluidos. Los marcas al reservar y se suman al total.</p>
+            </>
+          )}
           {p.reply && <p className="text-sm text-ink/70 italic mt-4 border-l-2 border-coral/40 pl-3">“{p.reply}” — {p.provider.name}</p>}
           <p className="text-xs text-ink/50 mt-4">Este documento es solo de {p.provider.name}. El resto de tu celebración lo contratas aparte, en FiestaGo o donde quieras.</p>
         </div>
@@ -176,6 +186,9 @@ export default async function ProposalPage({ params }: { params: { token: string
         <ProposalActions
           token={p.token}
           firstPayment={p.first_payment}
+          total={p.total}
+          depositPct={p.deposit_pct}
+          extras={p.extras.map(e => ({ id: e.id, label: e.label, price: e.price }))}
           converted={p.status === 'converted'}
           hasDate={!!p.event_date}
           holdUntil={holdActive ? p.expires_at : null}

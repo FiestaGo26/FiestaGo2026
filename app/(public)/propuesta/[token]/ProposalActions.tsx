@@ -9,9 +9,12 @@ import { formatEuro } from '@/lib/pricing'
 // quien decide contigo. Nada de cuentas atrás ni prisas: la simulación
 // mostró que la presión aleja.
 
-export default function ProposalActions({ token, firstPayment, converted, hasDate, holdUntil, providerName, fichaUrl }: {
+export default function ProposalActions({ token, firstPayment, total, depositPct, extras, converted, hasDate, holdUntil, providerName, fichaUrl }: {
   token: string
   firstPayment: number
+  total: number
+  depositPct: number
+  extras: Array<{ id: string; label: string; price: number }>
   converted: boolean
   hasDate: boolean
   holdUntil: string | null
@@ -22,6 +25,11 @@ export default function ProposalActions({ token, firstPayment, converted, hasDat
   const [accepted, setAccepted] = useState(false)
   const [sending, setSending] = useState(false)
   const [done, setDone] = useState(converted)
+  const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const extrasTotal = extras.filter(e => chosen.has(e.id)).reduce((n, e) => n + e.price, 0)
+  const grand = Math.round((total + extrasTotal) * 100) / 100
+  // La señal es el % del total (con los extras elegidos)
+  const deposit = extrasTotal > 0 ? Math.round(grand * depositPct) / 100 : firstPayment
   const [video, setVideo] = useState<'idle' | 'form' | 'sent'>('idle')
   const [slot, setSlot] = useState('')
 
@@ -49,7 +57,7 @@ export default function ProposalActions({ token, firstPayment, converted, hasDat
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposal_token: token, client_phone: phone || null }),
+        body: JSON.stringify({ proposal_token: token, client_phone: phone || null, proposal_extras: Array.from(chosen) }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok || d.error) throw new Error(d.error || `Error ${res.status}`)
@@ -72,6 +80,24 @@ export default function ProposalActions({ token, firstPayment, converted, hasDat
       {holdUntil && <p className="text-xs text-ink/60 mb-3">Tu fecha está bloqueada hasta el {new Date(holdUntil).toLocaleString('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. Sin pagar nada.</p>}
       {hasDate ? (
         <>
+          {extras.length > 0 && (
+            <div className="mb-3">
+              <div className="text-xs font-semibold text-ink mb-1">¿Añades algún extra?</div>
+              {extras.map(e => (
+                <label key={e.id} className="flex items-center justify-between gap-3 text-sm text-ink/80 py-1">
+                  <span className="flex items-center gap-2">
+                    <input type="checkbox" className="accent-coral" checked={chosen.has(e.id)}
+                      onChange={ev => setChosen(c => { const n = new Set(c); ev.target.checked ? n.add(e.id) : n.delete(e.id); return n })}/>
+                    {e.label}
+                  </span>
+                  <span className="font-semibold">+{formatEuro(e.price)}</span>
+                </label>
+              ))}
+              <div className="flex justify-between text-sm font-bold text-ink border-t border-stone-200 mt-2 pt-2">
+                <span>Total</span><span>{formatEuro(grand)}</span>
+              </div>
+            </div>
+          )}
           <label className="block text-xs font-semibold text-ink mb-1">Teléfono (opcional, por si hay que avisarte de algo)</label>
           <input value={phone} onChange={e => setPhone(e.target.value)} inputMode="tel" placeholder="600 000 000"
             className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral mb-3"/>
@@ -81,7 +107,7 @@ export default function ProposalActions({ token, firstPayment, converted, hasDat
           </label>
           <button type="button" onClick={book} disabled={sending}
             className="w-full bg-coral text-white font-bold py-3 rounded-xl hover:bg-coral-dark disabled:opacity-50">
-            {sending ? 'Reservando…' : `Reservar con señal de ${formatEuro(firstPayment)}`}
+            {sending ? 'Reservando…' : `Reservar con señal de ${formatEuro(deposit)}`}
           </button>
         </>
       ) : (

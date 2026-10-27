@@ -29,10 +29,12 @@ type Request = {
   quote_total: number | null
   proposal_url: string | null
   questions: Array<{ q: string; a: string | null; by?: 'fiestago' | 'proveedor' }> | null
+  service_extras?: Array<{ id: string; label: string; price: number }>
   hours: number | null
 }
 
-type Draft = { total: string; includes: string; deposit: number; note: string; fechaOk: boolean; noIncluye: string; planB: string; requisitos: string }
+type Extra = { id: string; label: string; price: string }
+type Draft = { total: string; includes: string; deposit: number; note: string; fechaOk: boolean; noIncluye: string; planB: string; requisitos: string; extras: Extra[] }
 
 const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -76,6 +78,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
   const draftOf = (r: Request): Draft => drafts[r.id] || {
     total: r.suggested_total ? String(r.suggested_total) : '', includes: '', deposit: r.suggested_deposit_pct || DEPOSIT_MIN, note: '',
     fechaOk: false, noIncluye: '', planB: '', requisitos: '',
+    extras: (r.service_extras || []).map(e => ({ id: e.id, label: e.label, price: String(e.price) })),
   }
   const setDraft = (r: Request, patch: Partial<Draft>) => setDrafts(d => ({ ...d, [r.id]: { ...draftOf(r), ...patch } }))
 
@@ -94,7 +97,8 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider_id: providerId, id: r.id, total, includes: d0.includes, deposit_pct: d0.deposit, reply: d0.note,
-          details: { fecha_confirmada: d0.fechaOk, no_incluye: d0.noIncluye, plan_b: d0.planB, requisitos: d0.requisitos } }),
+          details: { fecha_confirmada: d0.fechaOk, no_incluye: d0.noIncluye, plan_b: d0.planB, requisitos: d0.requisitos,
+            extras: d0.extras.map(e => ({ id: e.id, label: e.label.trim(), price: Number(String(e.price).replace(',', '.')) || 0 })).filter(e => e.label && e.price > 0) } }),
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'No se pudo enviar')
@@ -160,9 +164,25 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                   </label>
                   <label className="text-xs font-semibold text-ink">Qué NO incluye
                     <textarea rows={2} value={d.noIncluye} onChange={e => setDraft(r, { noIncluye: e.target.value })}
-                      placeholder="Ej.: el local, la bebida, horas extra… o «nada más» (sin precios)"
+                      placeholder="Ej.: el local, la bebida… o «nada más» (sin precios: los extras con precio van arriba)"
                       className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
                   </label>
+                  <div className="text-xs font-semibold text-ink">Extras opcionales (el cliente los marca al reservar)
+                    <p className="text-[11px] font-normal text-ink/55 mt-0.5">Hora extra, carpa si es al aire libre, barra libre… Pon lo que cobras tú; el cliente ve el precio final de cada extra (IVA y Garantía incluidos). El invitado o la hora de más ya salen de cómo cobras.</p>
+                    {d.extras.map((e, idx) => (
+                      <div key={e.id} className="flex gap-2 mt-1.5">
+                        <input value={e.label} onChange={ev => setDraft(r, { extras: d.extras.map((x, i) => i === idx ? { ...x, label: ev.target.value } : x) })}
+                          placeholder="Ej.: Carpa 6×4 m" className="flex-1 border border-stone-200 rounded-xl px-3 py-2 text-sm font-normal text-ink outline-none focus:border-coral"/>
+                        <input type="number" min={0} value={e.price} onChange={ev => setDraft(r, { extras: d.extras.map((x, i) => i === idx ? { ...x, price: ev.target.value } : x) })}
+                          placeholder="€" className="w-24 border border-stone-200 rounded-xl px-3 py-2 text-sm font-normal text-ink outline-none focus:border-coral"/>
+                        <button type="button" onClick={() => setDraft(r, { extras: d.extras.filter((_, i) => i !== idx) })} className="text-ink/40 px-2">✕</button>
+                      </div>
+                    ))}
+                    {d.extras.length < 10 && (
+                      <button type="button" onClick={() => setDraft(r, { extras: [...d.extras, { id: `x${Date.now()}`, label: '', price: '' }] })}
+                        className="mt-1.5 text-[11px] font-semibold text-coral">+ Añadir extra</button>
+                    )}
+                  </div>
                   <label className="text-xs font-semibold text-ink">Qué necesitas del local o del cliente
                     <textarea rows={2} value={d.requisitos} onChange={e => setDraft(r, { requisitos: e.target.value })}
                       placeholder="Ej.: enchufe de 220 V a menos de 10 m, cocina con horno, 4×4 m de suelo liso… o «nada»"

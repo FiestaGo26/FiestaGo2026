@@ -18,7 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
 import { calcCommission, CANCELLATION_POLICIES, type CancellationPolicy } from '@/lib/constants'
 import { computePaymentSchedule } from '@/lib/booking-payments'
-import { cleanDeposit, priceFor, type GuestPricing } from '@/lib/pricing'
+import { cleanDeposit, precioCliente, priceFor, pricingUnit, type GuestPricing } from '@/lib/pricing'
 import { sendEmail } from '@/lib/resend'
 
 const APP_URL = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://fiestago.es').replace(/\/$/, '')
@@ -38,15 +38,16 @@ export type QuoteDetails = {
   plan_b?: string
   /** Lo que necesita del local o del cliente (corriente, cocina, espacio…) */
   requisitos?: string
+  /** Extras opcionales con el precio que cobra el proveedor (el cliente los ve con IVA y Garantía) */
+  extras?: Array<{ id: string; label: string; price: number }>
 }
 
-/** Quita importes de un mensaje del proveedor: el único precio que ve el
- *  cliente es el de la propuesta (con la Garantía incluida). Dos cifras
- *  distintas era el primer motivo de descarte en la 7.ª simulación. */
+export type ProposalExtra = { id: string; label: string; price: number; provider_price: number }
+
 /** El cliente ve UN solo precio en toda la web (el desglose, solo en la factura): el del servicio, con IVA y Garantía de
- *  Éxito incluidos. Los textos libres del proveedor no llevan cifras (los
- *  extras van en "cómo cobras": por persona u hora de más). Si escribe
- *  alguna, se quita para que nunca haya dos cifras distintas. */
+ *  Éxito incluidos. Los textos libres del proveedor no llevan cifras: los
+ *  extras (invitado u hora de más, carpa…) van como extras con su precio
+ *  final. Si escribe alguna cifra, se quita para que nunca haya dos. */
 export function stripPrices(text: string) {
   return text
     .replace(/(?:€\s*)\d[\d.,]*/g, '(importe aparte: pregúntalo en la propuesta)')
@@ -58,6 +59,7 @@ export function noShowCompensation(total: number) {
   return total <= 500 ? 300 : total <= 2000 ? 500 : total <= 5000 ? 1000 : total <= 15000 ? 2000 : 3000
 }
 
+/** Quita importes de un mensaje del proveedor (se ve el precio de la propuesta). */
 export function maskPrices(text: string) {
   return text
     .replace(/(?:€\s*)\d[\d.,]*/g, '[ver precio de la propuesta]')
@@ -84,6 +86,10 @@ export type Proposal = {
   details: QuoteDetails
   photos: string[]
   per_person: number | null
+  /** Extras que el cliente puede añadir al reservar (precio final de cada uno) */
+  extras: ProposalExtra[]
+  /** Si sois más invitados u horas: precio final por cada uno de más */
+  unit_extra: { label: string; price: number } | null
   questions: ProposalQuestion[]
   provider: {
     id: string; name: string; slug: string | null; category: string; city: string | null
@@ -114,7 +120,7 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
       .select('id, name, slug, category, city, photo_url, years_active, verified, rating, total_reviews, google_rating, google_rating_count')
       .eq('id', h.provider_id).maybeSingle(),
     h.service_id
-      ? supabase.from('provider_services').select('id, name, cancellation_policy').eq('id', h.service_id).maybeSingle()
+      ? supabase.from('provider_services').select('id, name, cancellation_policy, pricing_unit, included_guests, extra_guest_price, included_hours, extra_hour_price').eq('id', h.service_id).maybeSingle()
       : Promise.resolve({ data: null } as any),
     // Fotos de sus trabajos (8.ª simulación: pedían ver eventos parecidos)
     h.service_id
@@ -145,6 +151,11 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
       .map(([k, v]) => [k, typeof v === 'string' ? stripPrices(v) : v])) as QuoteDetails,
     photos,
     per_person: Number(h.guests) > 0 ? Math.round((commission.clientPays / Number(h.guests)) * 100) / 100 : null,
+    extras: (((h.quote_details || {}) as QuoteDetails).extras || [])
+      .filter(e => e && e.label && Number(e.price) > 0)
+      .map(e => ({ id: String(e.id), label: e.label, price: precioCliente(Number(e.price)), provider_price: Number(e.price) })),
+    unit_extra: s && pricingUnit(s) === 'guests' ? { label: 'invitado de más', price: precioCliente(Number(s.extra_guest_price)) }
+      : s && pricingUnit(s) === 'hours' ? { label: 'hora de más', price: precioCliente(Number(s.extra_hour_price)) } : null,
     provider: p as Proposal['provider'],
     service: s || null,
     base, total: commission.clientPays, deposit_pct: depositPct,

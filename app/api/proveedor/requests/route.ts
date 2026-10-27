@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   // Precio sugerido: su tarifa para los invitados de esa petición
   const svcIds = Array.from(new Set((data || []).map((r: any) => r.service_id).filter(Boolean)))
   const { data: svcs } = svcIds.length
-    ? await supabase.from('provider_services').select('id, name, price, pricing_unit, included_guests, extra_guest_price, included_hours, extra_hour_price, deposit_pct').in('id', svcIds)
+    ? await supabase.from('provider_services').select('id, name, price, pricing_unit, included_guests, extra_guest_price, included_hours, extra_hour_price, deposit_pct, addons').in('id', svcIds)
     : { data: [] as any[] }
   const byId = new Map((svcs || []).map((s: any) => [s.id, s]))
 
@@ -47,6 +47,8 @@ export async function GET(req: NextRequest) {
       service_name: svc?.name || null,
       suggested_total: suggestedBase(svc, r.guests, r.hours),
       pricing_unit: svc ? pricingUnit(svc) : null,
+      // Extras de su servicio para rellenar la propuesta (los puede cambiar)
+      service_extras: Array.isArray(svc?.addons) ? svc.addons.map((a: any) => ({ id: String(a.id), label: String(a.label || ''), price: Number(a.price) || 0 })).filter((a: any) => a.label && a.price > 0) : [],
       suggested_deposit_pct: cleanDeposit(svc?.deposit_pct),
       proposal_url: r.proposal_token && r.quote_total ? proposalUrl(r.proposal_token) : null,
     }
@@ -98,6 +100,11 @@ export async function POST(req: NextRequest) {
           no_incluye: maskContacts(String(body.details?.no_incluye || '').slice(0, 1500)) || undefined,
           plan_b: maskContacts(String(body.details?.plan_b || '').slice(0, 1500)) || undefined,
           requisitos: maskContacts(String(body.details?.requisitos || '').slice(0, 1500)) || undefined,
+          // Extras opcionales: nombre + lo que cobra el proveedor (el cliente ve el precio final)
+          extras: (Array.isArray(body.details?.extras) ? body.details.extras : [])
+            .map((e: any, i: number) => ({ id: String(e?.id || `x${i}`).slice(0, 60), label: maskContacts(String(e?.label || '').trim()).slice(0, 80), price: Math.round((Number(e?.price) || 0) * 100) / 100 }))
+            .filter((e: any) => e.label && e.price > 0 && e.price < 100000)
+            .slice(0, 10),
         },
       } : {}),
     })
