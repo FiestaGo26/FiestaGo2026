@@ -18,7 +18,7 @@
 // en la tabla sim_runs.
 // ───────────────────────────────────────────────────────────────────────
 
-import { clientPrices, maskPrices } from '@/lib/proposals'
+import { maskPrices, noShowCompensation, stripPrices } from '@/lib/proposals'
 import { uniqueReviews } from '@/lib/google-reviews'
 import { FIESTAGO_TERMS } from '@/lib/proposal-questions'
 import Anthropic from '@anthropic-ai/sdk'
@@ -225,7 +225,21 @@ export function proposalConfig(): Omit<SimConfig, 'personas' | 'segments'> {
   }
 }
 
+// Simulación 12: todas las personas tienen una celebración en mente
+export const CELEBRATION_SEGMENTS: SimConfig['segments'] = [
+  { name: 'Pareja boda 2027', share: 0.22, brief: 'Pareja que se casa en 2027 en Valencia o alrededores y está buscando proveedores. Presupuestos ajustados, medios y altos; unas lo organizan solas, otras con mucha implicación de la familia.' },
+  { name: 'Familia comunión', share: 0.15, brief: 'Madre o padre que organiza la comunión de su hijo o hija en primavera de 2027 en la zona de Valencia.' },
+  { name: 'Familia cumple infantil', share: 0.15, brief: 'Madre o padre que prepara el cumpleaños de un niño o niña de 3 a 10 años en los próximos meses.' },
+  { name: 'Adulto cumple o fiesta sorpresa', share: 0.15, brief: 'Persona adulta que organiza un cumpleaños redondo, un aniversario o una fiesta sorpresa para alguien querido, con amigos o familia.' },
+  { name: 'Despedida de soltero/a', share: 0.1, brief: 'Amigo o amiga que organiza la despedida de soltero o soltera de alguien de su grupo, con presupuesto compartido entre varios.' },
+  { name: 'Fiesta de empresa', share: 0.1, brief: 'Persona de una pyme o empresa que organiza la cena de Navidad, un aniversario de la empresa o un evento con el equipo o clientes.' },
+  { name: 'Escéptico', share: 0.13, brief: 'Persona que tiene una celebración en mente (cualquier tipo) pero suele usar Bodas.net, Google o recomendaciones de conocidos y desconfía de webs nuevas.' },
+]
+
 const SEGMENT_CATEGORIES: Record<string, string[]> = {
+  'Adulto cumple o fiesta sorpresa': ['musica', 'catering', 'pastel', 'animacion', 'foto'],
+  'Despedida de soltero/a': ['animacion', 'musica', 'catering', 'belleza'],
+  'Fiesta de empresa': ['catering', 'musica', 'foto', 'planner'],
   'Pareja boda 2027': ['foto', 'musica', 'planner', 'flores', 'belleza'],
   'Familia comunión': ['catering', 'pastel', 'animacion', 'foto'],
   'Familia cumple infantil': ['animacion', 'pastel'],
@@ -249,6 +263,21 @@ async function loadRealProviders(supabase: SupabaseClient): Promise<RealProvider
     ...p, services: p.provider_services || [],
     google_reviews: Array.isArray(p.google_reviews) ? uniqueReviews(p.google_reviews) : null,
     photos: (p.provider_services || []).reduce((n: number, s: any) => n + (s.service_media?.length || 0), 0) || (p.photo_url ? 1 : 0),
+  }))
+}
+
+/** Simulación: cada proveedor enseña 3 reseñas en su perfil. Si no tiene
+ *  bastantes reales de Google, se completan con hipotéticas (solo aquí). */
+async function withThreeReviews(provs: RealProvider[]): Promise<RealProvider[]> {
+  return Promise.all(provs.map(async x => {
+    const real = (x.google_reviews || []).slice(0, 3)
+    if (real.length >= 3) return { ...x, google_reviews: real }
+    const r = await askJson<{ resenas: Array<{ text: string; stars: number }> }>(AGENT_MODEL,
+      'Escribes reseñas verosímiles y variadas de clientes españoles para una simulación interna de mercado (no se publican): concretas, con algún matiz, como las de Google. Nota entre 4 y 5.',
+      `Negocio: ${x.name} (${x.category}, ${x.city}). ${x.description ? x.description.slice(0, 300) : ''}\nEscribe ${3 - real.length} reseña(s) de 2-3 frases de clientes de eventos distintos.`,
+      obj({ resenas: { type: 'array', items: obj({ text: str, stars: { type: 'integer' } }) } }), 800).catch(() => ({ resenas: [] }))
+    const all = [...real, ...r.resenas.map(v => ({ text: v.text, stars: Math.max(4, Math.min(5, v.stars)) }))].slice(0, 3)
+    return { ...x, google_reviews: all, google_rating: x.google_rating || 4.7, google_rating_count: Math.max(x.google_rating_count || 0, all.length) }
   }))
 }
 
@@ -302,7 +331,7 @@ async function generateQuote(p: Persona, prov: RealProvider, ask?: string): Prom
     `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}). ${prov.description ? prov.description.slice(0, 400) : ''}\nTus tarifas:\n${tarifa}\n` +
     (prov.hypothetical ? 'Tu ficha está completa: llevas años en esto, has hecho decenas de eventos como este, tienes galerías completas de varios que el cliente ve en la propuesta, seguro de responsabilidad civil en vigor y verificado por FiestaGo, y sabes resolver los imprevistos habituales de tu servicio.\n' : '') +
     `\nPetición del cliente: ${ask ? `${ask}. ` : ''}Evento: ${p.evento}. Fecha: ${p.fecha}. Zona: ${p.ciudad}. Lo que cuenta: ${p.situacion.slice(0, 300)}\n\n` +
-    'Solo presupuestas TU servicio (no el local, la comida ni nada de otros proveedores). Rellena tu propuesta como en el panel de FiestaGo, con todos los precios con IVA incluido: cómo cobras (por personas —fotógrafo, catering, local…—, por horas —DJ, animación…— o precio cerrado —una tarta—), tu precio base, cuántas personas u horas incluye, cuánto cobras por persona u hora de más, cuántos invitados y cuántas horas has entendido que pide el cliente, qué incluye exactamente, qué NO incluye (con el precio de los extras si los hay), tu plan B si llueve o hay un imprevisto (obligatorio si tu servicio es de foto, catering, espacios, música, flores, animación o planner; si no, "No aplica"), qué necesitas del local o del cliente (corriente, cocina, espacio… o "nada"), si tienes libre su fecha (casi siempre sí; di que no solo si es muy realista) y un mensaje corto al cliente sin teléfonos, emails ni precios. La garantía, los pagos y las cancelaciones los explica FiestaGo: no hables de eso.',
+    'Solo presupuestas TU servicio (no el local, la comida ni nada de otros proveedores). Rellena tu propuesta como en el panel de FiestaGo, con todos los precios con IVA incluido: cómo cobras (por personas —fotógrafo, catering, local…—, por horas —DJ, animación…— o precio cerrado —una tarta—), tu precio base, cuántas personas u horas incluye, cuánto cobras por persona u hora de más, cuántos invitados y cuántas horas has entendido que pide el cliente, qué incluye exactamente, qué NO incluye (con el precio de los extras si los hay), tu plan B si llueve o hay un imprevisto (obligatorio si tu servicio es de foto, catering, espacios, música, flores, animación o planner; si no, "No aplica"), qué necesitas del local o del cliente (corriente, cocina, espacio… o "nada"), si tienes libre su fecha (casi siempre sí; di que no solo si es muy realista) y un mensaje corto al cliente sin teléfonos, emails ni precios. La garantía, los pagos y las cancelaciones los explica FiestaGo: no hables de eso. Trabajas a través de FiestaGo y firmaste sus compromisos: la Garantía de Éxito la da FiestaGo (si cancelas, ayudas a buscar sustituto o pagas una penalización); si te preguntan por garantía, pagos o cancelaciones, di que lo gestiona FiestaGo y está en el documento de reserva. Nunca escribas precios ni cifras de euros en tus textos: el cliente ve un único precio y los extras van en tu tarifa por persona u hora de más.',
     schema, 1500)
 }
 
@@ -318,12 +347,12 @@ async function answerQuestions(prov: RealProvider, q: ProviderQuote, questions: 
   const provAnswers = forProvider.length ? await answerAsProvider(prov, q, forProvider) : []
   return questions.map((x, i) => routed.items[i]?.para === 'fiestago' && routed.items[i]?.respuesta_fiestago
     ? { q: x, a: `(FiestaGo) ${routed.items[i].respuesta_fiestago}` }
-    : { q: x, a: `(${prov.name}) ${clientPrices(provAnswers.find(a => a.q === x)?.a || 'Lo vemos y te contesto en breve.')}` })
+    : { q: x, a: `(${prov.name}) ${stripPrices(provAnswers.find(a => a.q === x)?.a || 'Lo vemos y te contesto en breve.')}` })
 }
 
 async function answerAsProvider(prov: RealProvider, q: ProviderQuote, questions: string[]): Promise<Array<{ q: string; a: string }>> {
   const res = await askJson<{ respuestas: string[] }>(AGENT_MODEL,
-    'Eres un proveedor de eventos español contestando por escrito preguntas de un cliente sobre tu propuesta. Eres honesto y concreto: si algo no lo haces o no lo puedes garantizar, lo dices claramente y, si puedes, ofreces una alternativa real. Solo hablas de tu servicio (la garantía, los pagos y las cancelaciones los explica FiestaGo). Sin teléfonos, emails ni precios nuevos; si das un precio, el de tu tarifa (lo que cobras tú, IVA incluido), nunca el total que ve el cliente.',
+    'Eres un proveedor de eventos español contestando por escrito preguntas de un cliente sobre tu propuesta. Eres honesto y concreto: si algo no lo haces o no lo puedes garantizar, lo dices claramente y, si puedes, ofreces una alternativa real. Solo hablas de tu servicio. Trabajas a través de FiestaGo y firmaste sus compromisos: la Garantía de Éxito la da FiestaGo (si cancelas, ayudas a buscar sustituto o pagas una penalización); si te preguntan por garantía, pagos o cancelaciones, di que lo gestiona FiestaGo y está en el documento de reserva. Nunca escribas precios ni cifras de euros en tus textos: el cliente ve un único precio y los extras van en tu tarifa por persona u hora de más. Sin teléfonos ni emails.',
     `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}). Tu propuesta: incluye ${q.incluye}; no incluye ${q.no_incluye}; plan B: ${q.plan_b}.\n` +
     (prov.hypothetical ? 'Llevas años en esto y has hecho decenas de eventos como este; tienes galerías completas que ya se ven en la propuesta y seguro de responsabilidad civil verificado por FiestaGo. Sigues siendo honesto con lo que no haces.\n' : '') +
     `\nPreguntas del cliente:\n${questions.map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\nContesta cada una en 1-3 frases, en el mismo orden.`,
@@ -335,7 +364,7 @@ async function answerAsProvider(prov: RealProvider, q: ProviderQuote, questions:
 async function videoCall(p: Persona, prov: RealProvider, q: ProviderQuote): Promise<string> {
   const r = await askJson<{ resumen: string }>(AGENT_MODEL,
     'Eres un narrador neutral. Describes en 3-5 frases, en segunda persona y en español de España, cómo fue una videollamada de 10 minutos entre un cliente y un proveedor de eventos, con realismo: lo que el proveedor enseñó y explicó, cómo le cayó al cliente y lo que quedó sin resolver si algo quedó. Sin exagerar en ningún sentido.',
-    personaCard(p) + `\n\nProveedor: ${prov.name} (${prov.category}, ${prov.city}), ${prov.photos} fotos de trabajos${prov.hypothetical ? ', experiencia de años y galerías completas' : ''}. Su propuesta: ${clientPrices(q.incluye)}; no incluye: ${clientPrices(q.no_incluye)}.`,
+    personaCard(p) + `\n\nProveedor: ${prov.name} (${prov.category}, ${prov.city}), ${prov.photos} fotos de trabajos${prov.hypothetical ? ', experiencia de años y galerías completas' : ''}. Su propuesta: ${stripPrices(q.incluye)}; no incluye: ${stripPrices(q.no_incluye)}.`,
     obj({ resumen: str }), 600).catch(() => ({ resumen: '' }))
   return r.resumen
 }
@@ -357,17 +386,17 @@ function proposalText(p: Persona, prov: RealProvider, q: ProviderQuote) {
     : q.cobra_por === 'horas' ? `${Math.round(q.precio_base_eur * k)} € por ${q.incluidas} h y ${Math.round(q.precio_extra_eur * k)} € por hora de más; para tus ${q.horas} h`
     : 'precio cerrado'
   const perPerson = q.invitados > 0 ? ` (≈ ${(total / q.invitados).toFixed(2).replace('.', ',')} € por persona)` : ''
-  return `Email de FiestaGo: "${prov.name} te ha enviado su propuesta por escrito." Enlace a la página "Tu propuesta" (es solo de este servicio; el resto lo contratas aparte):\n` +
+  return `Email de FiestaGo: "${prov.name} te ha enviado su propuesta." Enlace al "Documento de reserva" de FiestaGo (un único documento: arriba FiestaGo, el proveedor y el precio; luego el servicio, los detalles acordados por escrito, cómo pagas y al final la Garantía FiestaGo y sus condiciones; se puede descargar; es solo de este servicio, el resto lo contratas aparte):\n` +
     `- ${prov.name} (${prov.category}, ${prov.city}) para tu evento: ${q.invitados} invitados${q.horas ? `, ${q.horas} h` : ''}, ${p.fecha}.${q.fecha_libre ? ` ✓ Confirma que tiene libre tu fecha.` : ' No confirma que tenga libre tu fecha.'}\n` +
     `- Cómo cobra: ${como}.\n` +
-    `- Precio total para tu caso: ${total.toLocaleString('es-ES')} €${perPerson}. IVA y Garantía de Éxito incluidos; precio cerrado, sin extras ocultos.\n` +
+    `- Precio del servicio para tu caso: ${total.toLocaleString('es-ES')} €${perPerson}. Precio único y cerrado, con IVA y Garantía FiestaGo incluidos (el desglose solo sale en la factura).\n` +
     `- Al reservar pagas la señal del 10 %: ${senal.toLocaleString('es-ES')} €. El resto, ${(total - senal).toLocaleString('es-ES')} €, 2 meses antes del evento. El dinero queda retenido en Stripe y el proveedor no lo cobra hasta que termina tu evento.\n` +
-    `- Qué incluye: ${clientPrices(q.incluye)}\n- Qué no incluye: ${clientPrices(q.no_incluye)}\n- Plan B si llueve o hay un imprevisto: ${clientPrices(q.plan_b)}\n- Qué necesita del local o de ti: ${clientPrices(q.requisitos)}\n- Mensaje del proveedor: "${maskPrices(q.mensaje)}"\n- ${google}\n` +
+    `- Qué incluye: ${stripPrices(q.incluye)}\n- Qué no incluye: ${stripPrices(q.no_incluye)}\n- Plan B si llueve o hay un imprevisto: ${stripPrices(q.plan_b)}\n- Qué necesita del local o de ti: ${stripPrices(q.requisitos)}\n- Mensaje del proveedor: "${maskPrices(q.mensaje)}"\n- ${google}\n` +
     (prov.hypothetical ? `- Sus trabajos: galería con ${prov.photos} fotos de eventos parecidos al tuyo, incluidas dos celebraciones completas.\n- Verificado por FiestaGo: identidad (DNI/CIF) y seguro de responsabilidad civil en vigor.\n`
       : prov.photos ? `- Sus trabajos: ${prov.photos} foto${prov.photos > 1 ? 's' : ''} de eventos que ha hecho.\n` : '- Sus trabajos: todavía no ha subido fotos de sus trabajos.\n') +
     `- Con quién contratas: ${prov.name} presta el servicio; FiestaGo (Francisco Mariano González Tejedo, NIF 09437664M, Oviedo) cobra la señal y el resto, los retiene en Stripe hasta después del evento y responde de la garantía con su dinero. Recibes la factura del servicio (de ${prov.name}) y la de la garantía (de FiestaGo). El precio de la propuesta es el único que pagas.\n` +
     '- Reserva sin riesgo: si en los 7 días siguientes a pagar la señal no cerráis los detalles finales (menú, boceto, horario…) o cambian tus planes, cancelas y te devuelven la señal entera (eventos a 30 días o más).\n' +
-    `- Condiciones por escrito: si el proveedor cancela, sustituto equivalente en 48 h o te devuelven todo y un 10 % más; si no se presenta, lo pagado y una compensación desde 300 €; después de esos 7 días, si cancelas tú, política ${pol} No cubre la lluvia ni los cambios que pidas tú.\n` +
+    `- Condiciones por escrito: si el proveedor cancela, sustituto equivalente en 48 h o te devuelven todo y un 10 % más; si no se presenta, lo pagado y ${noShowCompensation(total)} € de compensación; la garantía la da FiestaGo con su dinero (el proveedor firmó sus compromisos: si cancela, ayuda a buscar sustituto o paga una penalización); después de esos 7 días, si cancelas tú, política ${pol} No cubre la lluvia ni los cambios que pidas tú.\n` +
     '- Botones: "Pregunta antes de reservar" (con atajos para pedir el detalle final por escrito: menú, boceto, horario, cuántas personas vienen; lo del servicio lo contesta el proveedor por escrito y queda en la propuesta; lo de la garantía, los pagos y las cancelaciones lo contesta FiestaGo al momento), "Verle por videollamada antes de reservar" (el proveedor propone hora y FiestaGo te manda el enlace), "Reservar con señal", "Compartir con quien lo decide conmigo" y "Ver tu celebración completa" (todas tus propuestas juntas con el total, lo que tiene que tener el local y lo que suele faltar).'
 }
 
@@ -603,9 +632,10 @@ function fichaText(p: Persona, prov: RealProvider, q: ProviderQuote) {
   const k = 1 + COMMISSION
   const como = q.cobra_por === 'personas' ? `${Math.round(q.precio_base_eur * k)} € para ${q.incluidas} personas y ${Math.round(q.precio_extra_eur * k)} € por persona de más`
     : q.cobra_por === 'horas' ? `${Math.round(q.precio_base_eur * k)} € por ${q.incluidas} h y ${Math.round(q.precio_extra_eur * k)} € por hora de más` : 'precio cerrado'
-  const google = prov.google_rating ? `${String(prov.google_rating).replace('.', ',')} ★ en Google (${prov.google_rating_count || 0} opiniones)` : 'sin opiniones en Google todavía'
+  const google = (prov.google_rating ? `${String(prov.google_rating).replace('.', ',')} ★ (${prov.google_rating_count || 0} opiniones)` : 'sin opiniones todavía') +
+    ((prov.google_reviews || []).length ? `. Reseñas en su perfil: ${(prov.google_reviews || []).slice(0, 3).map(r => `"${r.text.slice(0, 200)}" (${r.stars}★)`).join(' · ')}` : '')
   return `Ficha de ${prov.name} en FiestaGo (${prov.category}, ${prov.city}): ${prov.description ? prov.description.slice(0, 250) + ' ' : ''}` +
-    `Cómo cobra (IVA y Garantía de Éxito incluidos): ${como}. Pones tus invitados${q.cobra_por === 'horas' ? ' y horas' : ''} y te sale ${total.toLocaleString('es-ES')} € para tu caso${q.invitados > 0 ? ` (≈ ${(total / q.invitados).toFixed(2).replace('.', ',')} € por persona)` : ''}. ` +
+    `Cómo cobra (precio único: IVA y Garantía de Éxito incluidos; el desglose solo sale en la factura): ${como}. Pones tus invitados${q.cobra_por === 'horas' ? ' y horas' : ''} y te sale ${total.toLocaleString('es-ES')} € para tu caso${q.invitados > 0 ? ` (≈ ${(total / q.invitados).toFixed(2).replace('.', ',')} € por persona)` : ''}. ` +
     `${prov.hypothetical ? `Galería con ${prov.photos} fotos de eventos parecidos; verificado (DNI/CIF y seguro de RC). ` : prov.photos ? `${prov.photos} fotos de trabajos. ` : 'Sin fotos de trabajos todavía. '}${google}. ` +
     'Señal del 10 % al reservar y el resto 2 meses antes, retenido en Stripe hasta después del evento. Reserva sin riesgo: 7 días desde la señal para cancelar con devolución íntegra. ' +
     'Botones: "Reservar con señal", "Pedir que me cuente más detalles" (te manda su propuesta por escrito), "Verle por videollamada" y "Prefiero que me llaméis desde FiestaGo".'
@@ -627,10 +657,10 @@ async function journeyStep(p: Persona, context: string, ask: string, final = fal
 /** El proveedor cierra por escrito los detalles pendientes (honesto). */
 async function finalDetails(p: Persona, prov: RealProvider, q: ProviderQuote, pending: string[]): Promise<string> {
   const r = await askJson<{ detalles: string }>(AGENT_MODEL,
-    'Eres un proveedor de eventos español cerrando por escrito los detalles finales de una propuesta antes de que el cliente reserve: concretas lo que te piden (menú, boceto o diseño, horario de llegada y fin, cuántas personas de tu equipo, qué necesitas del local, cómo resuelves lo que te preocupa). Eres honesto: si algo no lo haces, lo dices y das la alternativa real. Precios, si los das, los de tu tarifa (lo que cobras tú, IVA incluido), nunca el total que ve el cliente. Sin teléfonos ni emails. 5-10 frases.',
+    'Eres un proveedor de eventos español cerrando por escrito los detalles finales de una propuesta antes de que el cliente reserve: concretas lo que te piden (menú, boceto o diseño, horario de llegada y fin, cuántas personas de tu equipo, qué necesitas del local, cómo resuelves lo que te preocupa). Eres honesto: si algo no lo haces, lo dices y das la alternativa real.  Trabajas a través de FiestaGo y firmaste sus compromisos: la Garantía de Éxito la da FiestaGo (si cancelas, ayudas a buscar sustituto o pagas una penalización); si te preguntan por garantía, pagos o cancelaciones, di que lo gestiona FiestaGo y está en el documento de reserva. Nunca escribas precios ni cifras de euros en tus textos: el cliente ve un único precio y los extras van en tu tarifa por persona u hora de más. Sin teléfonos ni emails. 5-10 frases.',
     `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}).${prov.hypothetical ? ' Llevas años y has hecho decenas de eventos como este.' : ''} Tu propuesta: incluye ${q.incluye}; no incluye ${q.no_incluye}; plan B: ${q.plan_b}; necesitas del local: ${q.requisitos}.\nEvento del cliente: ${p.evento}, ${p.fecha}, ${p.ciudad}.\nLo que te pide cerrar por escrito:\n${pending.map(x => `- ${x}`).join('\n') || '- el detalle final de lo que incluye y el horario'}`,
     obj({ detalles: str }), 1500).catch(() => ({ detalles: '' }))
-  return clientPrices(r.detalles)
+  return stripPrices(r.detalles) || `Te confirmo por escrito: ${q.incluye}. No incluye: ${q.no_incluye}. Plan B: ${q.plan_b}. Necesito del local: ${q.requisitos}.`
 }
 
 async function runJourney(cfg: SimConfig, p: Persona, r2: Round2, prov: RealProvider, q: ProviderQuote, proposal: string): Promise<RoundClose> {
@@ -878,7 +908,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown, interv
     messages: [{
       role: 'user',
       content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\n` +
-        (cfg.journey ? 'SIMULACIÓN 12 · RECORRIDO COMPLETO: desde que nos ven por primera vez hasta la decisión con todos los detalles cerrados (ficha → propuesta + llamada → 48 h con respuestas, videollamada y llamada de seguimiento → detalles finales por escrito). Datos en embudo.recorrido: cuántos llegan a cada fase, qué deciden en cada una, dónde reservan, con_detalles_cerrados_reservan_pct (la pregunta clave: con todo cerrado, ¿reservan?) y reservan_total_pct frente al 50 %. Abre con ese embudo por segmento y dedica una sección a por qué no reservan quienes tenían ya todos los detalles (motivos_no_reservar_con_detalles), separando lo que depende de FiestaGo, de los proveedores o de la situación de cada cliente.\n\n' : '') +
+        (cfg.journey ? 'Todas las personas tienen una celebración en mente (bodas, comuniones, cumpleaños, fiestas sorpresa, despedidas, fiestas de empresa) y todas entran en la web y eligen un proveedor; cada proveedor enseña 3 reseñas en su perfil (hipotéticas si no tiene bastantes reales); precio único con IVA y garantía; documento de reserva FiestaGo. ' + 'SIMULACIÓN 12 · RECORRIDO COMPLETO: desde que nos ven por primera vez hasta la decisión con todos los detalles cerrados (ficha → propuesta + llamada → 48 h con respuestas, videollamada y llamada de seguimiento → detalles finales por escrito). Datos en embudo.recorrido: cuántos llegan a cada fase, qué deciden en cada una, dónde reservan, con_detalles_cerrados_reservan_pct (la pregunta clave: con todo cerrado, ¿reservan?) y reservan_total_pct frente al 50 %. Abre con ese embudo por segmento y dedica una sección a por qué no reservan quienes tenían ya todos los detalles (motivos_no_reservar_con_detalles), separando lo que depende de FiestaGo, de los proveedores o de la situación de cada cliente.\n\n' : '') +
         (cfg.hypothetical_complete ? 'SIMULACIÓN DE CONTROL (hipotética): los proveedores reales con la ficha completa (galería de trabajos parecidos, seguro de RC verificado, opiniones de Google). Sirve para saber si, con buena oferta, el proceso llega al 50 %; compárala con la anterior (proveedores tal como están) y separa lo que depende de los proveedores de lo que depende de FiestaGo.\n\n' : '') +
         (cfg.catalog === 'full_proposal' ? 'Desde la 11.ª: Reserva sin riesgo de 7 días, videollamada con el proveedor antes de pagar, detalle final por escrito, "Tu celebración" con el total del evento y lo que debe tener el local, y una sola cifra en todos los precios (en "embudo" verás piden_videollamada_pct). Desde la 9.ª: cada servicio es un proveedor independiente (la propuesta es solo de su servicio), precios con IVA incluido por personas, por horas o cerrados con precio por persona, qué no incluye, plan B, fecha confirmada, fotos de sus trabajos; las preguntas de garantía, pagos y cancelaciones las contesta FiestaGo y el seguimiento es una llamada de Mariano. ' + 'SIMULACIÓN DEL EMBUDO COMPLETO CON PROPUESTA ESCRITA (lo construido tras la 6.ª simulación, que dio 0 % de reservas en el cierre): cada persona que llega al cierre recibe una propuesta escrita de un proveedor REAL de FiestaGo con precio cerrado para su número de invitados, qué incluye y qué no, la señal en euros, las condiciones y sus opiniones de Google reales; luego la llamada de FiestaGo. Quien bloquea la fecha vuelve a decidir 48 h después, tras hablarlo en casa y recibir un seguimiento de ayuda; en esa segunda decisión solo puede reservar o descartarlo definitivamente diciendo el motivo exacto (motivo_exacto_descarte en la muestra): agrupa esos motivos y cuantifícalos, son la lista de lo que hay que arreglar. En "embudo": cierre_reservan_pct (en el primer momento), tras_bloqueo y cierre_final_reservan_pct (OBJETIVO ≥ 50 %). Abre el informe con el embudo completo en total y por segmento frente al 50 % y frente a la 6.ª simulación (en "previous"). Analiza qué pesa en la propuesta (precio frente a presupuesto, opiniones de Google, proveedores con o sin opiniones, qué incluye), qué dice quien decide con el cliente, y termina con "Qué falta para llegar al 50 %": palancas concretas ordenadas por impacto.\n\n' : '') +
         (cfg.catalog === 'full' ? 'SIMULACIÓN DEL EMBUDO COMPLETO: 1) ven posts, web y perfil (lo real de FiestaGo hoy); 2) leen opiniones de otros; 3) quien entra en la web o hace algo más pide presupuesto/llamada y vive el proceso real de cierre (respuesta del proveedor por FiestaGo, llamada de FiestaGo, recordatorio) y decide; 4) entrevista a todos. Datos del embudo en "embudo" de cada segmento. El OBJETIVO es que reserve al menos el 50 % de quienes llegan al cierre (cierre_reservan_pct). Abre el informe con el embudo completo (personas → llegan al cierre → reservan / bloquean / siguen comparando / descartan) en total y por segmento, frente al 50 %. Incluye una sección "Qué falta para llegar al 50 %" con palancas concretas ordenadas por impacto estimado, separando lo que mejora la llegada al cierre de lo que mejora el cierre.\n\n' : '') +
@@ -936,6 +966,7 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
 
   await save({ status: 'personas', config: cfg })
   // Si la fila ya trae personas (p. ej. copiadas de otra simulación), se reutilizan
+  if (cfg.journey && !(Array.isArray(run.personas) && run.personas.length)) cfg = { ...cfg, segments: CELEBRATION_SEGMENTS }
   const personas: Persona[] = Array.isArray(run.personas) && run.personas.length ? run.personas : await generatePersonas(cfg)
   await save({ status: 'ronda1', personas })
 
@@ -955,12 +986,14 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   if (cfg.closing) {
     let provs = cfg.closing.proposal ? await loadRealProviders(supabase) : []
     // Control: ¿llega el proceso al 50 % con fichas completas? (hipotético)
+    if (cfg.journey) provs = await withThreeReviews(provs)
     if (cfg.hypothetical_complete) provs = provs.map(x => ({
       ...x, hypothetical: true, photos: Math.max(x.photos, 12),
       google_rating: x.google_rating || 4.8, google_rating_count: Math.max(x.google_rating_count || 0, 25),
     }))
     rc = await pool(personas, async (p, i) => {
-      if (!r2[i] || ACTION_RANK[r2[i]!.accion_final] < 2) return null
+      // En el recorrido completo todos entran en la web y eligen proveedor
+      if (!r2[i] || (!cfg!.journey && ACTION_RANK[r2[i]!.accion_final] < 2)) return null
       if (!cfg!.closing!.proposal) return runClose(cfg!, p, r2[i]!)
       // Propuesta escrita de un proveedor real, para su evento
       const avail = Array.from(new Set(provs.filter(x => /valencia|paterna/i.test(x.city || '')).map(x => x.category)))
