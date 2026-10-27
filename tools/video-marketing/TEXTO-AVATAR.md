@@ -4,7 +4,7 @@ Esto **no se publica**. Es el material con el que HeyGen construye el gemelo
 digital y ElevenLabs (o HeyGen) clona la voz. Se graba una sola vez y manda
 sobre todo lo que venga después.
 
-Son unas 250 palabras ≈ **100 segundos hablando** + pausas ≈ 2 minutos de
+Son 205 palabras ≈ **85 segundos hablando** + pausas ≈ minuto y medio de
 grabación. Con eso vas sobrado: el avatar pide 15 segundos y el clon de voz
 pide 30, pero cuanto mejor sea la referencia, mejor sale todo lo demás.
 
@@ -29,39 +29,44 @@ que tirar y se nota.
 
 ## El texto
 
+Va dirigido a **cliente**: quien está organizando una celebración, no el
+proveedor.
+
 ---
 
 **1 · Presentación** · tranquilo, como si te presentaras a alguien
 
 > Me llamo Mariano y soy el fundador de FiestaGo. Llevo años viendo cómo
-> funciona el sector de los eventos en España, y hay algo que nunca me
-> cuadró. Por eso monté esto.
+> organiza la gente sus celebraciones en España, y me encontré el mismo
+> problema una y otra vez. Por eso monté esto.
 
 **2 · El problema** · serio, sin sonreír
 
-> Un fotógrafo paga sesenta euros al mes por aparecer en un portal. Los paga
-> en enero, en febrero y en marzo. Venda o no venda. Y cuando llega una
-> pareja buscando fotógrafo, solo ve a quien está dado de alta. El que no
-> aparece, no existe para ese cliente. Así de simple, y así de injusto.
+> Estás organizando una boda. Pides precio a cinco fotógrafos. Te contestan
+> dos, y una semana después. Ninguno te dice lo que cuesta hasta que no
+> rellenas un formulario y dejas tu teléfono. Y cuando por fin cierras con
+> alguien, pagas una señal y te quedas con la duda: ¿y si el día de la boda
+> no aparece?
 
 **3 · Los números** · vocaliza, no corras
 
-> En FiestaGo la cuota es cero. Cero euros al mes, sin permanencia. La
-> comisión es del ocho por ciento y la paga el cliente, no el proveedor. Tú
-> cobras el cien por cien de tu precio, siempre. Y ese ocho por ciento
-> financia la Garantía: el dinero entra en depósito antes del evento, así no
-> te arriesgas a cobrar tarde.
+> En FiestaGo ves el precio antes de escribir a nadie. Reservas en cinco
+> minutos y pagas un ocho por ciento más. Ese ocho por ciento no se lo queda
+> el proveedor: es tu garantía. Tu dinero se queda en depósito hasta que la
+> celebración ocurre. Si el proveedor cancela, lo recuperas. No arriesgas
+> nada.
 
 **4 · Preguntas** · entonación de pregunta de verdad, no de lectura
 
-> ¿Y si el cliente no paga? ¿Cuánto tardo en aparecer? ¿Qué pasa si quiero
-> darme de baja? ¿De verdad no hay letra pequeña?
+> ¿Cuánto cuesta de verdad una boda en España? ¿Y si mi proveedor cancela
+> dos días antes? ¿Puedo ver precios sin dejar mi teléfono? ¿Esto vale
+> también para una comunión?
 
 **5 · Cierre** · cálido, aquí sí puedes sonreír
 
 > Bodas, comuniones, bautizos, cumpleaños, despedidas, fiestas de empresa.
-> Si tú organizas celebraciones, esto es para ti. Date de alta gratis en
-> fiestago punto es. Se tarda sesenta segundos y no cuesta nada.
+> Si estás organizando algo, entra en fiestago punto es y calcula lo que te
+> va a costar. Son sesenta segundos y es gratis.
 
 ---
 
@@ -79,7 +84,13 @@ solo tono:
 - **Bloque 5** da la sonrisa y el cierre.
 
 Lleva además, a propósito, los sonidos que peor se clonan en español:
-*España*, *años*, *llega*, *injusto*, *pareja*, *marzo*, *cero*, *arriesgas*.
+*España*, *años*, *cumpleaños*, *rellenas*, *arriesgas*, *dejar*, *cinco*,
+*ciento*, *celebración*.
+
+Y el bloque 3 dice el ocho por ciento **de frente**, porque es un coste real
+para el cliente y queda mejor explicado por ti que descubierto en el
+checkout. Lo que compra ese ocho por ciento —el depósito hasta el evento— es
+justo el argumento.
 
 ## Si te trabas
 
