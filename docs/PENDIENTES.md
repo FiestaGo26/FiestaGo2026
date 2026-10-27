@@ -89,7 +89,7 @@ Después, las bios:
 | 11 | `2589bcb9` | + Reserva sin riesgo, videollamada, detalle final, Tu celebración (decisión forzada a 48 h) | 0 % (límite de la simulación) |
 | 12 | `b8e83090` | **Recorrido completo**, 152 personas con una celebración en mente, fichas completas con 3 reseñas, precio único, documento de reserva | **18,4 % (20,1 % con detalles cerrados)** |
 | 13 | `b53e251d` | + extras con precio final, referencias de clientes con las que hablar, nombre único «Garantía de Éxito FiestaGo» | **30,9 % (32,8 % con detalles cerrados)** |
-| 14 | `ef1b9866` | + cada persona monta su celebración completa en FiestaGo (local con su tipo, música, flores, foto, tarta, peluquería…) y ve el total | en curso |
+| 14 | `ef1b9866` | + cada persona monta su celebración completa en FiestaGo (local con su tipo, música, flores, foto, tarta, peluquería…) y ve el total | **34,9 % (36,7 % con detalles cerrados)** |
 
 Simulación 12 por celebración: cumple infantil 43,5 %, comunión 26,1 %, empresa 20 %, adulto/sorpresa
 17,4 %, despedida 13,3 %, boda 6,1 %, escéptico 5 %. Extrapolado: 1.000 personas con una celebración
@@ -102,6 +102,15 @@ escéptico 30 %, boda 21,2 %, empresa 20 %, despedida 13,3 %. El 93 % pide habla
 el 85 % videollamada. Extrapolado: ~310 reservas por cada 1.000 personas que llegan a una ficha.
 Motivos que quedaban: «depende del local» y «no sé el coste total». La web ya permite montar toda la
 celebración (local con su tipo + servicios) y ver el total: la 14.ª lo simula.
+
+Simulación 14 por celebración: adulto/sorpresa 52,2 %, cumple infantil 43,5 %, boda 39,4 % (antes 21,2 %),
+comunión 34,8 %, escéptico 25 %, despedida 20 %, empresa 13,3 %. Celebración media: boda ~19.900 €
+(7 servicios), comunión ~4.100 €, adulto ~2.500 €, despedida ~1.350 €, cumple infantil ~620 €.
+Motivos que quedan: 1) el proveedor no puede confirmar lo del local (cocina, mesas, zona cubierta,
+horario) y dice "lo confirma el local" → que el proveedor vea la ficha del local elegido y FiestaGo
+cruce sus requisitos con lo que tiene el local; 2) con el total a la vista, a muchos no les cuadra el
+presupuesto → ofrecer alternativas por debajo de su presupuesto en Tu celebración; 3) "lo envío antes de
+reservar" (menú, póliza, certificado) → que el proveedor adjunte esos documentos en la propuesta.
 
 **Hueco de oferta (27-10-2026): no hay ningún local (`espacios`) dado de alta.** Es lo primero que
 eligen bodas, comuniones y fiestas. Captar 3-5 locales en Valencia (restaurantes, hoteles, fincas),
