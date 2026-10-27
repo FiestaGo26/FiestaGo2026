@@ -83,7 +83,17 @@ Después, las bios:
 |---|---|---|---|
 | 6 | `06eee82c` | Embudo completo, respuesta genérica del proveedor | 0 % (44 % bloquea fecha) |
 | 7 | `bda860da` | Propuesta escrita + proveedores reales con opiniones de Google + 2.ª decisión a las 48 h (reservar o descartar con motivo exacto) | 1,4 % |
-| 8 | (pendiente) | Un solo precio, preguntas al proveedor con respuesta escrita, "Con quién contratas", proveedor según lo que necesita cada cliente | — |
+| 8 | `3346ba70` | Un solo precio, preguntas con respuesta escrita, "Con quién contratas" | 5,4 % |
+| 9 | `b13ec4a0` | Proveedores reales tal como están (sin fotos ni precios) | 0 % → el freno es la oferta |
+| 10 | `4419dd24` | Control: fichas completas (hipotético) | 5,1 % |
+| 11 | `2589bcb9` | + Reserva sin riesgo, videollamada, detalle final, Tu celebración (decisión forzada a 48 h) | 0 % (límite de la simulación) |
+| 12 | `b8e83090` | **Recorrido completo**, 152 personas con una celebración en mente, fichas completas con 3 reseñas, precio único, documento de reserva | **18,4 % (20,1 % con detalles cerrados)** |
+
+Simulación 12 por celebración: cumple infantil 43,5 %, comunión 26,1 %, empresa 20 %, adulto/sorpresa
+17,4 %, despedida 13,3 %, boda 6,1 %, escéptico 5 %. Extrapolado: 1.000 personas con una celebración
+que llegan a la ficha de un proveedor → ~184 reservas (125-245), ~203.000 € de volumen y ~15.000 € para
+FiestaGo. El cumple infantil es el que más convierte; la comunión, la que más deja (ticket ~2.000 €).
+**Decisión (27-10-2026): con esto ya es un buen punto de partida para buscar reservas reales.**
 
 Motivos exactos de descarte en la 7.ª (ya atacados en la 8.ª): dos precios distintos (el del
 mensaje del proveedor y el de la propuesta con Garantía), preguntas concretas sin respuesta
@@ -92,7 +102,14 @@ factura, opiniones de Google que no eran del negocio (Glowy = salón de manicura
 la categoría). Lo que sí funciona: la llamada de FiestaGo (69-87 % "me acerca") y la señal del
 10 % (aceptable para el 84-100 %).
 
-- [ ] Iterar simulación → construir → simular hasta llegar al 50 % (Mariano dio permiso el 26-10).
+- [x] Iterar simulación → construir → simular (26-27/10): de 0 % a 18,4 % en el recorrido completo.
+- [ ] **Siguiente: reservas reales.** 1) Que los proveedores de Valencia completen la ficha (precio,
+  6 fotos, verificación; hoy 1 de 28) — recordatorio de los lunes + CEO. 2) Marketing de clientes
+  centrado en cumpleaños infantiles y comuniones de Valencia. 3) Medir el embudo real (ficha →
+  propuesta → reserva) y comparar con la simulación.
+- [ ] Propuestas pendientes de decidir: extras con su precio único final en el documento (invitado
+  de más, hora extra, carpa…), un solo nombre "Garantía de Éxito FiestaGo", referencias de clientes
+  y galerías de bodas completas para el segmento boda.
 - [x] **Generar contenido en el panel no funcionaba** (avisado por Mariano el 26-10): sin vídeos
   desde el 12-07; la ruta devolvía 500. Arreglado: modelo propio vigente (`CONTENT_MODEL`,
   por defecto Sonnet 5.5) y JSON garantizado; los fallos quedan en la tabla `ops_log`.
