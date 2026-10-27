@@ -14,6 +14,7 @@
 // al 42 %) y un aviso al proveedor si aún no ha respondido.
 // ───────────────────────────────────────────────────────────────────────
 
+import { PROPOSAL_DOC_LABELS, type ProposalDocument } from '@/lib/proposal-docs'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
 import { calcCommission, CANCELLATION_POLICIES, type CancellationPolicy } from '@/lib/constants'
@@ -41,7 +42,11 @@ export type QuoteDetails = {
   requisitos?: string
   /** Extras opcionales con el precio que cobra el proveedor (el cliente los ve con IVA y Garantía) */
   extras?: Array<{ id: string; label: string; price: number }>
+  /** Documentos que adjunta el proveedor (menú, boceto, póliza…): quedan registrados en la propuesta */
+  documents?: ProposalDocument[]
 }
+
+export { PROPOSAL_DOC_LABELS, type ProposalDocument }
 
 export type ProposalExtra = { id: string; label: string; price: number; provider_price: number }
 
@@ -92,6 +97,8 @@ export type Proposal = {
   /** Si sois más invitados u horas: precio final por cada uno de más */
   unit_extra: { label: string; price: number } | null
   references: PublicReference[]
+  /** Documentos del proveedor, con enlace temporal para verlos */
+  documents: Array<{ id: string; label: string; name: string; url: string | null; uploaded_at: string }>
   questions: ProposalQuestion[]
   provider: {
     id: string; name: string; slug: string | null; category: string; city: string | null
@@ -134,6 +141,12 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
   const photos = ((media || []) as any[]).filter(m => m.media_type !== 'video').map(m => m.thumbnail_url || m.url).filter(Boolean)
   if (!photos.length && p.photo_url) photos.push(p.photo_url)
 
+  const docs = ((h.quote_details || {}) as QuoteDetails).documents || []
+  const documents = await Promise.all(docs.map(async d => {
+    const { data } = await supabase.storage.from('proposal-docs').createSignedUrl(d.path, 7 * 86400)
+    return { id: d.id, label: PROPOSAL_DOC_LABELS[d.label] || 'Documento', name: d.name, url: data?.signedUrl || null, uploaded_at: d.uploaded_at }
+  }))
+
   const base = Math.round(Number(h.quote_total) * 100) / 100
   const commission = calcCommission(base)
   const depositPct = cleanDeposit(h.quote_deposit_pct)
@@ -150,7 +163,7 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
       q.a && q.by !== 'fiestago' ? { ...q, a: stripPrices(q.a) } : q),
     hours: h.hours ?? null,
     details: Object.fromEntries(Object.entries((h.quote_details || {}) as QuoteDetails)
-      .map(([k, v]) => [k, typeof v === 'string' ? stripPrices(v) : v])) as QuoteDetails,
+      .filter(([k]) => k !== 'documents').map(([k, v]) => [k, typeof v === 'string' ? stripPrices(v) : v])) as QuoteDetails,
     photos,
     per_person: Number(h.guests) > 0 ? Math.round((commission.clientPays / Number(h.guests)) * 100) / 100 : null,
     extras: (((h.quote_details || {}) as QuoteDetails).extras || [])
@@ -159,6 +172,7 @@ export async function loadProposal(supabase: SupabaseClient, token: string): Pro
     unit_extra: s && pricingUnit(s) === 'guests' ? { label: 'invitado de más', price: precioCliente(Number(s.extra_guest_price)) }
       : s && pricingUnit(s) === 'hours' ? { label: 'hora de más', price: precioCliente(Number(s.extra_hour_price)) } : null,
     references: publicReferences((p as any).client_references),
+    documents,
     provider: p as Proposal['provider'],
     service: s || null,
     base, total: commission.clientPays, deposit_pct: depositPct,

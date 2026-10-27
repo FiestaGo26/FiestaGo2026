@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import ProposalDocs from './ProposalDocs'
 import { DEPOSIT_MIN, DEPOSIT_MAX, formatEuro, precioCliente } from '@/lib/pricing'
 
 type Request = {
@@ -31,6 +32,7 @@ type Request = {
   questions: Array<{ q: string; a: string | null; by?: 'fiestago' | 'proveedor' }> | null
   service_extras?: Array<{ id: string; label: string; price: number }>
   hours: number | null
+  documents?: Array<{ id: string; label: any; name: string }>
 }
 
 type Extra = { id: string; label: string; price: string }
@@ -214,6 +216,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                 </div>
               )
             })()}
+            <ProposalDocs providerId={providerId} holdId={r.id} booked={r.status === 'converted'} initial={r.documents || []} apiFetch={apiFetch}/>
             {(r.questions || []).map((q, i) => (
               <div key={i} className="mt-3 border-t border-stone-100 pt-3 text-sm">
                 <div className="font-semibold text-ink">❓ {q.q}</div>

@@ -80,6 +80,17 @@ export default async function ProposalPage({ params }: { params: { token: string
           {p.details.no_incluye && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Qué no incluye</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.no_incluye}</p></>}
           {p.details.requisitos && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Qué necesita del local o de ti</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.requisitos}</p></>}
           {p.details.plan_b && <><h3 className="font-semibold text-ink text-sm mt-4 mb-1">Plan B si llueve o hay un imprevisto</h3><p className="text-sm text-ink/75 whitespace-pre-line leading-relaxed">{p.details.plan_b}</p></>}
+          {p.documents.length > 0 && (
+            <>
+              <h3 className="font-semibold text-ink text-sm mt-4 mb-1">Documentos acordados</h3>
+              <p className="text-xs text-ink/55 mb-1">Los ha subido {p.provider.name} y forman parte de esta propuesta.</p>
+              <ul className="text-sm text-ink/75 space-y-1">
+                {p.documents.map(d => (
+                  <li key={d.id}>📎 {d.label}: {d.url ? <a href={d.url} target="_blank" rel="noreferrer" className="underline">{d.name}</a> : d.name}</li>
+                ))}
+              </ul>
+            </>
+          )}
           {(p.extras.length > 0 || p.unit_extra) && (
             <>
               <h3 className="font-semibold text-ink text-sm mt-4 mb-1">Extras opcionales (precio final de cada uno)</h3>

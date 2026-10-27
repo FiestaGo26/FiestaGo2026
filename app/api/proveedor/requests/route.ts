@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const supabase = createAdminClient()
   const { data, error } = await supabase
     .from('date_holds')
-    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, hours, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token, questions')
+    .select('id, created_at, kind, status, service_id, event_date, expires_at, client_name, event_type, guests, message, hours, provider_reply, replied_at, quote_total, quote_includes, quote_deposit_pct, proposal_token, questions, quote_details')
     .eq('provider_id', providerId!)
     .in('kind', ['hold', 'quote'])
     .gte('created_at', new Date(Date.now() - 90 * 86400_000).toISOString())
@@ -40,8 +40,10 @@ export async function GET(req: NextRequest) {
 
   const requests = (data || []).map((r: any) => {
     const svc: any = r.service_id ? byId.get(r.service_id) : null
+    const { quote_details, ...rest } = r
     return {
-      ...r,
+      ...rest,
+      documents: (quote_details?.documents || []).map((d: any) => ({ id: d.id, label: d.label, name: d.name })),
       client_name: String(r.client_name || '').trim().split(/\s+/)[0] || 'Cliente',
       message: r.message ? maskContacts(r.message) : null,
       service_name: svc?.name || null,
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient()
   const { data: hold } = await supabase
     .from('date_holds')
-    .select('id, provider_id, client_name, client_email, kind, event_date, guests, proposal_token, providers(name, slug)')
+    .select('id, provider_id, client_name, client_email, kind, event_date, guests, proposal_token, quote_details, providers(name, slug)')
     .eq('id', body.id).maybeSingle()
   if (!hold || hold.provider_id !== body.provider_id) {
     return NextResponse.json({ error: 'Petición no encontrada' }, { status: 404 })
@@ -105,6 +107,8 @@ export async function POST(req: NextRequest) {
             .map((e: any, i: number) => ({ id: String(e?.id || `x${i}`).slice(0, 60), label: maskContacts(String(e?.label || '').trim()).slice(0, 80), price: Math.round((Number(e?.price) || 0) * 100) / 100 }))
             .filter((e: any) => e.label && e.price > 0 && e.price < 100000)
             .slice(0, 10),
+          // Los documentos se suben aparte (requests/documents) y se conservan
+          documents: (hold.quote_details as any)?.documents || [],
         },
       } : {}),
     })
