@@ -930,7 +930,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown, interv
 // ─── Orquestación ─────────────────────────────────────────────────
 
 export async function runClientSim(supabase: SupabaseClient, runId: string) {
-  const { data: run } = await supabase.from('sim_runs').select('id, config, personas').eq('id', runId).single()
+  const { data: run } = await supabase.from('sim_runs').select('id, config, personas, round1, round2, round_close').eq('id', runId).single()
   if (!run) throw new Error(`No existe la simulación ${runId}`)
   const save = (patch: Record<string, unknown>) => supabase.from('sim_runs').update({ ...patch, usage, updated_at: new Date().toISOString() }).eq('id', runId)
 
@@ -968,15 +968,18 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   // Si la fila ya trae personas (p. ej. copiadas de otra simulación), se reutilizan
   if (cfg.journey && !(Array.isArray(run.personas) && run.personas.length)) cfg = { ...cfg, segments: CELEBRATION_SEGMENTS }
   const personas: Persona[] = Array.isArray(run.personas) && run.personas.length ? run.personas : await generatePersonas(cfg)
-  await save({ status: 'ronda1', personas })
+  await save({ status: 'ronda1', personas, config: cfg })
 
-  const r1 = await pool(personas, p => runRound1(cfg!, p))
+  // Reanudable: si Netlify corta la función a los 15 min y la reintenta,
+  // se aprovecha lo ya guardado (rondas completas y cierres hechos).
+  const full = (x: unknown): x is Array<any> => Array.isArray(x) && x.length === personas.length && x.filter(Boolean).length >= personas.length / 2
+  const r1: Array<Round1 | null> = full(run.round1) ? run.round1 : await pool(personas, p => runRound1(cfg!, p))
   await save({ status: 'ronda2', round1: r1 })
   if (r1.filter(Boolean).length < personas.length / 2) throw new Error(`Ronda 1: solo ${r1.filter(Boolean).length}/${personas.length} respuestas. Último error: ${usage.last_error}`)
 
   // Cada persona lee 6 comentarios de otras, de segmentos variados
   const voices = personas.flatMap((p, i) => (r1[i]?.posts || []).map(x => ({ i, text: `${p.nombre} (${p.segment.toLowerCase()}), sobre el post "${cfg!.posts.find(s => s.id === x.id)?.label}": "${x.comentario}"` })))
-  const r2 = await pool(personas, (p, i) => r1[i]
+  const r2: Array<Round2 | null> = full(run.round2) ? run.round2 : await pool(personas, (p, i) => r1[i]
     ? runRound2(cfg!, p, r1[i]!, shuffle(voices.filter(v => v.i !== i)).slice(0, 6).map(v => v.text))
     : Promise.reject(new Error('sin ronda 1')))
   await save({ status: cfg.closing ? 'cierre' : 'entrevista', round2: r2 })
@@ -986,14 +989,21 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
   if (cfg.closing) {
     let provs = cfg.closing.proposal ? await loadRealProviders(supabase) : []
     // Control: ¿llega el proceso al 50 % con fichas completas? (hipotético)
-    if (cfg.journey) provs = await withThreeReviews(provs)
+    if (cfg.journey) {
+      // Las reseñas de la simulación se guardan para que un reintento use las mismas
+      const cached = (cfg as any).sim_reviews as Record<string, RealProvider['google_reviews']> | undefined
+      if (cached) provs = provs.map(x => cached[x.id] ? { ...x, google_reviews: cached[x.id], google_rating: x.google_rating || 4.7, google_rating_count: Math.max(x.google_rating_count || 0, 3) } : x)
+      else {
+        provs = await withThreeReviews(provs)
+        cfg = { ...cfg, sim_reviews: Object.fromEntries(provs.map(x => [x.id, x.google_reviews])) } as SimConfig
+        await save({ config: cfg })
+      }
+    }
     if (cfg.hypothetical_complete) provs = provs.map(x => ({
       ...x, hypothetical: true, photos: Math.max(x.photos, 12),
       google_rating: x.google_rating || 4.8, google_rating_count: Math.max(x.google_rating_count || 0, 25),
     }))
-    rc = await pool(personas, async (p, i) => {
-      // En el recorrido completo todos entran en la web y eligen proveedor
-      if (!r2[i] || (!cfg!.journey && ACTION_RANK[r2[i]!.accion_final] < 2)) return null
+    const closeOne = async (p: Persona, i: number): Promise<RoundClose | null> => {
       if (!cfg!.closing!.proposal) return runClose(cfg!, p, r2[i]!)
       // Propuesta escrita de un proveedor real, para su evento
       const avail = Array.from(new Set(provs.filter(x => /valencia|paterna/i.test(x.city || '')).map(x => x.category)))
@@ -1014,6 +1024,18 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
         out.segunda = await runClose2(cfg!, p, first, text, out.respuestas, out.videollamada)
       }
       return out
+    }
+    const prev: Array<RoundClose | null> = Array.isArray(run.round_close) && run.round_close.length === personas.length ? run.round_close : personas.map(() => null)
+    let done = 0
+    rc = await pool(personas, async (p, i) => {
+      if (prev[i]) return prev[i]
+      // En el recorrido completo todos entran en la web y eligen proveedor
+      if (!r2[i] || (!cfg!.journey && ACTION_RANK[r2[i]!.accion_final] < 2)) return null
+      const r = await closeOne(p, i)
+      // Guardado parcial cada 10 cierres, por si la función se corta
+      if (r && ++done % 10 === 0) { prev[i] = r; await save({ round_close: prev }) }
+      else if (r) prev[i] = r
+      return r
     })
     await save({ status: 'entrevista', round_close: rc })
   }
