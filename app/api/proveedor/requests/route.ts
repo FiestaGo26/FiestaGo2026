@@ -4,7 +4,7 @@ import { requireProviderAuth } from '@/lib/auth'
 import { maskContacts } from '@/lib/date-holds'
 import { sendEmail } from '@/lib/resend'
 import { cleanDeposit, pricingUnit } from '@/lib/pricing'
-import { clientPrices, maskPrices, newProposalToken, proposalUrl, suggestedBase, type ProposalQuestion } from '@/lib/proposals'
+import { stripPrices, maskPrices, newProposalToken, proposalUrl, suggestedBase, type ProposalQuestion } from '@/lib/proposals'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -129,7 +129,7 @@ async function answerQuestion(body: any) {
   const i = Number(body.question_index)
   if (!qs[i]) return NextResponse.json({ error: 'Pregunta no encontrada' }, { status: 404 })
 
-  // Se guarda con sus precios; al cliente se le enseñan con la Garantía (clientPrices)
+  // El cliente solo ve el precio de la propuesta: las cifras del texto se quitan (stripPrices)
   qs[i] = { ...qs[i], a: maskContacts(answer), answered_at: new Date().toISOString(), by: 'proveedor' }
   await supabase.from('date_holds').update({ questions: qs }).eq('id', hold.id)
 
@@ -137,7 +137,7 @@ async function answerQuestion(body: any) {
   await sendEmail({
     to: hold.client_email,
     subject: `${prov?.name || 'Tu proveedor'} ha contestado tu pregunta · FiestaGo`,
-    text: `Hola ${hold.client_name},\n\nPreguntaste: "${qs[i].q}"\n\n${prov?.name || 'El proveedor'} responde: "${clientPrices(qs[i].a!)}"\n\nLa respuesta queda por escrito en tu propuesta${hold.proposal_token ? `: ${proposalUrl(hold.proposal_token)}` : ''}\n\nFiestaGo`,
+    text: `Hola ${hold.client_name},\n\nPreguntaste: "${qs[i].q}"\n\n${prov?.name || 'El proveedor'} responde: "${stripPrices(qs[i].a!)}"\n\nLa respuesta queda por escrito en tu propuesta${hold.proposal_token ? `: ${proposalUrl(hold.proposal_token)}` : ''}\n\nFiestaGo`,
   }).catch(() => {})
   return NextResponse.json({ ok: true })
 }

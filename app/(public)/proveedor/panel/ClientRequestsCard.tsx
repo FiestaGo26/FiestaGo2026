@@ -160,7 +160,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                   </label>
                   <label className="text-xs font-semibold text-ink">Qué NO incluye
                     <textarea rows={2} value={d.noIncluye} onChange={e => setDraft(r, { noIncluye: e.target.value })}
-                      placeholder="Ej.: el local, la bebida, horas extra (a X € la hora)… o «nada más»"
+                      placeholder="Ej.: el local, la bebida, horas extra… o «nada más» (sin precios)"
                       className="mt-1 w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-ink outline-none focus:border-coral resize-none"/>
                   </label>
                   <label className="text-xs font-semibold text-ink">Qué necesitas del local o del cliente
@@ -179,7 +179,7 @@ export default function ClientRequestsCard({ providerId, apiFetch }: {
                       Confirmo que tengo libre el {fmtDate(r.event_date)}
                     </label>
                   )}
-                  <p className="text-[11px] text-ink/50">Escribe tus precios (los de los extras también) tal cual los cobras: al cliente se los enseñamos ya con la Garantía incluida, igual que el total. La garantía, los pagos y las cancelaciones se los explica FiestaGo.</p>
+                  <p className="text-[11px] text-ink/50">No escribas precios en los textos: el cliente ve un solo precio, el total de tu servicio (IVA y Garantía de Éxito incluidos). Los extras van en tu servicio como precio por persona u hora de más; el desglose solo sale en la factura. La Garantía de Éxito, los pagos y las cancelaciones son de FiestaGo y se los explicamos nosotros (tus compromisos con FiestaGo ya los recogen).</p>
                   <label className="text-xs font-semibold text-ink">Señal al reservar: {d.deposit} %
                     <input type="range" min={DEPOSIT_MIN} max={DEPOSIT_MAX} step={1} value={d.deposit}
                       onChange={e => setDraft(r, { deposit: Number(e.target.value) })} className="mt-1 w-full accent-coral"/>
