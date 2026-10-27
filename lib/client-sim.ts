@@ -275,7 +275,7 @@ async function withThreeReviews(provs: RealProvider[]): Promise<RealProvider[]> 
     const r = await askJson<{ resenas: Array<{ text: string; stars: number }> }>(AGENT_MODEL,
       'Escribes reseñas verosímiles y variadas de clientes españoles para una simulación interna de mercado (no se publican): concretas, con algún matiz, como las de Google. Nota entre 4 y 5.',
       `Negocio: ${x.name} (${x.category}, ${x.city}). ${x.description ? x.description.slice(0, 300) : ''}\nEscribe ${3 - real.length} reseña(s) de 2-3 frases de clientes de eventos distintos.`,
-      obj({ resenas: { type: 'array', items: obj({ text: str, stars: { type: 'integer' } }) } }), 800).catch(() => ({ resenas: [] }))
+      obj({ resenas: { type: 'array', items: obj({ text: str, stars: { type: 'integer' } }) } }), 1500).catch(() => ({ resenas: [] }))
     const all = [...real, ...r.resenas.map(v => ({ text: v.text, stars: Math.max(4, Math.min(5, v.stars)) }))].slice(0, 3)
     return { ...x, google_reviews: all, google_rating: x.google_rating || 4.7, google_rating_count: Math.max(x.google_rating_count || 0, all.length) }
   }))
@@ -286,7 +286,7 @@ async function chooseCategory(p: Persona, cats: string[]): Promise<{ categoria: 
   const labels = cats.map(id => `${id} (${(CATEGORIES as readonly any[]).find(c => c.id === id)?.label || id})`).join(', ')
   return askJson<{ categoria: string; que_le_pides: string }>(AGENT_MODEL, AGENT_SYSTEM, personaCard(p) + '\n\n' +
     `En FiestaGo hay proveedores de: ${labels}. Para tu evento, ¿a qué tipo de proveedor de estos le pedirías presupuesto primero (el que más necesitas)? Di también qué le pides exactamente, en una frase.`,
-    obj({ categoria: { type: 'string', enum: cats }, que_le_pides: str }), 400)
+    obj({ categoria: { type: 'string', enum: cats }, que_le_pides: str }), 1000)
 }
 
 function pickProvider(provs: RealProvider[], p: Persona, category?: string): RealProvider | null {
@@ -332,7 +332,7 @@ async function generateQuote(p: Persona, prov: RealProvider, ask?: string): Prom
     (prov.hypothetical ? 'Tu ficha está completa: llevas años en esto, has hecho decenas de eventos como este, tienes galerías completas de varios que el cliente ve en la propuesta, seguro de responsabilidad civil en vigor y verificado por FiestaGo, y sabes resolver los imprevistos habituales de tu servicio.\n' : '') +
     `\nPetición del cliente: ${ask ? `${ask}. ` : ''}Evento: ${p.evento}. Fecha: ${p.fecha}. Zona: ${p.ciudad}. Lo que cuenta: ${p.situacion.slice(0, 300)}\n\n` +
     'Solo presupuestas TU servicio (no el local, la comida ni nada de otros proveedores). Rellena tu propuesta como en el panel de FiestaGo, con todos los precios con IVA incluido: cómo cobras (por personas —fotógrafo, catering, local…—, por horas —DJ, animación…— o precio cerrado —una tarta—), tu precio base, cuántas personas u horas incluye, cuánto cobras por persona u hora de más, cuántos invitados y cuántas horas has entendido que pide el cliente, qué incluye exactamente, qué NO incluye (con el precio de los extras si los hay), tu plan B si llueve o hay un imprevisto (obligatorio si tu servicio es de foto, catering, espacios, música, flores, animación o planner; si no, "No aplica"), qué necesitas del local o del cliente (corriente, cocina, espacio… o "nada"), si tienes libre su fecha (casi siempre sí; di que no solo si es muy realista) y un mensaje corto al cliente sin teléfonos, emails ni precios. La garantía, los pagos y las cancelaciones los explica FiestaGo: no hables de eso. Trabajas a través de FiestaGo y firmaste sus compromisos: la Garantía de Éxito la da FiestaGo (si cancelas, ayudas a buscar sustituto o pagas una penalización); si te preguntan por garantía, pagos o cancelaciones, di que lo gestiona FiestaGo y está en el documento de reserva. Nunca escribas precios ni cifras de euros en tus textos: el cliente ve un único precio y los extras van en tu tarifa por persona u hora de más.',
-    schema, 1500)
+    schema, 3500)
 }
 
 /** El proveedor contesta por escrito, con honestidad (puede decir que no). */
@@ -342,7 +342,7 @@ async function answerQuestions(prov: RealProvider, q: ProviderQuote, questions: 
   const routed = await askJson<{ items: Array<{ para: 'fiestago' | 'proveedor'; respuesta_fiestago: string }> }>(AGENT_MODEL,
     `Atiendes por FiestaGo las preguntas de un cliente sobre su propuesta. Para cada pregunta: "fiestago" si es de garantía, pagos, señal, devoluciones, cancelaciones, facturas, IVA, seguridad del dinero o quién es FiestaGo; si no, "proveedor". Si es "fiestago", contesta en "respuesta_fiestago" (1-4 frases, cifras exactas de estas condiciones); si no, déjalo vacío.\n\n${FIESTAGO_TERMS}\n\nPropuesta: ${proposal.slice(0, 1500)}`,
     questions.map((x, i) => `${i + 1}. ${x}`).join('\n'),
-    obj({ items: { type: 'array', items: obj({ para: { type: 'string', enum: ['fiestago', 'proveedor'] }, respuesta_fiestago: str }) } }), 2000).catch(() => ({ items: [] }))
+    obj({ items: { type: 'array', items: obj({ para: { type: 'string', enum: ['fiestago', 'proveedor'] }, respuesta_fiestago: str }) } }), 3000).catch(() => ({ items: [] }))
   const forProvider = questions.filter((_, i) => routed.items[i]?.para !== 'fiestago' || !routed.items[i]?.respuesta_fiestago)
   const provAnswers = forProvider.length ? await answerAsProvider(prov, q, forProvider) : []
   return questions.map((x, i) => routed.items[i]?.para === 'fiestago' && routed.items[i]?.respuesta_fiestago
@@ -356,7 +356,7 @@ async function answerAsProvider(prov: RealProvider, q: ProviderQuote, questions:
     `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}). Tu propuesta: incluye ${q.incluye}; no incluye ${q.no_incluye}; plan B: ${q.plan_b}.\n` +
     (prov.hypothetical ? 'Llevas años en esto y has hecho decenas de eventos como este; tienes galerías completas que ya se ven en la propuesta y seguro de responsabilidad civil verificado por FiestaGo. Sigues siendo honesto con lo que no haces.\n' : '') +
     `\nPreguntas del cliente:\n${questions.map((x, i) => `${i + 1}. ${x}`).join('\n')}\n\nContesta cada una en 1-3 frases, en el mismo orden.`,
-    obj({ respuestas: { type: 'array', items: str } }), 1500)
+    obj({ respuestas: { type: 'array', items: str } }), 3000)
   return questions.map((x, i) => ({ q: x, a: res.respuestas[i] || 'Lo vemos y te contesto en breve.' }))
 }
 
@@ -365,7 +365,7 @@ async function videoCall(p: Persona, prov: RealProvider, q: ProviderQuote): Prom
   const r = await askJson<{ resumen: string }>(AGENT_MODEL,
     'Eres un narrador neutral. Describes en 3-5 frases, en segunda persona y en español de España, cómo fue una videollamada de 10 minutos entre un cliente y un proveedor de eventos, con realismo: lo que el proveedor enseñó y explicó, cómo le cayó al cliente y lo que quedó sin resolver si algo quedó. Sin exagerar en ningún sentido.',
     personaCard(p) + `\n\nProveedor: ${prov.name} (${prov.category}, ${prov.city}), ${prov.photos} fotos de trabajos${prov.hypothetical ? ', experiencia de años y galerías completas' : ''}. Su propuesta: ${stripPrices(q.incluye)}; no incluye: ${stripPrices(q.no_incluye)}.`,
-    obj({ resumen: str }), 600).catch(() => ({ resumen: '' }))
+    obj({ resumen: str }), 1500).catch(() => ({ resumen: '' }))
   return r.resumen
 }
 
@@ -651,7 +651,7 @@ async function journeyStep(p: Persona, context: string, ask: string, final = fal
     videollamada: { type: 'boolean', description: 'si pedirías (o vuelves a pedir) videollamada con el proveedor' },
   })
   return askJson<{ decision: string; motivo: string; preguntas: string[]; videollamada: boolean }>(AGENT_MODEL, AGENT_SYSTEM,
-    personaCard(p) + '\n\n' + context + '\n\n' + ask, schema, 1500)
+    personaCard(p) + '\n\n' + context + '\n\n' + ask, schema, 3500)
 }
 
 /** El proveedor cierra por escrito los detalles pendientes (honesto). */
@@ -659,7 +659,7 @@ async function finalDetails(p: Persona, prov: RealProvider, q: ProviderQuote, pe
   const r = await askJson<{ detalles: string }>(AGENT_MODEL,
     'Eres un proveedor de eventos español cerrando por escrito los detalles finales de una propuesta antes de que el cliente reserve: concretas lo que te piden (menú, boceto o diseño, horario de llegada y fin, cuántas personas de tu equipo, qué necesitas del local, cómo resuelves lo que te preocupa). Eres honesto: si algo no lo haces, lo dices y das la alternativa real.  Trabajas a través de FiestaGo y firmaste sus compromisos: la Garantía de Éxito la da FiestaGo (si cancelas, ayudas a buscar sustituto o pagas una penalización); si te preguntan por garantía, pagos o cancelaciones, di que lo gestiona FiestaGo y está en el documento de reserva. Nunca escribas precios ni cifras de euros en tus textos: el cliente ve un único precio y los extras van en tu tarifa por persona u hora de más. Sin teléfonos ni emails. 5-10 frases.',
     `Tu negocio: ${prov.name} (${prov.category}, ${prov.city}).${prov.hypothetical ? ' Llevas años y has hecho decenas de eventos como este.' : ''} Tu propuesta: incluye ${q.incluye}; no incluye ${q.no_incluye}; plan B: ${q.plan_b}; necesitas del local: ${q.requisitos}.\nEvento del cliente: ${p.evento}, ${p.fecha}, ${p.ciudad}.\nLo que te pide cerrar por escrito:\n${pending.map(x => `- ${x}`).join('\n') || '- el detalle final de lo que incluye y el horario'}`,
-    obj({ detalles: str }), 1500).catch(() => ({ detalles: '' }))
+    obj({ detalles: str }), 3000).catch(() => ({ detalles: '' }))
   return stripPrices(r.detalles) || `Te confirmo por escrito: ${q.incluye}. No incluye: ${q.no_incluye}. Plan B: ${q.plan_b}. Necesito del local: ${q.requisitos}.`
 }
 
