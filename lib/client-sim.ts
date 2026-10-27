@@ -24,6 +24,7 @@ import { FIESTAGO_TERMS } from '@/lib/proposal-questions'
 import Anthropic from '@anthropic-ai/sdk'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/constants'
+import { VENUE_TYPES, type VenueType } from '@/lib/venue'
 
 const PERSONA_MODEL = process.env.SIM_PERSONA_MODEL || 'claude-sonnet-5-5'
 const AGENT_MODEL   = process.env.SIM_AGENT_MODEL   || 'claude-haiku-5-5'
@@ -56,6 +57,8 @@ export type SimConfig = {
   hypothetical_complete?: boolean
   /** Recorrido completo: ficha → propuesta → 48 h → detalles finales (simulación 12) */
   journey?: boolean
+  /** Simulación 14: cada persona monta su celebración completa en FiestaGo (local con su tipo + servicios) y ve el total */
+  celebration?: boolean
 }
 
 export const ACTIONS = ['ignorar', 'ver_perfil', 'entrar_web', 'hacer_quiz', 'apuntarse', 'reservar'] as const
@@ -246,7 +249,54 @@ const SEGMENT_CATEGORIES: Record<string, string[]> = {
   'Adulto cumple especial': ['musica', 'catering', 'pastel'],
 }
 
-type SimReference = { nombre: string; evento: string; fecha: string; comentario: string }
+// Simulación 14: lo que monta cada tipo de celebración en FiestaGo (local
+// incluido; peluquería y maquillaje en bodas, comuniones y despedidas)
+const CELEBRATION_NEEDS: Record<string, string[]> = {
+  'Pareja boda 2027': ['espacios', 'catering', 'foto', 'musica', 'flores', 'pastel', 'belleza'],
+  'Familia comunión': ['espacios', 'catering', 'pastel', 'foto', 'animacion', 'belleza'],
+  'Familia cumple infantil': ['espacios', 'animacion', 'pastel'],
+  'Adulto cumple o fiesta sorpresa': ['espacios', 'catering', 'musica', 'pastel'],
+  'Despedida de soltero/a': ['espacios', 'animacion', 'musica', 'belleza'],
+  'Fiesta de empresa': ['espacios', 'catering', 'musica', 'foto'],
+  'Escéptico': ['espacios', 'catering', 'musica', 'pastel'],
+}
+
+type CelebrationItem = { categoria: string; proveedor: string; que_incluye: string; precio_eur: number }
+type Celebration = { tipo_local: string; local_incluye_comida: boolean; items: CelebrationItem[]; total: number; texto: string }
+
+/** La persona monta su celebración en 4-5 clics: local (con su tipo) y el
+ *  resto de servicios, cada uno de un proveedor independiente, con el total. */
+async function buildCelebration(p: Persona, provs: RealProvider[], main: RealProvider, q: ProviderQuote): Promise<Celebration> {
+  const needs = (CELEBRATION_NEEDS[p.segment] || CELEBRATION_NEEDS['Escéptico']).filter(c => c !== main.category)
+  const offer = needs.map(c => {
+    const real = provs.filter(x => x.category === c && /valencia|paterna/i.test(x.city || '')).slice(0, 3)
+    return `- ${c}: ${real.length ? real.map(x => `${x.name}${x.services[0]?.price ? ` (${x.services.slice(0, 2).map(s => `${s.name}: ${s.price} €`).join('; ')})` : ''}`).join(' | ') : 'proveedores de FiestaGo de la zona (inventa un nombre verosímil)'}`
+  }).join('\n')
+  const r = await askJson<{ tipo_local: string; local_incluye_comida: boolean; items: CelebrationItem[] }>(AGENT_MODEL,
+    'Simulas, para un estudio interno, cómo un cliente monta su celebración en FiestaGo eligiendo un proveedor por servicio. Precios de mercado realistas de Valencia con IVA incluido para SU número de invitados y horas, ni rebajados ni inflados.',
+    `${personaCard(p)}\n\nYa ha elegido ${main.name} (${main.category}) por ${Math.round(quoteBase(q))} €.\nCompleta el resto de su celebración con un proveedor por servicio:\n${offer}\n\n` +
+    'El local dice en su ficha qué es: "solo_local", "local_con_catering", "restaurante" (salón y cocina), "hotel" (salón y cocina) o "finca". Elige el que pegaría con esta persona. Si es restaurante, hotel o local con catering, la comida va incluida en su precio por persona y NO añadas catering aparte. Para cada servicio: categoría, proveedor, qué incluye en una frase (horas del DJ o la animación, invitados, peluquería y maquillaje de quién…) y precio total para su caso.',
+    obj({
+      tipo_local: { type: 'string', enum: ['solo_local', 'local_con_catering', 'restaurante', 'hotel', 'finca'] },
+      local_incluye_comida: { type: 'boolean' },
+      items: { type: 'array', items: obj({ categoria: { type: 'string', enum: needs }, proveedor: str, que_incluye: str, precio_eur: { type: 'integer' } }) },
+    }), 2500)
+  const items = r.items.filter(it => it.precio_eur > 0 && !(r.local_incluye_comida && it.categoria === 'catering'))
+  const k = 1 + COMMISSION
+  const mainTotal = Math.round(quoteBase(q) * k)
+  const lines = [
+    `${main.category}: ${main.name} — el que estás mirando — ${mainTotal.toLocaleString('es-ES')} €`,
+    ...items.map(it => `${it.categoria}: ${it.proveedor}${it.categoria === 'espacios' ? ` (${VENUE_TYPES[r.tipo_local as VenueType] || r.tipo_local})` : ''} — ${it.que_incluye} — ${Math.round(it.precio_eur * k).toLocaleString('es-ES')} €`),
+  ]
+  const total = mainTotal + items.reduce((n, it) => n + Math.round(it.precio_eur * k), 0)
+  const guests = q.invitados || 0
+  const texto = 'Tu celebración en FiestaGo (la montaste en 5 clics: eliges el local —en su ficha pone si es solo local, local con catering, restaurante u hotel con salón y cocina, el aforo y qué incluye— y vas añadiendo música por horas, flores, foto, tarta, peluquería y maquillaje… cada uno con su precio final para tus invitados y horas):\n' +
+    lines.map(l => `- ${l}`).join('\n') +
+    `\nTotal de tu celebración: ${total.toLocaleString('es-ES')} €${guests ? ` (≈ ${Math.round(total / guests)} € por invitado)` : ''}, con IVA y Garantía de Éxito FiestaGo incluidos en cada servicio. Cada servicio es de un proveedor independiente con su propio documento de reserva y su señal del 10-20 %; puedes reservarlos todos a la vez o de uno en uno, y cambiar cualquiera por otro de la misma categoría viendo cómo cambia el total.`
+  return { tipo_local: r.tipo_local, local_incluye_comida: r.local_incluye_comida, items, total, texto }
+}
+
+type SimReference ={ nombre: string; evento: string; fecha: string; comentario: string }
 type RealProvider = {
   referencias?: SimReference[]
   id: string; name: string; category: string; city: string | null; description: string | null
@@ -599,6 +649,8 @@ export type RoundClose = {
   respuestas?: Array<{ q: string; a: string }>
   videollamada?: string
   journey?: Journey
+  /** Simulación 14: su celebración completa montada en FiestaGo */
+  celebracion?: { tipo_local: string; total: number; servicios: number }
   /** Quien bloqueó la fecha vuelve a decidir 48 h después */
   segunda?: { decision: 'reservar' | 'descartar_definitivamente'; efecto_seguimiento: 'me_acerca' | 'neutro' | 'me_aleja'; que_dijo_quien_decide_conmigo: string; motivo: string; motivo_exacto_descarte: string; que_faltaria_para_reservar: string }
 }
@@ -696,28 +748,29 @@ async function finalDetails(p: Persona, prov: RealProvider, q: ProviderQuote, pe
   return stripPrices(r.detalles) || `Te confirmo por escrito: ${q.incluye}. No incluye: ${q.no_incluye}. Plan B: ${q.plan_b}. Necesito del local: ${q.requisitos}.`
 }
 
-async function runJourney(cfg: SimConfig, p: Persona, r2: Round2, prov: RealProvider, q: ProviderQuote, proposal: string): Promise<RoundClose> {
+async function runJourney(cfg: SimConfig, p: Persona, r2: Round2, prov: RealProvider, q: ProviderQuote, proposal: string, cel?: Celebration): Promise<RoundClose> {
   const call = cfg.closing!.touchpoints.find(t => t.id === 'llamada_fiestago')?.text || ''
   const follow = cfg.closing!.touchpoints.find(t => t.id === 'seguimiento_ayuda')?.text || ''
   const j: Journey = { pasos: [], reserva_en: null, motivo_final: '' }
   const pending: string[] = []
   let story = `Hace unos días viste FiestaGo por primera vez y decidiste: ${r2.accion_final} ("${r2.motivo}"). Entraste en la web y elegiste un proveedor para UNO de los servicios de tu celebración (el resto lo contratas aparte).`
+  if (cel) story = `Hace unos días viste FiestaGo por primera vez y decidiste: ${r2.accion_final} ("${r2.motivo}"). Entraste en la web y montaste ahí tu celebración completa.\n\n${cel.texto}\n\nAhora estás decidiendo el primero: ${prov.name}. Reservar es pagar su señal (y, si quieres, la del resto de tu celebración a la vez).`
   const end = (fase: Journey['reserva_en'], motivo: string) => { j.reserva_en = fase; j.motivo_final = motivo }
 
   // 1) Ficha
   const s1 = await journeyStep(p, `${story}\n\n${fichaText(p, prov, q)}`,
     'Estás en su ficha. ¿Qué haces de verdad? "reservar" (pagas ya la señal), "tengo_dudas" o "seguir_hablando_con_el_proveedor" (pides que te cuente más detalles por escrito y/o una videollamada; di cuáles) o "descartar".')
   j.pasos.push({ fase: 'ficha', decision: s1.decision, motivo: s1.motivo, preguntas: s1.preguntas, videollamada: s1.videollamada, referencia: s1.hablar_con_referencia } as any)
-  if (s1.decision === 'reservar') { end('ficha', s1.motivo); return asClose(j, prov, q) }
-  if (s1.decision === 'descartar') { j.motivo_final = s1.motivo; return asClose(j, prov, q) }
+  if (s1.decision === 'reservar') { end('ficha', s1.motivo); return asClose(j, prov, q, cel) }
+  if (s1.decision === 'descartar') { j.motivo_final = s1.motivo; return asClose(j, prov, q, cel) }
   pending.push(...(s1.preguntas || []))
 
   // 2) Propuesta escrita + llamada de FiestaGo
   story += `\n\nEn su ficha pediste que te contara más${s1.videollamada ? ' y una videollamada' : ''}. Desde entonces:\n[propuesta] ${proposal}\n[llamada_fiestago] ${call}`
   const s2 = await journeyStep(p, story, 'Con su propuesta escrita delante y tras la llamada, ¿qué haces? "reservar", "tengo_dudas", "seguir_hablando_con_el_proveedor" (di qué detalles le pides por escrito, si quieres videollamada y si quieres hablar con alguna de sus referencias de clientes) o "descartar". Puedes bloquear la fecha 48 h gratis mientras tanto.')
   j.pasos.push({ fase: 'propuesta', decision: s2.decision, motivo: s2.motivo, preguntas: s2.preguntas, videollamada: s2.videollamada, referencia: s2.hablar_con_referencia } as any)
-  if (s2.decision === 'reservar') { end('propuesta', s2.motivo); return asClose(j, prov, q) }
-  if (s2.decision === 'descartar') { j.motivo_final = s2.motivo; return asClose(j, prov, q) }
+  if (s2.decision === 'reservar') { end('propuesta', s2.motivo); return asClose(j, prov, q, cel) }
+  if (s2.decision === 'descartar') { j.motivo_final = s2.motivo; return asClose(j, prov, q, cel) }
   pending.push(...(s2.preguntas || []))
 
   // 3) A las 48 h: respuestas por escrito, videollamada y llamada de seguimiento
@@ -727,8 +780,8 @@ async function runJourney(cfg: SimConfig, p: Persona, r2: Round2, prov: RealProv
   story += `\n\nHan pasado 48 h (tienes la fecha bloqueada). ${answers.length ? `Respuestas por escrito en tu propuesta:\n${answers.map(x => `- Tú: ${x.q}\n  Respuesta: ${x.a}`).join('\n')}\n` : ''}${video ? `Hiciste la videollamada: ${video}\n` : ''}${refTalk ? `FiestaGo te puso en contacto con una cliente/un cliente anterior: ${refTalk}\n` : ''}[seguimiento] ${follow}\nSi lo decides con alguien, ya se lo has enseñado; imagina con realismo qué te ha dicho.`
   const s3 = await journeyStep(p, story, 'El bloqueo de 48 h termina. ¿Qué haces? "reservar" (pagas la señal, con 7 días de Reserva sin riesgo), "tengo_dudas" o "seguir_hablando_con_el_proveedor" (di qué detalles finales necesitas por escrito para decidir) o "descartar".')
   j.pasos.push({ fase: 'a_48h', decision: s3.decision, motivo: s3.motivo, preguntas: s3.preguntas })
-  if (s3.decision === 'reservar') { end('a_48h', s3.motivo); return asClose(j, prov, q) }
-  if (s3.decision === 'descartar') { j.motivo_final = s3.motivo; return asClose(j, prov, q) }
+  if (s3.decision === 'reservar') { end('a_48h', s3.motivo); return asClose(j, prov, q, cel) }
+  if (s3.decision === 'descartar') { j.motivo_final = s3.motivo; return asClose(j, prov, q, cel) }
 
   // 4) Detalles finales cerrados por escrito → decisión definitiva
   const details = await finalDetails(p, prov, q, [...(s3.preguntas || []), ...pending].slice(0, 6))
@@ -737,16 +790,17 @@ async function runJourney(cfg: SimConfig, p: Persona, r2: Round2, prov: RealProv
   j.pasos.push({ fase: 'detalles_finales', decision: s4.decision, motivo: s4.motivo })
   if (s4.decision === 'reservar') end('detalles_finales', s4.motivo)
   else j.motivo_final = s4.motivo
-  return asClose(j, prov, q)
+  return asClose(j, prov, q, cel)
 }
 
 /** Encaja el recorrido en RoundClose para reutilizar agregados y muestras. */
-function asClose(j: Journey, prov: RealProvider, q: ProviderQuote): RoundClose {
+function asClose(j: Journey, prov: RealProvider, q: ProviderQuote, cel?: Celebration): RoundClose {
   const last = j.pasos[j.pasos.length - 1]
   return {
     puntos: [], decision: j.reserva_en ? 'reservar' : last.decision === 'descartar' || last.decision === 'no_reservar' ? 'descartar' : 'seguir_comparando',
     senal_aceptable: true, motivo: j.motivo_final || last.motivo, que_faltaria_para_reservar: j.reserva_en ? '' : j.motivo_final,
     proveedor: `${prov.name} (${prov.category})`, propuesta: q, journey: j,
+    ...(cel ? { celebracion: { tipo_local: cel.tipo_local, total: cel.total, servicios: cel.items.length + 1 } } : {}),
   }
 }
 
@@ -765,6 +819,12 @@ function journeyStats(rs: RoundClose[], total: number) {
     con_detalles_cerrados_reservan_pct: pct(at('detalles_finales'), reached('detalles_finales')),   // la pregunta clave
     reservan_total_pct: pct(booked, n),                                                            // OBJETIVO ≥ 50 %
     reservan_sobre_personas_pct: pct(booked, total),
+    ...(rs.some(r => r.celebracion) ? { celebracion: {
+      total_medio_eur: avg(rs.filter(r => r.celebracion).map(r => r.celebracion!.total)),
+      servicios_medios: avg(rs.filter(r => r.celebracion).map(r => r.celebracion!.servicios)),
+      reservan_por_tipo_local_pct: Object.fromEntries(Array.from(new Set(rs.map(r => r.celebracion?.tipo_local).filter(Boolean) as string[]))
+        .map(t => { const g = rs.filter(r => r.celebracion?.tipo_local === t); return [t, `${pct(g.filter(r => r.journey?.reserva_en).length, g.length)} % de ${g.length}`] })),
+    } } : {}),
     piden_videollamada_pct: pct(js.filter(j => j.pasos.some(x => x.videollamada)).length, n),
     piden_hablar_con_referencia_pct: pct(js.filter(j => j.pasos.some(x => (x as any).referencia)).length, n),
     motivos_no_reservar_con_detalles: js.filter(j => j.pasos.some(x => x.fase === 'detalles_finales') && !j.reserva_en).map(j => j.motivo_final).slice(0, 60),
@@ -943,6 +1003,7 @@ async function writeReport(cfg: SimConfig, agg: unknown, quotes: unknown, interv
     messages: [{
       role: 'user',
       content: `Informe de una simulación de ${cfg.personas} clientes potenciales.\n\n` +
+        (cfg.celebration ? 'SIMULACIÓN 14 · CELEBRACIÓN COMPLETA: cada persona monta su celebración entera dentro de FiestaGo en 4-5 clics (el local dice si es solo local, local con catering, restaurante u hotel con salón y cocina; luego música por horas, flores, foto, tarta, peluquería y maquillaje…) y ve el total antes de decidir el primer servicio (datos en embudo.recorrido.celebracion). Compara con la 13.ª (30,9 %), donde los motivos principales eran la dependencia del local y no saber el coste total. ' : '') +
         (cfg.journey ? 'Desde la 13.ª: extras con su precio final (los marcan al reservar), un solo nombre «Garantía de Éxito FiestaGo» y referencias de clientes con las que pueden hablar (piden_hablar_con_referencia_pct). ' + 'Todas las personas tienen una celebración en mente (bodas, comuniones, cumpleaños, fiestas sorpresa, despedidas, fiestas de empresa) y todas entran en la web y eligen un proveedor; cada proveedor enseña 3 reseñas en su perfil (hipotéticas si no tiene bastantes reales); precio único con IVA y garantía; documento de reserva FiestaGo. ' + 'SIMULACIÓN 12 · RECORRIDO COMPLETO: desde que nos ven por primera vez hasta la decisión con todos los detalles cerrados (ficha → propuesta + llamada → 48 h con respuestas, videollamada y llamada de seguimiento → detalles finales por escrito). Datos en embudo.recorrido: cuántos llegan a cada fase, qué deciden en cada una, dónde reservan, con_detalles_cerrados_reservan_pct (la pregunta clave: con todo cerrado, ¿reservan?) y reservan_total_pct frente al 50 %. Abre con ese embudo por segmento y dedica una sección a por qué no reservan quienes tenían ya todos los detalles (motivos_no_reservar_con_detalles), separando lo que depende de FiestaGo, de los proveedores o de la situación de cada cliente.\n\n' : '') +
         (cfg.hypothetical_complete ? 'SIMULACIÓN DE CONTROL (hipotética): los proveedores reales con la ficha completa (galería de trabajos parecidos, seguro de RC verificado, opiniones de Google). Sirve para saber si, con buena oferta, el proceso llega al 50 %; compárala con la anterior (proveedores tal como están) y separa lo que depende de los proveedores de lo que depende de FiestaGo.\n\n' : '') +
         (cfg.catalog === 'full_proposal' ? 'Desde la 11.ª: Reserva sin riesgo de 7 días, videollamada con el proveedor antes de pagar, detalle final por escrito, "Tu celebración" con el total del evento y lo que debe tener el local, y una sola cifra en todos los precios (en "embudo" verás piden_videollamada_pct). Desde la 9.ª: cada servicio es un proveedor independiente (la propuesta es solo de su servicio), precios con IVA incluido por personas, por horas o cerrados con precio por persona, qué no incluye, plan B, fecha confirmada, fotos de sus trabajos; las preguntas de garantía, pagos y cancelaciones las contesta FiestaGo y el seguimiento es una llamada de Mariano. ' + 'SIMULACIÓN DEL EMBUDO COMPLETO CON PROPUESTA ESCRITA (lo construido tras la 6.ª simulación, que dio 0 % de reservas en el cierre): cada persona que llega al cierre recibe una propuesta escrita de un proveedor REAL de FiestaGo con precio cerrado para su número de invitados, qué incluye y qué no, la señal en euros, las condiciones y sus opiniones de Google reales; luego la llamada de FiestaGo. Quien bloquea la fecha vuelve a decidir 48 h después, tras hablarlo en casa y recibir un seguimiento de ayuda; en esa segunda decisión solo puede reservar o descartarlo definitivamente diciendo el motivo exacto (motivo_exacto_descarte en la muestra): agrupa esos motivos y cuantifícalos, son la lista de lo que hay que arreglar. En "embudo": cierre_reservan_pct (en el primer momento), tras_bloqueo y cierre_final_reservan_pct (OBJETIVO ≥ 50 %). Abre el informe con el embudo completo en total y por segmento frente al 50 % y frente a la 6.ª simulación (en "previous"). Analiza qué pesa en la propuesta (precio frente a presupuesto, opiniones de Google, proveedores con o sin opiniones, qué incluye), qué dice quien decide con el cliente, y termina con "Qué falta para llegar al 50 %": palancas concretas ordenadas por impacto.\n\n' : '') +
@@ -1047,8 +1108,10 @@ export async function runClientSim(supabase: SupabaseClient, runId: string) {
       const prov = pickProvider(provs, p, choice?.categoria)
       if (!prov) return runClose(cfg!, p, r2[i]!)
       const q = await generateQuote(p, prov, choice?.que_le_pides)
-      const text = proposalText(p, prov, q)
-      if (cfg!.journey) return runJourney(cfg!, p, r2[i]!, prov, q, text)
+      let text = proposalText(p, prov, q)
+      const cel = cfg!.celebration ? await buildCelebration(p, provs, prov, q).catch(() => undefined) : undefined
+      if (cel) text = text.replace('es solo de este servicio, el resto lo contratas aparte', 'es de este servicio; el resto de tu celebración está en "Tu celebración", con el total')
+      if (cfg!.journey) return runJourney(cfg!, p, r2[i]!, prov, q, text, cel)
       const tps = cfg!.closing!.touchpoints.filter(t => t.id !== 'seguimiento_ayuda')
         .map(t => t.id === 'propuesta_escrita' ? { ...t, text } : t)
       const first = await runClose(cfg!, p, r2[i]!, tps)

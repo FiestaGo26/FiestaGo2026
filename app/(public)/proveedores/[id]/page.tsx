@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { getPhoto, CATEGORIES, calcCommission, CANCELLATION_POLICIES } from '@/lib/constants'
 import { uniqueReviews } from '@/lib/google-reviews'
+import { venueSummary } from '@/lib/venue'
 import { precioCliente, formatEuro, textoGarantiaIncluida, importeFee, priceFor, hasGuestPricing, hasHourPricing, perPerson, cleanDeposit } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase'
 import toast from 'react-hot-toast'
@@ -25,6 +26,8 @@ type Provider = {
   google_rating?: number | null
   google_rating_count?: number | null
   google_reviews?: Array<{ text: string; stars: number; date: string | null }> | null
+  venue_type?: string | null
+  venue_features?: Record<string, any> | null
   client_references?: Array<{ id: string; nombre: string; evento: string; fecha: string; ciudad: string; comentario: string }>
   total_bookings: number
   featured: boolean
@@ -764,6 +767,14 @@ export default function ProviderDetailPage() {
                     </button>
                   </div>
                 )}
+              </section>
+            )}
+
+            {/* Qué es el local y qué incluye (lib/venue.ts) */}
+            {venueSummary(provider.venue_type, provider.venue_features) && (
+              <section className="pb-2">
+                <h2 className="font-serif text-2xl text-ink mb-1">El local</h2>
+                <p className="text-sm text-ink/75">{venueSummary(provider.venue_type, provider.venue_features)}</p>
               </section>
             )}
 

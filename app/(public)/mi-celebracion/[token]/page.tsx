@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: 'Tu celebración · FiestaGo', robots
 
 const NEEDS: Array<[RegExp, string[]]> = [
   [/boda/i, ['espacios', 'catering', 'foto', 'musica', 'flores', 'belleza', 'pastel']],
-  [/comuni/i, ['espacios', 'catering', 'pastel', 'foto', 'animacion']],
+  [/comuni/i, ['espacios', 'catering', 'pastel', 'foto', 'animacion', 'belleza']],
   [/infantil|niñ|cumple.*(hij|peque)/i, ['espacios', 'animacion', 'pastel']],
   [/cumple|aniversario|fiesta/i, ['espacios', 'catering', 'musica', 'pastel']],
 ]

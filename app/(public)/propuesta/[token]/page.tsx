@@ -91,7 +91,7 @@ export default async function ProposalPage({ params }: { params: { token: string
             </>
           )}
           {p.reply && <p className="text-sm text-ink/70 italic mt-4 border-l-2 border-coral/40 pl-3">“{p.reply}” — {p.provider.name}</p>}
-          <p className="text-xs text-ink/50 mt-4">Este documento es solo de {p.provider.name}. El resto de tu celebración lo contratas aparte, en FiestaGo o donde quieras.</p>
+          <p className="text-xs text-ink/50 mt-4 print:hidden">¿Te falta el local, la música, las flores o la tarta? Añádelo en FiestaGo y mira el total de tu celebración en <Link href={`/mi-celebracion/${p.token}`} className="underline">Tu celebración</Link>.</p>
         </div>
 
         {/* 2. Detalles acordados por escrito */}

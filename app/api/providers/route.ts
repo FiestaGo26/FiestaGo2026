@@ -42,7 +42,7 @@ const PUBLIC_PROVIDER_FIELDS = `
   price_base, price_unit, years_active, specialties, tag,
   rating, total_reviews, total_bookings, featured, verified,
   photo_url, photo_idx, offers_video_call, created_at,
-  google_rating, google_rating_count, google_reviews
+  google_rating, google_rating_count, google_reviews, venue_type, venue_features
 `
 
 // GET /api/providers — list approved providers

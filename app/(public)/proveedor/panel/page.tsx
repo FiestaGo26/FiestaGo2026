@@ -14,6 +14,7 @@ import WelcomeModal from './WelcomeModal'
 import ClientRequestsCard from './ClientRequestsCard'
 import ProfileChecklist from './ProfileChecklist'
 import ReferencesCard from './ReferencesCard'
+import VenueCard from './VenueCard'
 
 type ServiceMedia = {
   id: string
@@ -1601,6 +1602,7 @@ function ProveedorPanelInner() {
         )}
 
         {/* SERVICES */}
+        {provider && tab === 'services' && <VenueCard providerId={provider.id} apiFetch={apiFetch} />}
         {provider && tab === 'services' && <ReferencesCard providerId={provider.id} apiFetch={apiFetch} />}
         {tab==='services' && (
           <div className="max-w-2xl">
