@@ -690,7 +690,7 @@ export default function ProviderDetailPage() {
                                   <div className="text-[11px] text-ink/60">+{formatEuro(precioCliente(Number(svc.extra_hour_price)))} por hora de más</div>
                                 )}
                                 <div className="text-[10px] text-ink/45">IVA incluido</div>
-                                <div className="text-[10px] text-ink/45">🛡 Garantía de Éxito incluida</div>
+                                <div className="text-[10px] text-ink/45">🛡 Garantía de Éxito FiestaGo incluida</div>
                               </>
                             ) : (
                               <span className="text-ink/45">A consultar</span>
@@ -816,7 +816,7 @@ export default function ProviderDetailPage() {
                 </div>
               )}
 
-              {/* Price (cliente ve base + 8% Garantía de Éxito) */}
+              {/* Price (cliente ve base + 8% Garantía de Éxito FiestaGo) */}
               <div className="mb-5">
                 {selectedSvc ? (
                   selectedSvc.price != null ? (
@@ -985,7 +985,7 @@ export default function ProviderDetailPage() {
                 </details>
               )}
 
-              {/* Desglose del precio (cliente paga base + 8% Garantía de Éxito) */}
+              {/* Desglose del precio (cliente paga base + 8% Garantía de Éxito FiestaGo) */}
               {services.length > 0 && !selectedSvc ? (
                 <button type="button"
                   onClick={() => document.getElementById('services-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -1000,7 +1000,7 @@ export default function ProviderDetailPage() {
                   <div className="text-[10px] font-bold tracking-widest uppercase text-ink/45 mb-1">Total a pagar</div>
                   <div className="font-serif text-3xl font-black text-coral leading-none mb-2">{formatEuro(commission.clientPays)}</div>
                   <div className="text-[11px] text-ink/55" title="Si la reserva falla, FiestaGo te devuelve el dinero (110% si no encontramos sustituto)">
-                    🛡 Garantía de Éxito incluida
+                    🛡 Garantía de Éxito FiestaGo incluida
                   </div>
                 </div>
               )}
@@ -1217,7 +1217,7 @@ export default function ProviderDetailPage() {
                       className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                     {guestPriced && form.guests && (
                       <div className="text-[11px] text-ink/60 mt-1">
-                        Precio final para {form.guests} invitados: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (IVA y Garantía de Éxito incluidos)
+                        Precio final para {form.guests} invitados: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (IVA y Garantía de Éxito FiestaGo incluidos)
                       </div>
                     )}
                   </div>
@@ -1229,7 +1229,7 @@ export default function ProviderDetailPage() {
                         className="w-full border border-stone-200 rounded-xl px-3 py-2.5 text-sm text-ink outline-none focus:border-coral transition-colors"/>
                       {form.hours && (
                         <div className="text-[11px] text-ink/60 mt-1">
-                          Precio final para {form.hours} h: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (IVA y Garantía de Éxito incluidos)
+                          Precio final para {form.hours} h: <strong className="text-ink">{formatEuro(precioCliente(effectivePrice))}</strong> (IVA y Garantía de Éxito FiestaGo incluidos)
                         </div>
                       )}
                     </div>

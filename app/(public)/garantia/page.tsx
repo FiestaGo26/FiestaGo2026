@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Garantía de Éxito · FiestaGo',
+  title: 'Garantía de Éxito FiestaGo',
   description: 'Si tu proveedor te falla, te devolvemos el dinero. Bodas, comuniones, cumpleaños o cualquier celebración — con respaldo económico real.',
   alternates: { canonical: 'https://fiestago.es/garantia' },
   openGraph: {
-    title: 'Garantía de Éxito · FiestaGo',
+    title: 'Garantía de Éxito FiestaGo',
     description: 'Si tu proveedor te falla, te devolvemos el dinero. La única plataforma de eventos en España que responde con su bolsillo.',
     type: 'website',
     url: 'https://fiestago.es/garantia',
@@ -56,7 +56,7 @@ export default function GarantiaPage() {
           Incluida en todos los servicios
         </h2>
         <p className="text-ink/55 mb-8 leading-relaxed">
-          Todos los servicios que reservas en FiestaGo llevan la Garantía de Éxito <strong className="text-ink">incluida en el precio que ves</strong>. No hay suplementos ni letra pequeña al pagar.
+          Todos los servicios que reservas en FiestaGo llevan la Garantía de Éxito FiestaGo <strong className="text-ink">incluida en el precio que ves</strong>. No hay suplementos ni letra pequeña al pagar.
         </p>
         <div className="bg-white border border-stone-200 rounded-2xl p-6 md:p-8">
           <p className="text-sm text-ink/70 mb-5">Un ejemplo: reservas un fotógrafo por <strong className="text-ink">1.080 €</strong>. Tu pago queda retenido en Stripe y el fotógrafo no cobra hasta que termina tu evento.</p>
@@ -213,7 +213,7 @@ export default function GarantiaPage() {
         <div className="space-y-3">
           {[
             ['¿La garantía tiene un coste aparte?',
-             'No. Todos los servicios llevan la Garantía de Éxito incluida en el precio que ves en cada ficha y en cada pack. Lo que ves es lo que pagas.'],
+             'No. Todos los servicios llevan la Garantía de Éxito FiestaGo incluida en el precio que ves en cada ficha y en cada pack. Lo que ves es lo que pagas.'],
             ['¿Dónde está mi dinero hasta el evento?',
              'Retenido en Stripe, una entidad de pagos regulada. No llega al proveedor hasta que termina tu celebración.'],
             ['¿Qué es un "sustituto equivalente"?',
@@ -245,7 +245,7 @@ export default function GarantiaPage() {
           <span className="italic font-light text-coral">con red de seguridad.</span>
         </h2>
         <p className="text-ink/65 mb-8 max-w-xl mx-auto">
-          Bodas, cumpleaños, comuniones o cualquier evento privado. La Garantía de Éxito te acompaña en cada reserva, sin coste extra para el proveedor.
+          Bodas, cumpleaños, comuniones o cualquier evento privado. La Garantía de Éxito FiestaGo te acompaña en cada reserva, sin coste extra para el proveedor.
         </p>
         <Link href="/servicios"
           className="inline-block bg-coral text-white font-bold px-10 py-4 rounded-xl hover:bg-coral-dark transition-colors shadow-coral text-lg">
@@ -259,7 +259,7 @@ export default function GarantiaPage() {
       {/* Nota legal */}
       <section className="max-w-3xl mx-auto px-6 pb-16">
         <div className="bg-stone-100 border border-stone-200 rounded-xl p-5 text-xs text-ink/55 leading-relaxed">
-          <strong className="text-ink">Aviso legal.</strong> La Garantía de Éxito FiestaGo solo aplica a reservas realizadas y pagadas íntegramente dentro de la plataforma (canal, comunicación y pago). Las condiciones detalladas y los importes específicos de compensación según ticket están disponibles en los Términos de Servicio. Los reembolsos se procesan al método de pago original. FiestaGo se reserva el derecho de verificar la veracidad de las reclamaciones antes de ejecutar la garantía. La Garantía de Éxito aplica a reservas de hasta 25.000€ por reserva.
+          <strong className="text-ink">Aviso legal.</strong> La Garantía de Éxito FiestaGo solo aplica a reservas realizadas y pagadas íntegramente dentro de la plataforma (canal, comunicación y pago). Las condiciones detalladas y los importes específicos de compensación según ticket están disponibles en los Términos de Servicio. Los reembolsos se procesan al método de pago original. FiestaGo se reserva el derecho de verificar la veracidad de las reclamaciones antes de ejecutar la garantía. La Garantía de Éxito FiestaGo aplica a reservas de hasta 25.000€ por reserva.
         </div>
       </section>
     </main>

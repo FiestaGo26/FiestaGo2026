@@ -139,7 +139,7 @@ export async function emailProviderWelcome(provider: any) {
     `   🧾 Facturas legales Verifactu emitidas por FiestaGo en tu nombre.`,
     `   📅 Calendario inteligente con sync a Google Calendar.`,
     `   🚀 Clientes cualificados con datos completos.`,
-    `   🛡 Pago seguro y Garantía de Éxito incluida.`,
+    `   🛡 Pago seguro y Garantía de Éxito FiestaGo incluida.`,
     `   🏆 Sello de calidad gratis si mantienes 4,5/5.`,
     `   📣 Marketing en IG y TikTok @fiestagospain.`,
     ``,
@@ -384,7 +384,7 @@ export async function emailWaitlistWelcome(entry: any) {
     ``,
     `Te confirmo que estás en la lista de FiestaGo: te avisaremos cuando lleguen proveedores nuevos que encajen con tu celebración.`,
     ``,
-    `🛡️ Garantía de Éxito incluida en todas tus reservas — si tu proveedor falla, te respondemos económicamente. Esto no lo encontrarás en Bodas.net ni Zankyou.`,
+    `🛡️ Garantía de Éxito FiestaGo incluida en todas tus reservas — si tu proveedor falla, te respondemos económicamente. Esto no lo encontrarás en Bodas.net ni Zankyou.`,
     ``,
     `Ya puedes ver el catálogo, reservar y guardar tus favoritos:`,
     `https://fiestago.es/proveedores`,
@@ -1405,7 +1405,7 @@ El equipo de FiestaGo`
           </div>
         </td></tr>
         <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">
-          FiestaGo · Garantía de Éxito · contacto@fiestago.es
+          FiestaGo · Garantía de Éxito FiestaGo · contacto@fiestago.es
         </td></tr>
       </table>
     </td></tr>
@@ -1435,7 +1435,7 @@ export async function emailClientIncidentRejected(opts: {
 
 Hemos revisado la incidencia que abriste sobre tu reserva con ${providerName} del ${bookingDateF(eventDate)}.
 
-Tras analizarla, no podemos cubrirla con la Garantía de Éxito por el siguiente motivo:
+Tras analizarla, no podemos cubrirla con la Garantía de Éxito FiestaGo por el siguiente motivo:
 
 ${rejectedReason}
 
@@ -1461,7 +1461,7 @@ El equipo de FiestaGo`
         </td></tr>
         <tr><td style="padding:20px 36px;">
           <p style="margin:0 0 12px;font-size:14px;color:#1A1612;line-height:1.6;">
-            Tras analizarla, no podemos cubrirla con la Garantía de Éxito por el siguiente motivo:
+            Tras analizarla, no podemos cubrirla con la Garantía de Éxito FiestaGo por el siguiente motivo:
           </p>
           <div style="background:#FEF3F2;border-left:3px solid #EF4444;padding:12px 16px;font-size:14px;color:#1A1612;line-height:1.55;white-space:pre-wrap;">${safe(rejectedReason)}</div>
         </td></tr>

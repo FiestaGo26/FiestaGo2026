@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates:  { canonical: 'https://fiestago.es/corporativo' },
   openGraph: {
     title:       'Eventos corporativos sin estrés logístico',
-    description: 'Para Comunicación, RRHH y Office Managers. Reserva en 3 pasos con Garantía de Éxito.',
+    description: 'Para Comunicación, RRHH y Office Managers. Reserva en 3 pasos con Garantía de Éxito FiestaGo.',
     url:         'https://fiestago.es/corporativo',
     type:        'website',
   },

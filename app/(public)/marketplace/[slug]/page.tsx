@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cat = CATEGORIES.find(c => c.id === parsed.categoryId)!
   const city = parsed.city
   const title       = `${cat.label} en ${city} · FiestaGo (alternativa a Bodas.net)`
-  const description = `Reserva ${cat.label.toLowerCase()} en ${city} sin pagar cuota anual. Marketplace de bodas y eventos con Garantía de Éxito incluida. Compara precios reales de profesionales locales.`
+  const description = `Reserva ${cat.label.toLowerCase()} en ${city} sin pagar cuota anual. Marketplace de bodas y eventos con Garantía de Éxito FiestaGo incluida. Compara precios reales de profesionales locales.`
   return {
     title,
     description,
@@ -107,8 +107,8 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
             </h1>
             <p className="text-base md:text-lg opacity-90 mt-4 max-w-2xl leading-relaxed">
               {hasAny
-                ? `${providers.length} profesional${providers.length === 1 ? '' : 'es'} de ${cat.label.toLowerCase()} en ${city} y alrededores. Reservas con Garantía de Éxito, sin cuota anual ni intermediarios.`
-                : `Reserva ${cat.label.toLowerCase()} en ${city} con FiestaGo: precio cerrado y Garantía de Éxito incluida.`}
+                ? `${providers.length} profesional${providers.length === 1 ? '' : 'es'} de ${cat.label.toLowerCase()} en ${city} y alrededores. Reservas con Garantía de Éxito FiestaGo, sin cuota anual ni intermediarios.`
+                : `Reserva ${cat.label.toLowerCase()} en ${city} con FiestaGo: precio cerrado y Garantía de Éxito FiestaGo incluida.`}
             </p>
             {(minPrice && avgPrice) ? (
               <div className="mt-5 inline-flex items-center gap-4 bg-white/10 rounded-xl px-4 py-2 backdrop-blur-sm"
@@ -195,7 +195,7 @@ export default async function MarketplaceCatCityPage({ params }: Props) {
               Esos portales viven de cobrar al proveedor: cuota anual de 600 a 2.500€. Como cliente, eso no te afecta directamente — pero sí encarece el precio final, porque el proveedor incluye esa cuota en su presupuesto.
             </p>
             <p className="text-sm text-ink/70 leading-relaxed mb-3">
-              En FiestaGo el modelo es al revés: el profesional no paga nada. En el precio que ves ya está incluida la Garantía de Éxito — es lo que la sostiene: si tu proveedor cancela y no encontramos sustituto, FiestaGo te devuelve el 110% del importe; si no se presenta el día del evento, el 100% más una compensación de hasta 3.000€. Eso no lo encontrarás en ningún directorio publicitario.
+              En FiestaGo el modelo es al revés: el profesional no paga nada. En el precio que ves ya está incluida la Garantía de Éxito FiestaGo — es lo que la sostiene: si tu proveedor cancela y no encontramos sustituto, FiestaGo te devuelve el 110% del importe; si no se presenta el día del evento, el 100% más una compensación de hasta 3.000€. Eso no lo encontrarás en ningún directorio publicitario.
             </p>
             <p className="text-sm text-ink/70 leading-relaxed">
               Para profesionales de {cat.label.toLowerCase()} en {city}, FiestaGo es la <Link href="/alternativas-bodas-net" className="text-coral underline">alternativa real a Bodas.net</Link>: sin cuota, sin permanencia, y solo pagan comisión cuando hay reserva.

@@ -34,7 +34,7 @@ export default function AvisoLegalPage() {
 
         <Section title="2. Actividad y objeto del sitio">
           <p>
-            FiestaGo es un marketplace en línea que conecta a particulares y empresas que desean contratar servicios para celebraciones y eventos privados con profesionales y empresas proveedoras de dichos servicios. La Plataforma actúa como intermediario entre ambas partes, ofreciendo además una Garantía de Éxito que respalda cada reserva, un pack de herramientas basadas en inteligencia artificial para los proveedores y un sistema de emisión de facturas conforme al Reglamento Verifactu (RD 1007/2023).
+            FiestaGo es un marketplace en línea que conecta a particulares y empresas que desean contratar servicios para celebraciones y eventos privados con profesionales y empresas proveedoras de dichos servicios. La Plataforma actúa como intermediario entre ambas partes, ofreciendo además una Garantía de Éxito FiestaGo que respalda cada reserva, un pack de herramientas basadas en inteligencia artificial para los proveedores y un sistema de emisión de facturas conforme al Reglamento Verifactu (RD 1007/2023).
           </p>
         </Section>
 

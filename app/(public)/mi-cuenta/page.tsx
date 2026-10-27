@@ -638,7 +638,7 @@ function IncidentModal({ booking, onClose }: { booking: Booking; onClose: () => 
         ) : (
           <div className="p-5 space-y-4">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 leading-relaxed">
-              ⚠ Antes de reportar, intenta contactar al proveedor por el <strong>chat de FiestaGo</strong> si la situación se puede resolver hablando. Las incidencias formales activan la Garantía de Éxito y suspenden el pago al proveedor mientras investigamos.
+              ⚠ Antes de reportar, intenta contactar al proveedor por el <strong>chat de FiestaGo</strong> si la situación se puede resolver hablando. Las incidencias formales activan la Garantía de Éxito FiestaGo y suspenden el pago al proveedor mientras investigamos.
             </div>
 
             <div>

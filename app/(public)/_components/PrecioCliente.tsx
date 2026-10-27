@@ -6,7 +6,7 @@
 // que muestra "Tú cobras X €".
 //
 // Variantes:
-//   - default: "108 €" + microline "incluye 8 € de Garantía de Éxito"
+//   - default: "108 €" + microline "incluye 8 € de Garantía de Éxito FiestaGo"
 //   - inline:  "108 €"  con tooltip al hover
 //   - large:   "108 €"  grande + microline visible
 //   - compact: solo "108 €" sin nada más (para celdas estrechas)

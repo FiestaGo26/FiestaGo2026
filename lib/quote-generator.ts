@@ -46,7 +46,7 @@ export type GeneratedQuote = {
   }>
   // Totales del proveedor (lo que cobra él).
   providerSubtotal: number
-  // Cifras visibles al cliente (con +8% de Garantía de Éxito).
+  // Cifras visibles al cliente (con +8% de Garantía de Éxito FiestaGo).
   clientFee:       number         // 8% sobre subtotal
   clientTotal:     number         // subtotal + fee
   // Condiciones generales aplicables al evento.
@@ -402,7 +402,7 @@ export function renderQuoteHtml(opts: {
 
     <footer>
       Presupuesto emitido a través de <a href="https://fiestago.es" target="_blank">FiestaGo</a> ·
-      Marketplace de celebraciones en España · Garantía de Éxito incluida
+      Marketplace de celebraciones en España · Garantía de Éxito FiestaGo incluida
     </footer>
   </div>
 </body>

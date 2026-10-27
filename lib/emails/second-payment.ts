@@ -54,7 +54,7 @@ export async function emailClientSecondPaymentReminder(
       color:    '#E8553E',
       bg:       '#FEEEE7',
       headline: `${firstName}, tu segundo pago vence en 3 días`,
-      body:     `En 3 días (el <strong>${dateEs(dueDate)}</strong>) vence el segundo pago de tu reserva. Es imprescindible tener el importe completo pagado con al menos 2 meses de antelación al evento para que la Garantía de Éxito quede activa.`,
+      body:     `En 3 días (el <strong>${dateEs(dueDate)}</strong>) vence el segundo pago de tu reserva. Es imprescindible tener el importe completo pagado con al menos 2 meses de antelación al evento para que la Garantía de Éxito FiestaGo quede activa.`,
     },
     d0: {
       subject:  `⚠️ Hoy vence tu pago restante · ${dateEs(eventDate)}`,
@@ -106,7 +106,7 @@ El equipo de FiestaGo`
         <tr><td style="padding:16px 36px 32px;text-align:center;">
           <a href="${PAY_URL(booking)}" style="display:inline-block;background:${c.color};color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:14px;">Completar el pago →</a>
         </td></tr>
-        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">FiestaGo · Garantía de Éxito activa</td></tr>
+        <tr><td style="padding:18px 36px;background:#FBF9F4;border-top:1px solid #ECE3D2;text-align:center;font-size:12px;color:#8A7968;">FiestaGo · Garantía de Éxito FiestaGo activa</td></tr>
       </table>
     </td></tr>
   </table>

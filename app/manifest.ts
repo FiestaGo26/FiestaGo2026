@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name:             'FiestaGo — Tu celebración perfecta',
     short_name:       'FiestaGo',
-    description:      'Marketplace de bodas, cumpleaños, comuniones y eventos privados en España. Con Garantía de Éxito incluida.',
+    description:      'Marketplace de bodas, cumpleaños, comuniones y eventos privados en España. Con Garantía de Éxito FiestaGo incluida.',
     start_url:        '/',
     display:          'standalone',
     orientation:      'portrait',

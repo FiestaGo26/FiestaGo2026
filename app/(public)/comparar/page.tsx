@@ -92,7 +92,7 @@ function buildRows(): Row[] {
       )
     },
     {
-      key: 'guarantee', label: 'Garantía de Éxito',
+      key: 'guarantee', label: 'Garantía de Éxito FiestaGo',
       render: () => <span className="text-sm text-emerald-700">✓ Incluida (la paga el cliente)</span>
     },
   ]

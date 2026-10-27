@@ -149,7 +149,7 @@ export const VALUE_SECTIONS: ValueSection[] = [
       },
       {
         emoji: '🛡️',
-        title: 'Garantía de Éxito incluida',
+        title: 'Garantía de Éxito FiestaGo incluida',
         pitch: 'Si hay un problema el día del evento, FiestaGo cubre.',
         details: 'La Garantía va incluida en el precio que ve el cliente y la financia él, no tú. No pones dinero, no asumes el lío. Y si cumples (que es lo normal), no te afecta en nada — solo le da tranquilidad al cliente para reservar contigo.',
         saveTime:   '—',
@@ -181,7 +181,7 @@ export const VALUE_SECTIONS: ValueSection[] = [
         emoji: '💶',
         title: 'Panel de cobros con 0% de comisión',
         pitch: 'Tú cobras tu precio íntegro. La plataforma no te quita nada.',
-        details: 'La Garantía de Éxito va incluida en el precio que ve el cliente y la paga él. A ti te llega el precio íntegro de tu servicio. Cero comisión para ti, cero sorpresas.',
+        details: 'La Garantía de Éxito FiestaGo va incluida en el precio que ve el cliente y la paga él. A ti te llega el precio íntegro de tu servicio. Cero comisión para ti, cero sorpresas.',
         saveTime:   '—',
         saveMoney:  'directo a tu cuenta',
         comparedTo: 'plataformas con 10-20% de comisión',

@@ -1,5 +1,5 @@
 // ───────────────────────────────────────────────────────────────────────
-// Garantía de Éxito — funciones de cálculo
+// Garantía de Éxito FiestaGo — funciones de cálculo
 // Fuente única para que el importe que el cliente recibe y el que se le
 // cobra al proveedor sean coherentes en todos los sitios (panel admin,
 // emails, página /garantia, documentos internos).

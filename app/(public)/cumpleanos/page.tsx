@@ -3,11 +3,11 @@ import { VerticalLandingPage } from '../_components/VerticalLandingPage'
 
 export const metadata: Metadata = {
   title:       'Cumpleaños inolvidables — Reserva en 3 pasos con FiestaGo',
-  description: 'Anima cualquier cumpleaños — infantil, adulto o sorpresa — reservando animación, catering, tarta, fotografía y espacio con respaldo. Garantía de Éxito incluida.',
+  description: 'Anima cualquier cumpleaños — infantil, adulto o sorpresa — reservando animación, catering, tarta, fotografía y espacio con respaldo. Garantía de Éxito FiestaGo incluida.',
   alternates:  { canonical: 'https://fiestago.es/cumpleanos' },
   openGraph: {
     title:       'Cumpleaños inolvidables en FiestaGo',
-    description: 'Animación, tarta, catering, fotografía y espacios. Reserva con Garantía de Éxito.',
+    description: 'Animación, tarta, catering, fotografía y espacios. Reserva con Garantía de Éxito FiestaGo.',
     url:         'https://fiestago.es/cumpleanos',
     type:        'website',
   },
@@ -25,7 +25,7 @@ export default function CumpleanosLanding() {
         subhead:  'Animación, tarta, fotografía, catering y decoración. En 3 pasos, con respaldo si algo falla.',
         img:      'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1920&q=85&auto=format&fit=crop',
       },
-      intro: 'Organizar un cumpleaños no debería convertirse en un trabajo de medio tiempo. Encuentra animadores, fotógrafos, catering, tartas a medida y decoración para cualquier edad — todo verificado, todo con Garantía de Éxito incluida en cada reserva.',
+      intro: 'Organizar un cumpleaños no debería convertirse en un trabajo de medio tiempo. Encuentra animadores, fotógrafos, catering, tartas a medida y decoración para cualquier edad — todo verificado, todo con Garantía de Éxito FiestaGo incluida en cada reserva.',
       categories: ['animacion', 'pastel', 'foto', 'catering', 'espacios', 'flores'],
       benefits: [
         { icon: '🎈', title: 'Para cualquier edad',         body: 'Desde fiestas de princesas para los 5 años hasta cenas sorpresa de 40 cumpleaños. Filtramos por edad y temática.' },
@@ -38,7 +38,7 @@ export default function CumpleanosLanding() {
         { q: '¿Cuánto cuesta un cumpleaños medio en España?',
           a: 'Para 20-30 niños, suele estar entre 300€ y 800€ contando animación, tarta y un catering ligero. Para cumpleaños de adulto en restaurante con catering tipo aperitivo, el rango es 30€-65€ por persona. Usa nuestra calculadora para tu caso concreto.' },
         { q: '¿Y si llueve y la fiesta era al aire libre?',
-          a: 'Si tu proveedor de espacio o animación tiene un Plan B (sala cubierta, alternativa interior), la reserva se mantiene con esa adaptación. Si no, contacta con nosotros: aplicamos la Garantía de Éxito y buscamos alternativa o reembolsamos.' },
+          a: 'Si tu proveedor de espacio o animación tiene un Plan B (sala cubierta, alternativa interior), la reserva se mantiene con esa adaptación. Si no, contacta con nosotros: aplicamos la Garantía de Éxito FiestaGo y buscamos alternativa o reembolsamos.' },
         { q: '¿Se puede reservar solo un servicio (por ejemplo, solo la tarta)?',
           a: 'Por supuesto. No tienes que reservar todo el pack — puedes traer cosas por tu cuenta y reservar solo lo que necesites en FiestaGo. La Garantía aplica solo a los servicios reservados aquí.' },
       ],

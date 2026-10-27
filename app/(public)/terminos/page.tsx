@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Términos y Condiciones de Uso · FiestaGo',
-  description: 'Términos y condiciones de uso de FiestaGo, el marketplace de celebraciones en España con Garantía de Éxito.',
+  description: 'Términos y condiciones de uso de FiestaGo, el marketplace de celebraciones en España con Garantía de Éxito FiestaGo.',
   alternates: { canonical: 'https://fiestago.es/terminos' },
   robots: { index: true, follow: true },
 }
@@ -70,7 +70,7 @@ export default function TerminosPage() {
             Por cada reserva confirmada la Plataforma emite dos facturas conforme al Reglamento Verifactu (RD 1007/2023):
           </p>
           <ol className="list-decimal pl-5 mt-3 space-y-2">
-            <li>Una factura de FiestaGo al Cliente por el importe de la tarifa de servicio del 8% (Garantía de Éxito), con desglose de base imponible e IVA aplicable.</li>
+            <li>Una factura de FiestaGo al Cliente por el importe de la tarifa de servicio del 8% (Garantía de Éxito FiestaGo), con desglose de base imponible e IVA aplicable.</li>
             <li>Una factura del Proveedor al Cliente por el precio del servicio. Cuando el Proveedor haya activado el consentimiento de facturación delegada previsto en el artículo 5 del RD 1619/2012, esta factura será emitida materialmente por FiestaGo en nombre del Proveedor, quien conserva a todos los efectos la condición de sujeto pasivo. En caso contrario, el Proveedor deberá emitir la factura por sus propios medios.</li>
           </ol>
           <p className="mt-3">
@@ -78,9 +78,9 @@ export default function TerminosPage() {
           </p>
         </Section>
 
-        <Section title="5. Precio y Garantía de Éxito">
+        <Section title="5. Precio y Garantía de Éxito FiestaGo">
           <p>
-            El Cliente abona el precio del servicio fijado por el Proveedor más una tarifa de servicio del 8% en concepto de Garantía de Éxito. Esta tarifa da acceso a la cobertura descrita en la página <Link href="/garantia" className="text-coral underline">Garantía de Éxito</Link>, cuyas condiciones forman parte integrante de estos Términos:
+            El Cliente abona el precio del servicio fijado por el Proveedor más una tarifa de servicio del 8% en concepto de Garantía de Éxito FiestaGo. Esta tarifa da acceso a la cobertura descrita en la página <Link href="/garantia" className="text-coral underline">Garantía de Éxito FiestaGo</Link>, cuyas condiciones forman parte integrante de estos Términos:
           </p>
           <ul className="list-disc pl-5 mt-3 space-y-2">
             <li>Si el Proveedor cancela una reserva confirmada, FiestaGo proporcionará un sustituto equivalente en un máximo de 48 horas o reembolsará al Cliente el 110% del importe pagado. Se entiende por sustituto equivalente un proveedor capaz de cumplir las mismas funciones que las contratadas, a un precio similar.</li>
@@ -88,7 +88,7 @@ export default function TerminosPage() {
             <li>En caso de fuerza mayor del Cliente debidamente acreditada (fallecimiento de familiar directo, hospitalización), el evento podrá aplazarse hasta 12 meses sin coste adicional.</li>
           </ul>
           <p className="mt-4">
-            <strong>Límites y exclusiones.</strong> La Garantía de Éxito aplica exclusivamente a reservas realizadas, comunicadas y pagadas íntegramente dentro de la Plataforma, con un importe máximo cubierto de 25.000€ por reserva. Quedan excluidos los supuestos descritos en el apartado “Qué no cubre” de la página de la Garantía: condiciones meteorológicas en eventos al aire libre, insatisfacción subjetiva sin incumplimiento objetivo, cambios solicitados por el Cliente fuera del alcance contratado, daños causados por invitados, reclamaciones presentadas más de 14 días después del evento y operaciones realizadas total o parcialmente fuera de la Plataforma.
+            <strong>Límites y exclusiones.</strong> La Garantía de Éxito FiestaGo aplica exclusivamente a reservas realizadas, comunicadas y pagadas íntegramente dentro de la Plataforma, con un importe máximo cubierto de 25.000€ por reserva. Quedan excluidos los supuestos descritos en el apartado “Qué no cubre” de la página de la Garantía: condiciones meteorológicas en eventos al aire libre, insatisfacción subjetiva sin incumplimiento objetivo, cambios solicitados por el Cliente fuera del alcance contratado, daños causados por invitados, reclamaciones presentadas más de 14 días después del evento y operaciones realizadas total o parcialmente fuera de la Plataforma.
           </p>
         </Section>
 
@@ -127,7 +127,7 @@ export default function TerminosPage() {
 
         <Section title="11. Responsabilidad">
           <p>
-            FiestaGo no es parte del contrato de prestación de servicios entre Cliente y Proveedor, sin perjuicio de la Garantía de Éxito. FiestaGo no responde de daños indirectos ni de supuestos excluidos de la Garantía. Nada en estos Términos limita los derechos irrenunciables que la legislación de consumidores reconoce al Cliente.
+            FiestaGo no es parte del contrato de prestación de servicios entre Cliente y Proveedor, sin perjuicio de la Garantía de Éxito FiestaGo. FiestaGo no responde de daños indirectos ni de supuestos excluidos de la Garantía. Nada en estos Términos limita los derechos irrenunciables que la legislación de consumidores reconoce al Cliente.
           </p>
         </Section>
 

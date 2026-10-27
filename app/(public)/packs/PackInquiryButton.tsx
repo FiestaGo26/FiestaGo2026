@@ -138,7 +138,7 @@ export default function PackInquiryButton({
                     {packName}
                   </div>
                   <div style={{ fontSize: 13, opacity: 0.92, marginTop: 4 }}>
-                    Desde <strong>{formatEuro(packPrice)}</strong> · Garantía de Éxito incluida
+                    Desde <strong>{formatEuro(packPrice)}</strong> · Garantía de Éxito FiestaGo incluida
                   </div>
                 </div>
 

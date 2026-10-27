@@ -4,7 +4,7 @@
  * Regla de negocio (definida por el fundador tras la reunión con WOW):
  *
  *   1. El cliente debe tener el 100% del importe en escrow como muy tarde
- *      2 meses (60 días) antes del evento. Sin esto la Garantía de Éxito
+ *      2 meses (60 días) antes del evento. Sin esto la Garantía de Éxito FiestaGo
  *      no puede activarse: necesitamos el dinero disponible para responder
  *      si el proveedor falla.
  *
@@ -46,7 +46,7 @@ export type PaymentSchedule = {
  * checkout.
  *
  * baseAmount:       importe base del servicio (lo que cobra el proveedor)
- * commissionAmount: Garantía de Éxito (8% base, la paga el cliente)
+ * commissionAmount: Garantía de Éxito FiestaGo (8% base, la paga el cliente)
  * depositPct:       0-40 del servicio elegido (0 si no se definió)
  * eventDate:        YYYY-MM-DD del evento
  * now:              opcional, para tests deterministas
@@ -112,7 +112,7 @@ export function computePaymentSchedule(
     secondPaymentStatus:  'pending',
     isRush:               false,
     humanCopy:
-      `Hoy pagas ${fmt(first)} (Garantía de Éxito incluida). ` +
+      `Hoy pagas ${fmt(first)} (Garantía de Éxito FiestaGo incluida). ` +
       `El ${fmtDate(dueDate)} pagas los ${fmt(second)} restantes (2 meses antes del evento).`,
   }
 }

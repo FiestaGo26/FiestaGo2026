@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Calcular Garantía de Éxito (8%) sobre lo que cobra el proveedor.
+    // Calcular Garantía de Éxito FiestaGo (8%) sobre lo que cobra el proveedor.
     // Modelo: cliente paga base + 8%, proveedor recibe el 100% de base.
     // `amount` aquí ya tiene aplicado el cupón si lo había. Aplica
     // también a packs (mismo 8% encima del precio del pack).

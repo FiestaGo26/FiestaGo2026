@@ -100,7 +100,7 @@ export default async function QuienesSomosPage() {
           </div>
           <p className="text-sm text-ink/55 mt-8 leading-relaxed">
             FiestaGo está abierto a celebraciones en toda España y cada semana se suman proveedores nuevos.{' '}
-            <Link href="/garantia" className="text-coral underline">Lee la Garantía de Éxito completa</Link>.
+            <Link href="/garantia" className="text-coral underline">Lee la Garantía de Éxito FiestaGo completa</Link>.
           </p>
         </div>
       </section>

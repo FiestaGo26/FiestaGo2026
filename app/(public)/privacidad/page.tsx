@@ -48,7 +48,7 @@ export default function PrivacidadPage() {
               </thead>
               <tbody className="text-ink/75">
                 {[
-                  ['Gestionar el registro, las reservas (incluidos anticipos y pagos divididos), los pagos en depósito, la Garantía de Éxito y las incidencias', 'Ejecución de contrato (art. 6.1.b RGPD)'],
+                  ['Gestionar el registro, las reservas (incluidos anticipos y pagos divididos), los pagos en depósito, la Garantía de Éxito FiestaGo y las incidencias', 'Ejecución de contrato (art. 6.1.b RGPD)'],
                   ['Verificar la identidad y documentación de los Proveedores', 'Ejecución de contrato e interés legítimo en la seguridad del marketplace'],
                   ['Emitir facturas conforme al Reglamento Verifactu (RD 1007/2023), tanto propias como en régimen de facturación delegada por cuenta del Proveedor (art. 5 RD 1619/2012, previo consentimiento del sujeto pasivo)', 'Obligación legal y ejecución de contrato'],
                   ['Reporte anual DAC7 a la Agencia Tributaria de operaciones realizadas por Proveedores en la Plataforma', 'Obligación legal (Directiva UE 2021/514)'],

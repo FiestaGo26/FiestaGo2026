@@ -20,7 +20,7 @@ export default function ProfesionalesPage() {
   const bodasNetNeto = facturado - BODAS_NET_ANNUAL_FEE
 
   // En FiestaGo cobras el 100% que pones en tu ficha. El cliente paga un 8%
-  // extra sobre tu precio (que cubre la Garantía de Éxito). Tú no pagas nada.
+  // extra sobre tu precio (que cubre la Garantía de Éxito FiestaGo). Tú no pagas nada.
   const fiestagoNeto = facturado
 
   const ahorroAnual = fiestagoNeto - bodasNetNeto
@@ -39,7 +39,7 @@ export default function ProfesionalesPage() {
         <p className="text-ink/65 text-lg max-w-2xl mx-auto leading-relaxed">
           En FiestaGo cobras <strong className="text-ink">el 100% del precio que pones</strong>.
           Sin cuotas, sin permanencia. La comisión la paga el cliente como parte
-          de la Garantía de Éxito.
+          de la Garantía de Éxito FiestaGo.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link href="/registro-proveedor"
@@ -165,7 +165,7 @@ export default function ProfesionalesPage() {
               <div className="text-[10px] font-bold text-coral uppercase tracking-widest mb-2">En FiestaGo</div>
               <div className="text-2xl font-bold text-coral">{fiestagoNeto.toLocaleString('es-ES')}€</div>
               <div className="text-xs text-ink/55 mt-1">
-                100% del precio. El cliente paga {(facturado * FIESTAGO_COMMISSION).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€ extra como Garantía de Éxito
+                100% del precio. El cliente paga {(facturado * FIESTAGO_COMMISSION).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€ extra como Garantía de Éxito FiestaGo
               </div>
             </div>
           </div>
@@ -185,13 +185,13 @@ export default function ProfesionalesPage() {
       {/* GARANTÍA DE ÉXITO */}
       <section className="max-w-4xl mx-auto px-6 py-16">
         <div className="bg-ink text-white rounded-3xl p-10 md:p-14">
-          <div className="text-xs font-bold tracking-widest uppercase text-coral mb-4">🛡 Garantía de Éxito</div>
+          <div className="text-xs font-bold tracking-widest uppercase text-coral mb-4">🛡 Garantía de Éxito FiestaGo</div>
           <h2 className="font-serif text-3xl md:text-4xl font-black mb-4 leading-tight">
             Por qué los clientes pagan más en FiestaGo
           </h2>
           <p className="text-white/70 leading-relaxed mb-6 max-w-2xl">
-            En el precio final que el cliente ve ya está incluida la Garantía de Éxito. A cambio,
-            tiene la Garantía de Éxito: si algo sale mal —tu cancelas en
+            En el precio final que el cliente ve ya está incluida la Garantía de Éxito FiestaGo. A cambio,
+            tiene la Garantía de Éxito FiestaGo: si algo sale mal —tu cancelas en
             el último momento, no apareces, o no se entrega lo prometido—
             le respondemos económicamente.
           </p>
@@ -221,11 +221,11 @@ export default function ProfesionalesPage() {
         <div className="space-y-4">
           {[
             ['¿Cuánto me cuesta entrar?',
-             'Nada. Ni cuota ni alta. Cobras el 100% de tu precio siempre — la Garantía de Éxito la paga el cliente incluida en el total. Tú no pagas nada por usar la plataforma.'],
+             'Nada. Ni cuota ni alta. Cobras el 100% de tu precio siempre — la Garantía de Éxito FiestaGo la paga el cliente incluida en el total. Tú no pagas nada por usar la plataforma.'],
             ['¿Tengo que cambiar mi forma de trabajar?',
              'No. Sigues haciendo tu trabajo como siempre. FiestaGo te trae clientes, gestiona el pago y te protege con la mediación si algo se complica. Tú decides qué reservas aceptas.'],
             ['¿Y si un cliente intenta saltarse FiestaGo?',
-             'La Garantía de Éxito solo aplica si la reserva se gestiona dentro de la plataforma. Esto te protege a ti también: si el cliente intenta no pagarte después, tienes a FiestaGo de testigo y arbitraje.'],
+             'La Garantía de Éxito FiestaGo solo aplica si la reserva se gestiona dentro de la plataforma. Esto te protege a ti también: si el cliente intenta no pagarte después, tienes a FiestaGo de testigo y arbitraje.'],
             ['¿Cuándo cobro?',
              'Cuando se completa el evento. Mantenemos el pago en escrow para que el cliente no pueda echarse atrás sin causa. Te transferimos en 5 días tras la celebración.'],
             ['¿Puedo darme de baja cuando quiera?',

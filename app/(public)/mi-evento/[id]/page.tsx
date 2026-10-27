@@ -254,7 +254,7 @@ export default function MiEventoProposalPage() {
         <div className="bg-stone-100 border border-stone-200 rounded-xl p-5 text-xs text-ink/55 leading-relaxed text-center">
           ✨ Propuesta generada por nuestro AI Planner. Los precios son estimaciones basadas en
           las fichas de cada proveedor — el precio final puede variar según opciones y fecha.
-          La <Link href="/garantia" className="text-coral underline">Garantía de Éxito</Link> aplica
+          La <Link href="/garantia" className="text-coral underline">Garantía de Éxito FiestaGo</Link> aplica
           a cualquier reserva confirmada dentro de FiestaGo.
         </div>
       </section>

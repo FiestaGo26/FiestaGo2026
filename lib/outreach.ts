@@ -24,7 +24,7 @@ FiestaGo es un marketplace nuevo de celebraciones en España — bodas, cumplea�
 
 Lo que te puedo ofrecer es visibilidad real: una fuente nueva de clientes sin que tengas que cambiar nada de cómo trabajas hoy. Recibes la solicitud, decides si te encaja y haces tu evento como siempre.
 
-A diferencia de Bodas.net o Zankyou, en FiestaGo no hay cuota anual ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha. La comisión del 8% la paga el cliente como parte de la "Garantía de Éxito" — si algo sale mal con la reserva, le respondemos económicamente al cliente. Eso te diferencia y te da credibilidad.
+A diferencia de Bodas.net o Zankyou, en FiestaGo no hay cuota anual ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha. La comisión del 8% la paga el cliente como parte de la "Garantía de Éxito FiestaGo" — si algo sale mal con la reserva, le respondemos económicamente al cliente. Eso te diferencia y te da credibilidad.
 
 En esta página tienes la comparativa completa con Bodas.net + una calculadora para que veas con tus números cuánto ganarías de más al año:
 https://fiestago.es/profesionales
@@ -57,7 +57,7 @@ export function buildWhatsAppDraft(p: ProviderLike): string {
 
 Vi vuestro trabajo en ${p.city} y me ha encantado. Os escribo porque estamos lanzando en España un marketplace nuevo de celebraciones (bodas, cumpleaños, comuniones, eventos privados) y seleccionando los primeros profesionales con los que arrancar.
 
-A diferencia de Bodas.net o Zankyou, en FiestaGo no hay cuota ni permanencia: cobras el 100% del precio que pongas en tu ficha. La comisión del 8% la paga el cliente como Garantía de Éxito.
+A diferencia de Bodas.net o Zankyou, en FiestaGo no hay cuota ni permanencia: cobras el 100% del precio que pongas en tu ficha. La comisión del 8% la paga el cliente como Garantía de Éxito FiestaGo.
 
 Tienes la calculadora de cuánto ganarías de más al año aquí:
 👉 https://fiestago.es/profesionales
@@ -72,7 +72,7 @@ export function buildWebFormDraft(p: ProviderLike): string {
 
 Soy Mariano, fundador de FiestaGo. Os escribo desde vuestra web porque me ha encantado vuestro trabajo en ${p.city}.
 
-FiestaGo es un marketplace nuevo de celebraciones que estamos lanzando en España. Sin cuotas ni permanencia: cobráis el 100% del precio que pongáis en vuestra ficha; la comisión del 8% la paga el cliente como Garantía de Éxito.
+FiestaGo es un marketplace nuevo de celebraciones que estamos lanzando en España. Sin cuotas ni permanencia: cobráis el 100% del precio que pongáis en vuestra ficha; la comisión del 8% la paga el cliente como Garantía de Éxito FiestaGo.
 
 Os dejo la calculadora de cuánto ganaríais de más al año + el registro en 60 segundos:
 https://fiestago.es/profesionales
@@ -94,7 +94,7 @@ Soy Mariano, fundador de FiestaGo. He estado viendo lo que haces en ${p.city} y 
 
 FiestaGo es un marketplace nuevo de celebraciones — bodas, cumples, comuniones, eventos privados. Lanzamos en España.
 
-A diferencia de los marketplaces tradicionales del sector (con cuota anual y permanencia), no hay cuota ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha. La Garantía de Éxito va incluida en el precio que ve el cliente (si algo sale mal con la reserva, le respondemos económicamente). Tú no pagas nada.
+A diferencia de los marketplaces tradicionales del sector (con cuota anual y permanencia), no hay cuota ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha. La Garantía de Éxito FiestaGo va incluida en el precio que ve el cliente (si algo sale mal con la reserva, le respondemos económicamente). Tú no pagas nada.
 
 En esta página tienes la calculadora de cuánto ganarías de más al año:
 👉 https://fiestago.es/profesionales
@@ -126,7 +126,7 @@ Mariano`
 
 Te escribí hace unos días sobre FiestaGo y no he tenido respuesta — imagino que se te traspapeló entre tantos mensajes (a mí me pasa todo el rato).
 
-Te dejo el resumen rapidito: estamos lanzando en España, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas — la comisión la paga el cliente como Garantía de Éxito. La calculadora con tus números está en la landing.
+Te dejo el resumen rapidito: estamos lanzando en España, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas — la comisión la paga el cliente como Garantía de Éxito FiestaGo. La calculadora con tus números está en la landing.
 
 Si te encaja, regístrate aquí en menos de 60 segundos:
 👉 https://fiestago.es/profesionales
@@ -153,7 +153,7 @@ Mariano`
 
 Soy Mariano, fundador de FiestaGo. Te escribí hace unos días y no recibí respuesta — imagino que se traspapeló entre tantos correos (a mí me pasa todo el rato).
 
-Te dejo el resumen rapidito: estamos lanzando en España, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha; la comisión del 8% la paga el cliente como Garantía de Éxito. La calculadora de cuánto ganarías de más al año está en la landing.
+Te dejo el resumen rapidito: estamos lanzando en España, sin cuotas ni permanencia. Tú cobras el 100% del precio que pongas en tu ficha; la comisión del 8% la paga el cliente como Garantía de Éxito FiestaGo. La calculadora de cuánto ganarías de más al año está en la landing.
 
 Si te interesa, te puedes inscribir en menos de 60 segundos:
 https://fiestago.es/profesionales

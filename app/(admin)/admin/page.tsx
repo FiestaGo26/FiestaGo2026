@@ -1927,7 +1927,7 @@ export default function AdminPage() {
               })()}
 
               <p style={{ fontSize:12, color:'#9CA3AF', marginBottom:18, maxWidth:640, lineHeight:1.6 }}>
-                Reclamaciones abiertas por clientes contra la Garantía de Éxito. SLA en
+                Reclamaciones abiertas por clientes contra la Garantía de Éxito FiestaGo. SLA en
                 <span style={{ color:'#10B981' }}> verde</span> si la deadline es {'>'}24h, en
                 <span style={{ color:'#F59E0B' }}> ámbar</span> si {'<'}24h, en
                 <span style={{ color:'#EF4444' }}> rojo</span> si ya se ha vencido.
@@ -3469,7 +3469,7 @@ function MetricsPanel({ metrics, loading, onRefresh }: {
 
       {/* ──── GARANTÍA ──── */}
       <h2 style={{ fontSize:13, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
-        Garantía de Éxito
+        Garantía de Éxito FiestaGo
       </h2>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:10, marginBottom:18 }}>
         {card('Incidencias',          i.total.toString(), `${i.byStatus?.open || 0} abiertas`)}
@@ -3718,7 +3718,7 @@ function FinancialsPanel({ data, loading, year, onYearChange, onRefresh }: {
       {sectionTitle('Totales · ' + year)}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:10, marginBottom:8 }}>
         {card('GMV',                fmt(t.gmv),         `${t.bookings} reservas confirmed/completed`, '#C0392B')}
-        {card('Comisiones FiestaGo', fmt(t.commissions), '8% Garantía de Éxito',                       '#F59E0B')}
+        {card('Comisiones FiestaGo', fmt(t.commissions), '8% Garantía de Éxito FiestaGo',                       '#F59E0B')}
         {card('Ingreso proveedores', fmt(t.provider_rev), '100% de sus precios base',                   '#10B981')}
         {card('Cobrado (real)',      fmt(t.cobrado),     'entradas en escrow')}
         {card('Facturado',           fmt(t.facturado),   `${t.invoicesCount} facturas emitidas`)}

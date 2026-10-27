@@ -117,7 +117,7 @@ export function GuaranteeTabs() {
   const [g, setG] = useState(GUARANTEE[0])
   return (
     <>
-      <div className="fg-tabs" role="tablist" aria-label="Garantía de Éxito" data-reveal>
+      <div className="fg-tabs" role="tablist" aria-label="Garantía de Éxito FiestaGo" data-reveal>
         {GUARANTEE.map(x => (
           <button key={x.id} type="button" role="tab" id={`tab-${x.id}`} aria-controls="garantia-panel"
             aria-selected={g.id === x.id} className="fg-tab" onClick={() => setG(x)}>

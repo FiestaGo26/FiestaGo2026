@@ -97,7 +97,7 @@ export function getCat(id: string) {
 }
 
 // Modelo económico: el cliente paga 8% por encima del precio del proveedor
-// como "Garantía de Éxito". El proveedor SIEMPRE recibe el 100% de su precio
+// como "Garantía de Éxito FiestaGo". El proveedor SIEMPRE recibe el 100% de su precio
 // base. Sin excepciones — el modelo "primera reserva = 0%" del v0 ya no
 // aplica. Mantenemos la firma con `totalBookings` para compatibilidad con
 // los call-sites, pero el parámetro ya no influye en el cálculo.

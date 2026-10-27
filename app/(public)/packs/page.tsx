@@ -51,7 +51,7 @@ export default async function PacksPage({
           </h1>
           <p className="text-base md:text-lg text-ink/65 max-w-2xl mx-auto leading-relaxed">
             Cumpleaños, bodas, comuniones, eventos corporativos. Un único contacto, un único precio,
-            todo coordinado. Si algo falla, te respondemos con la Garantía de Éxito.
+            todo coordinado. Si algo falla, te respondemos con la Garantía de Éxito FiestaGo.
           </p>
         </div>
       </section>
@@ -92,11 +92,11 @@ export default async function PacksPage({
           </h2>
           <p className="text-white/65 max-w-2xl mx-auto leading-relaxed mb-8">
             Solicita el pack, te contactamos en menos de 24h para confirmar disponibilidad y detalles.
-            El pago se retiene hasta el evento — si algo va mal, te respondemos con la Garantía de Éxito.
+            El pago se retiene hasta el evento — si algo va mal, te respondemos con la Garantía de Éxito FiestaGo.
           </p>
           <Link href="/garantia"
             className="inline-block text-sm font-semibold border border-white/30 text-white px-6 py-3 rounded-xl hover:bg-white hover:text-ink transition-colors">
-            Ver la Garantía de Éxito →
+            Ver la Garantía de Éxito FiestaGo →
           </Link>
         </div>
       </section>

@@ -4,7 +4,7 @@ import { TERMS_VERSION_CURRENT } from '@/lib/terms'
 
 export const metadata: Metadata = {
   title: 'Compromisos del Proveedor · FiestaGo',
-  description: 'Lo que aceptas al inscribirte como proveedor en FiestaGo. Ocho compromisos prácticos que respaldan nuestra Garantía de Éxito y el sistema legal de facturación.',
+  description: 'Lo que aceptas al inscribirte como proveedor en FiestaGo. Ocho compromisos prácticos que respaldan nuestra Garantía de Éxito FiestaGo y el sistema legal de facturación.',
 }
 
 export default function CompromisosPage() {
@@ -23,7 +23,7 @@ export default function CompromisosPage() {
         </p>
 
         <Section title="Por qué existen estos compromisos">
-          FiestaGo le ofrece al cliente una <strong>Garantía de Éxito</strong>: si la celebración no sale bien, le respondemos económicamente. Para poder cumplir esa promesa, necesitamos confiar en que cada proveedor del marketplace respeta unos mínimos. Sin estos compromisos, FiestaGo cobraría una garantía que no podría sostener.
+          FiestaGo le ofrece al cliente una <strong>Garantía de Éxito FiestaGo</strong>: si la celebración no sale bien, le respondemos económicamente. Para poder cumplir esa promesa, necesitamos confiar en que cada proveedor del marketplace respeta unos mínimos. Sin estos compromisos, FiestaGo cobraría una garantía que no podría sostener.
         </Section>
 
         <Section title="1. Responder en plazo" badge="Aviso → pausa">
@@ -102,7 +102,7 @@ export default function CompromisosPage() {
         </Section>
 
         <Section title="5. No saltarse FiestaGo" badge="Aviso → baja">
-          No contactas al cliente fuera de FiestaGo durante la primera reserva ni le invitas a reservar futuros eventos directamente contigo evitando la plataforma. La Garantía de Éxito solo funciona si toda la conversación y el pago pasan por aquí.
+          No contactas al cliente fuera de FiestaGo durante la primera reserva ni le invitas a reservar futuros eventos directamente contigo evitando la plataforma. La Garantía de Éxito FiestaGo solo funciona si toda la conversación y el pago pasan por aquí.
           <p className="mt-2 text-xs text-ink/55">Por eso los presupuestos y las fechas bloqueadas se responden desde tu panel, y verás el email y el teléfono del cliente cuando pague la señal. Cerrar fuera de FiestaGo una venta que llegó por FiestaGo supone la baja.</p>
           <p className="mt-2 text-xs text-ink/55">Esto no impide relación comercial natural a largo plazo, una vez completada la reserva. Solo pedimos que la primera reserva por FiestaGo se gestione íntegramente dentro.</p>
         </Section>
@@ -145,7 +145,7 @@ export default function CompromisosPage() {
         <h2 className="font-serif text-2xl font-black text-ink mb-4">Lo que tú recibes a cambio</h2>
         <ul className="space-y-2 text-sm text-ink/75 leading-relaxed">
           <li><strong>Acceso al tráfico de FiestaGo</strong> sin coste fijo (sin cuotas, sin permanencia).</li>
-          <li><strong>Cobras el 100% del precio</strong> que pones en tu ficha. La Garantía de Éxito la paga el cliente incluida en el total.</li>
+          <li><strong>Cobras el 100% del precio</strong> que pones en tu ficha. La Garantía de Éxito FiestaGo la paga el cliente incluida en el total.</li>
           <li><strong>Sello "Verificado"</strong> visible cuando entregas la documentación.</li>
           <li><strong>Marketing gratuito</strong> en nuestras redes y SEO.</li>
           <li><strong>Garantía operativa</strong>: si un cliente te pide un cambio abusivo, FiestaGo media a tu favor.</li>

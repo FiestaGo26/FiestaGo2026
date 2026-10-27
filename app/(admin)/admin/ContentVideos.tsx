@@ -54,7 +54,7 @@ const C = {
 const PILLAR_LABEL: Record<string, string> = {
   lunes_tip:           'Tip de planificación',
   martes_categoria:    'Categoría destacada',
-  miercoles_garantia:  'Garantía de Éxito',
+  miercoles_garantia:  'Garantía de Éxito FiestaGo',
   jueves_real_wedding: 'Real wedding',
   viernes_dato:        'Dato/estadística',
   sabado_sello:        'Sello (captación)',

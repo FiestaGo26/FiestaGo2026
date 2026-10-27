@@ -66,7 +66,7 @@ export default async function ProposalPage({ params }: { params: { token: string
             <div className="text-sm text-ink/60">Precio del servicio</div>
             <div className="font-serif text-4xl font-black text-coral leading-none">{formatEuro(p.total)}</div>
           </div>
-          <div className="text-xs text-ink/55 mt-1 text-right">Precio único y cerrado · IVA y Garantía FiestaGo incluidos</div>
+          <div className="text-xs text-ink/55 mt-1 text-right">Precio único y cerrado · IVA y Garantía de Éxito FiestaGo incluidos</div>
           {p.per_person && <div className="text-sm text-ink/70 mt-1 text-right">≈ {formatEuro(p.per_person)} por invitado</div>}
           {p.details.fecha_confirmada && <div className="mt-3 inline-block text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full px-3 py-1">✓ {p.provider.name} confirma que tiene libre tu fecha</div>}
         </div>
@@ -86,7 +86,7 @@ export default async function ProposalPage({ params }: { params: { token: string
                 {p.unit_extra && <li className="flex justify-between gap-3"><span>Cada {p.unit_extra.label}</span><span className="font-semibold">{formatEuro(p.unit_extra.price)}</span></li>}
                 {p.extras.map(e => <li key={e.id} className="flex justify-between gap-3"><span>{e.label}</span><span className="font-semibold">{formatEuro(e.price)}</span></li>)}
               </ul>
-              <p className="text-[11px] text-ink/50 mt-1">IVA y Garantía FiestaGo incluidos. Los marcas al reservar y se suman al total.</p>
+              <p className="text-[11px] text-ink/50 mt-1">IVA y Garantía de Éxito FiestaGo incluidos. Los marcas al reservar y se suman al total.</p>
             </>
           )}
           {p.reply && <p className="text-sm text-ink/70 italic mt-4 border-l-2 border-coral/40 pl-3">“{p.reply}” — {p.provider.name}</p>}
@@ -121,10 +121,10 @@ export default async function ProposalPage({ params }: { params: { token: string
           <p className="text-xs text-ink/55 mt-3">Pagas a FiestaGo dentro de la web. El dinero queda retenido en Stripe, una entidad de pagos regulada, y {p.provider.name} no lo cobra hasta que termina tu evento. Recibirás la factura con el desglose por email y en tu cuenta.</p>
         </div>
 
-        {/* 4. Garantía FiestaGo y condiciones */}
+        {/* 4. Garantía de Éxito FiestaGo y condiciones */}
         <div className={box}>
-          <h2 className="font-serif text-xl font-bold text-ink mb-1">{answered.length ? '4' : '3'}. Garantía FiestaGo y condiciones</h2>
-          <p className="text-xs text-ink/55 mb-3">La Garantía de Éxito la da FiestaGo, con su propio dinero, no el proveedor. {p.provider.name} ha firmado con FiestaGo sus compromisos: si cancela, ayuda a buscar sustituto o asume una penalización.</p>
+          <h2 className="font-serif text-xl font-bold text-ink mb-1">{answered.length ? '4' : '3'}. Garantía de Éxito FiestaGo y condiciones</h2>
+          <p className="text-xs text-ink/55 mb-3">La Garantía de Éxito FiestaGo la da FiestaGo, con su propio dinero, no el proveedor. {p.provider.name} ha firmado con FiestaGo sus compromisos: si cancela, ayuda a buscar sustituto o asume una penalización.</p>
           <ul className="text-sm text-ink/80 space-y-2 leading-relaxed list-disc pl-5">
             <li><strong>Si el proveedor cancela:</strong> te buscamos en 48 h un sustituto que cumpla las mismas funciones a un precio similar o te devolvemos todo lo pagado y un 10 % más.</li>
             <li><strong>Si no se presenta el día:</strong> te devolvemos lo pagado y {formatEuro(comp)} de compensación. Reembolsos en un máximo de 5 días hábiles.</li>
@@ -136,7 +136,7 @@ export default async function ProposalPage({ params }: { params: { token: string
           </ul>
           <p className="text-xs text-ink/55 mt-3">
             Presta el servicio {p.provider.name}{p.provider.verified ? ' (verificado: DNI/CIF y seguro de responsabilidad civil)' : ''}. FiestaGo: Francisco Mariano González Tejedo, NIF 09437664M, C/ Turina 6, 33011 Oviedo.
-            Detalle completo en <Link href="/garantia" className="underline">Garantía de Éxito</Link> y <Link href="/terminos" className="underline">Términos</Link>.
+            Detalle completo en <Link href="/garantia" className="underline">Garantía de Éxito FiestaGo</Link> y <Link href="/terminos" className="underline">Términos</Link>.
           </p>
         </div>
 

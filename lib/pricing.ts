@@ -3,7 +3,7 @@
 //
 // MODELO ECONÓMICO:
 //   El proveedor introduce su precio BASE (ej. 100€) y SIEMPRE cobra ese
-//   íntegro. El cliente paga base + 8% como "Garantía de Éxito" — ese 8%
+//   íntegro. El cliente paga base + 8% como "Garantía de Éxito FiestaGo" — ese 8%
 //   es lo que se queda FiestaGo y financia la garantía.
 //
 //   El +8% NUNCA se persiste sumado en BD. Solo se calcula al MOSTRAR
@@ -22,7 +22,7 @@ export function precioCliente(base: number): number {
   return Math.round(base * (1 + FEE_RATE) * 100) / 100
 }
 
-/** Importe absoluto de la Garantía de Éxito sobre `base`. 100 -> 8. */
+/** Importe absoluto de la Garantía de Éxito FiestaGo sobre `base`. 100 -> 8. */
 export function importeFee(base: number): number {
   if (!base || base <= 0) return 0
   return Math.round(base * FEE_RATE * 100) / 100
@@ -165,8 +165,8 @@ export function desglosePrecio(base: number): {
 /** Texto reutilizable para tooltips/subtítulos.
  *  Sin importe: el porcentaje/importe de la Garantía solo aparece en la
  *  factura Verifactu (obligación fiscal). En web se muestra únicamente
- *  como "Garantía de Éxito incluida" sin distraer al cliente con cifras.
+ *  como "Garantía de Éxito FiestaGo incluida" sin distraer al cliente con cifras.
  *  `base` se conserva en la firma para no romper llamadas existentes. */
 export function textoGarantiaIncluida(_base?: number): string {
-  return 'Garantía de Éxito incluida'
+  return 'Garantía de Éxito FiestaGo incluida'
 }

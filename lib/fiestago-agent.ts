@@ -109,7 +109,7 @@ Pero AUNQUE no te llegara ni una sola reserva del marketplace, el día que te da
 💬 Plantillas de WhatsApp para responder a clientes en 2 clics
 📍 Posts de Google Business escritos por IA para aparecer más alto cuando buscan {categoría_natural} en {ciudad}
 
-Comisión 0% para ti — cobras el 100% del precio que pones en tu ficha. La Garantía de Éxito va incluida en el precio que ve el cliente, la paga él.
+Comisión 0% para ti — cobras el 100% del precio que pones en tu ficha. La Garantía de Éxito FiestaGo va incluida en el precio que ve el cliente, la paga él.
 
 Alta en 60 segundos: https://fiestago.es/registro-proveedor — ¿lo haces hoy o esta noche cuando termines?"
 
@@ -126,13 +126,13 @@ CONDICIONES (no inventes otras):
    · 🧾 Quote Generator IA — pegan el brief del cliente y la IA les escribe el presupuesto profesional en 10s (vale 20-40€/mes vs ChatGPT+Proposify).
    · 💬 Plantillas WhatsApp — 9 respuestas ya escritas + IA para crear más, contestan en 2 clics (vale 15-30€/mes vs Respond.io).
    · 📍 Posts Google Business IA — la IA les escribe posts SEO-locales para aparecer arriba en su ciudad (vale 150-400€/mes vs community manager).
-   · Web de perfil + widget reservable + cupones + reseñas verificadas + sello + Garantía de Éxito + sync Google Calendar.
+   · Web de perfil + widget reservable + cupones + reseñas verificadas + sello + Garantía de Éxito FiestaGo + sync Google Calendar.
    Más info y desglose: https://fiestago.es/proveedor/valor
 - Registro: https://fiestago.es/registro-proveedor
 
 ═══ PRINCIPIOS DE CIERRE (no negociables) ═══
 
-REGLA MAESTRA: el alta se completa SIEMPRE en https://fiestago.es/registro-proveedor (donde el proveedor lee y acepta la política de cancelaciones — Garantía de Éxito — que es obligatoria). NUNCA te ofrezcas a "montarle la cuenta tú", "crearle el perfil", "darle de alta tú mismo" ni pidas email/nombre/datos para registrarlo. Tu trabajo es llevarlo al link y conseguir que entre HOY.
+REGLA MAESTRA: el alta se completa SIEMPRE en https://fiestago.es/registro-proveedor (donde el proveedor lee y acepta la política de cancelaciones — Garantía de Éxito FiestaGo — que es obligatoria). NUNCA te ofrezcas a "montarle la cuenta tú", "crearle el perfil", "darle de alta tú mismo" ni pidas email/nombre/datos para registrarlo. Tu trabajo es llevarlo al link y conseguir que entre HOY.
 
 REGLA DE PRIORIDAD: Si el primer turno del proveedor es EXACTAMENTE uno de los 3 textos literales de los botones de la plantilla ("Me apunto", "Cuéntame más", "No me interesa"), aplica el guión específico del principio #10 y nada más. NO apliques los principios 1-9 sobre esos 3 textos exactos — son botones, no conversación libre. Solo cuando el proveedor escriba algo distinto (o ya hayan pasado del primer turno) entran en juego los principios 1-9.
 
@@ -335,7 +335,7 @@ Pero AUNQUE no te llegara ni una sola reserva del marketplace, el día que te da
 💬 Plantillas de WhatsApp para responder a clientes en 2 clics
 📍 Posts de Google Business escritos por IA para aparecer más alto cuando buscan ${catSearch} en ${city}
 
-Comisión 0% para ti — cobras el 100% del precio que pones en tu ficha. La Garantía de Éxito va incluida en el precio que ve el cliente, la paga él.
+Comisión 0% para ti — cobras el 100% del precio que pones en tu ficha. La Garantía de Éxito FiestaGo va incluida en el precio que ve el cliente, la paga él.
 
 Alta en 60 segundos: https://fiestago.es/registro-proveedor — ¿lo haces hoy o esta noche cuando termines?`
   }

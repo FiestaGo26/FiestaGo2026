@@ -32,12 +32,12 @@ const JSON_LD = {
         { '@type': 'Question', name: '¿Cuánto cuesta Bodas.net al año?',
           acceptedAnswer: { '@type': 'Answer', text: 'Bodas.net cobra una cuota anual a proveedores que va desde 600€ hasta 2.500€ aproximadamente, según el plan (Básico, Pro, Premium). Esa cuota es independiente de las solicitudes que recibas: la pagas exista o no demanda.' } },
         { '@type': 'Question', name: '¿FiestaGo es gratis para proveedores?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Sí, registrarte y mantener tu ficha en FiestaGo es completamente gratis. No hay cuota anual, mensual ni permanencia. En cada reserva cobras el 100% del precio que pongas en tu ficha — la Garantía de Éxito la paga el cliente incluida en el total.' } },
+          acceptedAnswer: { '@type': 'Answer', text: 'Sí, registrarte y mantener tu ficha en FiestaGo es completamente gratis. No hay cuota anual, mensual ni permanencia. En cada reserva cobras el 100% del precio que pongas en tu ficha — la Garantía de Éxito FiestaGo la paga el cliente incluida en el total.' } },
         { '@type': 'Question', name: '¿Puedo darme de baja en cualquier momento?',
           acceptedAnswer: { '@type': 'Answer', text: 'Sí. En FiestaGo no hay permanencia. Puedes pausar o eliminar tu ficha cuando quieras desde el panel de proveedor, sin coste ni penalización.' } },
         { '@type': 'Question', name: '¿Cuál es la diferencia clave entre FiestaGo y Bodas.net?',
           acceptedAnswer: { '@type': 'Answer', text: 'Bodas.net es un directorio publicitario: pagas por aparecer. FiestaGo es un marketplace transaccional: solo ganas dinero cuando hay reservas reales. Bodas.net cobra al proveedor; FiestaGo cobra al cliente como prima de garantía.' } },
-        { '@type': 'Question', name: '¿Qué es la Garantía de Éxito de FiestaGo?',
+        { '@type': 'Question', name: '¿Qué es la Garantía de Éxito FiestaGo de FiestaGo?',
           acceptedAnswer: { '@type': 'Answer', text: 'Es un seguro incluido en el precio de cada reserva, pagado por el cliente. Si el proveedor cancela y no encontramos sustituto, FiestaGo devuelve el 110% del importe al cliente; si no se presenta el día del evento, el 100% más una compensación de 300€ a 3.000€ según el ticket. El proveedor cumplidor no paga nada.' } },
       ],
     },
@@ -142,7 +142,7 @@ export default function AlternativasBodasNetPage() {
                 },
                 {
                   icon: '🛡️', title: 'Garantía que vende por ti',
-                  body: 'Cada reserva en FiestaGo incluye Garantía de Éxito: si el proveedor cancela y no encontramos sustituto, el cliente recupera el 110%. Va incluida en el precio de la reserva. Esa garantía es lo que convierte "interesado" en "pago ya". Bodas.net no la tiene.'
+                  body: 'Cada reserva en FiestaGo incluye Garantía de Éxito FiestaGo: si el proveedor cancela y no encontramos sustituto, el cliente recupera el 110%. Va incluida en el precio de la reserva. Esa garantía es lo que convierte "interesado" en "pago ya". Bodas.net no la tiene.'
                 },
                 {
                   icon: '🎯', title: 'Solicitudes cualificadas',

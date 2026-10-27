@@ -132,7 +132,7 @@ export default async function HomePage() {
             </form>
           </div>
           <nav className="fg-card__links" aria-label="Accesos rápidos">
-            <Link href="/garantia" className="fg-link">Garantía de Éxito</Link>
+            <Link href="/garantia" className="fg-link">Garantía de Éxito FiestaGo</Link>
             <Link href="/quienes-somos" className="fg-link">Quiénes somos</Link>
             <Link href="/quiz" className="fg-link">Quiz de 2 minutos</Link>
             <Link href="/profesionales" className="fg-link">Soy profesional</Link>
@@ -146,14 +146,14 @@ export default async function HomePage() {
         <div className="fg-wall__top">
           <h2 id="prov-h" data-reveal>Ya están aquí.</h2>
           <p data-reveal style={{ ['--i' as any]: 1 }}>
-            {total} profesionales en {cities.length} ciudades, con su precio a la vista y la Garantía de Éxito incluida. Elige una categoría y mira quién hay.
+            {total} profesionales en {cities.length} ciudades, con su precio a la vista y la Garantía de Éxito FiestaGo incluida. Elige una categoría y mira quién hay.
           </p>
         </div>
         <ProviderWall providers={providers} total={total} />
       </section>
 
       {/* ─────────── Garantía ─────────── */}
-      <section className="fg-guarantee" aria-label="Garantía de Éxito">
+      <section className="fg-guarantee" aria-label="Garantía de Éxito FiestaGo">
         <div className="fg-guarantee__plate" data-reveal>
           {plate && <img src={plate.photo} alt={`${plate.name}, ${plate.categoryLabel.toLowerCase()} en ${plate.city}`} loading="lazy" />}
         </div>
@@ -189,7 +189,7 @@ export default async function HomePage() {
                 </ul>
               </div>
             ))}
-            <p className="fg-sheet__foot">Garantía de Éxito incluida en cada precio.<br />El pago queda retenido hasta el día del evento.</p>
+            <p className="fg-sheet__foot">Garantía de Éxito FiestaGo incluida en cada precio.<br />El pago queda retenido hasta el día del evento.</p>
           </div>
           <span className="fg-credit">Foto: Vadim Sherbakov · Unsplash</span>
         </section>

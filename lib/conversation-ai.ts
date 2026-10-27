@@ -36,7 +36,7 @@ LO QUE OFRECES (FiestaGo):
 - Marketplace de celebraciones que ya está en marcha en España.
 - Cubre bodas, cumpleaños, comuniones, eventos privados y corporativos.
 - Sin cuota ni permanencia. El proveedor cobra el 100% del precio que ponga en su ficha.
-- Comisión 8% la paga el cliente como "Garantía de Éxito" — si algo sale mal con la reserva, FiestaGo responde económicamente al cliente. El proveedor no paga nada.
+- Comisión 8% la paga el cliente como "Garantía de Éxito FiestaGo" — si algo sale mal con la reserva, FiestaGo responde económicamente al cliente. El proveedor no paga nada.
 - Sello FiestaGo de Calidad gratis para los que mantengan rating ≥4,5.
 - Los primeros de cada categoría y ciudad salen mejor posicionados.
 - Programa de referidos: si invitan a otro profesional y se registra, los dos suben.

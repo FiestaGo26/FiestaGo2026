@@ -94,7 +94,7 @@ export default async function CelebrationPage({ params }: { params: { token: str
           </div>
         )}
 
-        <p className="text-xs text-ink/55 text-center">Todo lo que reserves aquí lleva la Garantía de Éxito y la Reserva sin riesgo de 7 días. ¿Dudas? Responde a cualquier email de FiestaGo y te llamamos.</p>
+        <p className="text-xs text-ink/55 text-center">Todo lo que reserves aquí lleva la Garantía de Éxito FiestaGo y la Reserva sin riesgo de 7 días. ¿Dudas? Responde a cualquier email de FiestaGo y te llamamos.</p>
       </section>
     </main>
   )

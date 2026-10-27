@@ -135,7 +135,7 @@ export const PILLARS_PROVIDERS: Pillar[] = [
       'Las consultas de FiestaGo vienen con escrow. Si el cliente cancela, tú cobras',
       'Pago en escrow: el dinero del cliente espera retenido hasta el día del evento',
       'Por qué los clientes que entran por FiestaGo dan menos quebraderos de cabeza',
-      'La Garantía de Éxito te protege a ti — la financia el cliente, no tú',
+      'La Garantía de Éxito FiestaGo te protege a ti — la financia el cliente, no tú',
       'Cómo FiestaGo media cuando un cliente pide cambios abusivos',
       'Tu trabajo blindado: el día del evento sí o sí cobras (sea boda, cumple o evento de empresa)',
     ],
@@ -317,7 +317,7 @@ Tu trabajo es escribir el GUION HABLADO de un vídeo de 20 segundos que dirá un
 ÁNGULO PRINCIPAL (mismo cerebro que el agente de WhatsApp de FiestaGo):
 Cada semana hay clientes — parejas, familias y empresas — buscando proveedores de su categoría en FiestaGo para celebrar bodas, comuniones, cumpleaños, despedidas, eventos privados o eventos de empresa. SOLO ven a los que están dados de alta — las consultas se las llevan los que aparecen. El proveedor que no está, no existe para ese cliente.
 
-Ese es el marco desde el que se construye CADA guion. El refuerzo del valor (pack IA gratis, 0% comisión, Garantía de Éxito, escrow) sirve para hacer la decisión OBVIA — quitar fricción y miedo al alta — pero NO es el ángulo principal aislado. Primero la demanda real, después por qué entrar es fácil y gratis.
+Ese es el marco desde el que se construye CADA guion. El refuerzo del valor (pack IA gratis, 0% comisión, Garantía de Éxito FiestaGo, escrow) sirve para hacer la decisión OBVIA — quitar fricción y miedo al alta — pero NO es el ángulo principal aislado. Primero la demanda real, después por qué entrar es fácil y gratis.
 
 Los primeros 8-10 palabras DECIDEN si el proveedor se queda mirando o pasa al siguiente vídeo. Tienen que ABRIR LOS OJOS con la idea de demanda activa cerca de él, con un dato concreto o una imagen mental clara: parejas buscando AHORA, consultas semanales reales, otros profesionales contestando esas consultas.
 
@@ -394,7 +394,7 @@ Lo que más les preocupa: pagar por adelantado a alguien que no conocen, que el 
 
 Datos verdaderos (usa solo estos; nunca inventes cifras, estadísticas, reseñas, testimonios, clientes ni "casos reales"):
 - El pago queda retenido en Stripe y el proveedor no cobra hasta que termina el evento. Se reserva con una señal pequeña.
-- Todos los servicios llevan la Garantía de Éxito incluida en el precio: si el proveedor cancela, se busca otro que haga lo mismo a un precio similar en 48 h; si no lo hay, se devuelve todo y un 10 % más; si no se presenta, se devuelve lo pagado más una compensación según el importe. No cubre la lluvia ni los cambios que pida el cliente.
+- Todos los servicios llevan la Garantía de Éxito FiestaGo incluida en el precio: si el proveedor cancela, se busca otro que haga lo mismo a un precio similar en 48 h; si no lo hay, se devuelve todo y un 10 % más; si no se presenta, se devuelve lo pagado más una compensación según el importe. No cubre la lluvia ni los cambios que pida el cliente.
 - Precio cerrado a la vista en cada ficha. Se puede bloquear la fecha 48 h gratis o pedir presupuesto sin pagar ni dar la tarjeta.
 - Proveedores verificados (DNI o CIF y seguro de responsabilidad civil).
 - Se puede preguntar por WhatsApp: contesta una persona de lunes a viernes de 10:00 a 20:00 y los sábados de 10:00 a 14:00.
@@ -433,7 +433,7 @@ export async function generateContent(opts: {
     `[Tema concreto] ${topic}\n` +
     `[CTA final del guion] ${pillar.ctaShort} (${pillar.ctaUrl})\n` +
     `[Hashtags base sugeridos] ${pillar.hashtagsBase.join(', ')}\n` +
-    `[Contexto FiestaGo] Marketplace de bodas/eventos en España YA EN MARCHA. Cada semana hay parejas y familias buscando proveedores y solo ven a los que están dados de alta — los que aparecen reciben las consultas. Alta gratis, sin cuotas ni comisión. El cliente paga 8% extra que financia la Garantía de Éxito; el proveedor cobra su precio íntegro. Al darse de alta, el proveedor desbloquea un pack de herramientas IA gratis (Quote Generator, plantillas WhatsApp, posts Google Business) que pagadas sueltas costarían entre 265€ y 605€/mes — sirven para QUITAR FRICCIÓN al alta, no como mensaje principal.\n\n` +
+    `[Contexto FiestaGo] Marketplace de bodas/eventos en España YA EN MARCHA. Cada semana hay parejas y familias buscando proveedores y solo ven a los que están dados de alta — los que aparecen reciben las consultas. Alta gratis, sin cuotas ni comisión. El cliente paga 8% extra que financia la Garantía de Éxito FiestaGo; el proveedor cobra su precio íntegro. Al darse de alta, el proveedor desbloquea un pack de herramientas IA gratis (Quote Generator, plantillas WhatsApp, posts Google Business) que pagadas sueltas costarían entre 265€ y 605€/mes — sirven para QUITAR FRICCIÓN al alta, no como mensaje principal.\n\n` +
     `Genera el guion (20s), caption y hashtags. JSON puro. Recuerda: hook de DEMANDA ACTIVA en su zona/categoría; el ángulo del pilar entra después como refuerzo; CTA al alta gratis hoy. Prohibido escasez sobre plazas/sello.`
 
   const resp = await client().messages.create({

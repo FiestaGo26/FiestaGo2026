@@ -190,7 +190,7 @@ export default function EventoRealDetail() {
               ¿Quieres un evento como éste?
             </h2>
             <p className="text-sm md:text-base opacity-90 mt-2">
-              Reserva los proveedores que más te encajen — con Garantía de Éxito incluida.
+              Reserva los proveedores que más te encajen — con Garantía de Éxito FiestaGo incluida.
             </p>
             <div className="mt-6 flex gap-3 justify-center flex-wrap">
               <Link href="/quiz" className="bg-white text-coral font-bold px-6 py-3 rounded-xl text-sm hover:bg-cream transition-colors">

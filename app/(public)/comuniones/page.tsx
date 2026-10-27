@@ -3,7 +3,7 @@ import { VerticalLandingPage } from '../_components/VerticalLandingPage'
 
 export const metadata: Metadata = {
   title:       'Comuniones y bautizos sin estrés — Reserva en 3 pasos con FiestaGo',
-  description: 'Organiza la comunión o bautizo con restaurante, fotografía, decoración y tarta verificados. Garantía de Éxito incluida. Reserva en 3 pasos.',
+  description: 'Organiza la comunión o bautizo con restaurante, fotografía, decoración y tarta verificados. Garantía de Éxito FiestaGo incluida. Reserva en 3 pasos.',
   alternates:  { canonical: 'https://fiestago.es/comuniones' },
   openGraph: {
     title:       'Comuniones y bautizos en FiestaGo',
@@ -22,7 +22,7 @@ export default function ComunionesLanding() {
       emoji:     '✨',
       hero: {
         headline: 'El día especial, sin que tú te angusties.',
-        subhead:  'Restaurante, fotógrafo, decoración, animación y tarta. Profesionales verificados y Garantía de Éxito incluida.',
+        subhead:  'Restaurante, fotógrafo, decoración, animación y tarta. Profesionales verificados y Garantía de Éxito FiestaGo incluida.',
         img:      'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1920&q=85&auto=format&fit=crop',
       },
       intro: 'La comunión o el bautizo de tu hijo es un día único. Encuentra restaurante, fotógrafo, animación infantil, tarta personalizada y decoración floral — todo en una sola plataforma, con precios cerrados y respaldo si algo falla.',
