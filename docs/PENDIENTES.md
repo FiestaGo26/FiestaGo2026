@@ -85,6 +85,9 @@ Después, las bios:
 ## 1b. Tareas apuntadas el 28-10-2026 (por orden de prioridad)
 
 ### 1) PRIORIDAD: captar proveedores (individualmente y a través de asociaciones)
+Ampliado a **Asturias** (Oviedo, Gijón, Avilés, Siero, Llanes), donde Mariano puede visitar. Guion de
+llamada, email para asociaciones y lista de asociaciones en `docs/CAPTACION.md`. La búsqueda diaria
+gratuita (OSM + DuckDuckGo) ya rota por Valencia y Asturias con más peso en locales, belleza y catering.
 Situación: ~1.150 negocios contactados en frío (email, Instagram, WhatsApp) desde mayo y solo 28
 aprobados (9 de ellos venían de esos contactos, el resto llegó solo). **Ningún local** aprobado (hay 141
 localizados, solo 30 en Valencia), 2 de belleza (134 localizados), 1 catering. El frío casi no convierte.

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CATEGORIES } from '@/lib/constants'
 
-const CITIES = ['Madrid','Barcelona','Valencia','Sevilla','Bilbao','Málaga','Zaragoza','Murcia']
+const CITIES = ['Madrid','Barcelona','Valencia','Sevilla','Bilbao','Málaga','Zaragoza','Murcia','Oviedo','Gijón']
 
 // Tipos de evento — solo aplica al tab de Packs.
 const EVENT_TYPES = [

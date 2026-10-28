@@ -19,21 +19,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Buscar proveedores en Valencia (OSM + DDG, 0€/mes)
+      - name: Buscar proveedores en Valencia y Asturias (OSM + DDG, 0€/mes)
         env:
           SITE_URL:    ${{ secrets.SITE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           set -e
 
-          # Rotación de categorías. 12 categorías × 3 ejecuciones/día =
-          # cada categoría se busca ~6 veces/semana en Valencia.
-          CATEGORIES=(flores pastel espacios catering joyeria belleza papeleria foto musica planner animacion transporte)
+          # Rotación de categorías, con más peso en lo que falta (28-10-2026):
+          # locales ×3, peluquería/belleza ×2, catering ×2. Joyería, papelería y
+          # transporte fuera por ahora (no son el núcleo de una celebración).
+          CATEGORIES=(espacios belleza catering espacios animacion pastel belleza foto espacios catering musica flores planner)
 
-          # Solo Valencia + sub-áreas (el usuario está restringido a
-          # Valencia de momento). El endpoint hace match flexible:
-          # "Valencia centro" matcha también proveedores con city="Valencia".
-          CITIES=("Valencia" "Valencia centro" "Gandía" "Sagunto" "Torrent" "Paterna")
+          # Valencia + Asturias (28-10-2026: Mariano puede visitar en Asturias).
+          # El endpoint hace match flexible: "Valencia centro" matcha también
+          # proveedores con city="Valencia". 13 categorías y 10 ciudades no
+          # tienen divisor común, así que la rotación recorre todas las parejas.
+          CITIES=("Valencia" "Oviedo" "Valencia centro" "Gijón" "Torrent" "Avilés" "Paterna" "Siero" "Gandía" "Llanes")
 
           # Día del año (1-366) como semilla determinista pero variable.
           DAY=$(date +%j)

@@ -65,6 +65,7 @@ export const CITIES = [
   'Madrid','Barcelona','Valencia','Sevilla','Bilbao',
   'Málaga','Zaragoza','Murcia','Alicante','Granada',
   'Córdoba','Valladolid','Palma','Las Palmas','Santander',
+  'Oviedo','Gijón','Avilés',
 ] as const
 
 export const COMMISSION_RATE = 0.08
