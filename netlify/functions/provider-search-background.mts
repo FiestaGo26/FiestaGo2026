@@ -15,7 +15,7 @@ export default async (req: Request) => {
   if (!process.env.CEO_TICK_SECRET || req.headers.get('x-tick-secret') !== process.env.CEO_TICK_SECRET) {
     return new Response('No autorizado', { status: 401 })
   }
-  const { jobs } = await req.json().catch(() => ({} as any))
+  const { jobs, send_email } = await req.json().catch(() => ({} as any))
   if (!Array.isArray(jobs) || !jobs.length) return new Response('Faltan jobs', { status: 400 })
 
   const supabase = createAdminClient()
@@ -23,7 +23,7 @@ export default async (req: Request) => {
   const results: Array<{ category: string; city: string; saved: number; dup: number; noWa: number; error?: string }> = []
   for (const j of jobs.slice(0, 40)) {
     if (Date.now() - started > 13 * 60_000) break   // margen antes de los 15 min
-    const r = await runProviderSearch({ category: j.category, city: j.city, count: j.count || 10 })
+    const r = await runProviderSearch({ category: j.category, city: j.city, count: j.count || 10, send_email: send_email !== false })
       .catch((err: any) => ({ saved: 0, skippedDup: 0, skippedNoWa: 0, error: err.message } as any))
     results.push({ category: j.category, city: j.city, saved: r.saved, dup: r.skippedDup, noWa: r.skippedNoWa, error: r.error })
   }

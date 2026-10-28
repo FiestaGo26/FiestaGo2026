@@ -28,7 +28,7 @@ export type ProviderSearchResult = {
   skippedNoWa: number; scraped: number; logs: string[]; error?: string
 }
 
-export async function runProviderSearch(input: { category?: string; city?: string; count?: number | string }): Promise<ProviderSearchResult> {
+export async function runProviderSearch(input: { category?: string; city?: string; count?: number | string; send_email?: boolean }): Promise<ProviderSearchResult> {
   const logs: string[] = []
   const log = (m: string) => { logs.push(m) }
   const body: any = input
@@ -304,8 +304,8 @@ export async function runProviderSearch(input: { category?: string; city?: strin
         saved++
         if (phoneKey) phonesUsed.add(phoneKey)
 
-        // Outreach automático por email si hay
-        if (c.email) {
+        // Outreach automático por email si hay (send_email: false → solo guardar; p. ej. zonas donde Mariano llama o visita primero)
+        if (c.email && input.send_email !== false) {
           const { data: fresh } = await supabase
             .from('providers').select('*').eq('email', c.email).maybeSingle()
           if (fresh) {
