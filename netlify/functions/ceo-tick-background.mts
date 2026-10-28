@@ -23,6 +23,7 @@ import { runProviderSearch } from '../../lib/provider-search'
 import { releaseHolds } from '../../lib/date-holds'
 import { holdFollowups } from '../../lib/proposals'
 import { remindIncompleteProfiles } from '../../lib/provider-completeness'
+import { sendDailyPlan } from '../../lib/captacion'
 import { publishNext } from '../../lib/social-publisher'
 
 const MAX_ACTIONS = 20
@@ -157,6 +158,15 @@ export default async (req: Request) => {
       out.profile_reminders = await remindIncompleteProfiles(supabase)
     } catch (err: any) {
       out.profile_reminders = `error: ${err.message}`
+    }
+  }
+  // Lunes a viernes a las 8: plan de captación del día a Mariano (lib/captacion.ts)
+  const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Madrid', weekday: 'short' }).format(new Date())
+  if (!['Sat', 'Sun'].includes(wd) && mn.hour === 8 && new Date().getUTCMinutes() < 10) {
+    try {
+      out.captacion_plan = await sendDailyPlan(supabase)
+    } catch (err: any) {
+      out.captacion_plan = `error: ${err.message}`
     }
   }
   const madridHour = madridNow().hour

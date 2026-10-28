@@ -10,6 +10,7 @@ import WhatsappInbox from './WhatsappInbox'
 import ContentVideos from './ContentVideos'
 import EnvCheckCard from './EnvCheckCard'
 import CeoAgent from './CeoAgent'
+import Captacion from './Captacion'
 
 const ADMIN_PASS = typeof window !== 'undefined'
   ? localStorage.getItem('fg_admin_pass') || '' : ''
@@ -1034,6 +1035,7 @@ export default function AdminPage() {
     { id:'ceo',          icon:'🧠', label:'Agente CEO' },
     { id:'metrics',      icon:'📈', label:'Métricas' },
     { id:'financials',   icon:'💰', label:'Cobros y facturación' },
+    { id:'captacion',    icon:'📞', label:'Captación' },
     { id:'providers',    icon:'🏪', label:'Proveedores', badge: stats.pending },
     { id:'bookings',     icon:'📋', label:'Reservas', badge: bookingStats.pending || 0 },
     { id:'incidents',    icon:'🚨', label:'Incidencias', badge: incidentsStats.open || 0 },
@@ -2556,6 +2558,7 @@ export default function AdminPage() {
           {section === 'whatsapp' && <WhatsappInbox />}
           {section === 'content'  && <ContentVideos />}
           {section === 'ceo'      && <CeoAgent />}
+          {section === 'captacion' && <Captacion />}
         </div>
       </main>
 

@@ -4,6 +4,12 @@ Prioridad (28-10-2026): **locales** (restaurantes con salón, hoteles con salón
 luego **peluquería y maquillaje** y **catering**. El contacto en frío por email o Instagram casi no
 convierte (~1.150 contactados, 9 altas): con los locales, llamada o visita.
 
+**Agente de captación** (`lib/captacion.ts`): panel → pestaña **Captación**. Cada día ordena a quién llamar
+o visitar (asociaciones, locales, catering, peluquería…, Asturias primero), con el guion, el botón de llamar,
+el WhatsApp ya escrito (solo si tienen móvil; lo envías tú) y botones para apuntar cómo ha ido. Programa
+solo el siguiente contacto (no contesta → mañana; interesado → te abre el WhatsApp con el enlace de alta y
+lo vuelve a poner en 2 días). De lunes a viernes a las 8:00 te llega el plan del día por email.
+
 Los locales que encuentra la búsqueda diaria aparecen en el panel de administración → Proveedores
 (estado «pendiente», categoría «Espacios»), con su teléfono y web cuando los hay.
 
