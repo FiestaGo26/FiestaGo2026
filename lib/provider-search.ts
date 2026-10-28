@@ -6,6 +6,7 @@ import { osmSearch, osmSupportsCategory } from '@/lib/osm-search'
 import { ddgSearchVerbose } from '@/lib/ddg-search'
 import { extractEmailFromWeb } from '@/lib/extract-email'
 import { hasValidWhatsapp, extractPhoneFromWaUrl, isMobilePhoneES } from '@/lib/whatsapp'
+import { junkLeadReason } from '@/lib/lead-quality'
 
 // MODO ESTRICTO: solo guardamos leads que tengan WhatsApp utilizable
 // (móvil ES 6XX/7XX o wa.me/api.whatsapp extraído de la web). Es la
@@ -70,7 +71,17 @@ export async function runProviderSearch(input: { category?: string; city?: strin
     const cw = cat.query || cat.label
     const cl = cat.label.toLowerCase()
     const cf = cat.label.split(' ')[0]
-    const queryPool = [
+    const queryPool = category === 'espacios' ? [
+      // Locales: "fincas" a secas trae administradores de fincas e inmobiliarias
+      `salón de bodas ${city}`,
+      `finca para bodas y eventos ${city}`,
+      `restaurante con salón para celebraciones ${city}`,
+      `hotel bodas banquetes ${city}`,
+      `espacio para eventos y celebraciones ${city}`,
+      `restaurante comuniones ${city}`,
+      `llagar o quinta para celebraciones ${city}`,
+      `salón de banquetes ${city}`,
+    ] : [
       `${cw} ${city} bodas`,
       `${cf} ${city} bodas eventos`,
       `estudio ${cl} ${city}`,
@@ -372,6 +383,8 @@ async function persistProvider(
   supabase: any,
   log: (m: string) => void,
 ): Promise<boolean> {
+  const junk = junkLeadReason(c.name)
+  if (junk) { log(`   ⨯ ${c.name} · ${junk}`); return false }
   const provLike = { name: c.name, city, source: 'web' }
   const emailDraft = c.email                ? buildEmailDraft(provLike)    : ''
   const dmDraft    = c.instagram            ? buildDmDraft(provLike)       : ''
