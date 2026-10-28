@@ -117,6 +117,17 @@ Reserva sin riesgo 7 días; «Tu celebración» con local (tipo, aforo, cocina�
 avisos de compatibilidad; opciones económicas, medias y premium en cada categoría; que todos los
 proveedores vean la ficha del local del cliente.
 
+Revisión (28-10): faltaba lo central de las simulaciones 14-15, **montar la celebración entera y ver el
+total exacto**: la calculadora solo daba un rango y los favoritos no sumaban. Hecho: **/monta-tu-celebracion**
+(local con su tipo y aforo → un profesional por servicio con su precio exacto para tus invitados y horas,
+etiquetas económica/media/premium, catering oculto si el local ya incluye la comida o no admite catering
+externo, total y precio por invitado siempre a la vista, y «Pedir las propuestas» a todos de una vez).
+Enlazado en el menú, en las páginas de comuniones/cumpleaños y en «Tu celebración».
+Lo demás ya estaba en la web: precio único, documento de reserva con documentos, extras con precio,
+referencias, opiniones de Google, preguntas a FiestaGo o al proveedor, bloqueo 48 h, Reserva sin riesgo,
+videollamada, seguimiento a las ~20 h, ficha del local visible para los proveedores y avisos de catering.
+Depende de la oferta (no de la web): varias opciones por categoría y 3 opiniones por proveedor.
+
 ### 3) Vídeos para clientes con el creador de contenido
 Que el CEO elija o prepare vídeos dirigidos a clientes (no solo a proveedores) y se los pase al creador de
 contenido (contenido diario → HeyGen con el plan de la cuenta, tarea programada «Grabar vídeos de FiestaGo

@@ -114,7 +114,7 @@ export default async function CelebrationPage({ params }: { params: { token: str
         {needs.length > 0 && (
           <div className="bg-white border border-stone-200 rounded-2xl p-6 mb-5">
             <h2 className="font-serif text-xl font-bold text-ink mb-1">Lo que suele faltar</h2>
-            <p className="text-xs text-ink/55 mb-3">Para un evento así, la gente suele contratar también:</p>
+            <p className="text-xs text-ink/55 mb-3">Para un evento así, la gente suele contratar también (o móntalo todo de una vez en <Link href="/monta-tu-celebracion" className="underline">Monta tu celebración</Link>):</p>
             <div className="flex flex-wrap gap-2">
               {needs.map(c => (
                 <Link key={c} href={`/proveedores?categoria=${c}`} className="text-sm bg-cream border border-stone-200 rounded-full px-3 py-1.5 text-ink hover:border-coral">

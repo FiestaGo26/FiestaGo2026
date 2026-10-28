@@ -80,6 +80,7 @@ export default function Navbar() {
               </div>
             </div>
           </div>
+          <Link href="/monta-tu-celebracion" className={link}>Monta tu celebración</Link>
           <Link href="/calculadora" className={link}>Calculadora</Link>
           <Link href="/eventos-reales" className={link}>Inspírate</Link>
           {auth.email && !auth.isProvider && (

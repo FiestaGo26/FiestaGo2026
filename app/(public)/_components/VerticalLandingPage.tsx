@@ -89,9 +89,9 @@ export async function VerticalLandingPage({ config }: { config: VerticalConfig }
               <div className="text-[10px] text-ink/50">por {config.ctaBudget.per}</div>
             </div>
             <div className="w-px h-12 bg-stone-200"/>
-            <Link href="/calculadora"
+            <Link href="/monta-tu-celebracion"
               className="text-sm font-semibold text-coral hover:underline">
-              Calcular el mío →
+              Monta la tuya con el precio total →
             </Link>
           </div>
         )}
