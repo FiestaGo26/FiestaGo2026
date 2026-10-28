@@ -82,6 +82,44 @@ Después, las bios:
   60 días, bloqueo de fecha / presupuesto gratis 48 h, piloto de cumple infantil en
   Valencia y l'Horta, regla del CEO por "servicio central del evento".
 
+## 1b. Tareas apuntadas el 28-10-2026 (por orden de prioridad)
+
+### 1) PRIORIDAD: captar proveedores (individualmente y a través de asociaciones)
+Situación: ~1.150 negocios contactados en frío (email, Instagram, WhatsApp) desde mayo y solo 28
+aprobados (9 de ellos venían de esos contactos, el resto llegó solo). **Ningún local** aprobado (hay 141
+localizados, solo 30 en Valencia), 2 de belleza (134 localizados), 1 catering. El frío casi no convierte.
+Plan:
+- **Locales primero** (son el ancla de toda celebración y sin ellos no se monta nada): lista nueva con Apify
+  de restaurantes con salón, hoteles con salón de banquetes y fincas de Valencia y alrededores (objetivo
+  3-5 dados de alta) + llamada o visita de Mariano, no email. Argumento: gratis, sin cuota, cobran el 100 %
+  de su precio, y el cliente monta su celebración alrededor del local (el local es el primer servicio que se elige).
+- **Asociaciones**: Asociación de Banquetes de Valencia (presidente en 2021: Ignacio Aliño, confirmar si
+  sigue activa), FEHV (Federación Empresarial de Hostelería de Valencia, presidente Manuel Espinar) →
+  convenio: alta gratis para sus socios y presentación en sus jornadas. AVECOE (empresas de ocio
+  educativo / animación infantil, confirmar si sigue activa). Peluquerías: buscar el gremio o asociación
+  provincial de peluquería y estética.
+- **Ferias**: SpacioBoda Valencia 2026 (feria pequeña de proveedores seleccionados) → ir como visitante y
+  hablar con los expositores en persona.
+- **Recomendados**: pedir a cada uno de los 28 aprobados 3 profesionales con los que trabajan (el fotógrafo
+  conoce los locales, el local conoce caterings y DJ). Ya existe el incentivo de «invita a otro profesional».
+- **Frío, mejor dirigido**: mensaje específico para locales y peluquerías (lo que les da FiestaGo a ellos) y
+  seguimiento por teléfono.
+
+### 2) Dejar la web exactamente como en la simulación 15 (55,9 % de reservas)
+Revisar en la web real, uno por uno, y cambiar lo que no esté igual: ficha con precio único (IVA y
+Garantía incluidos), 3 reseñas, referencias de clientes, extras con precio final; documento de reserva
+FiestaGo con documentos adjuntos (menú, póliza…); llamada de FiestaGo y seguimiento a las ~20 h;
+videollamada; preguntas que contesta FiestaGo (garantía, pagos) o el proveedor; bloqueo de fecha 48 h;
+Reserva sin riesgo 7 días; «Tu celebración» con local (tipo, aforo, cocina…), todos los servicios, total y
+avisos de compatibilidad; opciones económicas, medias y premium en cada categoría; que todos los
+proveedores vean la ficha del local del cliente.
+
+### 3) Vídeos para clientes con el creador de contenido
+Que el CEO elija o prepare vídeos dirigidos a clientes (no solo a proveedores) y se los pase al creador de
+contenido (contenido diario → HeyGen con el plan de la cuenta, tarea programada «Grabar vídeos de FiestaGo
+con HeyGen»). Temas: cómo montar tu celebración en 5 clics, la Garantía de Éxito, Reserva sin riesgo,
+comuniones y cumpleaños infantiles en Valencia.
+
 ## 2. Lo que hace Claude cuando lo anterior esté listo
 
 ### Objetivo: ≥ 50 % de cierre (simulaciones de embudo completo, 26-10-2026)
