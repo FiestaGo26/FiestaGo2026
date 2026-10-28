@@ -11,7 +11,11 @@ import { hasValidWhatsapp, extractPhoneFromWaUrl, isMobilePhoneES } from '@/lib/
 // (móvil ES 6XX/7XX o wa.me/api.whatsapp extraído de la web). Es la
 // única vía de captación real que estamos usando — guardar leads sin
 // WhatsApp solo ensucia BD y desperdicia ciclos del scraper.
-const ONLY_WHATSAPP = true
+const STRICT_WHATSAPP = true
+// Excepción (28-10-2026): locales y caterings casi siempre tienen fijo y se
+// captan por teléfono o en persona, no por WhatsApp. En estas categorías se
+// guarda también el lead con fijo (o con web).
+const PHONE_OK_CATEGORIES = new Set(['espacios', 'catering'])
 
 // ───────────────────────────────────────────────────────────────────────
 // Búsqueda gratuita de proveedores (OSM + DuckDuckGo + scrape de webs).
@@ -34,7 +38,8 @@ export async function runProviderSearch(input: { category?: string; city?: strin
     const cat = CATEGORIES.find(c => c.id === category) as any
     if (!cat) return { saved: 0, target: count, emailsSent: 0, skippedDup: 0, skippedNoWa: 0, scraped: 0, logs, error: 'Categoría inválida' }
 
-    log(`🤖 Free-run · ${cat.label} en ${city} (target ${count})`)
+    const ONLY_WHATSAPP = STRICT_WHATSAPP && !PHONE_OK_CATEGORIES.has(category)
+    log(`🤖 Free-run · ${cat.label} en ${city} (target ${count})${ONLY_WHATSAPP ? '' : ' · se aceptan fijos'}`)
     const supabase = createAdminClient()
 
     type Candidate = {
@@ -265,7 +270,7 @@ export async function runProviderSearch(input: { category?: string; city?: strin
         if (c.phone && !isMobilePhoneES(c.phone)) {
           const waPhone = extractPhoneFromWaUrl(whatsappUrl)
           if (waPhone && isMobilePhoneES(waPhone)) c.phone = waPhone
-          else c.phone = null
+          else if (ONLY_WHATSAPP) c.phone = null   // en locales y catering el fijo vale para llamar
         }
 
         // Dedupe BD por email/website/teléfono.
