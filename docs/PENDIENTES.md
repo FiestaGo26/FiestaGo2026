@@ -82,6 +82,20 @@ Después, las bios:
   60 días, bloqueo de fecha / presupuesto gratis 48 h, piloto de cumple infantil en
   Valencia y l'Horta, regla del CEO por "servicio central del evento".
 
+## 1c. Piloto de 2 meses con una asociación (31-10-2026, pendiente de concretar)
+Idea de Mariano: empezar «a tope» con una asociación de ~48-50 socios (nombre por confirmar: «WoW»).
+- Que los socios se den de alta y **traigan a los proveedores con los que trabajan** (lo necesitan todos:
+  siempre preguntan «¿alguien sabe de alguien que haga…?»).
+- Durante 2 meses: que **cierren sus ventas por FiestaGo**. La Garantía de Éxito no se añade por defecto,
+  pero el proveedor puede ofrecerla.
+- Para convencerles: **enlace de pago para el cliente** muy sencillo + que FiestaGo les ahorre herramientas
+  (facturas, ingresos, IVA a pagar, todo en un sitio).
+- **Dinero retenido en Stripe hasta que el proveedor decida cobrarlo** (muchos se dan de alta como autónomos
+  solo el día que facturan).
+Estado hoy: los pagos al proveedor son manuales (no hay Stripe Connect); la facturación delegada y el
+régimen «autónomo puntual» ya existen. Falta: Stripe Connect (cuentas de proveedor y pagos cuando él lo
+pida), enlace de pago, panel de ingresos e IVA, y modo «sin Garantía» para el piloto.
+
 ## 1b. Tareas apuntadas el 28-10-2026 (por orden de prioridad)
 
 ### 1) PRIORIDAD: captar proveedores (individualmente y a través de asociaciones)
