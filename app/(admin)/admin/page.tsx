@@ -11,6 +11,7 @@ import ContentVideos from './ContentVideos'
 import EnvCheckCard from './EnvCheckCard'
 import CeoAgent from './CeoAgent'
 import Captacion from './Captacion'
+import Visitas from './Visitas'
 
 const ADMIN_PASS = typeof window !== 'undefined'
   ? localStorage.getItem('fg_admin_pass') || '' : ''
@@ -1033,6 +1034,7 @@ export default function AdminPage() {
   const NAV = [
     { id:'dashboard',    icon:'📊', label:'Dashboard' },
     { id:'ceo',          icon:'🧠', label:'Agente CEO' },
+    { id:'visitas',      icon:'👀', label:'Visitas' },
     { id:'metrics',      icon:'📈', label:'Métricas' },
     { id:'financials',   icon:'💰', label:'Cobros y facturación' },
     { id:'captacion',    icon:'📞', label:'Captación' },
@@ -2559,6 +2561,7 @@ export default function AdminPage() {
           {section === 'content'  && <ContentVideos />}
           {section === 'ceo'      && <CeoAgent />}
           {section === 'captacion' && <Captacion />}
+          {section === 'visitas'   && <Visitas />}
         </div>
       </main>
 

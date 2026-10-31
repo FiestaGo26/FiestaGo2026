@@ -4,6 +4,7 @@ import Navbar from './_components/Navbar'
 import PwaInit from './_components/PwaInit'
 import CookieBanner from './_components/CookieBanner'
 import AttributionCapture from './_components/AttributionCapture'
+import PageViewTracker from './_components/PageViewTracker'
 
 const FOOTER_LINKS = [
   { title: 'Celebraciones', links: [['Bodas', '/proveedores?categoria=planner'], ['Cumpleaños', '/cumpleanos'], ['Comuniones', '/comuniones'], ['Empresa', '/corporativo'], ['Packs', '/#packs']] },
@@ -64,6 +65,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       <Footer/>
       <PwaInit/>
       <AttributionCapture/>
+      <PageViewTracker/>
       <CookieBanner/>
     </div>
   )
