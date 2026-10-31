@@ -15,6 +15,7 @@ import ClientRequestsCard from './ClientRequestsCard'
 import ProfileChecklist from './ProfileChecklist'
 import ReferencesCard from './ReferencesCard'
 import VenueCard from './VenueCard'
+import AgreementsTab from './AgreementsTab'
 
 type ServiceMedia = {
   id: string
@@ -106,6 +107,7 @@ const TABS: Array<{ id: string; icon: string; label: string; href?: string }> = 
   { id:'wa-replies',   icon:'💬', label:'Plantillas WhatsApp' },
   { id:'gmb',          icon:'📍', label:'Google Business' },
   { id:'availability', icon:'📅', label:'Disponibilidad' },
+  { id:'acuerdos',     icon:'🤝', label:'Acuerdos con clientes' },
   { id:'bookings',     icon:'📋', label:'Reservas'       },
   { id:'earnings',     icon:'💶', label:'Cobros'         },
   { id:'messages',     icon:'💬', label:'Mensajes'       },
@@ -2711,6 +2713,9 @@ function ProveedorPanelInner() {
         {tab==='video-calls' && (
           <VideoCallsTab provider={provider} offersVideoCall={profile.offers_video_call} onGoProfile={() => setTab('profile')} />
         )}
+
+        {/* ACUERDOS · contrato con el cliente (lib/agreements.ts) */}
+        {tab==='acuerdos' && provider?.id && <AgreementsTab providerId={provider.id} apiFetch={apiFetch} />}
 
         {/* FISCAL */}
         {tab==='fiscal' && (

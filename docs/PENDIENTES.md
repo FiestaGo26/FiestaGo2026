@@ -92,6 +92,13 @@ Idea de Mariano: empezar «a tope» con una asociación de ~48-50 socios (nombre
   (facturas, ingresos, IVA a pagar, todo en un sitio).
 - **Dinero retenido en Stripe hasta que el proveedor decida cobrarlo** (muchos se dan de alta como autónomos
   solo el día que facturan).
+Decidido (31-10): la asociación es **WoW**; durante el piloto FiestaGo **solo cobra si el cliente elige la
+Garantía** (8 %); el alta como autónomo suele coincidir con el día del servicio y del cobro.
+- [x] **Acuerdos con clientes** (panel → Acuerdos con clientes; /acuerdo/<enlace>): el proveedor envía lo que
+  incluye, precio, pago y cancelación; el cliente lo acepta con su nombre y queda registrado (fecha, hora,
+  código); arriba solo FiestaGo; Garantía opcional para el cliente si el proveedor la ofrece.
+- [ ] Enlace de pago + dinero retenido hasta que el proveedor lo pida: Stripe Connect. **Stripe solo deja
+  retenerlo 90 días en España** (pagos manuales). Falta decidir la configuración y activar Connect en Stripe.
 Estado hoy: los pagos al proveedor son manuales (no hay Stripe Connect); la facturación delegada y el
 régimen «autónomo puntual» ya existen. Falta: Stripe Connect (cuentas de proveedor y pagos cuando él lo
 pida), enlace de pago, panel de ingresos e IVA, y modo «sin Garantía» para el piloto.
