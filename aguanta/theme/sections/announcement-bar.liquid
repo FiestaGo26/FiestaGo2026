@@ -1,0 +1,34 @@
+{%- liquid
+  assign threshold = settings.free_shipping_threshold | default: 70
+  assign txt = section.settings.text | replace: '[umbral]', threshold
+-%}
+{%- if section.settings.show -%}
+<div class="announce" role="region" aria-label="{{ 'general.announcement' | t }}">
+  <p class="visually-hidden">{{ txt | strip_html }}</p>
+  <div class="marquee" aria-hidden="true" style="--mq-speed: {{ section.settings.speed }}s">
+    {%- for i in (1..2) -%}
+      <div class="marquee__track">
+        {%- for j in (1..6) -%}<span>{{ txt }}</span>{%- endfor -%}
+      </div>
+    {%- endfor -%}
+  </div>
+</div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Barra de anuncio",
+  "class": "section-announce",
+  "settings": [
+    { "type": "checkbox", "id": "show", "label": "Mostrar", "default": true },
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Texto",
+      "info": "[umbral] se sustituye por el importe de envío gratis de la configuración del tema.",
+      "default": "ENVÍO GRATIS DESDE [umbral] € · AGUANTA UN RATO MÁS ·"
+    },
+    { "type": "range", "id": "speed", "label": "Duración de una vuelta (s)", "min": 8, "max": 60, "step": 2, "default": 26 }
+  ]
+}
+{% endschema %}

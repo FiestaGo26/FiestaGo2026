@@ -1,0 +1,165 @@
+{%- liquid
+  assign current_variant = product.selected_or_first_available_variant
+  assign size_option_name = 'Talla'
+  assign form_id = 'pf-' | append: section.id
+-%}
+<section class="pdp" data-product data-section="{{ section.id }}">
+  <div>
+    <ul class="pdp__gallery" data-gallery aria-label="{{ 'product.gallery' | t }}">
+      {%- for media in product.media -%}
+        <li id="media-{{ media.id }}">
+          {%- liquid
+            if forloop.first
+              render 'image', image: media.preview_image, sizes: '(min-width: 990px) 58vw, 100vw', eager: true, alt: media.alt
+            else
+              render 'image', image: media.preview_image, sizes: '(min-width: 990px) 29vw, 100vw', alt: media.alt
+            endif
+          -%}
+        </li>
+      {%- else -%}
+        <li>{{ 'product-apparel-1' | placeholder_svg_tag: 'placeholder-svg' }}</li>
+      {%- endfor -%}
+    </ul>
+    {%- if product.media.size > 1 -%}
+      <div class="pdp__dots" aria-hidden="true" data-dots>
+        {%- for media in product.media -%}<span{% if forloop.first %} class="on"{% endif %}></span>{%- endfor -%}
+      </div>
+    {%- endif -%}
+  </div>
+
+  <div class="pdp__info">
+    {%- for block in section.blocks -%}
+      {%- case block.type -%}
+        {%- when 'title' -%}
+          <div {{ block.shopify_attributes }}>
+            {%- if product.collections.first -%}<p class="kicker acc" style="margin-bottom:8px">{{ product.collections.first.title }}</p>{%- endif -%}
+            <h1 class="d pdp__title">{{ product.title }}</h1>
+          </div>
+
+        {%- when 'price' -%}
+          <div {{ block.shopify_attributes }}>
+            <p class="pdp__price" style="margin:0" data-price>
+              <span data-price-now>{{ current_variant.price | money }}</span>
+              {%- if current_variant.compare_at_price > current_variant.price -%}<s data-price-was>{{ current_variant.compare_at_price | money }}</s>{%- endif -%}
+            </p>
+            <p class="pdp__tax muted" style="margin:4px 0 0">{{ 'product.tax_included' | t }}
+              {%- assign threshold = settings.free_shipping_threshold | default: 70 -%}
+              · {{ 'product.free_shipping_from' | t: amount: threshold }}</p>
+          </div>
+
+        {%- when 'variant_picker' -%}
+          <div {{ block.shopify_attributes }}>
+            {%- unless product.has_only_default_variant -%}
+              {%- for option in product.options_with_values -%}
+                {%- assign opt_index = forloop.index0 -%}
+                <fieldset class="opt" style="margin-bottom:16px">
+                  <legend class="kicker">
+                    <span>{{ option.name }}: <span data-opt-label="{{ forloop.index0 }}">{{ option.selected_value }}</span></span>
+                    {%- if option.name == size_option_name -%}<a href="#guia-{{ section.id }}" data-open-guide style="text-transform:none;letter-spacing:0">{{ 'product.size_guide' | t }}</a>{%- endif -%}
+                  </legend>
+                  <div class="opt__values">
+                    {%- for value in option.values -%}
+                      <input type="radio" id="o-{{ section.id }}-{{ opt_index }}-{{ forloop.index0 }}" name="{{ option.name }}" value="{{ value | escape }}" form="pf-{{ section.id }}" data-opt="{{ opt_index }}"{% if option.selected_value == value %} checked{% endif %}>
+                      <label for="o-{{ section.id }}-{{ opt_index }}-{{ forloop.index0 }}">{{ value }}</label>
+                    {%- endfor -%}
+                  </div>
+                </fieldset>
+              {%- endfor -%}
+            {%- endunless -%}
+            <script type="application/json" data-variants>
+              {{ product.variants | json }}
+            </script>
+          </div>
+
+        {%- when 'buy_buttons' -%}
+          <div {{ block.shopify_attributes }}>
+            {%- form 'product', product, id: form_id, class: 'atc-form', data-type: 'add-to-cart-form', novalidate: 'novalidate' -%}
+              <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id>
+              <div class="atc-bar atc-bar--sticky" data-atc-bar>
+                <span class="atc-bar__price" data-price-now>{{ current_variant.price | money }}</span>
+                <button class="btn btn--full" type="submit" name="add" data-add{% unless current_variant.available %} disabled{% endunless %}>
+                  <span data-add-label>{% if current_variant.available %}{{ 'product.add' | t }}{% else %}{{ 'product.sold_out' | t }}{% endif %}</span>
+                </button>
+              </div>
+              <p class="form-msg form-msg--err" role="alert" data-form-error hidden></p>
+            {%- endform -%}
+          </div>
+
+        {%- when 'lead_time' -%}
+          <div {{ block.shopify_attributes }}>
+            <p class="kicker" style="margin-bottom:8px">{{ block.settings.title }}</p>
+            <div class="lead-time">
+              <div><b>{{ block.settings.production }}</b><span>{{ 'product.lead_production' | t }}</span></div>
+              <div><b>{{ block.settings.shipping_es }}</b><span>{{ 'product.lead_shipping_es' | t }}</span></div>
+              <div><b>{{ block.settings.shipping_eu }}</b><span>{{ 'product.lead_shipping_eu' | t }}</span></div>
+            </div>
+            {%- if block.settings.note != blank -%}<p class="muted" style="font-size:.85rem;margin:8px 0 0">{{ block.settings.note }}</p>{%- endif -%}
+          </div>
+
+        {%- when 'description' -%}
+          <div class="rte" {{ block.shopify_attributes }}>{{ product.description }}</div>
+
+        {%- when 'accordion' -%}
+          <div {{ block.shopify_attributes }}>
+            <details class="acc-item" id="guia-{{ section.id }}" data-guide>
+              <summary>{{ 'product.size_guide' | t }}</summary>
+              <div class="acc-body">{% render 'size-guide', product: product %}</div>
+            </details>
+            <details class="acc-item">
+              <summary>{{ 'product.how_its_made' | t }}</summary>
+              <div class="acc-body rte">{{ block.settings.how }}</div>
+            </details>
+            <details class="acc-item">
+              <summary>{{ 'product.care' | t }}</summary>
+              <div class="acc-body rte">
+                {%- if product.metafields.custom.cuidados != blank -%}{{ product.metafields.custom.cuidados | metafield_tag }}{%- else -%}{{ block.settings.care }}{%- endif -%}
+              </div>
+            </details>
+            <details class="acc-item">
+              <summary>{{ 'product.shipping_returns' | t }}</summary>
+              <div class="acc-body rte">{{ block.settings.shipping }}</div>
+            </details>
+          </div>
+
+        {%- when 'text' -%}
+          <div class="rte" {{ block.shopify_attributes }}>{{ block.settings.text }}</div>
+      {%- endcase -%}
+    {%- endfor -%}
+  </div>
+</section>
+
+{% render 'structured-data-product', product: product %}
+
+{% schema %}
+{
+  "name": "Ficha de producto",
+  "tag": "div",
+  "class": "section-main-product",
+  "blocks": [
+    { "type": "title", "name": "Título", "limit": 1 },
+    { "type": "price", "name": "Precio", "limit": 1 },
+    { "type": "variant_picker", "name": "Selector de talla", "limit": 1 },
+    { "type": "buy_buttons", "name": "Botón Añadir", "limit": 1 },
+    {
+      "type": "lead_time", "name": "Plazos", "limit": 1,
+      "settings": [
+        { "type": "text", "id": "title", "label": "Título", "default": "Se fabrica para ti" },
+        { "type": "text", "id": "production", "label": "Producción", "default": "2–5 días" },
+        { "type": "text", "id": "shipping_es", "label": "Envío España", "default": "3–5 días" },
+        { "type": "text", "id": "shipping_eu", "label": "Envío UE", "default": "4–8 días" },
+        { "type": "text", "id": "note", "label": "Nota", "default": "Días laborables. Los bordados pueden tardar un par de días más." }
+      ]
+    },
+    { "type": "description", "name": "Descripción", "limit": 1 },
+    {
+      "type": "accordion", "name": "Desplegables", "limit": 1,
+      "settings": [
+        { "type": "richtext", "id": "how", "label": "Cómo se hace", "default": "<p>No hay estantería con tu talla esperando. Cuando haces el pedido, Printful imprime o borda esta pieza en su taller (normalmente en Europa) y la envía. Se fabrica lo que se vende: menos sobrantes, menos desperdicio, cero liquidaciones.</p>" },
+        { "type": "richtext", "id": "care", "label": "Cuidados", "default": "<p>Lavar del revés en frío (30 °C). No usar secadora. Planchar del revés y nunca sobre el estampado. Sin lejía.</p>" },
+        { "type": "richtext", "id": "shipping", "label": "Envíos y devoluciones", "default": "<p>Envío gratis desde 70 €. Si algo llega mal, te lo reponemos. Al ser bajo demanda, los cambios por talla tienen sus condiciones: <a href=\"/pages/envios-y-devoluciones\">léelas aquí</a>.</p>" }
+      ]
+    },
+    { "type": "text", "name": "Texto libre", "settings": [{ "type": "richtext", "id": "text", "label": "Texto" }] }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,14 @@
+<section class="section">
+  <div class="wrap">
+    <h1 class="d d-xl" style="margin-bottom:24px">{{ 'collection.all' | t }}</h1>
+    <ul class="pgrid" role="list">
+      {%- for collection in collections -%}
+        <li><a class="card" href="{{ collection.url }}">
+          <div class="card__media">{%- if collection.featured_image -%}{% render 'image', image: collection.featured_image, sizes: '(min-width: 750px) 33vw, 50vw', alt: collection.title %}{%- else -%}{{ 'collection-1' | placeholder_svg_tag: 'placeholder-svg' }}{%- endif -%}</div>
+          <div class="card__body"><h2 class="card__title">{{ collection.title }}</h2><p style="margin:0">{{ 'collection.count' | t: count: collection.products_count }}</p></div>
+        </a></li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+{% schema %}{ "name": "Colecciones", "settings": [] }{% endschema %}

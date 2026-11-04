@@ -1,0 +1,27 @@
+<section class="section esq-{{ section.settings.scheme }}">
+  <div class="wrap">
+    {%- if section.settings.kicker != blank -%}<p class="kicker acc" style="margin-bottom:20px">{{ section.settings.kicker }}</p>{%- endif -%}
+    <div class="manifesto" data-reveal>{{ section.settings.text }}</div>
+    {%- if section.settings.note != blank -%}
+      <p class="txt-l" style="max-width:40ch;margin:28px 0 0 auto">{{ section.settings.note }}</p>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Manifiesto",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "kicker", "label": "Antetítulo", "default": "Lo que creemos" },
+    { "type": "richtext", "id": "text", "label": "Texto grande", "info": "Cursiva = rojo. Tachado = tachado rojo.", "default": "<p>No vendemos <s>motivación</s>. Vendemos camisetas para la gente que <em>va igual</em>, aunque llueva.</p>" },
+    { "type": "text", "id": "note", "label": "Nota", "default": "Ni beast mode ni madrugones de influencer. Un rato más, y luego a casa." },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }, { "value": "lima", "label": "Lima" }],
+      "default": "hueso"
+    }
+  ],
+  "presets": [{ "name": "Manifiesto" }]
+}
+{% endschema %}

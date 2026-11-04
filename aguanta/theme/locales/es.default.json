@@ -1,0 +1,114 @@
+{
+  "general": {
+    "skip": "Saltar al contenido",
+    "announcement": "Anuncio",
+    "menu": "Menú",
+    "main_nav": "Navegación principal",
+    "close": "Cerrar",
+    "search": "Buscar",
+    "account": "Mi cuenta",
+    "email": "Tu correo",
+    "subscribe": "Me apunto",
+    "subscribed": "Hecho. Nos vemos en tu bandeja de entrada.",
+    "pagination": "Paginación"
+  },
+  "product": {
+    "add": "Añadir",
+    "sold_out": "Agotado",
+    "unavailable": "No disponible",
+    "sale": "Rebajado",
+    "new": "Nuevo",
+    "from": "Desde",
+    "gallery": "Imágenes del producto",
+    "tax_included": "IVA incluido.",
+    "free_shipping_from": "Envío gratis desde {{ amount }} €",
+    "size_guide": "Guía de tallas",
+    "how_its_made": "Cómo se hace",
+    "care": "Cuidados",
+    "shipping_returns": "Envíos y devoluciones",
+    "lead_production": "producción",
+    "lead_shipping_es": "envío España",
+    "lead_shipping_eu": "envío UE"
+  },
+  "cart": {
+    "title": "Carrito",
+    "added": "Añadido. Buena elección.",
+    "error": "No se ha podido añadir. Prueba otra vez.",
+    "empty_title": "Aquí no hay nada",
+    "empty_text": "Como tu nevera el domingo por la noche. Vamos a arreglarlo.",
+    "continue": "Ver productos",
+    "subtotal": "Subtotal",
+    "taxes_note": "IVA incluido. El envío se calcula en el siguiente paso.",
+    "checkout": "Pagar",
+    "note": "Nota para el pedido",
+    "quantity": "Cantidad",
+    "remove": "Quitar",
+    "decrease": "Quitar una unidad de {{ title }}",
+    "increase": "Añadir una unidad de {{ title }}",
+    "shipping_progress": "Progreso hacia el envío gratis",
+    "shipping_remaining_html": "Te faltan <strong>{{ amount }}</strong> para el envío gratis. Aguanta.",
+    "shipping_done": "Envío gratis. Lo has aguantado."
+  },
+  "collection": {
+    "view_all": "Ver todo",
+    "drop": "Drop",
+    "count": {
+      "one": "{{ count }} producto",
+      "other": "{{ count }} productos"
+    },
+    "sort": "Ordenar",
+    "empty": "Esta colección todavía está calentando.",
+    "all": "Colecciones",
+    "sold_label": "Unidades vendidas de este drop",
+    "sold_progress": "{{ sold }} de {{ goal }}"
+  },
+  "search": {
+    "placeholder": "Camiseta, sudadera, leggings…",
+    "results": "{{ count }} resultados para «{{ terms }}»",
+    "none": "Nada. Prueba con otra palabra."
+  },
+  "contact": {
+    "name": "Nombre",
+    "email": "Correo",
+    "order": "Número de pedido (si lo tienes)",
+    "message": "Mensaje",
+    "send": "Enviar",
+    "success": "Recibido. Te contestamos en uno o dos días laborables."
+  },
+  "not_found": {
+    "title": "Esta página no ha aguantado",
+    "text": "O no existe o se ha ido a estirar. Vuelve a la tienda."
+  },
+  "password": {
+    "soon": "Muy pronto",
+    "enter": "Entrar con contraseña",
+    "password": "Contraseña"
+  },
+  "gift_card": {
+    "title": "Tarjeta regalo",
+    "code": "Código",
+    "expired": "Caducada o desactivada"
+  },
+  "customer": {
+    "login": "Entrar",
+    "register": "Crear cuenta",
+    "recover": "Recuperar contraseña",
+    "recover_sent": "Te hemos enviado un correo para cambiarla.",
+    "account": "Mi cuenta",
+    "logout": "Salir",
+    "addresses": "Direcciones",
+    "order": "Pedido",
+    "date": "Fecha",
+    "status": "Estado",
+    "no_orders": "Todavía no has hecho ningún pedido.",
+    "tracking": "Seguimiento",
+    "address": "Dirección",
+    "city": "Ciudad",
+    "zip": "Código postal",
+    "country": "País",
+    "save": "Guardar",
+    "activate": "Activar cuenta",
+    "reset": "Nueva contraseña",
+    "confirm": "Repite la contraseña"
+  }
+}

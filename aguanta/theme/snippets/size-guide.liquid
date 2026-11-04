@@ -1,0 +1,37 @@
+{%- comment -%}
+  Guía de tallas. Prioridad: metacampo del producto custom.guia_tallas (texto enriquecido)
+  → tabla genérica por tipo de producto. Medidas orientativas en cm, tomadas de la prenda
+  en plano; confírmalas con la ficha de cada producto en Printful antes de publicar.
+{%- endcomment -%}
+{%- if product.metafields.custom.guia_tallas != blank -%}
+  {{ product.metafields.custom.guia_tallas | metafield_tag }}
+{%- else -%}
+  {%- assign t = product.type | downcase -%}
+  <div class="table-scroll">
+  {%- if t contains 'legging' -%}
+    <table class="size-table"><caption class="visually-hidden">Leggings (cm)</caption>
+      <thead><tr><th scope="col">Talla</th><th scope="col">Cintura</th><th scope="col">Cadera</th><th scope="col">Largo interior</th></tr></thead>
+      <tbody><tr><th scope="row">XS</th><td>61</td><td>86</td><td>71</td></tr><tr><th scope="row">S</th><td>66</td><td>91</td><td>71</td></tr><tr><th scope="row">M</th><td>71</td><td>97</td><td>72</td></tr><tr><th scope="row">L</th><td>79</td><td>104</td><td>72</td></tr><tr><th scope="row">XL</th><td>86</td><td>112</td><td>73</td></tr></tbody>
+    </table>
+  {%- elsif t contains 'short' -%}
+    <table class="size-table"><caption class="visually-hidden">Shorts (cm)</caption>
+      <thead><tr><th scope="col">Talla</th><th scope="col">Cintura</th><th scope="col">Cadera</th><th scope="col">Largo</th></tr></thead>
+      <tbody><tr><th scope="row">XS</th><td>69</td><td>91</td><td>44</td></tr><tr><th scope="row">S</th><td>74</td><td>96</td><td>45</td></tr><tr><th scope="row">M</th><td>79</td><td>101</td><td>46</td></tr><tr><th scope="row">L</th><td>86</td><td>107</td><td>47</td></tr><tr><th scope="row">XL</th><td>94</td><td>114</td><td>48</td></tr><tr><th scope="row">2XL</th><td>102</td><td>121</td><td>49</td></tr></tbody>
+    </table>
+  {%- elsif t contains 'sudadera' -%}
+    <table class="size-table"><caption class="visually-hidden">Sudaderas (cm)</caption>
+      <thead><tr><th scope="col">Talla</th><th scope="col">Ancho pecho</th><th scope="col">Largo</th><th scope="col">Manga</th></tr></thead>
+      <tbody><tr><th scope="row">S</th><td>51</td><td>69</td><td>86</td></tr><tr><th scope="row">M</th><td>56</td><td>71</td><td>88</td></tr><tr><th scope="row">L</th><td>61</td><td>74</td><td>90</td></tr><tr><th scope="row">XL</th><td>66</td><td>76</td><td>92</td></tr><tr><th scope="row">2XL</th><td>71</td><td>79</td><td>94</td></tr></tbody>
+    </table>
+  {%- elsif t contains 'gorra' or t contains 'bolsa' or t contains 'botella' -%}
+    <p style="margin:0">Talla única. {% if t contains 'gorra' %}Cierre ajustable trasero (aprox. 54–60 cm de contorno).{% endif %}</p>
+  {%- else -%}
+    <table class="size-table"><caption class="visually-hidden">Camisetas (cm)</caption>
+      <thead><tr><th scope="col">Talla</th><th scope="col">Ancho pecho</th><th scope="col">Largo</th></tr></thead>
+      <tbody><tr><th scope="row">XS</th><td>44</td><td>69</td></tr><tr><th scope="row">S</th><td>47</td><td>71</td></tr><tr><th scope="row">M</th><td>52</td><td>74</td></tr><tr><th scope="row">L</th><td>56</td><td>76</td></tr><tr><th scope="row">XL</th><td>61</td><td>79</td></tr><tr><th scope="row">2XL</th><td>66</td><td>81</td></tr></tbody>
+    </table>
+    {%- if t contains 'oversize' -%}<p class="muted" style="margin:8px 0 0">Corte holgado: si quieres el efecto oversize, coge tu talla. Si la quieres normal, una menos.</p>{%- endif -%}
+  {%- endif -%}
+  </div>
+  <p class="muted" style="font-size:.82rem;margin:10px 0 0">Medidas de la prenda en plano, en cm. Pueden variar ±2 cm. ¿Dudas? Mide una camiseta tuya que te guste y compara. <a href="{{ routes.root_url }}pages/guia-de-tallas">Guía completa</a>.</p>
+{%- endif -%}

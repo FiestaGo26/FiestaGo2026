@@ -1,0 +1,14 @@
+{%- comment -%}
+  Imagen responsive con srcset y carga diferida.
+  Parámetros: image (obligatorio), sizes, class, alt, eager (bool), widths
+{%- endcomment -%}
+{%- liquid
+  assign w = widths | default: '360, 540, 720, 900, 1080, 1440, 1800'
+  assign s = sizes | default: '100vw'
+  assign a = alt | default: image.alt | default: ''
+  if eager
+    echo image | image_url: width: 1800 | image_tag: widths: w, sizes: s, class: class, alt: a, loading: 'eager', fetchpriority: 'high'
+  else
+    echo image | image_url: width: 1800 | image_tag: widths: w, sizes: s, class: class, alt: a, loading: 'lazy'
+  endif
+-%}

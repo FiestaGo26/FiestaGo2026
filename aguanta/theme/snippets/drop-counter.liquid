@@ -1,0 +1,24 @@
+{%- comment -%}
+  Contador de unidades vendidas del drop. SOLO datos reales:
+  lee los metacampos de la colección custom.unidades_vendidas (número entero)
+  y, opcional, custom.unidades_objetivo. Los actualiza Shopify Flow con cada
+  pedido pagado (ver LEEME.md). Si no hay dato, no se muestra nada.
+{%- endcomment -%}
+{%- assign vendidas = collection.metafields.custom.unidades_vendidas.value -%}
+{%- if vendidas != blank and vendidas > 0 -%}
+  {%- assign objetivo = collection.metafields.custom.unidades_objetivo.value -%}
+  <div class="drop__meter" data-reveal>
+    <p class="kicker">{{ 'collection.sold_label' | t }}</p>
+    <p class="drop__count" style="margin:0" data-countup="{{ vendidas }}">{{ vendidas }}</p>
+    {%- if objetivo != blank and objetivo > 0 -%}
+      {%- liquid
+        assign pct = vendidas | times: 100 | divided_by: objetivo
+        if pct > 100
+          assign pct = 100
+        endif
+      -%}
+      <div class="drop__bar" role="img" aria-label="{{ 'collection.sold_progress' | t: sold: vendidas, goal: objetivo }}"><i style="--p: {{ pct }}%"></i></div>
+      <p class="muted" style="margin:0;font-size:.85rem">{{ 'collection.sold_progress' | t: sold: vendidas, goal: objetivo }}</p>
+    {%- endif -%}
+  </div>
+{%- endif -%}

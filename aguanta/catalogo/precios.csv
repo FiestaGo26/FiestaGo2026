@@ -1,0 +1,15 @@
+handle,producto,diseno,producto_printful,tecnica,coste_printful_sin_iva,envio_printful_es,pvp_con_iva,ingreso_sin_iva,comision_pago,envio_absorbido,beneficio_neto,margen_neto_pct,margen_si_envio_gratis_pct,estado_datos
+camiseta-aguanta,Camiseta AGUANTA,1,Bella + Canvas 3001,DTG,12.50,4.49,29.00,23.97,0.76,no (lo paga el cliente),10.31,43.0,26.3,ESTIMADO - verificar con Printful
+camiseta-un-rato-mas,Camiseta UN RATO MÁS,2,Bella + Canvas 3001,DTG,12.50,4.49,29.00,23.97,0.76,no (lo paga el cliente),10.31,43.0,26.3,ESTIMADO - verificar con Printful
+camiseta-domingo-de-series,Camiseta DOMINGO DE SERIES,4,Bella + Canvas 3001,DTG,12.50,4.49,29.00,23.97,0.76,no (lo paga el cliente),10.31,43.0,26.3,ESTIMADO - verificar con Printful
+oversize-hoy-toca,Oversize HOY TOCA,6,Oversized,DTG,18.50,4.49,45.00,37.19,1.00,no (lo paga el cliente),17.29,46.5,35.7,ESTIMADO - verificar con Printful
+oversize-no-era-tan-duro,Oversize NO ERA TAN DURO,12,Oversized,DTG,18.50,4.49,45.00,37.19,1.00,no (lo paga el cliente),17.29,46.5,35.7,ESTIMADO - verificar con Printful
+sudadera-capucha-aguanta,Sudadera con capucha AGUANTA,1,Cotton Heritage M2580,DTG,26.00,6.49,65.00,53.72,1.30,no (lo paga el cliente),24.02,44.7,37.2,ESTIMADO - verificar con Printful
+sudadera-capucha-fc-aguanta,Sudadera con capucha FC AGUANTA,7,Cotton Heritage M2580,DTG,26.00,6.49,65.00,53.72,1.30,no (lo paga el cliente),24.02,44.7,37.2,ESTIMADO - verificar con Printful
+sudadera-kilometro-cero,Sudadera KILÓMETRO CERO,3,Gildan 18000,DTG,20.00,6.49,49.00,40.50,1.06,no (lo paga el cliente),17.04,42.1,32.2,ESTIMADO - verificar con Printful
+tirantes-sudor-local,Tirantes SUDOR LOCAL,5,Bella + Canvas 3480,DTG,12.75,4.49,29.00,23.97,0.76,no (lo paga el cliente),10.06,42.0,25.2,ESTIMADO - verificar con Printful
+leggings-patron-a,Leggings PATRÓN A,9,All-Over Print Leggings,Sublimación integral,25.50,4.99,59.00,48.76,1.21,no (lo paga el cliente),21.15,43.4,35.1,ESTIMADO - verificar con Printful
+shorts-patron-b,Shorts PATRÓN B,10,All-Over Print Men's Athletic Shorts,Sublimación integral,23.00,4.99,55.00,45.45,1.15,no (lo paga el cliente),20.41,44.9,36.1,ESTIMADO - verificar con Printful
+gorra-manana-tambien,Gorra MAÑANA TAMBIÉN,8,Yupoong 6245CM,Bordado,14.50,4.49,35.00,28.93,0.85,no (lo paga el cliente),13.18,45.6,31.7,ESTIMADO - verificar con Printful
+bolsa-respira,Bolsa RESPIRA,11,All-Over Print Drawstring Bag,Sublimación integral,16.50,4.99,39.00,32.23,0.91,no (lo paga el cliente),13.92,43.2,30.7,ESTIMADO - verificar con Printful
+botella-un-rato-mas,Botella UN RATO MÁS,2,Stainless Steel Water Bottle,Impresión directa,17.50,6.99,45.00,37.19,1.00,no (lo paga el cliente),15.79,42.5,31.7,ESTIMADO - verificar con Printful

@@ -1,0 +1,77 @@
+<header class="header esq-{{ section.settings.scheme }}" data-header>
+  <div class="wrap header__in">
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="icon-btn header__burger" type="button" aria-controls="mnav" aria-expanded="false" data-menu-open>
+        <span class="visually-hidden">{{ 'general.menu' | t }}</span>
+        {% render 'icon', name: 'menu' %}
+      </button>
+      <a class="header__logo" href="{{ routes.root_url }}">
+        {%- if request.page_type == 'index' -%}<h1 class="visually-hidden">{{ shop.name }}</h1>{%- endif -%}
+        {% render 'logo-svg', id: 'h' %}
+      </a>
+    </div>
+
+    <nav class="header__nav" aria-label="{{ 'general.main_nav' | t }}">
+      {%- for link in section.settings.menu.links -%}
+        <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title }}</a>
+      {%- endfor -%}
+    </nav>
+
+    <div class="header__actions">
+      <a class="icon-btn" href="{{ routes.search_url }}">
+        <span class="visually-hidden">{{ 'general.search' | t }}</span>
+        {% render 'icon', name: 'search' %}
+      </a>
+      {%- if shop.customer_accounts_enabled -%}
+        <a class="icon-btn" href="{{ routes.account_url }}">
+          <span class="visually-hidden">{{ 'general.account' | t }}</span>
+          {% render 'icon', name: 'user' %}
+        </a>
+      {%- endif -%}
+      <a class="icon-btn" href="{{ routes.cart_url }}" data-cart-open aria-haspopup="dialog">
+        <span class="visually-hidden">{{ 'cart.title' | t }}</span>
+        {% render 'icon', name: 'bag' %}
+        <span class="cart-count" data-cart-count data-count="{{ cart.item_count }}">{% if cart.item_count > 0 %}{{ cart.item_count }}{% endif %}</span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<div class="mnav" id="mnav" role="dialog" aria-modal="true" aria-label="{{ 'general.menu' | t }}" data-menu hidden>
+  <div class="mnav__top">
+    <span class="header__logo" style="color:var(--hueso)">{% render 'logo-svg', id: 'm' %}</span>
+    <button class="icon-btn" type="button" data-menu-close>
+      <span class="visually-hidden">{{ 'general.close' | t }}</span>
+      {% render 'icon', name: 'close' %}
+    </button>
+  </div>
+  <ul>
+    {%- for link in section.settings.menu.links -%}
+      <li><a href="{{ link.url }}">{{ link.title }}</a></li>
+    {%- endfor -%}
+  </ul>
+  <div class="mnav__foot">
+    <span class="mnav__iso" style="display:block;width:64px;color:var(--lima)">{% render 'iso-svg', id: 'm' %}</span>
+    <p class="kicker acc-l">{{ settings.slogan }}</p>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Cabecera",
+  "class": "section-header",
+  "settings": [
+    { "type": "link_list", "id": "menu", "label": "Menú", "default": "main-menu" },
+    {
+      "type": "select",
+      "id": "scheme",
+      "label": "Color",
+      "options": [
+        { "value": "hueso", "label": "Hueso" },
+        { "value": "tinta", "label": "Tinta" }
+      ],
+      "default": "hueso"
+    }
+  ]
+}
+{% endschema %}

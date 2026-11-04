@@ -1,0 +1,203 @@
+[
+  {
+    "handle": "camiseta-aguanta",
+    "base": "camiseta",
+    "diseno": 1,
+    "fondo": "oscuro",
+    "colores": [
+      "Black"
+    ],
+    "titulo": "Camiseta AGUANTA",
+    "area": "frontal",
+    "archivo": "designs/export/printful/camiseta-aguanta-frontal.png",
+    "px": "3600×4800",
+    "disenoNombre": "AGUANTA"
+  },
+  {
+    "handle": "camiseta-un-rato-mas",
+    "base": "camiseta",
+    "diseno": 2,
+    "fondo": "claro",
+    "colores": [
+      "White",
+      "Heather Dust"
+    ],
+    "titulo": "Camiseta UN RATO MÁS",
+    "area": "frontal",
+    "archivo": "designs/export/printful/camiseta-un-rato-mas-frontal.png",
+    "px": "3600×4800",
+    "disenoNombre": "UN RATO MÁS"
+  },
+  {
+    "handle": "camiseta-domingo-de-series",
+    "base": "camiseta",
+    "diseno": 4,
+    "fondo": "oscuro",
+    "colores": [
+      "Black",
+      "Dark Grey Heather"
+    ],
+    "titulo": "Camiseta DOMINGO DE SERIES",
+    "area": "frontal",
+    "archivo": "designs/export/printful/camiseta-domingo-de-series-frontal.png",
+    "px": "3600×4800",
+    "disenoNombre": "DOMINGO DE SERIES"
+  },
+  {
+    "handle": "oversize-hoy-toca",
+    "base": "oversize",
+    "diseno": 6,
+    "fondo": "oscuro",
+    "colores": [
+      "Black"
+    ],
+    "titulo": "Oversize HOY TOCA",
+    "area": "frontal",
+    "archivo": "designs/export/printful/oversize-hoy-toca-frontal.png",
+    "px": "3600×4800",
+    "disenoNombre": "HOY TOCA"
+  },
+  {
+    "handle": "oversize-no-era-tan-duro",
+    "base": "oversize",
+    "diseno": 12,
+    "fondo": "claro",
+    "colores": [
+      "Ivory"
+    ],
+    "titulo": "Oversize NO ERA TAN DURO",
+    "area": "frontal",
+    "archivo": "designs/export/printful/oversize-no-era-tan-duro-frontal.png",
+    "px": "3600×4800",
+    "disenoNombre": "NO ERA TAN DURO"
+  },
+  {
+    "handle": "sudadera-capucha-aguanta",
+    "base": "sudadera_capucha",
+    "diseno": 1,
+    "fondo": "oscuro",
+    "colores": [
+      "Black"
+    ],
+    "titulo": "Sudadera con capucha AGUANTA",
+    "area": "frontal",
+    "archivo": "designs/export/printful/sudadera-capucha-aguanta-frontal.png",
+    "px": "3600×3600",
+    "disenoNombre": "AGUANTA"
+  },
+  {
+    "handle": "sudadera-capucha-fc-aguanta",
+    "base": "sudadera_capucha",
+    "diseno": 7,
+    "fondo": "claro",
+    "colores": [
+      "Bone"
+    ],
+    "titulo": "Sudadera con capucha FC AGUANTA",
+    "area": "frontal",
+    "archivo": "designs/export/printful/sudadera-capucha-fc-aguanta-frontal.png",
+    "px": "3600×3600",
+    "disenoNombre": "FC AGUANTA"
+  },
+  {
+    "handle": "sudadera-kilometro-cero",
+    "base": "sudadera",
+    "diseno": 3,
+    "fondo": "claro",
+    "colores": [
+      "Sport Grey",
+      "White"
+    ],
+    "titulo": "Sudadera KILÓMETRO CERO",
+    "area": "frontal",
+    "archivo": "designs/export/printful/sudadera-kilometro-cero-frontal.png",
+    "px": "3600×4800",
+    "disenoNombre": "KILÓMETRO CERO"
+  },
+  {
+    "handle": "tirantes-sudor-local",
+    "base": "tirantes",
+    "diseno": 5,
+    "fondo": "claro",
+    "colores": [
+      "White",
+      "Athletic Heather"
+    ],
+    "titulo": "Tirantes SUDOR LOCAL",
+    "area": "frontal",
+    "archivo": "designs/export/printful/tirantes-sudor-local-frontal.png",
+    "px": "3000×3900",
+    "disenoNombre": "SUDOR LOCAL"
+  },
+  {
+    "handle": "leggings-patron-a",
+    "base": "leggings",
+    "diseno": 9,
+    "fondo": "oscuro",
+    "colores": [
+      "Integral"
+    ],
+    "titulo": "Leggings PATRÓN A",
+    "area": "patron",
+    "archivo": "designs/export/printful/leggings-patron-a-patron.png",
+    "px": "6000×6000 (lámina) + módulo",
+    "disenoNombre": "PATRÓN A"
+  },
+  {
+    "handle": "shorts-patron-b",
+    "base": "shorts",
+    "diseno": 10,
+    "fondo": "oscuro",
+    "colores": [
+      "Integral"
+    ],
+    "titulo": "Shorts PATRÓN B",
+    "area": "patron",
+    "archivo": "designs/export/printful/shorts-patron-b-patron.png",
+    "px": "6000×6000 (lámina) + módulo",
+    "disenoNombre": "PATRÓN B"
+  },
+  {
+    "handle": "gorra-manana-tambien",
+    "base": "gorra",
+    "diseno": 8,
+    "fondo": "oscuro",
+    "colores": [
+      "Black"
+    ],
+    "titulo": "Gorra MAÑANA TAMBIÉN",
+    "archivo": "designs/export/printful/gorra-manana-tambien-bordado_frontal.png",
+    "area": "bordado_frontal",
+    "px": "1200×525",
+    "disenoNombre": "MAÑANA TAMBIÉN"
+  },
+  {
+    "handle": "bolsa-respira",
+    "base": "bolsa",
+    "diseno": 11,
+    "fondo": "oscuro",
+    "colores": [
+      "Integral"
+    ],
+    "titulo": "Bolsa RESPIRA",
+    "fondoSolido": true,
+    "area": "frontal",
+    "archivo": "designs/export/printful/bolsa-respira-frontal.png",
+    "px": "4500×5100",
+    "disenoNombre": "RESPIRA"
+  },
+  {
+    "handle": "botella-un-rato-mas",
+    "base": "botella",
+    "diseno": 2,
+    "fondo": "claro",
+    "colores": [
+      "White"
+    ],
+    "titulo": "Botella UN RATO MÁS",
+    "archivo": "designs/export/printful/botella-un-rato-mas-envolvente.png",
+    "area": "envolvente",
+    "px": "2850×1200",
+    "disenoNombre": "UN RATO MÁS"
+  }
+]

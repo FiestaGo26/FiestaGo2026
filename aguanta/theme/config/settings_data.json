@@ -1,0 +1,14 @@
+{
+  "current": {
+    "slogan": "Aguanta un rato más.",
+    "free_shipping_threshold": 70,
+    "cart_type": "drawer"
+  },
+  "presets": {
+    "Default": {
+      "slogan": "Aguanta un rato más.",
+      "free_shipping_threshold": 70,
+      "cart_type": "drawer"
+    }
+  }
+}

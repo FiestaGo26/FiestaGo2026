@@ -1,0 +1,25 @@
+<section class="esq-{{ section.settings.scheme }}">
+  <div class="page-hero">
+    <div class="wrap">
+      {%- if section.settings.kicker != blank -%}<p class="kicker acc">{{ section.settings.kicker }}</p>{%- endif -%}
+      <h1 class="d">{{ page.title }}</h1>
+    </div>
+  </div>
+  <div class="wrap section--tight">
+    <div class="rte txt-l">{{ page.content }}</div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Página",
+  "settings": [
+    { "type": "text", "id": "kicker", "label": "Antetítulo" },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }],
+      "default": "hueso"
+    }
+  ]
+}
+{% endschema %}

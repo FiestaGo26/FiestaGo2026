@@ -1,0 +1,29 @@
+<section class="section">
+  <div class="wrap">
+    <h1 class="d d-xl" style="margin-bottom:24px">{{ 'cart.title' | t }}</h1>
+    {%- if cart.item_count > 0 -%}
+      <div class="cols">
+        <div style="order:2">
+          <div style="border:var(--borde) solid var(--tinta)">{% render 'shipping-progress' %}</div>
+          <form action="{{ routes.cart_url }}" method="post" style="display:grid;gap:14px;margin-top:20px">
+            <div class="totals"><span>{{ 'cart.subtotal' | t }}</span><span>{{ cart.total_price | money }}</span></div>
+            <p class="muted" style="font-size:.85rem;margin:0">{{ 'cart.taxes_note' | t }}</p>
+            <label class="field"><span class="kicker">{{ 'cart.note' | t }}</span><textarea name="note">{{ cart.note }}</textarea></label>
+            <button class="btn btn--full" type="submit" name="checkout">{{ 'cart.checkout' | t }}</button>
+          </form>
+        </div>
+        <div data-cart-page>{% render 'cart-lines' %}</div>
+      </div>
+    {%- else -%}
+      <div class="empty-state">
+        <p class="d d-l">{{ 'cart.empty_title' | t }}</p>
+        <p>{{ 'cart.empty_text' | t }}</p>
+        <a class="btn" href="{{ routes.all_products_collection_url }}">{{ 'cart.continue' | t }}</a>
+      </div>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Carrito", "settings": [] }
+{% endschema %}

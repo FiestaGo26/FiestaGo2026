@@ -1,0 +1,32 @@
+{%- if request.page_type == 'index' -%}
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": {{ shop.name | json }},
+    "url": {{ request.origin | append: routes.root_url | json }},
+    "slogan": "Aguanta un rato más.",
+    "logo": {{ 'favicon.png' | asset_url | prepend: 'https:' | json }}
+    {%- if settings.social_instagram != blank or settings.social_tiktok != blank -%},
+    "sameAs": [
+      {%- if settings.social_instagram != blank -%}{{ settings.social_instagram | json }}{%- endif -%}
+      {%- if settings.social_instagram != blank and settings.social_tiktok != blank -%},{%- endif -%}
+      {%- if settings.social_tiktok != blank -%}{{ settings.social_tiktok | json }}{%- endif -%}
+    ]
+    {%- endif %}
+  }
+</script>
+<script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": {{ shop.name | json }},
+    "url": {{ request.origin | append: routes.root_url | json }},
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {{ request.origin | append: routes.search_url | append: '?q={search_term_string}' | json }},
+      "query-input": "required name=search_term_string"
+    }
+  }
+</script>
+{%- endif -%}

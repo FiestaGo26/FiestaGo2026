@@ -1,0 +1,38 @@
+{%- assign collection = section.settings.collection -%}
+<section class="section esq-{{ section.settings.scheme }}" aria-labelledby="drop-{{ section.id }}">
+  <div class="wrap drop">
+    <div>
+      <p class="kicker acc">{{ section.settings.kicker }}</p>
+      <p class="drop__num" aria-hidden="true">{{ section.settings.number }}</p>
+      <h2 class="d d-l" id="drop-{{ section.id }}">{{ section.settings.title | default: collection.title }}</h2>
+    </div>
+    <div style="display:grid;gap:20px">
+      <div class="txt-l rte">{{ section.settings.text }}</div>
+      {%- if collection != blank -%}{% render 'drop-counter', collection: collection %}{%- endif -%}
+      {%- if collection != blank -%}
+        <a class="btn" href="{{ collection.url }}">{{ section.settings.button_label }} {% render 'icon', name: 'arrow' %}</a>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Drop",
+  "tag": "div",
+  "settings": [
+    { "type": "collection", "id": "collection", "label": "Colección del drop", "info": "El contador usa los metacampos custom.unidades_vendidas y custom.unidades_objetivo de la colección. Sin datos, se oculta." },
+    { "type": "text", "id": "kicker", "label": "Antetítulo", "default": "Colección limitada en el tiempo, no en unidades" },
+    { "type": "text", "id": "number", "label": "Número grande", "default": "01" },
+    { "type": "text", "id": "title", "label": "Título", "default": "Drop 01 — Aguanta" },
+    { "type": "richtext", "id": "text", "default": "<p>Doce diseños para gente que entrena entre semana y lo cuenta el domingo. Se fabrican cuando los pides: ni stock, ni rebajas de fin de temporada, ni montañas de camisetas en un almacén.</p>", "label": "Texto" },
+    { "type": "text", "id": "button_label", "label": "Botón", "default": "Ver el drop" },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }, { "value": "lima", "label": "Lima" }],
+      "default": "tinta"
+    }
+  ],
+  "presets": [{ "name": "Drop" }]
+}
+{% endschema %}

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#0B0B0C">
+    <link rel="canonical" href="{{ canonical_url }}">
+    {%- if settings.favicon != blank -%}
+      <link rel="icon" type="image/png" href="{{ settings.favicon | image_url: width: 96, height: 96 }}">
+    {%- else -%}
+      <link rel="icon" type="image/png" href="{{ 'favicon.png' | asset_url }}">
+    {%- endif -%}
+    {{ 'anton-400.woff2' | asset_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }}
+    {{ 'space-grotesk-500.woff2' | asset_url | preload_tag: as: 'font', type: 'font/woff2', crossorigin: 'anonymous' }}
+
+    {%- liquid
+      assign page_title_full = page_title
+      if current_tags
+        assign page_title_full = page_title_full | append: ' – ' | append: current_tags | join: ', '
+      endif
+      if current_page != 1
+        assign page_title_full = page_title_full | append: ' – Página ' | append: current_page
+      endif
+      unless page_title contains shop.name
+        assign page_title_full = page_title_full | append: ' | ' | append: shop.name
+      endunless
+    -%}
+    <title>{{ page_title_full }}</title>
+    {%- if page_description != blank -%}
+      <meta name="description" content="{{ page_description | escape }}">
+    {%- else -%}
+      <meta name="description" content="{{ settings.meta_fallback | escape }}">
+    {%- endif -%}
+
+    {% render 'meta-tags' %}
+
+    {{ 'base.css' | asset_url | stylesheet_tag }}
+    <style>
+      :root { --envio-gratis: {{ settings.free_shipping_threshold | default: 70 }}; }
+    </style>
+    <script>document.documentElement.classList.add('js');</script>
+    <script src="{{ 'global.js' | asset_url }}" defer="defer"></script>
+
+    {{ content_for_header }}
+  </head>
+
+  <body class="template-{{ template.name | handle }}{% if template.suffix %} template-{{ template.suffix | handle }}{% endif %}">
+    <a class="skip-link" href="#main">{{ 'general.skip' | t }}</a>
+
+    {% sections 'header-group' %}
+
+    <main id="main" tabindex="-1">
+      {{ content_for_layout }}
+    </main>
+
+    {% sections 'footer-group' %}
+
+    {% section 'cart-drawer' %}
+
+    <script>
+      window.AGUANTA = {
+        routes: {
+          cart_add_url: '{{ routes.cart_add_url }}',
+          cart_change_url: '{{ routes.cart_change_url }}',
+          cart_url: '{{ routes.cart_url }}',
+          root: '{{ routes.root_url }}'
+        },
+        cartType: {{ settings.cart_type | default: 'drawer' | json }},
+        strings: {
+          added: {{ 'cart.added' | t | json }},
+          error: {{ 'cart.error' | t | json }},
+          soldOut: {{ 'product.sold_out' | t | json }},
+          add: {{ 'product.add' | t | json }},
+          unavailable: {{ 'product.unavailable' | t | json }}
+        }
+      };
+    </script>
+    {% render 'structured-data-org' %}
+  </body>
+</html>

@@ -1,0 +1,44 @@
+<section class="section esq-{{ section.settings.scheme }}">
+  <div class="wrap cols">
+    <div>
+      <h2 class="d d-l">{{ section.settings.title }}</h2>
+      <div class="rte" style="margin-top:16px">{{ section.settings.text }}</div>
+    </div>
+    <div style="display:grid;gap:40px">
+      {%- for block in section.blocks -%}
+        <div {{ block.shopify_attributes }}>
+          <h3 class="d d-m" style="margin-bottom:12px">{{ block.settings.title }}</h3>
+          <div class="table-scroll rte" style="max-width:none">{{ block.settings.table }}</div>
+          {%- if block.settings.note != blank -%}<p class="muted" style="font-size:.85rem;margin:8px 0 0">{{ block.settings.note }}</p>{%- endif -%}
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Guía de tallas",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "title", "label": "Título", "default": "Cómo medir" },
+    { "type": "richtext", "id": "text", "label": "Texto", "default": "<p>Coge una prenda tuya que te quede bien, extiéndela en plano y mide de axila a axila (ancho) y del hombro al bajo (largo). Compara con la tabla.</p>" },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }],
+      "default": "hueso"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "table", "name": "Tabla",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Producto", "default": "Camisetas" },
+        { "type": "html", "id": "table", "label": "Tabla (HTML)", "info": "Usa <table class=\"size-table\">…</table>" },
+        { "type": "text", "id": "note", "label": "Nota" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Guía de tallas" }]
+}
+{% endschema %}

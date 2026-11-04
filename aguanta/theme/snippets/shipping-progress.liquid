@@ -1,0 +1,21 @@
+{%- liquid
+  assign threshold_eur = settings.free_shipping_threshold | default: 70
+  assign threshold = threshold_eur | times: 100
+  assign total = cart.total_price
+  assign remaining = threshold | minus: total
+  assign pct = total | times: 100 | divided_by: threshold
+  assign remaining_money = remaining | money
+  if pct > 100
+    assign pct = 100
+  endif
+-%}
+<div class="ship-prog{% if remaining <= 0 %} is-done{% endif %}">
+  <p style="margin:0" aria-live="polite">
+    {%- if remaining > 0 -%}
+      {{ 'cart.shipping_remaining_html' | t: amount: remaining_money }}
+    {%- else -%}
+      {{ 'cart.shipping_done' | t }}
+    {%- endif -%}
+  </p>
+  <div class="ship-prog__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ pct }}" aria-label="{{ 'cart.shipping_progress' | t }}"><i style="--p: {{ pct }}%"></i></div>
+</div>

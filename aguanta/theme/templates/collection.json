@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "main": { "type": "main-collection", "settings": { "per_page": 24, "rhythm": true, "is_drop": false, "show_counter": false, "scheme": "hueso" } },
+    "mq": { "type": "marquee", "settings": { "text": "Aguanta un rato más", "scheme": "rojo", "tilt": true, "speed": 34 } }
+  },
+  "order": ["main", "mq"]
+}

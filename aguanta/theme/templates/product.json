@@ -1,0 +1,30 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-product",
+      "blocks": {
+        "title": { "type": "title" },
+        "price": { "type": "price" },
+        "picker": { "type": "variant_picker" },
+        "buy": { "type": "buy_buttons" },
+        "lead": { "type": "lead_time", "settings": { "title": "Se fabrica para ti", "production": "2–5 días", "shipping_es": "3–5 días", "shipping_eu": "4–8 días", "note": "Días laborables. Los bordados pueden tardar un par de días más." } },
+        "desc": { "type": "description" },
+        "acc": { "type": "accordion" }
+      },
+      "block_order": ["title", "price", "picker", "buy", "lead", "desc", "acc"]
+    },
+    "mq": { "type": "marquee", "settings": { "text": "Se fabrica cuando la pides", "scheme": "tinta", "tilt": false, "speed": 30 } },
+    "how": {
+      "type": "how-its-made",
+      "blocks": {
+        "s1": { "type": "step", "settings": { "title": "Lo pides", "text": "Hasta aquí, no existe." } },
+        "s2": { "type": "step", "settings": { "title": "Se fabrica", "text": "Impresión o bordado en el taller de Printful más cercano." } },
+        "s3": { "type": "step", "settings": { "title": "Se envía", "text": "Con seguimiento, directa a tu puerta." } }
+      },
+      "block_order": ["s1", "s2", "s3"],
+      "settings": { "title": "Cómo se hace", "intro": "Bajo demanda: se fabrica lo que se vende. Menos desperdicio, ni un saldo.", "scheme": "lima" }
+    },
+    "more": { "type": "featured-collection", "settings": { "kicker": "Ya que estás", "title": "También aguanta", "collection": "drop-01-aguanta", "limit": 4, "rhythm": false, "scheme": "hueso" } }
+  },
+  "order": ["main", "mq", "how", "more"]
+}

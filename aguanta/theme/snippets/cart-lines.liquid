@@ -1,0 +1,19 @@
+{%- for item in cart.items -%}
+  <div class="line" data-line="{{ forloop.index }}">
+    <a href="{{ item.url }}" tabindex="-1" aria-hidden="true">
+      {%- if item.image -%}{{ item.image | image_url: width: 200 | image_tag: loading: 'lazy', alt: '', widths: '100, 200' }}{%- endif -%}
+    </a>
+    <div>
+      <a class="line__title" href="{{ item.url }}">{{ item.product.title }}</a>
+      {%- unless item.product.has_only_default_variant -%}<p class="line__meta" style="margin:4px 0 0">{{ item.variant.title }}</p>{%- endunless -%}
+      <div class="qty">
+        <button type="button" data-qty-btn="-1" data-key="{{ item.key }}" aria-label="{{ 'cart.decrease' | t: title: item.product.title }}">−</button>
+        <label class="visually-hidden" for="q-{{ item.key }}">{{ 'cart.quantity' | t }}</label>
+        <input id="q-{{ item.key }}" type="number" inputmode="numeric" min="0" value="{{ item.quantity }}" data-qty data-key="{{ item.key }}" name="updates[]">
+        <button type="button" data-qty-btn="1" data-key="{{ item.key }}" aria-label="{{ 'cart.increase' | t: title: item.product.title }}">+</button>
+      </div>
+      <div><button type="button" class="line__remove" data-remove data-key="{{ item.key }}">{{ 'cart.remove' | t }}</button></div>
+    </div>
+    <p style="margin:0;font-weight:700">{{ item.final_line_price | money }}</p>
+  </div>
+{%- endfor -%}

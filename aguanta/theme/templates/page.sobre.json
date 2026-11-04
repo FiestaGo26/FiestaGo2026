@@ -1,0 +1,17 @@
+{
+  "sections": {
+    "main": { "type": "main-page", "settings": { "kicker": "Quiénes somos", "scheme": "hueso" } },
+    "manifesto": { "type": "manifesto", "settings": { "kicker": "En corto", "text": "<p>Deporte <em>sin postureo</em>. Humor seco. <s>Excusas</s>. Un rato más.</p>", "note": "", "scheme": "tinta" } },
+    "how": {
+      "type": "how-its-made",
+      "blocks": {
+        "s1": { "type": "step", "settings": { "title": "Diseño propio", "text": "Cada diseño sale de aquí. Nada de bancos de imágenes." } },
+        "s2": { "type": "step", "settings": { "title": "Bajo demanda", "text": "Se fabrica cuando lo pides. Sin almacén ni montañas de sobrantes." } },
+        "s3": { "type": "step", "settings": { "title": "Hecho para usarse", "text": "Para sudarla, lavarla y volver a sudarla." } }
+      },
+      "block_order": ["s1", "s2", "s3"],
+      "settings": { "title": "Cómo trabajamos", "intro": "", "scheme": "lima" }
+    }
+  },
+  "order": ["main", "manifesto", "how"]
+}

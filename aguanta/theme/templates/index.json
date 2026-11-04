@@ -1,0 +1,70 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "settings": {
+        "line_1": "Aguanta",
+        "line_2": "un rato",
+        "line_3": "más.",
+        "bg_word": "A",
+        "subtitle": "Ropa de deporte sin postureo. Diseños propios, hechos uno a uno cuando los pides.",
+        "product": "camiseta-aguanta",
+        "image_alt": "Camiseta negra AGUANTA con el wordmark gigante en hueso y rojo",
+        "tag": "Drop 01",
+        "button_label": "Ver el drop",
+        "button_link": "shopify://collections/drop-01-aguanta"
+      }
+    },
+    "mq1": { "type": "marquee", "settings": { "text": "Sin postureo · Con agujetas", "scheme": "rojo", "tilt": true, "speed": 34 } },
+    "grid": {
+      "type": "featured-collection",
+      "settings": { "kicker": "Drop 01 — Aguanta", "title": "Lo que se lleva sudado", "collection": "drop-01-aguanta", "limit": 8, "rhythm": true, "scheme": "hueso" }
+    },
+    "drop": {
+      "type": "drop-banner",
+      "settings": {
+        "collection": "drop-01-aguanta",
+        "kicker": "Colección limitada en el tiempo, no en unidades",
+        "number": "01",
+        "title": "Drop 01 — Aguanta",
+        "button_label": "Ver los 12 diseños",
+        "scheme": "tinta"
+      }
+    },
+    "manifesto": {
+      "type": "manifesto",
+      "settings": {
+        "kicker": "Lo que creemos",
+        "text": "<p>No vendemos <s>motivación</s>. Vendemos ropa para la gente que <em>va igual</em>, aunque llueva.</p>",
+        "note": "Ni beast mode ni madrugones de influencer. Un rato más, y luego a casa.",
+        "scheme": "hueso"
+      }
+    },
+    "mq2": { "type": "marquee", "settings": { "text": "Hoy toca · Mañana también", "scheme": "lima", "tilt": false, "reverse": true, "speed": 40 } },
+    "how": {
+      "type": "how-its-made",
+      "blocks": {
+        "s1": { "type": "step", "settings": { "title": "Lo pides", "text": "Eliges diseño y talla. Hasta aquí, tu camiseta no existe." } },
+        "s2": { "type": "step", "settings": { "title": "Se imprime", "text": "Printful la imprime o la borda en su taller, normalmente en Europa." } },
+        "s3": { "type": "step", "settings": { "title": "Se revisa", "text": "Control de calidad pieza a pieza antes de empaquetar." } },
+        "s4": { "type": "step", "settings": { "title": "Te llega", "text": "Sale con número de seguimiento. Tú solo tienes que estrenarla." } }
+      },
+      "block_order": ["s1", "s2", "s3", "s4"],
+      "settings": { "title": "Cómo se hace", "intro": "No tenemos almacén. Tu prenda empieza a existir cuando la pides. Menos sobrantes, cero liquidaciones.", "scheme": "lima" }
+    },
+    "about": {
+      "type": "image-with-text",
+      "settings": {
+        "sticker": "Hecho bajo demanda",
+        "kicker": "Sobre AGUANTA",
+        "title": "Deporte de domingo, actitud de lunes",
+        "text": "<p>Somos de los que corren cinco kilómetros y lo celebran con un vermut. De los que van al gimnasio tres días y dicen que cuatro. Hacemos ropa para eso: buena, cómoda y con algo que decir.</p>",
+        "button_label": "Quiénes somos",
+        "button_link": "shopify://pages/sobre-aguanta",
+        "reverse": true,
+        "scheme": "tinta"
+      }
+    }
+  },
+  "order": ["hero", "mq1", "grid", "drop", "manifesto", "mq2", "how", "about"]
+}

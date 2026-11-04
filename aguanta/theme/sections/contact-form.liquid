@@ -1,0 +1,39 @@
+<section class="section esq-{{ section.settings.scheme }}">
+  <div class="wrap cols">
+    <div>
+      <h2 class="d d-l">{{ section.settings.title }}</h2>
+      <div class="rte" style="margin-top:16px">{{ section.settings.text }}</div>
+      {%- if section.settings.email != blank -%}<p style="margin-top:16px"><a class="kicker" href="mailto:{{ section.settings.email }}">{{ section.settings.email }}</a></p>{%- endif -%}
+    </div>
+    {%- form 'contact', class: 'form', id: 'contact-form' -%}
+      {%- if form.posted_successfully? -%}
+        <p class="form-msg form-msg--ok" role="status">{{ 'contact.success' | t }}</p>
+      {%- elsif form.errors -%}
+        <div class="form-msg form-msg--err" role="alert">{{ form.errors | default_errors }}</div>
+      {%- endif -%}
+      <div class="field"><label for="c-name">{{ 'contact.name' | t }}</label><input id="c-name" type="text" name="contact[{{ 'contact.name' | t }}]" autocomplete="name" value="{{ form.name }}"></div>
+      <div class="field"><label for="c-email">{{ 'contact.email' | t }} *</label><input id="c-email" type="email" name="contact[email]" autocomplete="email" required value="{{ form.email }}"></div>
+      <div class="field"><label for="c-order">{{ 'contact.order' | t }}</label><input id="c-order" type="text" name="contact[{{ 'contact.order' | t }}]"></div>
+      <div class="field"><label for="c-body">{{ 'contact.message' | t }} *</label><textarea id="c-body" name="contact[body]" required>{{ form.body }}</textarea></div>
+      <button class="btn" type="submit">{{ 'contact.send' | t }} {% render 'icon', name: 'arrow' %}</button>
+    {%- endform -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Formulario de contacto",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "title", "label": "Título", "default": "Escríbenos" },
+    { "type": "richtext", "id": "text", "label": "Texto", "default": "<p>Respondemos en uno o dos días laborables. Si es por un pedido, pon el número y nos ahorramos un correo.</p>" },
+    { "type": "text", "id": "email", "label": "Email visible" },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "lima", "label": "Lima" }],
+      "default": "hueso"
+    }
+  ],
+  "presets": [{ "name": "Formulario de contacto" }]
+}
+{% endschema %}

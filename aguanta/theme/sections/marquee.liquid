@@ -1,0 +1,32 @@
+<div class="marquee mq-big esq-{{ section.settings.scheme }}{% if section.settings.tilt %} mq-big--tilt{% endif %}{% if section.settings.reverse %} marquee--rev{% endif %}" style="--mq-speed: {{ section.settings.speed }}s">
+  <p class="visually-hidden">{{ section.settings.text }}</p>
+  {%- for i in (1..2) -%}
+    <div class="marquee__track" aria-hidden="true">
+      {%- for j in (1..4) -%}
+        <span>{{ section.settings.text }}<svg class="sep" viewBox="0 0 10 10"><rect width="10" height="10" fill="{% if section.settings.scheme == 'rojo' %}#0B0B0C{% else %}#FF3B1F{% endif %}"/></svg></span>
+      {%- endfor -%}
+    </div>
+  {%- endfor -%}
+</div>
+
+{% schema %}
+{
+  "name": "Marquesina grande",
+  "tag": "section",
+  "settings": [
+    { "type": "text", "id": "text", "label": "Texto", "default": "Sin postureo · Con agujetas" },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [
+        { "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" },
+        { "value": "rojo", "label": "Rojo" }, { "value": "lima", "label": "Lima" }
+      ],
+      "default": "rojo"
+    },
+    { "type": "checkbox", "id": "tilt", "label": "Inclinada", "default": true },
+    { "type": "checkbox", "id": "reverse", "label": "Sentido contrario", "default": false },
+    { "type": "range", "id": "speed", "label": "Duración de una vuelta (s)", "min": 10, "max": 80, "step": 2, "default": 30 }
+  ],
+  "presets": [{ "name": "Marquesina grande" }]
+}
+{% endschema %}

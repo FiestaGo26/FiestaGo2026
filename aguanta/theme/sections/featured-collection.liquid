@@ -1,0 +1,44 @@
+<section class="section esq-{{ section.settings.scheme }}" aria-labelledby="fc-{{ section.id }}">
+  <div class="wrap">
+    <div class="grid-head">
+      <div>
+        {%- if section.settings.kicker != blank -%}<p class="kicker acc">{{ section.settings.kicker }}</p>{%- endif -%}
+        <h2 class="d d-xl" id="fc-{{ section.id }}">{{ section.settings.title | default: section.settings.collection.title }}</h2>
+      </div>
+      {%- if section.settings.collection != blank -%}
+        <a class="btn btn--ghost" href="{{ section.settings.collection.url }}">{{ 'collection.view_all' | t }} {% render 'icon', name: 'arrow' %}</a>
+      {%- endif -%}
+    </div>
+    <ul class="pgrid{% if section.settings.rhythm %} pgrid--ritmo{% endif %} pgrid--4" role="list">
+      {%- if section.settings.collection != blank -%}
+        {%- for product in section.settings.collection.products limit: section.settings.limit -%}
+          <li data-reveal>{% render 'product-card', product: product %}</li>
+        {%- endfor -%}
+      {%- else -%}
+        {%- for i in (1..4) -%}
+          <li><div class="card"><div class="card__media">{{ 'product-apparel-1' | placeholder_svg_tag: 'placeholder-svg' }}</div><div class="card__body"><h3 class="card__title">Producto</h3><p class="card__price" style="margin:0">29,00 €</p></div></div></li>
+        {%- endfor -%}
+      {%- endif -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Rejilla de productos",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "kicker", "label": "Antetítulo", "default": "Drop 01" },
+    { "type": "text", "id": "title", "label": "Título", "default": "Lo nuevo" },
+    { "type": "collection", "id": "collection", "label": "Colección" },
+    { "type": "range", "id": "limit", "label": "Número de productos", "min": 2, "max": 16, "step": 1, "default": 8 },
+    { "type": "checkbox", "id": "rhythm", "label": "Ritmo irregular (una tarjeta grande)", "default": true },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }],
+      "default": "hueso"
+    }
+  ],
+  "presets": [{ "name": "Rejilla de productos" }]
+}
+{% endschema %}

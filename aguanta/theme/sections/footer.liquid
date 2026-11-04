@@ -1,0 +1,58 @@
+<footer class="footer">
+  {%- if section.settings.marquee != blank -%}
+    <div class="marquee mq-big esq-lima" aria-hidden="true" style="--mq-speed: 30s">
+      {%- for i in (1..2) -%}
+        <div class="marquee__track">{%- for j in (1..4) -%}<span>{{ section.settings.marquee }} <svg class="sep" viewBox="0 0 10 10"><rect width="10" height="10" fill="#0B0B0C"/></svg></span>{%- endfor -%}</div>
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+  <div class="wrap">
+    <div class="footer__grid">
+      <div>
+        <h2 class="d d-l">{{ section.settings.title }}</h2>
+        <p class="muted" style="margin-top:12px;max-width:44ch">{{ section.settings.text }}</p>
+        {%- form 'customer', class: 'newsletter', id: 'footer-news' -%}
+          <input type="hidden" name="contact[tags]" value="newsletter">
+          <label class="visually-hidden" for="news-email">{{ 'general.email' | t }}</label>
+          <input id="news-email" type="email" name="contact[email]" required autocomplete="email" placeholder="{{ 'general.email' | t }}">
+          <button class="btn" type="submit">{{ 'general.subscribe' | t }}</button>
+          {%- if form.posted_successfully? -%}<p class="kicker acc-l news-ok" role="status">{{ 'general.subscribed' | t }}</p>{%- endif -%}
+        {%- endform -%}
+      </div>
+      <nav aria-label="{{ section.settings.menu_1.title | default: 'Tienda' }}">
+        <p class="kicker acc-l">{{ section.settings.menu_1.title | default: 'Tienda' }}</p>
+        <ul style="margin-top:12px">
+          {%- for link in section.settings.menu_1.links -%}<li><a href="{{ link.url }}">{{ link.title }}</a></li>{%- endfor -%}
+        </ul>
+      </nav>
+      <nav aria-label="{{ section.settings.menu_2.title | default: 'Ayuda' }}">
+        <p class="kicker acc-l">{{ section.settings.menu_2.title | default: 'Ayuda' }}</p>
+        <ul style="margin-top:12px">
+          {%- for link in section.settings.menu_2.links -%}<li><a href="{{ link.url }}">{{ link.title }}</a></li>{%- endfor -%}
+          {%- if settings.social_instagram != blank -%}<li><a href="{{ settings.social_instagram }}" rel="me noopener" target="_blank">Instagram</a></li>{%- endif -%}
+          {%- if settings.social_tiktok != blank -%}<li><a href="{{ settings.social_tiktok }}" rel="me noopener" target="_blank">TikTok</a></li>{%- endif -%}
+        </ul>
+      </nav>
+    </div>
+  </div>
+  <div class="footer__big wrap" aria-hidden="true">{% render 'logo-svg', id: 'f' %}</div>
+  <div class="wrap footer__legal">
+    <span>© {{ 'now' | date: '%Y' }} {{ shop.name }}. {{ section.settings.legal }}</span>
+    <span>{%- for type in shop.enabled_payment_types limit: 6 -%}{{ type | payment_type_svg_tag: class: 'pay-icon' }}{%- endfor -%}</span>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Pie",
+  "class": "section-footer",
+  "settings": [
+    { "type": "text", "id": "marquee", "label": "Marquesina", "default": "SIN POSTUREO · HECHO BAJO DEMANDA · AGUANTA" },
+    { "type": "text", "id": "title", "label": "Titular boletín", "default": "Un correo al mes. Ni uno más." },
+    { "type": "textarea", "id": "text", "label": "Texto boletín", "default": "Drops nuevos antes que nadie y alguna frase para el vestuario. Te puedes ir cuando quieras." },
+    { "type": "link_list", "id": "menu_1", "label": "Menú 1", "default": "main-menu" },
+    { "type": "link_list", "id": "menu_2", "label": "Menú 2", "default": "footer" },
+    { "type": "text", "id": "legal", "label": "Texto legal", "default": "Fabricado bajo demanda por Printful." }
+  ]
+}
+{% endschema %}

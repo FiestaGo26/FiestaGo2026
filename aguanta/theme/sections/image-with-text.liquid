@@ -1,0 +1,43 @@
+<section class="section esq-{{ section.settings.scheme }}">
+  <div class="wrap split{% if section.settings.reverse %} split--rev{% endif %}">
+    <div class="split__media" data-reveal>
+      {%- if section.settings.image != blank -%}
+        {% render 'image', image: section.settings.image, sizes: '(min-width: 990px) 50vw, 100vw' %}
+      {%- else -%}
+        {{ 'lifestyle-1' | placeholder_svg_tag: 'placeholder-svg' }}
+      {%- endif -%}
+      {%- if section.settings.sticker != blank -%}<span class="badge">{{ section.settings.sticker }}</span>{%- endif -%}
+    </div>
+    <div style="display:grid;gap:20px;justify-items:start">
+      <p class="kicker acc">{{ section.settings.kicker }}</p>
+      <h2 class="d d-l">{{ section.settings.title }}</h2>
+      <div class="rte txt-l">{{ section.settings.text }}</div>
+      {%- if section.settings.button_label != blank -%}
+        <a class="btn{% if section.settings.scheme == 'lima' %} btn--tinta{% endif %}" href="{{ section.settings.button_link }}">{{ section.settings.button_label }} {% render 'icon', name: 'arrow' %}</a>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Imagen con texto",
+  "tag": "div",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Imagen" },
+    { "type": "text", "id": "sticker", "label": "Pegatina" },
+    { "type": "text", "id": "kicker", "label": "Antetítulo", "default": "Sobre AGUANTA" },
+    { "type": "text", "id": "title", "label": "Título", "default": "Deporte de domingo, actitud de lunes" },
+    { "type": "richtext", "id": "text", "label": "Texto", "default": "<p>Somos de los que corren cinco kilómetros y lo celebran con un vermut. Hacemos ropa para eso.</p>" },
+    { "type": "text", "id": "button_label", "label": "Botón", "default": "Quiénes somos" },
+    { "type": "url", "id": "button_link", "label": "Enlace" },
+    { "type": "checkbox", "id": "reverse", "label": "Imagen a la derecha", "default": false },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }, { "value": "lima", "label": "Lima" }, { "value": "rojo", "label": "Rojo" }],
+      "default": "hueso"
+    }
+  ],
+  "presets": [{ "name": "Imagen con texto" }]
+}
+{% endschema %}

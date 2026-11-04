@@ -1,0 +1,55 @@
+<section class="hero esq-tinta" data-hero aria-labelledby="hero-{{ section.id }}">
+  <span class="hero__bgword" aria-hidden="true">{{ section.settings.bg_word }}</span>
+  <div class="wrap hero__grid">
+    <h2 class="d hero__title" id="hero-{{ section.id }}">
+      <span class="ln"><span>{{ section.settings.line_1 }}</span></span>
+      <span class="ln"><span>{{ section.settings.line_2 }}</span></span>
+      <span class="ln"><span>{{ section.settings.line_3 }}</span></span>
+    </h2>
+
+    <div class="hero__media">
+      {%- liquid
+        assign img = section.settings.image
+        if img == blank and section.settings.product != blank
+          assign img = section.settings.product.featured_media.preview_image
+        endif
+      -%}
+      {%- if img != blank -%}
+        {% render 'image', image: img, sizes: '(min-width: 990px) 36vw, 78vw', eager: true, alt: section.settings.image_alt %}
+      {%- else -%}
+        {{ 'product-apparel-1' | placeholder_svg_tag: 'placeholder-svg' }}
+      {%- endif -%}
+      {%- if section.settings.tag != blank -%}<span class="hero__tag">{{ section.settings.tag }}</span>{%- endif -%}
+    </div>
+
+    <div class="hero__foot">
+      <p class="hero__sub txt-l">{{ section.settings.subtitle }}</p>
+      {%- if section.settings.button_label != blank -%}
+        <a class="btn" href="{{ section.settings.button_link | default: section.settings.product.url | default: routes.all_products_collection_url }}">
+          {{ section.settings.button_label }} {% render 'icon', name: 'arrow' %}
+        </a>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Hero",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "line_1", "label": "Línea 1", "default": "Aguanta" },
+    { "type": "text", "id": "line_2", "label": "Línea 2", "default": "un rato" },
+    { "type": "text", "id": "line_3", "label": "Línea 3 (roja)", "default": "más." },
+    { "type": "text", "id": "bg_word", "label": "Palabra de fondo (contorno)", "default": "A" },
+    { "type": "textarea", "id": "subtitle", "label": "Subtítulo", "default": "Ropa de deporte sin postureo. Diseños propios, hechos uno a uno cuando los pides." },
+    { "type": "product", "id": "product", "label": "Producto destacado" },
+    { "type": "image_picker", "id": "image", "label": "Imagen (mockup)", "info": "Si lo dejas vacío se usa la imagen del producto destacado. Usa mockups del generador de Printful." },
+    { "type": "text", "id": "image_alt", "label": "Texto alternativo de la imagen" },
+    { "type": "text", "id": "tag", "label": "Pegatina", "default": "Drop 01" },
+    { "type": "text", "id": "button_label", "label": "Texto del botón", "default": "Ver el drop" },
+    { "type": "url", "id": "button_link", "label": "Enlace del botón" }
+  ],
+  "presets": [{ "name": "Hero" }]
+}
+{% endschema %}

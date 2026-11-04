@@ -1,0 +1,64 @@
+{%- paginate collection.products by section.settings.per_page -%}
+<section class="esq-{{ section.settings.scheme }}">
+  <div class="page-hero">
+    <div class="wrap">
+      {%- if collection.template_suffix == 'drop' or section.settings.is_drop -%}<p class="kicker acc">{{ 'collection.drop' | t }}</p>{%- endif -%}
+      <h1 class="d">{{ collection.title }}</h1>
+      <div class="drop" style="margin-top:20px">
+        {%- if collection.description != blank -%}<div class="rte txt-l">{{ collection.description }}</div>{%- endif -%}
+        {%- if section.settings.show_counter -%}{% render 'drop-counter', collection: collection %}{%- endif -%}
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap section--tight">
+    <form class="grid-head" method="get" action="{{ collection.url }}" data-sort>
+      <p class="kicker" style="margin:0">{{ 'collection.count' | t: count: collection.products_count }}</p>
+      <label class="field" style="grid-auto-flow:column;align-items:center">
+        <span>{{ 'collection.sort' | t }}</span>
+        <select name="sort_by" onchange="this.form.submit()">
+          {%- for option in collection.sort_options -%}
+            <option value="{{ option.value }}"{% if option.value == collection.sort_by %} selected{% endif %}>{{ option.name }}</option>
+          {%- endfor -%}
+        </select>
+      </label>
+      <noscript><button class="btn" type="submit">OK</button></noscript>
+    </form>
+
+    {%- if collection.products.size > 0 -%}
+      <ul class="pgrid pgrid--4{% if section.settings.rhythm %} pgrid--ritmo{% endif %}" role="list">
+        {%- for product in collection.products -%}
+          <li>{% if forloop.index <= 2 %}{% render 'product-card', product: product, eager: true, heading: 'h2' %}{% else %}{% render 'product-card', product: product, heading: 'h2' %}{% endif %}</li>
+        {%- endfor -%}
+      </ul>
+    {%- else -%}
+      <div class="empty-state"><p class="d d-l">{{ 'collection.empty' | t }}</p></div>
+    {%- endif -%}
+
+    {%- if paginate.pages > 1 -%}
+      <nav class="pagination" aria-label="{{ 'general.pagination' | t }}">
+        {%- for part in paginate.parts -%}
+          {%- if part.is_link -%}<a href="{{ part.url }}">{{ part.title }}</a>{%- elsif part.title == paginate.current_page -%}<span class="on" aria-current="page">{{ part.title }}</span>{%- else -%}<span>{{ part.title }}</span>{%- endif -%}
+        {%- endfor -%}
+      </nav>
+    {%- endif -%}
+  </div>
+</section>
+{%- endpaginate -%}
+
+{% schema %}
+{
+  "name": "Colección",
+  "settings": [
+    { "type": "range", "id": "per_page", "label": "Productos por página", "min": 8, "max": 48, "step": 4, "default": 24 },
+    { "type": "checkbox", "id": "rhythm", "label": "Ritmo irregular", "default": true },
+    { "type": "checkbox", "id": "is_drop", "label": "Mostrar como drop", "default": false },
+    { "type": "checkbox", "id": "show_counter", "label": "Mostrar contador (si hay datos reales)", "default": true },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }],
+      "default": "hueso"
+    }
+  ]
+}
+{% endschema %}

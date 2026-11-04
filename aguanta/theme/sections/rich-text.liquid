@@ -1,0 +1,24 @@
+<section class="section{% if section.settings.tight %} section--tight{% endif %} esq-{{ section.settings.scheme }}">
+  <div class="wrap">
+    {%- if section.settings.title != blank -%}<h2 class="d d-l" style="margin-bottom:20px">{{ section.settings.title }}</h2>{%- endif -%}
+    <div class="rte txt-l">{{ section.settings.text }}</div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Texto",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "title", "label": "Título" },
+    { "type": "richtext", "id": "text", "label": "Texto", "default": "<p>Escribe aquí.</p>" },
+    { "type": "checkbox", "id": "tight", "label": "Espaciado compacto", "default": false },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }, { "value": "lima", "label": "Lima" }, { "value": "rojo", "label": "Rojo" }],
+      "default": "hueso"
+    }
+  ],
+  "presets": [{ "name": "Texto" }]
+}
+{% endschema %}

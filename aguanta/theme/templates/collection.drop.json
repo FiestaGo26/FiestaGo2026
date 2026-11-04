@@ -1,0 +1,17 @@
+{
+  "sections": {
+    "main": { "type": "main-collection", "settings": { "per_page": 24, "rhythm": true, "is_drop": true, "show_counter": true, "scheme": "tinta" } },
+    "mq": { "type": "marquee", "settings": { "text": "Drop 01 · Aguanta · Hecho bajo demanda", "scheme": "lima", "tilt": true, "speed": 34 } },
+    "how": {
+      "type": "how-its-made",
+      "blocks": {
+        "s1": { "type": "step", "settings": { "title": "Doce diseños", "text": "Tipográficos, contundentes y sin clipart. Todos nuestros." } },
+        "s2": { "type": "step", "settings": { "title": "Sin stock", "text": "Cada pieza se fabrica cuando se pide." } },
+        "s3": { "type": "step", "settings": { "title": "Sin fecha de saldo", "text": "El drop cierra cuando toque. Sin liquidaciones." } }
+      },
+      "block_order": ["s1", "s2", "s3"],
+      "settings": { "title": "Así es el drop", "intro": "", "scheme": "hueso" }
+    }
+  },
+  "order": ["main", "mq", "how"]
+}

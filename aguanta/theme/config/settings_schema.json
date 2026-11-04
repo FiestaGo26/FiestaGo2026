@@ -1,0 +1,37 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "AGUANTA",
+    "theme_version": "1.0.0",
+    "theme_author": "AGUANTA",
+    "theme_documentation_url": "https://shopify.dev/docs/storefronts/themes",
+    "theme_support_url": "https://help.shopify.com"
+  },
+  {
+    "name": "Marca",
+    "settings": [
+      { "type": "text", "id": "slogan", "label": "Eslogan", "default": "Aguanta un rato más." },
+      { "type": "image_picker", "id": "favicon", "label": "Favicon", "info": "Si lo dejas vacío se usa el isotipo A del tema." },
+      { "type": "image_picker", "id": "share_image", "label": "Imagen para compartir en redes" },
+      { "type": "textarea", "id": "meta_fallback", "label": "Metadescripción por defecto", "default": "AGUANTA: ropa deportiva sin postureo. Camisetas, sudaderas, leggings y gorras con diseños propios, fabricadas bajo demanda. Envío a España y la UE." }
+    ]
+  },
+  {
+    "name": "Carrito y envíos",
+    "settings": [
+      { "type": "number", "id": "free_shipping_threshold", "label": "Envío gratis desde (€)", "default": 70, "info": "Tiene que coincidir con la tarifa de envío configurada en Ajustes > Envíos." },
+      {
+        "type": "select", "id": "cart_type", "label": "Tipo de carrito",
+        "options": [{ "value": "drawer", "label": "Panel lateral" }, { "value": "page", "label": "Página" }],
+        "default": "drawer"
+      }
+    ]
+  },
+  {
+    "name": "Redes",
+    "settings": [
+      { "type": "url", "id": "social_instagram", "label": "Instagram" },
+      { "type": "url", "id": "social_tiktok", "label": "TikTok" }
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+<article class="section">
+  <div class="wrap">
+    <p class="kicker acc">{{ article.published_at | date: format: 'date' }}</p>
+    <h1 class="d d-xl" style="margin:12px 0 28px">{{ article.title }}</h1>
+    {%- if article.image -%}<div style="border:var(--borde) solid var(--tinta);margin-bottom:28px">{% render 'image', image: article.image, sizes: '100vw', eager: true, alt: article.title %}</div>{%- endif -%}
+    <div class="rte txt-l">{{ article.content }}</div>
+  </div>
+</article>
+{% schema %}{ "name": "Artículo", "settings": [] }{% endschema %}

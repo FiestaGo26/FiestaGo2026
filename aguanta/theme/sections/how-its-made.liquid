@@ -1,0 +1,51 @@
+<section class="section esq-{{ section.settings.scheme }}" aria-labelledby="how-{{ section.id }}">
+  <div class="wrap">
+    <div class="grid-head">
+      <h2 class="d d-xl" id="how-{{ section.id }}">{{ section.settings.title }}</h2>
+      <p class="txt-l" style="max-width:36ch;margin:0">{{ section.settings.intro }}</p>
+    </div>
+    <ol class="steps" style="--cols: {{ section.blocks.size | at_most: 4 }}">
+      {%- for block in section.blocks -%}
+        <li {{ block.shopify_attributes }} data-reveal>
+          <h3>{{ block.settings.title }}</h3>
+          <p style="margin:0">{{ block.settings.text }}</p>
+        </li>
+      {%- endfor -%}
+    </ol>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Cómo se hace",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "title", "label": "Título", "default": "Cómo se hace" },
+    { "type": "textarea", "id": "intro", "label": "Intro", "default": "No tenemos almacén. Tu prenda empieza a existir cuando la pides." },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }, { "value": "lima", "label": "Lima" }, { "value": "rojo", "label": "Rojo" }],
+      "default": "lima"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "step", "name": "Paso",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Título", "default": "Paso" },
+        { "type": "textarea", "id": "text", "label": "Texto" }
+      ]
+    }
+  ],
+  "max_blocks": 4,
+  "presets": [{
+    "name": "Cómo se hace",
+    "blocks": [
+      { "type": "step", "settings": { "title": "Lo pides", "text": "Eliges talla y diseño. Hasta aquí, nada existe." } },
+      { "type": "step", "settings": { "title": "Se imprime", "text": "Printful lo imprime o borda en su taller más cercano, normalmente en Europa." } },
+      { "type": "step", "settings": { "title": "Se revisa", "text": "Control de calidad pieza a pieza antes de empaquetar." } },
+      { "type": "step", "settings": { "title": "Te llega", "text": "Sale con número de seguimiento. Tú solo tienes que estrenarla." } }
+    ]
+  }]
+}
+{% endschema %}

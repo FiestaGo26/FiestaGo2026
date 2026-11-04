@@ -1,0 +1,34 @@
+{%- comment -%} Tarjeta de producto. Parámetros: product, sizes, eager, heading (h2|h3, por defecto h3) {%- endcomment -%}
+{%- liquid
+  assign img1 = product.featured_media.preview_image
+  assign img2 = product.media[1].preview_image
+  assign h = heading | default: 'h3'
+  assign s = sizes | default: '(min-width: 1200px) 25vw, (min-width: 750px) 33vw, 50vw'
+-%}
+<a class="card" href="{{ product.url }}">
+  <div class="card__media">
+    {%- if product.compare_at_price > product.price -%}
+      <span class="badge badge--rojo">{{ 'product.sale' | t }}</span>
+    {%- elsif product.tags contains 'nuevo' -%}
+      <span class="badge">{{ 'product.new' | t }}</span>
+    {%- endif -%}
+    {%- if img1 -%}
+      {%- capture cls -%}img-1{% if img2 %} has-2{% endif %}{%- endcapture -%}
+      {% render 'image', image: img1, sizes: s, class: cls, alt: product.title, eager: eager, widths: '360, 540, 720, 900, 1200' %}
+      {%- if img2 -%}
+        {% render 'image', image: img2, sizes: s, class: 'img-2', alt: img2.alt, widths: '360, 540, 720, 900, 1200' %}
+      {%- endif -%}
+    {%- else -%}
+      {{ 'product-apparel-2' | placeholder_svg_tag: 'placeholder-svg' }}
+    {%- endif -%}
+  </div>
+  <div class="card__body">
+    <{{ h }} class="card__title">{{ product.title }}</{{ h }}>
+    <p class="card__price" style="margin:0">
+      {%- if product.compare_at_price > product.price -%}<s>{{ product.compare_at_price | money }}</s>{%- endif -%}
+      {%- if product.price_varies -%}{{ 'product.from' | t }} {% endif -%}
+      {{ product.price | money }}
+      {%- unless product.available %} · {{ 'product.sold_out' | t }}{% endunless -%}
+    </p>
+  </div>
+</a>

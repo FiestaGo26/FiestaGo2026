@@ -1,0 +1,17 @@
+{
+  "sections": {
+    "main": { "type": "main-page", "settings": { "kicker": "Antes de pedir", "scheme": "hueso" } },
+    "guide": {
+      "type": "size-guide",
+      "blocks": {
+        "t1": { "type": "table", "settings": { "title": "Camisetas y tirantes", "table": "<table class=\"size-table\"><thead><tr><th scope=\"col\">Talla</th><th scope=\"col\">Ancho pecho</th><th scope=\"col\">Largo</th></tr></thead><tbody><tr><th scope=\"row\">XS</th><td>44</td><td>69</td></tr><tr><th scope=\"row\">S</th><td>47</td><td>71</td></tr><tr><th scope=\"row\">M</th><td>52</td><td>74</td></tr><tr><th scope=\"row\">L</th><td>56</td><td>76</td></tr><tr><th scope=\"row\">XL</th><td>61</td><td>79</td></tr><tr><th scope=\"row\">2XL</th><td>66</td><td>81</td></tr></tbody></table>", "note": "Oversize: coge tu talla para el efecto holgado, una menos si la quieres normal." } },
+        "t2": { "type": "table", "settings": { "title": "Sudaderas", "table": "<table class=\"size-table\"><thead><tr><th scope=\"col\">Talla</th><th scope=\"col\">Ancho pecho</th><th scope=\"col\">Largo</th><th scope=\"col\">Manga</th></tr></thead><tbody><tr><th scope=\"row\">S</th><td>51</td><td>69</td><td>86</td></tr><tr><th scope=\"row\">M</th><td>56</td><td>71</td><td>88</td></tr><tr><th scope=\"row\">L</th><td>61</td><td>74</td><td>90</td></tr><tr><th scope=\"row\">XL</th><td>66</td><td>76</td><td>92</td></tr><tr><th scope=\"row\">2XL</th><td>71</td><td>79</td><td>94</td></tr></tbody></table>", "note": "" } },
+        "t3": { "type": "table", "settings": { "title": "Leggings", "table": "<table class=\"size-table\"><thead><tr><th scope=\"col\">Talla</th><th scope=\"col\">Cintura</th><th scope=\"col\">Cadera</th><th scope=\"col\">Largo interior</th></tr></thead><tbody><tr><th scope=\"row\">XS</th><td>61</td><td>86</td><td>71</td></tr><tr><th scope=\"row\">S</th><td>66</td><td>91</td><td>71</td></tr><tr><th scope=\"row\">M</th><td>71</td><td>97</td><td>72</td></tr><tr><th scope=\"row\">L</th><td>79</td><td>104</td><td>72</td></tr><tr><th scope=\"row\">XL</th><td>86</td><td>112</td><td>73</td></tr></tbody></table>", "note": "Tejido elástico: si dudas entre dos, la pequeña." } },
+        "t4": { "type": "table", "settings": { "title": "Shorts", "table": "<table class=\"size-table\"><thead><tr><th scope=\"col\">Talla</th><th scope=\"col\">Cintura</th><th scope=\"col\">Cadera</th><th scope=\"col\">Largo</th></tr></thead><tbody><tr><th scope=\"row\">XS</th><td>69</td><td>91</td><td>44</td></tr><tr><th scope=\"row\">S</th><td>74</td><td>96</td><td>45</td></tr><tr><th scope=\"row\">M</th><td>79</td><td>101</td><td>46</td></tr><tr><th scope=\"row\">L</th><td>86</td><td>107</td><td>47</td></tr><tr><th scope=\"row\">XL</th><td>94</td><td>114</td><td>48</td></tr><tr><th scope=\"row\">2XL</th><td>102</td><td>121</td><td>49</td></tr></tbody></table>", "note": "" } }
+      },
+      "block_order": ["t1", "t2", "t3", "t4"],
+      "settings": { "title": "Cómo medir", "scheme": "hueso" }
+    }
+  },
+  "order": ["main", "guide"]
+}

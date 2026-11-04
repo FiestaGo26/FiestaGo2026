@@ -1,0 +1,9 @@
+{
+  "type": "header",
+  "name": "Cabecera",
+  "sections": {
+    "announcement": { "type": "announcement-bar", "settings": {} },
+    "header": { "type": "header", "settings": { "menu": "main-menu", "scheme": "hueso" } }
+  },
+  "order": ["announcement", "header"]
+}

@@ -1,0 +1,67 @@
+<section class="section esq-{{ section.settings.scheme }}" aria-labelledby="faq-{{ section.id }}">
+  <div class="wrap cols">
+    <div>
+      <h2 class="d d-xl" id="faq-{{ section.id }}">{{ section.settings.title }}</h2>
+      {%- if section.settings.text != blank -%}<div class="rte" style="margin-top:16px">{{ section.settings.text }}</div>{%- endif -%}
+    </div>
+    <div>
+      {%- for block in section.blocks -%}
+        {%- if block.type == 'group' -%}
+          <p class="kicker acc" style="margin:{% unless forloop.first %}36px{% else %}0{% endunless %} 0 10px" {{ block.shopify_attributes }}>{{ block.settings.title }}</p>
+        {%- else -%}
+          <details class="acc-item" {{ block.shopify_attributes }}>
+            <summary>{{ block.settings.question }}</summary>
+            <div class="acc-body rte">{{ block.settings.answer }}</div>
+          </details>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{%- if section.settings.schema_markup and section.blocks.size > 0 -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {%- assign first = true -%}
+    {%- for block in section.blocks -%}
+      {%- if block.type == 'question' -%}
+        {%- unless first -%},{%- endunless -%}
+        { "@type": "Question", "name": {{ block.settings.question | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ block.settings.answer | strip_html | json }} } }
+        {%- assign first = false -%}
+      {%- endif -%}
+    {%- endfor -%}
+  ]
+}
+</script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Preguntas frecuentes",
+  "tag": "div",
+  "settings": [
+    { "type": "text", "id": "title", "label": "Título", "default": "Preguntas" },
+    { "type": "richtext", "id": "text", "label": "Texto" },
+    { "type": "checkbox", "id": "schema_markup", "label": "Datos estructurados FAQ", "default": true },
+    {
+      "type": "select", "id": "scheme", "label": "Color",
+      "options": [{ "value": "hueso", "label": "Hueso" }, { "value": "tinta", "label": "Tinta" }],
+      "default": "hueso"
+    }
+  ],
+  "blocks": [
+    { "type": "group", "name": "Grupo", "settings": [{ "type": "text", "id": "title", "label": "Título del grupo", "default": "Pedidos" }] },
+    {
+      "type": "question", "name": "Pregunta",
+      "settings": [
+        { "type": "text", "id": "question", "label": "Pregunta", "default": "¿Pregunta?" },
+        { "type": "richtext", "id": "answer", "label": "Respuesta", "default": "<p>Respuesta.</p>" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Preguntas frecuentes" }]
+}
+{% endschema %}
