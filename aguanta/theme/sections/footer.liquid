@@ -35,7 +35,10 @@
       </nav>
     </div>
   </div>
-  <div class="footer__big wrap" aria-hidden="true">{% render 'logo-svg', id: 'f' %}</div>
+  <div class="footer__big wrap" aria-hidden="true">
+    <span class="footer__a">{% render 'logo-svg', id: 'f' %}</span>
+    <span class="footer__claim">{{ settings.slogan }}</span>
+  </div>
   <div class="wrap footer__legal">
     <span>© {{ 'now' | date: '%Y' }} {{ shop.name }}. {{ section.settings.legal }}</span>
     <span>{%- for type in shop.enabled_payment_types limit: 6 -%}{{ type | payment_type_svg_tag: class: 'pay-icon' }}{%- endfor -%}</span>

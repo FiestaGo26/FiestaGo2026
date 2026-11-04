@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { Resvg } from '@resvg/resvg-js';
 import sharp from 'sharp';
 import { DESIGNS, extras, tileA, tileB } from './designs.mjs';
-import { C, svg, wordmark, isoA } from './lib.mjs';
+import { C, svg, isoA, aMark } from './lib.mjs';
 import { BASES, FICHAS, AJUSTES } from '../catalogo/productos.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -110,22 +110,23 @@ for (const f of FICHAS) {
 }
 write(out('designs/export/printful/indice.json'), JSON.stringify(fichasInfo, null, 2));
 
-// ─────────────── 3. Logotipos
+// ─────────────── 3. Logotipos — el logo es SOLO la letra A recortada
+for (const f of fs.readdirSync(out('brand/logo'))) if (f.startsWith('aguanta-wordmark-')) fs.rmSync(out('brand/logo', f));
 const logoSet = [
   ['positivo', C.tinta, null],
   ['negativo', C.hueso, C.tinta],
   ['monocromo-negro', '#000000', null],
   ['monocromo-blanco', '#FFFFFF', null],
   ['rojo', C.rojo, null],
+  ['lima', C.lima, C.tinta],
 ];
 for (const [nm, fill, bg] of logoSet) {
-  const pad = 60;
-  const wm = wordmark({ x: pad, y: pad, h: 300, fill, id: `logo-${nm}` });
-  const W = Math.ceil(wm.x2 + pad), H = 300 + pad * 2;
-  const shift = pad - wm.x1;
-  const body = `<g transform="translate(${shift.toFixed(2)} 0)">${wm.markup}</g>`;
-  write(out('brand/logo', `aguanta-wordmark-${nm}.svg`), svg(W, H, body, { bg }));
+  const H = 1000, pad = 120;
+  const m = aMark({ h: H - pad * 2, fill, id: `logo-${nm}` });
+  const W = Math.ceil(m.w + pad * 2);
+  write(out('brand/logo', `aguanta-logo-${nm}.svg`), svg(W, H, `<g transform="translate(${pad} ${pad})">${m.markup}</g>`, { bg }));
 }
+// versiones en cuadrado (avatar de redes, etiquetas, favicon)
 const isoSet = [
   ['tinta', C.lima, C.tinta],
   ['lima', C.tinta, C.lima],
@@ -133,21 +134,24 @@ const isoSet = [
   ['hueso', C.tinta, C.hueso],
   ['monocromo', '#000000', null],
 ];
-for (const [nm, fg, bg] of isoSet) write(out('brand/logo', `aguanta-isotipo-${nm}.svg`), svg(1000, 1000, isoA({ size: 1000, fg, bg, id: `iso-${nm}` })));
+for (const [nm, fg, bg] of isoSet) write(out('brand/logo', `aguanta-logo-cuadrado-${nm}.svg`), svg(1000, 1000, isoA({ size: 1000, fg, bg, id: `iso-${nm}` })));
+for (const f of fs.readdirSync(out('brand/logo'))) if (f.startsWith('aguanta-isotipo-')) fs.rmSync(out('brand/logo', f));
+// PNG de los principales, para quien no use SVG
+for (const nm of ['positivo', 'negativo']) {
+  await png(fs.readFileSync(out('brand/logo', `aguanta-logo-${nm}.svg`), 'utf8'), out('brand/logo', `aguanta-logo-${nm}.png`), { width: 1000 });
+}
+await png(fs.readFileSync(out('brand/logo', 'aguanta-logo-cuadrado-tinta.svg'), 'utf8'), out('brand/logo', 'aguanta-avatar-redes.png'), { width: 1080 });
 // favicon
 const favSvg = svg(512, 512, isoA({ size: 512, fg: C.lima, bg: C.tinta, id: 'fav' }));
 await png(favSvg, out('brand/logo', 'favicon-512.png'));
 await png(favSvg, out('theme/assets', 'favicon.png'), { width: 96 });
-// logo para el tema (SVG inline-friendly, currentColor)
+// logo para el tema (SVG inline, currentColor): la A sola
 {
-  const wm = wordmark({ x: 0, y: 0, h: 100, fill: 'currentColor', id: 'tlogo' });
-  const W = Math.ceil(wm.x2 - wm.x1);
+  const m = aMark({ h: 100, fill: 'currentColor', id: 'tlogo{{ id | default: 1 }}' });
   write(out('theme/snippets', 'logo-svg.liquid'),
-    `{%- comment -%} Generado por designs/generate.mjs. No editar a mano. {%- endcomment -%}\n` +
-    `<svg class="logo-svg" viewBox="0 0 ${W} 100" role="img" aria-label="AGUANTA" xmlns="http://www.w3.org/2000/svg"><g transform="translate(${(-wm.x1).toFixed(2)} 0)">${wm.markup.replace(/id="tlogo"/, 'id="tlogo{{ id | default: 1 }}"').replace(/url\(#tlogo\)/, 'url(#tlogo{{ id | default: 1 }})')}</g></svg>\n`);
-  write(out('theme/snippets', 'iso-svg.liquid'),
-    `{%- comment -%} Generado por designs/generate.mjs. {%- endcomment -%}\n` +
-    `<svg class="iso-svg" viewBox="0 0 100 100" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">${isoA({ size: 100, fg: 'currentColor', bg: null, id: 'tiso{{ id | default: 1 }}' })}</svg>\n`);
+    `{%- comment -%} Generado por designs/generate.mjs. No editar a mano. Logo = la A recortada. {%- endcomment -%}\n` +
+    `<svg class="logo-svg" viewBox="0 0 ${m.w.toFixed(2)} 100" role="img" aria-label="AGUANTA" xmlns="http://www.w3.org/2000/svg">${m.markup}</svg>\n`);
+  if (fs.existsSync(out('theme/snippets', 'iso-svg.liquid'))) fs.rmSync(out('theme/snippets', 'iso-svg.liquid'));
 }
 
 // ─────────────── 4. Imágenes para la vista previa local / ficha (no son mockups)

@@ -12,8 +12,9 @@ Lo que no venía definido en el encargo y he decidido yo, con el motivo. Si no e
 
 ## Marca y diseño
 
-4. **Corte de la A:** chaflán recto que elimina el pie izquierdo (del 66 % de la altura al 30 % del ancho). Probé una franja que atravesaba la letra y, a tamaño pequeño, se confundía con el hueco de la A. El chaflán se lee bien desde 16 px.
-5. **Isotipo para favicon:** A en lima sobre tinta (es la combinación con más contraste, 16,6:1, y la más reconocible a 16 px).
+4. **Logo = solo la A recortada** (cambio pedido tras la primera versión, que era el wordmark AGUANTA completo). En la cabecera va la A sola (con `aria-label="AGUANTA"` para lectores de pantalla) y en el pie una A gigante en lima junto al eslogan. El diseño 1 de la colección sigue usando la palabra AGUANTA porque es un estampado, no el logo.
+   **Corte de la A:** chaflán recto que elimina el pie izquierdo (del 66 % de la altura al 30 % del ancho). Probé una franja que atravesaba la letra y, a tamaño pequeño, se confundía con el hueco de la A. El chaflán se lee bien desde 16 px.
+5. **Favicon y avatar:** la A en lima sobre cuadrado tinta (es la combinación con más contraste, 16,6:1, y la más reconocible a 16 px).
 6. **Texto en trazados.** Todos los SVG de logo y diseños llevan las letras convertidas a trazados (opentype.js): no dependen de tener las fuentes instaladas y Printful los ve exactamente igual. Las fuentes (OFL) están en `fonts/` para regenerar.
 7. **Másteres a 4500 × 5400 px (15 × 18 in a 300 DPI)** como pediste, y además **un archivo por producto ya encajado en la plantilla de Printful** (`designs/export/printful/`). Las plantillas reales de Printful suelen ser más pequeñas (p. ej. 3600 × 4800 en camisetas): el máster se reduce sin deformar, centrado y pegado arriba, que es como lo coloca Printful.
 8. **Versión claro/oscuro:** «claro» = para prenda clara (tinta + rojo); «oscuro» = para prenda oscura (hueso + rojo; lima en patrones). En estampados integrales (patrones, bolsa) el fondo va incluido porque no hay prenda que se vea debajo.

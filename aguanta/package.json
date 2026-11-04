@@ -15,7 +15,8 @@
     "printful:verificar": "node catalogo/printful.mjs verificar",
     "printful:envios": "node catalogo/printful.mjs envios",
     "printful:mockups": "node catalogo/printful.mjs mockups",
-    "contador": "node catalogo/contador-drop.mjs"
+    "contador": "node catalogo/contador-drop.mjs",
+    "theme:zip": "rm -f dist/aguanta-theme.zip && mkdir -p dist && cd theme && zip -qr -X ../dist/aguanta-theme.zip assets config layout locales sections snippets templates"
   },
   "license": "UNLICENSED",
   "dependencies": {

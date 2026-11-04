@@ -4,12 +4,14 @@ Marca de ropa deportiva con diseños propios, vendida en **Shopify** y fabricada
 
 ```
 aguanta/
-├── brand/        logo (SVG positivo, negativo, monocromo, isotipo, favicon), paleta.md, guia-de-marca.md
+├── brand/        logo = la A recortada (SVG/PNG positivo, negativo, monocromo, cuadrado, avatar, favicon), paleta.md, guia-de-marca.md
 ├── designs/      generate.mjs (un comando lo regenera todo), src/*.svg, export/*.png, export/printful/, export/patrones/
 ├── catalogo/     productos.mjs (fuente de verdad), precios.csv, subida-manual.md, printful.mjs, contador-drop.mjs
 ├── theme/        tema Shopify OS 2.0 propio (Liquid)
 ├── copy/         titulares, productos, páginas, FAQ, emails, ideas para redes
 ├── preview/      vista previa local del tema sin tienda (datos de ejemplo)
+├── dist/         aguanta-theme.zip, para subir el tema desde el panel de Shopify sin terminal
+├── ORDEN-COWORK.md  todo lo que queda, listo para pegar en Claude Cowork (que tiene acceso a Printful)
 ├── fonts/        Anton + Space Grotesk (OFL) para generar los diseños
 ├── DECISIONES.md lo que he decidido yo y por qué
 └── LEEME.md      esto
@@ -21,8 +23,8 @@ aguanta/
 
 | Criterio | Estado |
 |---|---|
-| `node designs/generate.mjs` genera los 12 diseños sin errores | ✅ 78 archivos (24 másteres 4500×5400 a 300 DPI claro/oscuro, patrones, archivos por producto, logos), ~100 s |
-| `shopify theme check` sin errores | ✅ 70 archivos, 0 incidencias (Shopify CLI 5.0.0) |
+| `node designs/generate.mjs` genera los 12 diseños sin errores | ✅ 81 archivos (24 másteres 4500×5400 a 300 DPI claro/oscuro, patrones, archivos por producto, logos), ~100 s |
+| `shopify theme check` sin errores | ✅ 69 archivos, 0 incidencias (Shopify CLI 5.0.0) |
 | `shopify theme dev` con datos de ejemplo | ⏳ **Necesita tu tienda** (no puedo autenticarme). Mientras, `npm run preview` muestra el mismo tema renderizado en local con los 14 productos de ejemplo. Lighthouse móvil en esa vista previa: rendimiento 97–100, accesibilidad 100, buenas prácticas 100, SEO 100. |
 | Los 10 productos tienen archivo, PVP y margen | ✅ 14 fichas sobre 10 productos base: `catalogo/precios.csv`, `designs/export/printful/`. ⚠️ **Costes estimados**: Printful no era accesible desde aquí; se verifican con tu token (paso 4). |
 | Lista de pasos manuales | ✅ abajo |
@@ -126,5 +128,6 @@ Crea los metacampos de colección y guarda las unidades vendidas reales. Mientra
 | `npm run theme:dev` / `theme:push` | Shopify CLI sobre `theme/` |
 | `npm run printful:verificar` / `envios` / `mockups` | Printful (necesita `PRINTFUL_TOKEN`) |
 | `npm run contador` | Contador del drop con ventas reales |
+| `npm run theme:zip` | Rehace `dist/aguanta-theme.zip` (súbelo en Tienda online > Temas > Añadir tema) |
 
 Para cambiar un diseño: edita su función en `designs/designs.mjs` y `npm run generar`. Para cambiar un producto, precio objetivo o umbral de envío: `catalogo/productos.mjs` y `npm run todo`.

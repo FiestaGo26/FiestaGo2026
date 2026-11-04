@@ -4,11 +4,11 @@
 **Eslogan:** *Aguanta un rato más.*
 
 ## Logo
-- **Wordmark** AGUANTA en Anton, con la **A inicial recortada en diagonal** (chaflán en el pie izquierdo). El corte es la marca: no se quita ni se cambia el ángulo.
-- **Isotipo**: la A recortada dentro de un cuadrado. Para favicon, etiquetas, bordados pequeños y avatar de redes.
-- Archivos en `brand/logo/`: `wordmark-positivo` (tinta), `wordmark-negativo` (hueso sobre tinta), `monocromo-negro`, `monocromo-blanco`, `rojo`; `isotipo-tinta|lima|rojo|hueso|monocromo`; `favicon-512.png`. Todo vectorial y con el texto en trazados: no hace falta tener la fuente.
-- **Área de respeto:** la altura de la barra de la A alrededor del logo. **Tamaño mínimo:** wordmark 24 mm / 90 px de ancho; isotipo 6 mm / 16 px.
-- **No:** estirar, inclinar, poner contorno o sombra, cambiar la fuente, girarlo, ponerlo en rojo sobre lima o en lima sobre hueso.
+- **El logo es solo la letra A** de Anton, con el **pie izquierdo recortado en diagonal** (chaflán). El corte es la marca: no se quita ni se cambia el ángulo.
+- El nombre AGUANTA se escribe siempre como texto en Anton mayúsculas, al lado o debajo de la A cuando haga falta, pero **no forma parte del logo**.
+- Archivos en `brand/logo/`: `aguanta-logo-positivo` (tinta), `-negativo` (hueso sobre tinta), `-lima` (lima sobre tinta), `-rojo`, `-monocromo-negro`, `-monocromo-blanco`; en cuadrado para avatar, etiquetas y bordados: `aguanta-logo-cuadrado-tinta|lima|rojo|hueso|monocromo`; `aguanta-avatar-redes.png` (1080 px) y `favicon-512.png`. Vectorial, con la letra en trazados: no hace falta tener la fuente.
+- **Área de respeto:** media anchura de la A alrededor. **Tamaño mínimo:** 8 mm / 20 px de alto (en bordado, 10 mm).
+- **No:** estirar, inclinar, poner contorno o sombra, cambiar la fuente, girarla, quitar el corte, ponerla en rojo sobre lima o en lima sobre hueso.
 
 ## Color
 Tinta `#0B0B0C` · Hueso `#F4F1EA` · Rojo `#FF3B1F` · Lima `#C8FF00`. Detalle y contraste en `paleta.md`. Rojo = la palabra que duele. Lima = lo que se pulsa. Nada de degradados.

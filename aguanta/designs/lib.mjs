@@ -191,6 +191,19 @@ export function aCut({ id, x, y, w, h, from = 0.66, to = 0.3 }) {
 }
 
 /**
+ * LOGO: solo la letra A recortada, ajustada a su caja (sin cuadro ni márgenes).
+ * Devuelve { markup, w, h } con origen en (0,0) y altura de mayúscula `h`.
+ */
+export function aMark({ h = 100, fill = C.tinta, id = 'am' } = {}) {
+  const size = h / CAP.anton;
+  const probe = text('A', { size, y: h });
+  const bb = boxOf(probe.d);
+  const a = text('A', { size, x: -bb.x1, y: h });
+  const w = bb.x2 - bb.x1;
+  return { markup: aCut({ id, x: 0, y: 0, w, h }) + `<path d="${a.d}" fill="${fill}" mask="url(#${id})"/>`, w, h };
+}
+
+/**
  * Wordmark AGUANTA con la A inicial cortada. Devuelve { markup, width, height }
  * con origen arriba-izquierda en (x,y) y altura de mayúscula `h`.
  */
