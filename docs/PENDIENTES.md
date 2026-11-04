@@ -97,6 +97,17 @@ Garantía** (8 %); el alta como autónomo suele coincidir con el día del servic
 - [x] **Acuerdos con clientes** (panel → Acuerdos con clientes; /acuerdo/<enlace>): el proveedor envía lo que
   incluye, precio, pago y cancelación; el cliente lo acepta con su nombre y queda registrado (fecha, hora,
   código); arriba solo FiestaGo; Garantía opcional para el cliente si el proveedor la ofrece.
+- [x] (04-11) **Cobro por FiestaGo con Stripe Connect** (código hecho, sin activar): cuenta sencilla (Express) por
+  proveedor con pagos manuales, botones «Pagar la señal / el resto / todo» en el acuerdo aceptado, aviso de Stripe
+  (webhook) que marca el pago y avisa a los dos, y en el panel del proveedor saldo, días que le quedan y «Cobrar
+  ahora». FiestaGo solo descuenta lo que cobra Stripe por la tarjeta (≈1,5 % + 0,25 €, STRIPE_FEE_PCT/FIXED) y el
+  8 % si el cliente elige la Garantía. **Para activarlo (Mariano):** 1) cuenta de Stripe de FiestaGo verificada;
+  2) Stripe → Connect → activar, perfil de plataforma «marketplace», cuentas Express, España; 3) en Netlify
+  STRIPE_SECRET_KEY (clave secreta) y STRIPE_WEBHOOK_SECRET; 4) Stripe → Webhooks → https://fiestago.es/api/webhooks/stripe
+  con checkout.session.completed, checkout.session.expired y account.updated (también de cuentas conectadas).
+  Probar primero con las claves de prueba (sk_test_…). Pendiente: aviso por email a los 75 días sin cobrar, y
+  conectar las facturas delegadas con estos pagos. Ojo: la web de reservas antigua todavía usa pagos simulados
+  (/api/mock/pay-first).
 - [ ] Enlace de pago + dinero retenido hasta que el proveedor lo pida: Stripe Connect. **Stripe solo deja
   retenerlo 90 días en España** (pagos manuales). Falta decidir la configuración y activar Connect en Stripe.
 Estado hoy: los pagos al proveedor son manuales (no hay Stripe Connect); la facturación delegada y el

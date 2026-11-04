@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { formatEuro, precioCliente } from '@/lib/pricing'
+import StripeCard from './StripeCard'
 
 type Row = { id: string; status: string; created_at: string; client_name: string; client_email: string; event_date: string | null; service_title: string; price_total: number; guarantee_offered: boolean; guarantee_chosen: boolean | null; accepted_at: string | null; url: string }
 
@@ -43,6 +44,7 @@ export default function AgreementsTab({ providerId, apiFetch }: { providerId: st
   const price = Number(String(form.price_total).replace(',', '.')) || 0
   return (
     <div className="max-w-2xl">
+      <StripeCard providerId={providerId} apiFetch={apiFetch} />
       <div className="bg-white border border-stone-200 rounded-2xl p-5 mb-5 shadow-card">
         <h2 className="font-serif text-xl font-bold text-ink mb-1">Acuerdos con tus clientes</h2>
         <p className="text-xs text-ink/60 mb-3 leading-relaxed">

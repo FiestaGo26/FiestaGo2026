@@ -5,6 +5,7 @@ import { loadAgreement, withGuarantee } from '@/lib/agreements'
 import { formatEuro } from '@/lib/pricing'
 import PrintButton from '../../propuesta/[token]/PrintButton'
 import AcceptAgreement from './AcceptAgreement'
+import PayButtons from './PayButtons'
 
 // Acuerdo de servicio entre el cliente y el proveedor (lib/agreements.ts).
 // Arriba FiestaGo, nada más: el resto son compromisos entre ellos dos.
@@ -63,6 +64,18 @@ export default async function AgreementPage({ params }: { params: { token: strin
           {a.status === 'aceptado' && a.accepted_fingerprint && (
             <p className="text-xs text-ink/50 mt-4">Código de registro de la aceptación: <span className="font-mono">{a.accepted_fingerprint}</span></p>
           )}
+          {a.payments.length > 0 && (
+            <div className="mt-4 text-sm text-ink/80">
+              <div className="text-xs font-semibold text-ink/55 uppercase tracking-wide mb-1">Pagos recibidos</div>
+              {a.payments.map((p, i) => <div key={i}>✓ {p.kind === 'senal' ? 'Señal' : p.kind === 'resto' ? 'Resto' : 'Pago'}: {formatEuro(p.amount)} · {new Date(p.paid_at).toLocaleDateString('es-ES')}</div>)}
+            </div>
+          )}
+          {a.status === 'aceptado' && a.provider.can_charge && (() => {
+            const total = a.guarantee_chosen ? withGuarantee(a.price_total) : a.price_total
+            const paid = a.payments.reduce((n, p) => n + p.amount, 0)
+            const deposit = a.deposit_amount ? (a.guarantee_chosen ? withGuarantee(a.deposit_amount) : a.deposit_amount) : 0
+            return <PayButtons token={a.token} deposit={deposit} remaining={Math.round((total - paid) * 100) / 100} depositPaid={paid > 0} />
+          })()}
           {a.status === 'enviado' && <AcceptAgreement token={a.token} guaranteeOffered={a.guarantee_offered} price={a.price_total} priceWithGuarantee={withGuarantee(a.price_total)} />}
 
           <p className="text-[11px] text-ink/45 mt-6 leading-relaxed">

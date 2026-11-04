@@ -25,7 +25,8 @@ export type Agreement = {
   payment_terms: string | null; cancellation_terms: string | null; other_terms: string | null
   guarantee_offered: boolean; guarantee_chosen: boolean | null
   accepted_at: string | null; accepted_name: string | null; accepted_fingerprint: string | null
-  provider: { id: string; name: string; city: string | null; email: string | null; legal_name: string | null; tax_id: string | null }
+  provider: { id: string; name: string; city: string | null; email: string | null; legal_name: string | null; tax_id: string | null; can_charge: boolean }
+  payments: Array<{ kind: string; amount: number; paid_at: string }>
 }
 
 /** Precio con la Garantía de Éxito FiestaGo, si el cliente la elige. */
@@ -34,13 +35,14 @@ export const withGuarantee = (price: number) => precioCliente(price)
 export async function loadAgreement(supabase: SupabaseClient, token: string): Promise<Agreement | null> {
   if (!/^[a-f0-9]{24}$/.test(token || '')) return null
   const { data } = await supabase.from('service_agreements')
-    .select('*, providers(id, name, city, email, tax_name, tax_id)').eq('token', token).maybeSingle()
+    .select('*, providers(id, name, city, email, tax_name, tax_id, stripe_charges_enabled), agreement_payments(kind, amount, status, paid_at)').eq('token', token).maybeSingle()
   if (!data) return null
   const p: any = Array.isArray(data.providers) ? data.providers[0] : data.providers
-  const { providers, ...a } = data as any
+  const { providers, agreement_payments, ...a } = data as any
   return {
     ...a, price_total: Number(a.price_total), deposit_amount: a.deposit_amount != null ? Number(a.deposit_amount) : null,
-    provider: { id: p?.id, name: p?.name || 'Proveedor', city: p?.city || null, email: p?.email || null, legal_name: p?.tax_name || null, tax_id: p?.tax_id || null },
+    provider: { id: p?.id, name: p?.name || 'Proveedor', city: p?.city || null, email: p?.email || null, legal_name: p?.tax_name || null, tax_id: p?.tax_id || null, can_charge: !!p?.stripe_charges_enabled && !!process.env.STRIPE_SECRET_KEY },
+    payments: (agreement_payments || []).filter((x: any) => x.status === 'pagado').map((x: any) => ({ kind: x.kind, amount: Number(x.amount), paid_at: x.paid_at })),
   }
 }
 
